@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#6366F1">
+<link rel="manifest" href="manifest.json">
+<title>Torchons & Serviettes</title>
+<style>
+:root { --primary: #6366F1; --primary-light: #E0E7FF; --green: #10B981; --yellow: #F59E0B; --orange: #F97316; --red: #EF4444; --bg: #F3F4F6; --card: #FFF; --text: #1a1a1a; --muted: #6B7280; --sidebar: 240px; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar { width: var(--sidebar); background: var(--primary); color: white; position: fixed; top: 0; left: 0; bottom: 0; padding: 24px 0; display: flex; flex-direction: column; }
+.sidebar-logo { padding: 0 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.sidebar-logo h1 { font-size: 18px; }
+.sidebar-logo .sub { font-size: 12px; opacity: 0.7; margin-top: 4px; }
+.sidebar nav { flex: 1; padding: 12px 0; }
+.sidebar nav a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: .2s; }
+.sidebar nav a:hover { background: rgba(255,255,255,0.1); color: white; }
+.sidebar nav a.active { background: rgba(255,255,255,0.15); color: white; font-weight: 700; border-right: 3px solid white; }
+.sidebar nav a .icon { font-size: 18px; width: 24px; text-align: center; }
+
+/* Main */
+.main { margin-left: var(--sidebar); flex: 1; padding: 32px 40px; max-width: 1200px; }
+.main h2 { font-size: 24px; font-weight: 700; margin-bottom: 20px; }
+
+/* Cards */
+.card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); transition: .2s; }
+.card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.card h3 { font-size: 16px; margin-bottom: 8px; }
+
+/* Grid layout */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* Freshness */
+.freshness-bar { height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden; margin: 8px 0; }
+.freshness-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+.freshness-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+/* Buttons */
+.btn { padding: 10px 20px; border-radius: 10px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: .2s; }
+.btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-primary { background: var(--primary); color: white; }
+.btn-green { background: var(--green); color: white; }
+.btn-outline { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); }
+.btn-row { display: flex; gap: 8px; margin-top: 12px; }
+
+/* Chips */
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.chip { padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; background: #e5e7eb; color: var(--muted); transition: .2s; }
+.chip:hover { background: #d1d5db; }
+.chip.active { background: var(--primary); color: white; }
+
+/* Badge */
+.badge { display: inline-block; padding: 2px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+
+/* Task list */
+.task-row { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: .2s; }
+.task-row:hover { background: #f9fafb; }
+.task-info { flex: 1; min-width: 0; }
+.task-title { font-weight: 500; }
+.task-meta { font-size: 12px; color: var(--muted); display: flex; gap: 8px; margin-top: 2px; }
+
+/* Stats */
+.stat-card { text-align: center; padding: 24px; }
+.stat-card .number { font-size: 32px; font-weight: 800; color: var(--primary); }
+.stat-card .label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+/* Leaderboard */
+.lb-row { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
+.rank { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+.rank-1 { background: var(--primary); color: white; }
+.rank-other { background: #f3f4f6; }
+
+/* Streak */
+.streak-row { display: flex; align-items: center; gap: 16px; }
+.streak-count { font-size: 36px; font-weight: 800; color: var(--primary); min-width: 60px; text-align: center; }
+
+/* Suggestion card */
+.suggestion { border-left: 4px solid; padding-left: 16px; }
+.suggestion.urgent { border-color: var(--red); }
+.suggestion.affinity { border-color: var(--green); }
+.reason { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+
+/* Badge list */
+.badge-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.badge-icon { font-size: 24px; }
+
+.loading { text-align: center; padding: 60px; color: var(--muted); }
+.empty { text-align: center; padding: 60px; color: var(--muted); }
+.empty .big { font-size: 48px; margin-bottom: 12px; }
+
+/* Settings */
+.setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f3f4f6; }
+.setting-label { font-weight: 500; }
+.setting-desc { font-size: 12px; color: var(--muted); }
+
+/* Modal */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:white; border-radius:20px; padding:28px; width:420px; max-width:90vw; max-height:80vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
+.modal h3 { margin-bottom:16px; }
+.modal .close { float:right; cursor:pointer; font-size:20px; color:var(--muted); }
+
+/* Range slider */
+input[type=range] { -webkit-appearance:none; width:100%; height:6px; border-radius:3px; background:#e5e7eb; outline:none; margin:8px 0; border:none; padding:0; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:var(--primary); cursor:pointer; }
+.range-labels { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); }
+.range-value { text-align:center; font-size:24px; font-weight:800; color:var(--primary); margin:4px 0; }
+
+/* Question btn */
+.question-btn { background:var(--primary-light); border:none; width:40px; height:40px; border-radius:50%; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:.2s; }
+.question-btn:hover { background:var(--primary); color:white; }
+.title-row { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.title-row h2 { margin-bottom:0; }
+
+/* Category item */
+.cat-item { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid #f3f4f6; }
+.cat-dot { width:20px; height:20px; border-radius:50%; }
+.cat-home-badge { font-size:11px; color:var(--primary); font-weight:600; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>T&S</h1>
+    <div class="sub" id="user-greeting">Chargement...</div>
+  </div>
+  <nav>
+    <a class="active" data-page="home"><span class="icon">🏠</span> Accueil</a>
+    <a data-page="tasks"><span class="icon">✅</span> Taches</a>
+    <a data-page="stats"><span class="icon">📊</span> Statistiques</a>
+    <a data-page="settings"><span class="icon">⚙️</span> Reglages</a>
+  </nav>
+</aside>
+
+<div class="main">
+  <!-- ACCUEIL -->
+  <div class="page active" id="page-home">
+    <div class="title-row">
+      <h2>Accueil</h2>
+      <button class="question-btn" onclick="showRatingModal()" title="Noter une tache">❓</button>
+    </div>
+    <div id="home-content"><div class="loading">Chargement...</div></div>
+  </div>
+
+  <!-- TACHES -->
+  <div class="page" id="page-tasks" style="display:none">
+    <h2>Taches</h2>
+    <div id="categories-chips" class="chip-row"></div>
+    <div class="card" id="tasks-container"><div class="loading">Chargement...</div></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="page" id="page-stats" style="display:none">
+    <h2>Statistiques</h2>
+    <div id="stats-content"><div class="loading">Chargement...</div></div>
+  </div>
+
+  <!-- REGLAGES -->
+  <div class="page" id="page-settings" style="display:none">
+    <h2>Reglages</h2>
+    <div class="grid-2">
+
+      <!-- Notifications -->
+      <div class="card">
+        <h3>🔔 Notifications</h3>
+        <div class="setting-row">
+          <div><div class="setting-label">Resume quotidien</div><div class="setting-desc">Recevoir un resume de tes taches chaque jour</div></div>
+          <label class="switch"><input type="checkbox" id="s-notif-daily" onchange="saveSetting('notif_daily',this.checked)"><span class="slider"></span></label>
+        </div>
+        <div id="notif-hour-row" class="setting-row">
+          <div><div class="setting-label">Heure du resume</div><div class="setting-desc" id="s-notif-hour-label">9h00</div></div>
+          <input type="range" id="s-notif-hour" min="6" max="22" value="9" style="width:120px" oninput="document.getElementById('s-notif-hour-label').textContent=this.value+'h00'" onchange="saveSetting('notif_hour',parseInt(this.value))">
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">Taches urgentes</div><div class="setting-desc">Notification quand une tache passe en rouge</div></div>
+          <label class="switch"><input type="checkbox" id="s-notif-urgent" onchange="saveSetting('notif_urgent',this.checked)"><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">Taches completees</div><div class="setting-desc">Notification quand l'autre complete une tache</div></div>
+          <label class="switch"><input type="checkbox" id="s-notif-completed" onchange="saveSetting('notif_completed',this.checked)"><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <!-- Popup affinite -->
+      <div class="card">
+        <h3>❓ Popup affinite/effort</h3>
+        <div class="setting-row">
+          <div><div class="setting-label">Activer</div><div class="setting-desc">Demander affinite et effort a l'ouverture de l'app</div></div>
+          <label class="switch"><input type="checkbox" id="s-affinity-popup" onchange="saveSetting('affinity_popup_enabled',this.checked)"><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <!-- WiFi maison -->
+      <div class="card">
+        <h3>🏠 WiFi maison</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:8px">Les taches marquees "a la maison" ne sont suggerees que sur ces reseaux WiFi.</p>
+        <div id="ssids-list"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input type="text" id="new-ssid-input" placeholder="Nom du WiFi" style="flex:1">
+          <button class="btn btn-primary" style="width:auto;margin-top:0" onclick="addSSID()">Ajouter</button>
+        </div>
+      </div>
+
+      <!-- Fair-share -->
+      <div class="card">
+        <h3>⚖️ Equilibre fair-share</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Repartition souhaitee des taches du foyer.</p>
+        <div id="fairshare-display" style="font-weight:600;margin-bottom:8px">Chargement...</div>
+        <input type="range" id="fairshare-slider" min="10" max="90" value="60" oninput="updateFSDisplay()" onchange="saveFairShare()">
+      </div>
+
+      <!-- Categories -->
+      <div class="card" style="grid-column:span 2">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3>📂 Categories</h3>
+          <button class="btn btn-primary" style="width:auto;margin:0;padding:8px 16px" onclick="showCatModal()">+ Ajouter</button>
+        </div>
+        <div id="categories-list"><div class="loading">Chargement...</div></div>
+      </div>
+
+      <!-- Options avancees -->
+      <div class="card" style="grid-column:span 2">
+        <h3 style="cursor:pointer" onclick="document.getElementById('advanced-content').style.display=document.getElementById('advanced-content').style.display==='none'?'block':'none'">⚙️ Options avancees ▾</h3>
+        <div id="advanced-content" style="display:none;margin-top:12px">
+          <div class="setting-row">
+            <div><div class="setting-label">Seuil de suggestion : <span id="s-threshold-label">10</span>%</div><div class="setting-desc">Les taches sont suggerees quand leur fraicheur passe sous ce seuil</div></div>
+            <input type="range" id="s-threshold" min="5" max="95" value="10" style="width:180px" oninput="document.getElementById('s-threshold-label').textContent=this.value" onchange="saveSetting('freshness_threshold',parseInt(this.value))">
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">Renouvellement : <span id="s-expiry-label">6</span> mois</div><div class="setting-desc">Apres cette duree, l'app redemandera affinite et effort pour chaque tache</div></div>
+            <input type="range" id="s-expiry" min="1" max="12" value="6" style="width:180px" oninput="document.getElementById('s-expiry-label').textContent=this.value" onchange="saveSetting('affinity_expiry_months',parseInt(this.value))">
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CATEGORIE -->
+<div class="modal-overlay" id="cat-modal">
+  <div class="modal">
+    <span class="close" onclick="closeCatModal()">✕</span>
+    <h3 id="cat-modal-title">Nouvelle categorie</h3>
+    <label>Nom</label>
+    <input type="text" id="cat-name" placeholder="Nom de la categorie">
+    <label>Couleur</label>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap" id="color-picker"></div>
+    <input type="hidden" id="cat-color" value="#6366F1">
+    <div class="setting-row" style="margin-top:12px">
+      <div><div class="setting-label">A la maison uniquement</div><div class="setting-desc">Visible seulement quand connecte au WiFi maison</div></div>
+      <label class="switch"><input type="checkbox" id="cat-requires-home"><span class="slider"></span></label>
+    </div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-outline" id="cat-delete-btn" style="display:none;background:#FEE2E2;color:var(--red);border-color:var(--red)" onclick="deleteCat()">Supprimer</button>
+      <button class="btn btn-primary" onclick="saveCat()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RATING -->
+<div class="modal-overlay" id="rating-modal">
+  <div class="modal">
+    <span class="close" onclick="closeRatingModal()">✕</span>
+    <h3 id="rating-task-title" style="color:var(--primary)">...</h3>
+
+    <div id="rating-affinity-section">
+      <label style="margin-top:0">Affinite <span style="font-size:11px;color:var(--muted)">(est-ce que j'aime faire ca ?)</span></label>
+      <div class="range-value" id="affinity-value">5</div>
+      <input type="range" id="affinity-slider" min="1" max="10" value="5" oninput="document.getElementById('affinity-value').textContent=this.value">
+      <div class="range-labels"><span>Pas du tout</span><span>A fond !</span></div>
+    </div>
+
+    <div id="rating-effort-section" style="margin-top:16px">
+      <label>Effort <span style="font-size:11px;color:var(--muted)">(combien de temps ca prend ?)</span></label>
+      <div class="range-value" id="effort-value">15min</div>
+      <input type="range" id="effort-slider" min="1" max="18" value="3" oninput="updateEffortDisplay()">
+      <div class="range-labels"><span>5min</span><span>1h30</span></div>
+    </div>
+
+    <div class="btn-row" style="margin-top:20px">
+      <button class="btn btn-outline" onclick="submitRatingAndNext()">Une autre !</button>
+      <button class="btn btn-primary" onclick="submitRating()">Ok</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = `http://${window.location.hostname}:8002/api`;
+let token = localStorage.getItem('ts_token');
+let currentUser = null;
+
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...opts.headers };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  try {
+    const res = await fetch(`${API}${path}`, { ...opts, headers });
+    if (!res.ok) { if (res.status === 401) { token = null; localStorage.removeItem('ts_token'); login(); } return null; }
+    return res.json();
+  } catch(e) { console.error(e); return null; }
+}
+
+async function login() {
+  try {
+    const res = await fetch(`${API}/auth/auto`);
+    const data = await res.json();
+    if (data.token) {
+      token = data.token; currentUser = data.user;
+      localStorage.setItem('ts_token', token);
+      document.getElementById('user-greeting').textContent = `Bonjour ${data.user.display_name} !`;
+      loadAll();
+    } else if (data.status === 'unknown_ip') {
+      // IP inconnue — demander qui c'est
+      showUserPicker(data.users, data.ip);
+    } else {
+      document.getElementById('user-greeting').textContent = 'Erreur de connexion';
+    }
+  } catch(e) { document.getElementById('user-greeting').textContent = 'Serveur inaccessible'; }
+}
+
+function showUserPicker(users, ip) {
+  const main = document.querySelector('.main');
+  main.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;min-height:60vh">
+      <div class="card" style="max-width:400px;text-align:center">
+        <h2 style="margin-bottom:8px">Bienvenue !</h2>
+        <p style="color:var(--muted);margin-bottom:20px">Nouvel appareil detecte (${ip}).<br>Qui es-tu ?</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${users.map(u => `<button class="btn btn-primary" onclick="claimIP('${u.username}')">${u.display_name}</button>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+async function claimIP(username) {
+  try {
+    const res = await fetch(`${API}/auth/claim`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username})
+    });
+    const data = await res.json();
+    if (data.token) {
+      token = data.token; currentUser = data.user;
+      localStorage.setItem('ts_token', token);
+      location.reload();
+    }
+  } catch(e) { alert('Erreur: ' + e.message); }
+}
+
+// Navigation
+document.querySelectorAll('.sidebar nav a').forEach(link => {
+  link.addEventListener('click', () => {
+    document.querySelectorAll('.sidebar nav a').forEach(l => l.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    link.classList.add('active');
+    document.getElementById('page-' + link.dataset.page).style.display = 'block';
+  });
+});
+
+function fc(f) { return f >= 80 ? 'var(--green)' : f >= 50 ? 'var(--yellow)' : f >= 25 ? 'var(--orange)' : 'var(--red)'; }
+
+// === ACCUEIL ===
+async function loadHome() {
+  const [suggestions, inProgress, fairShare] = await Promise.all([
+    api('/suggestions?freshness_threshold=10'), api('/tasks/in-progress'), api('/fair-share/status'),
+  ]);
+  const el = document.getElementById('home-content');
+  let html = '';
+
+  if (fairShare && currentUser) {
+    const me = fairShare.find(f => f.user_id === currentUser.id);
+    const other = fairShare.find(f => f.user_id !== currentUser.id);
+    if (me && me.above_target && other)
+      html += `<div class="card" style="border-left:4px solid var(--green);background:#10B98110"><p style="color:var(--green);font-weight:500">🎉 Tu as fait plus que ta part ! C'est a ${other.display_name} de s'y mettre.</p></div>`;
+  }
+
+  if (inProgress && inProgress.length > 0) {
+    html += '<h3 style="margin-bottom:12px;color:var(--muted)">En cours</h3><div class="grid-2">';
+    inProgress.forEach(t => {
+      html += `<div class="card" style="background:var(--primary-light)">
+        <h3>${t.title}</h3>
+        <div class="btn-row"><button class="btn btn-outline" onclick="cancelIP('${t.task_id}')">Pas fait</button><button class="btn btn-green" onclick="complete('${t.task_id}')">Fait !</button></div></div>`;
+    });
+    html += '</div>';
+  }
+
+  if (suggestions && suggestions.length > 0) {
+    html += '<h3 style="margin:20px 0 12px;color:var(--muted)">Suggestions</h3><div class="grid-2">';
+    suggestions.forEach(s => {
+      const cls = s.reason === 'urgent' ? 'urgent' : 'affinity';
+      const label = s.reason === 'urgent' ? '⚠️ La plus urgente' : '❤️ Tu aimes bien';
+      html += `<div class="card suggestion ${cls}">
+        <div class="reason" style="color:${s.reason==='urgent'?'var(--red)':'var(--green)'}">${label}</div>
+        <h3>${s.title}</h3>
+        <div class="freshness-bar"><div class="freshness-fill" style="width:${s.freshness}%;background:${fc(s.freshness)}"></div></div>
+        <span style="font-size:12px;color:${fc(s.freshness)};font-weight:600">${Math.round(s.freshness)}%</span>
+        <div class="btn-row"><button class="btn btn-outline" onclick="startT('${s.task_id}')">En cours</button><button class="btn btn-green" onclick="complete('${s.task_id}')">Fait !</button></div></div>`;
+    });
+    html += '</div>';
+  } else if (!inProgress || inProgress.length === 0) {
+    html = '<div class="empty"><div class="big">✅</div><h3>Tout est frais !</h3><p>Aucune tache urgente.</p></div>';
+  }
+  el.innerHTML = html;
+}
+async function startT(id) { await api(`/tasks/${id}/start`,{method:'POST'}); loadHome(); }
+async function complete(id) { await api(`/tasks/${id}/complete`,{method:'POST',body:'{}'}); loadHome(); loadTasks(); }
+async function cancelIP(id) { await api(`/tasks/${id}/start`,{method:'DELETE'}); loadHome(); }
+
+// === TACHES ===
+let allTasks=[], allCats=[], allComps=[], selCat=null;
+async function loadTasks() {
+  const [t,c,co] = await Promise.all([api('/tasks'), api('/categories'), api('/completions?limit=500')]);
+  allTasks=t||[]; allCats=c||[]; allComps=co||[];
+  renderChips(); renderTasks();
+}
+function renderChips() {
+  let h = `<div class="chip ${selCat===null?'active':''}" onclick="fCat(null)">Toutes</div>`;
+  allCats.forEach(c => { h += `<div class="chip ${selCat===c.id?'active':''}" onclick="fCat('${c.id}')">${c.name}</div>`; });
+  document.getElementById('categories-chips').innerHTML = h;
+}
+function fCat(id) { selCat=id; renderChips(); renderTasks(); }
+function renderTasks() {
+  let tasks = selCat ? allTasks.filter(t=>t.category_id===selCat) : allTasks;
+  tasks = tasks.map(t => {
+    const cs = allComps.filter(c=>c.task_id===t.id);
+    const last = cs.length?cs.reduce((a,b)=>a.completed_at>b.completed_at?a:b):null;
+    let f=0;if(last){const h=(Date.now()-new Date(last.completed_at).getTime())/3600000;f=Math.max(0,Math.min(100,100*Math.exp(-0.693*h/(t.freshness_half_life_hours||168))));}
+    const cat=allCats.find(c=>c.id===t.category_id);
+    return {...t,freshness:f,catName:cat?.name,catColor:cat?.color};
+  }).sort((a,b)=>a.freshness-b.freshness);
+
+  if(!tasks.length){document.getElementById('tasks-container').innerHTML='<div class="empty">Aucune tache</div>';return;}
+  document.getElementById('tasks-container').innerHTML = tasks.map(t=>`<div class="task-row" onclick="complete('${t.id}')">
+    <div class="freshness-dot" style="background:${fc(t.freshness)}"></div>
+    <div class="task-info"><div class="task-title">${t.title}</div>
+    <div class="task-meta">${t.catName?`<span class="badge" style="background:${t.catColor}20;color:${t.catColor}">${t.catName}</span>`:''}<span>${Math.round(t.freshness)}%</span></div></div>
+  </div>`).join('');
+}
+
+// === STATS ===
+async function loadStats() {
+  const [stats,wk,mo,streaks,badges] = await Promise.all([
+    api('/stats'),api('/leaderboard?period=week'),api('/leaderboard?period=month'),api('/streaks'),api('/badges'),
+  ]);
+  const el = document.getElementById('stats-content');
+  let h = '';
+
+  if(stats){
+    h+='<div class="grid-'+stats.length+'" style="margin-bottom:20px">';
+    stats.forEach(s=>{
+      h+=`<div class="card stat-card"><div class="number">${s.points_month}</div><div class="label">${s.display_name} — pts ce mois</div>
+      <div style="margin-top:8px;font-size:13px;color:var(--muted)">${s.tasks_month} taches · ${s.points_total} pts total</div></div>`;
+    });
+    h+='</div>';
+  }
+
+  if(streaks&&streaks.length){
+    h+='<h3 style="margin:16px 0 12px">Streaks</h3><div class="grid-2">';
+    streaks.forEach(s=>{h+=`<div class="card streak-row"><div class="streak-count">${s.current_streak}j</div><div><div style="font-weight:600">${s.display_name}</div><div style="font-size:12px;color:var(--muted)">Record : ${s.best_streak}j</div></div></div>`;});
+    h+='</div>';
+  }
+
+  if(wk&&wk.length){
+    h+='<div class="grid-2"><div><h3 style="margin:16px 0 12px">Classement semaine</h3><div class="card">';
+    wk.forEach(e=>{h+=`<div class="lb-row"><div class="rank ${e.rank===1?'rank-1':'rank-other'}">${e.rank===1?'🏆':'#'+e.rank}</div><div style="flex:1;font-weight:500">${e.display_name}</div><div style="text-align:right"><strong style="color:var(--primary)">Score ${Math.round(e.normalized_score)}</strong><br><span style="font-size:11px;color:var(--muted)">${e.points} pts</span></div></div>`;});
+    h+='</div></div>';
+    if(mo&&mo.length){
+      h+='<div><h3 style="margin:16px 0 12px">Classement mois</h3><div class="card">';
+      mo.forEach(e=>{h+=`<div class="lb-row"><div class="rank ${e.rank===1?'rank-1':'rank-other'}">${e.rank===1?'🏆':'#'+e.rank}</div><div style="flex:1;font-weight:500">${e.display_name}</div><div style="text-align:right"><strong style="color:var(--primary)">Score ${Math.round(e.normalized_score)}</strong><br><span style="font-size:11px;color:var(--muted)">${e.points} pts</span></div></div>`;});
+      h+='</div></div>';
+    }
+    h+='</div>';
+  }
+
+  if(badges){
+    const earned=badges.filter(b=>b.earned),locked=badges.filter(b=>!b.earned);
+    h+=`<h3 style="margin:20px 0 12px">Badges (${earned.length}/${badges.length})</h3><div class="grid-3">`;
+    earned.forEach(b=>{h+=`<div class="card" style="background:var(--primary-light)"><div class="badge-item"><span class="badge-icon">⭐</span><div><strong>${b.label}</strong><div style="font-size:11px;color:var(--muted)">${b.description}</div></div></div></div>`;});
+    locked.forEach(b=>{h+=`<div class="card" style="opacity:0.4"><div class="badge-item"><span class="badge-icon">🔒</span><div><strong>${b.label}</strong><div style="font-size:11px;color:var(--muted)">${b.description}</div></div></div></div>`;});
+    h+='</div>';
+  }
+  el.innerHTML = h;
+}
+
+// === RATING MODAL ===
+let ratingTaskId = null;
+
+function updateEffortDisplay() {
+  const pts = document.getElementById('effort-slider').value;
+  const min = pts * 5;
+  document.getElementById('effort-value').textContent = min >= 60 ? `${Math.floor(min/60)}h${min%60>0?String(min%60).padStart(2,'0'):''}` : `${min}min`;
+}
+
+async function showRatingModal() {
+  // Essayer pending-affinity d'abord, sinon oldest-rating
+  let task = null;
+  const pending = await api('/pending-affinity');
+  if (pending && pending.length > 0) { task = pending[0]; }
+  else {
+    const oldest = await api('/oldest-rating');
+    if (oldest && oldest.length > 0) { task = oldest[0]; }
+  }
+  if (!task) { alert('Toutes les taches sont notees !'); return; }
+
+  ratingTaskId = task.task_id;
+  document.getElementById('rating-task-title').textContent = task.title;
+  document.getElementById('affinity-slider').value = 5;
+  document.getElementById('affinity-value').textContent = '5';
+  document.getElementById('effort-slider').value = 3;
+  updateEffortDisplay();
+  document.getElementById('rating-modal').classList.add('show');
+}
+
+function closeRatingModal() {
+  document.getElementById('rating-modal').classList.remove('show');
+  ratingTaskId = null;
+}
+
+async function submitRating() {
+  if (!ratingTaskId) return;
+  const aff = parseInt(document.getElementById('affinity-slider').value);
+  const eff = parseInt(document.getElementById('effort-slider').value);
+  await api(`/tasks/${ratingTaskId}/affinity`, { method:'PUT', body: JSON.stringify({score:aff}) });
+  await api(`/tasks/${ratingTaskId}/effort`, { method:'PUT', body: JSON.stringify({points:eff}) });
+  closeRatingModal();
+  loadHome();
+}
+
+async function submitRatingAndNext() {
+  if (!ratingTaskId) return;
+  const aff = parseInt(document.getElementById('affinity-slider').value);
+  const eff = parseInt(document.getElementById('effort-slider').value);
+  await api(`/tasks/${ratingTaskId}/affinity`, { method:'PUT', body: JSON.stringify({score:aff}) });
+  await api(`/tasks/${ratingTaskId}/effort`, { method:'PUT', body: JSON.stringify({points:eff}) });
+  ratingTaskId = null;
+  showRatingModal(); // charge la suivante
+}
+
+// === SETTINGS ===
+let fsUsers = [];
+let allCatsSettings = [];
+let editingCatId = null;
+const COLORS = ['#10B981','#F59E0B','#6366F1','#EC4899','#8B5CF6','#F97316','#06B6D4','#EF4444','#6B7280'];
+
+async function loadSettings() {
+  // Settings from backend
+  const [settings, fs, users, cats] = await Promise.all([
+    api('/settings'), api('/fair-share/status'), api('/auth/users'), api('/categories')
+  ]);
+
+  // Populate settings form
+  if (settings) {
+    document.getElementById('s-notif-daily').checked = settings.notif_daily;
+    document.getElementById('s-notif-urgent').checked = settings.notif_urgent;
+    document.getElementById('s-notif-completed').checked = settings.notif_completed;
+    document.getElementById('s-notif-hour').value = settings.notif_hour;
+    document.getElementById('s-notif-hour-label').textContent = settings.notif_hour + 'h00';
+    document.getElementById('s-affinity-popup').checked = settings.affinity_popup_enabled;
+    document.getElementById('s-threshold').value = settings.freshness_threshold;
+    document.getElementById('s-threshold-label').textContent = settings.freshness_threshold;
+    document.getElementById('s-expiry').value = settings.affinity_expiry_months;
+    document.getElementById('s-expiry-label').textContent = settings.affinity_expiry_months;
+
+    // SSIDs
+    renderSSIDs(settings.home_ssids || []);
+  }
+
+  // Fair-share
+  fsUsers = (users || []).sort((a,b) => a.username.localeCompare(b.username));
+  if (fs && fsUsers.length >= 2) {
+    const first = fs.find(f => f.user_id === fsUsers[0].id);
+    if (first) document.getElementById('fairshare-slider').value = Math.round(first.target_ratio * 100);
+    updateFSDisplay();
+  }
+
+  // Categories
+  allCatsSettings = cats || [];
+  renderCatsSettings();
+}
+
+async function saveSetting(key, value) {
+  await api('/settings', { method: 'PUT', body: JSON.stringify({ [key]: value }) });
+}
+
+function renderSSIDs(ssids) {
+  const el = document.getElementById('ssids-list');
+  if (!ssids.length) { el.innerHTML = '<p style="font-size:13px;color:var(--muted)">Aucun WiFi configure</p>'; return; }
+  el.innerHTML = ssids.map(s => `<div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+    <span style="flex:1">${s}</span>
+    <button style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px" onclick="removeSSID('${s}')">✕</button>
+  </div>`).join('');
+}
+
+async function addSSID() {
+  const input = document.getElementById('new-ssid-input');
+  const ssid = input.value.trim();
+  if (!ssid) return;
+  const settings = await api('/settings');
+  const ssids = [...(settings.home_ssids || []), ssid];
+  await saveSetting('home_ssids', ssids);
+  input.value = '';
+  loadSettings();
+}
+
+async function removeSSID(ssid) {
+  const settings = await api('/settings');
+  const ssids = (settings.home_ssids || []).filter(s => s !== ssid);
+  await saveSetting('home_ssids', ssids);
+  loadSettings();
+}
+
+function updateFSDisplay() {
+  const v = document.getElementById('fairshare-slider').value;
+  if (fsUsers.length >= 2)
+    document.getElementById('fairshare-display').textContent = `${fsUsers[0].display_name} : ${v}% — ${fsUsers[1].display_name} : ${100-v}%`;
+}
+
+async function saveFairShare() {
+  if (fsUsers.length < 2) return;
+  const ratio = document.getElementById('fairshare-slider').value / 100;
+  await api('/fair-share/config', { method:'PUT', body:JSON.stringify([
+    {user_id:fsUsers[0].id, target_ratio:ratio}, {user_id:fsUsers[1].id, target_ratio:1-ratio}
+  ])});
+}
+
+// Categories CRUD
+function renderCatsSettings() {
+  const el = document.getElementById('categories-list');
+  if (!allCatsSettings.length) { el.innerHTML = '<p style="color:var(--muted)">Aucune categorie</p>'; return; }
+  el.innerHTML = allCatsSettings.map(c => `<div class="cat-item" style="cursor:pointer" onclick="editCat('${c.id}')">
+    <div class="cat-dot" style="background:${c.color}"></div>
+    <div style="flex:1"><strong>${c.name}</strong>${c.requires_home?'<br><span class="cat-home-badge">🏠 A la maison</span>':''}</div>
+    <span style="color:var(--muted);font-size:12px">Modifier →</span>
+  </div>`).join('');
+}
+
+function renderColorPicker(selected) {
+  document.getElementById('color-picker').innerHTML = COLORS.map(c =>
+    `<div onclick="document.getElementById('cat-color').value='${c}';renderColorPicker('${c}')"
+     style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${c===selected?'var(--text)':'transparent'}"></div>`
+  ).join('');
+}
+
+function showCatModal(cat) {
+  editingCatId = cat ? cat.id : null;
+  document.getElementById('cat-modal-title').textContent = cat ? 'Modifier ' + cat.name : 'Nouvelle categorie';
+  document.getElementById('cat-name').value = cat ? cat.name : '';
+  document.getElementById('cat-color').value = cat ? cat.color : '#6366F1';
+  document.getElementById('cat-requires-home').checked = cat ? cat.requires_home : false;
+  document.getElementById('cat-delete-btn').style.display = cat ? 'block' : 'none';
+  renderColorPicker(cat ? cat.color : '#6366F1');
+  document.getElementById('cat-modal').classList.add('show');
+}
+
+function closeCatModal() { document.getElementById('cat-modal').classList.remove('show'); editingCatId = null; }
+
+function editCat(id) { const cat = allCatsSettings.find(c => c.id === id); if (cat) showCatModal(cat); }
+
+async function saveCat() {
+  const name = document.getElementById('cat-name').value.trim();
+  if (!name) return;
+  const body = { name, color: document.getElementById('cat-color').value, requires_home: document.getElementById('cat-requires-home').checked };
+  if (editingCatId) await api(`/categories/${editingCatId}`, { method:'PUT', body:JSON.stringify(body) });
+  else await api('/categories', { method:'POST', body:JSON.stringify(body) });
+  closeCatModal();
+  loadSettings();
+  loadTasks(); // refresh chips
+}
+
+async function deleteCat() {
+  if (!editingCatId || !confirm('Supprimer cette categorie ? Les taches seront deplacees en "sans categorie".')) return;
+  await api(`/categories/${editingCatId}`, { method:'DELETE' });
+  closeCatModal();
+  loadSettings();
+  loadTasks();
+}
+
+// === INIT ===
+async function loadAll() { loadHome(); loadTasks(); loadStats(); loadSettings(); }
+if(token) {
+  api('/auth/me').then(u => { if(u){currentUser=u;document.getElementById('user-greeting').textContent=`Bonjour ${u.display_name} !`;loadAll();}else login(); });
+} else login();
+</script>
+</body>
+</html>

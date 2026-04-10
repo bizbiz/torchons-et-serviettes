@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Torchons &amp; Serviettes</string>
+    <string name="login_title">Qui es-tu ?</string>
+    <string name="login_alice">Quentin</string>
+    <string name="login_bob">***REMOVED***</string>
+    <string name="login_loading">Connexion en cours…</string>
+    <string name="login_error">Erreur de connexion</string>
+    <string name="task_list_title">Mes tâches</string>
+    <string name="task_complete">Marquer comme fait</string>
+    <string name="task_completed_success">Tâche complétée !</string>
+    <string name="task_detail_title">Détail de la tâche</string>
+    <string name="task_detail_completions">Historique</string>
+    <string name="task_detail_no_completions">Aucune complétion</string>
+    <string name="task_weight">Poids</string>
+    <string name="task_freshness">Fraîcheur</string>
+    <string name="category_all">Toutes</string>
+    <string name="logout">Déconnexion</string>
+    <string name="refresh">Actualiser</string>
+    <string name="error_generic">Une erreur est survenue</string>
+    <string name="error_network">Erreur réseau</string>
+    <string name="empty_tasks">Aucune tâche à afficher</string>
+    <string name="recurrence_interval">Tous les %d jours</string>
+    <string name="recurrence_weekdays">Jours de la semaine</string>
+    <string name="recurrence_monthly">Mensuel (jour %d)</string>
+    <string name="freshness_vert">Fraîcheur : Vert</string>
+    <string name="freshness_jaune">Fraîcheur : Jaune</string>
+    <string name="freshness_orange">Fraîcheur : Orange</string>
+    <string name="freshness_rouge">Fraîcheur : Rouge</string>
+    <string name="assigned_to">Assigné à</string>
+    <string name="description">Description</string>
+    <string name="no_description">Pas de description</string>
+    <string name="completed_by">Complété par</string>
+    <string name="completed_at">Complété le</string>
+    <string name="points_earned">Points gagnés</string>
+    <string name="widget_description">Suggestions de taches</string>
+</resources>

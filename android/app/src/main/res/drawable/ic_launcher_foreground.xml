@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Fond transparent, le texte T&S centre -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,58L36,44L32,44L32,40L44,40L44,44L40,44L40,58Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,50Q48,54 50,56Q52,58 56,58Q58,58 60,57L60,61Q58,62 56,62Q50,62 47,59Q44,56 44,50Q44,44 47,41Q50,38 56,38Q58,38 60,39L60,43Q58,42 56,42Q52,42 50,44Q48,46 48,50Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M64,58L64,48Q64,44 66,42Q68,40 72,40Q74,40 76,41L76,45Q74,44 72,44Q70,44 69,45Q68,46 68,48L68,58Z" />
+</vector>

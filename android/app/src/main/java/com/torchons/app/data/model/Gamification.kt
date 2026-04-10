@@ -1,0 +1,44 @@
+package com.torchons.app.data.model
+
+import com.google.gson.annotations.SerializedName
+
+/** Suggestion de tache. */
+data class Suggestion(
+    @SerializedName("task_id") val taskId: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("category_id") val categoryId: String? = null,
+    @SerializedName("weight") val weight: Int = 1,
+    @SerializedName("freshness") val freshness: Double = 100.0,
+    @SerializedName("affinity_score") val affinityScore: Int = 5,
+    @SerializedName("reason") val reason: String = "urgent"
+)
+
+/** Tache en cours. */
+data class TaskInProgress(
+    @SerializedName("task_id") val taskId: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("user_id") val userId: String,
+    @SerializedName("started_at") val startedAt: String
+)
+
+/** Tache en attente de notation d'affinite/effort. */
+data class PendingAffinity(
+    @SerializedName("task_id") val taskId: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("needs_affinity") val needsAffinity: Boolean = true,
+    @SerializedName("needs_effort") val needsEffort: Boolean = true
+)
+
+/** Statut fair-share. */
+data class FairShareStatus(
+    @SerializedName("user_id") val userId: String,
+    @SerializedName("display_name") val displayName: String,
+    @SerializedName("target_ratio") val targetRatio: Double,
+    @SerializedName("actual_ratio") val actualRatio: Double,
+    @SerializedName("above_target") val aboveTarget: Boolean
+)
+
+/** Corps pour definir l'affinite. */
+data class AffinityRequest(
+    @SerializedName("score") val score: Int
+)

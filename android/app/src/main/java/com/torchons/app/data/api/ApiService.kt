@@ -1,0 +1,239 @@
+package com.torchons.app.data.api
+
+import com.torchons.app.data.model.AffinityRequest
+import com.torchons.app.data.model.BadgeInfo
+import com.torchons.app.data.model.Category
+import com.torchons.app.data.model.CategoryCreateRequest
+import com.torchons.app.data.model.CategoryUpdateRequest
+import com.torchons.app.data.model.CompleteTaskRequest
+import com.torchons.app.data.model.Completion
+import com.torchons.app.data.model.CreateTaskRequest
+import com.torchons.app.data.model.FairShareStatus
+import com.torchons.app.data.model.LeaderboardEntry
+import com.torchons.app.data.model.LoginRequest
+import com.torchons.app.data.model.LoginResponse
+import com.torchons.app.data.model.PendingAffinity
+import com.torchons.app.data.model.StreakInfo
+import com.torchons.app.data.model.Suggestion
+import com.torchons.app.data.model.UserStats
+import com.torchons.app.data.model.Task
+import com.torchons.app.data.model.TaskInProgress
+import com.torchons.app.data.model.UpdateTaskRequest
+import com.torchons.app.data.model.User
+import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
+import retrofit2.http.Query
+
+/**
+ * Interface Retrofit pour les appels a l'API backend.
+ * Toutes les routes sont relatives a la base URL (/api).
+ */
+interface ApiService {
+
+    // --- Authentification ---
+
+    /** Connexion avec nom d'utilisateur et identifiant appareil. */
+    @POST("auth/login")
+    suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+
+    /** Auto-login via Tailscale (identification par IP). Retourne LoginResponse ou unknown_ip. */
+    @GET("auth/auto")
+    suspend fun autoLogin(): Response<Map<String, Any>>
+
+    /** Associer l'IP courante a un utilisateur. */
+    @POST("auth/claim")
+    suspend fun claimIP(@Body body: Map<String, String>): Response<Map<String, Any>>
+
+    /** Recupere les informations de l'utilisateur connecte. */
+    @GET("auth/me")
+    suspend fun getMe(): Response<User>
+
+    /** Liste tous les utilisateurs du foyer. */
+    @GET("auth/users")
+    suspend fun getUsers(): Response<List<User>>
+
+    // --- Taches ---
+
+    /** Liste des taches avec filtres optionnels. */
+    @GET("tasks")
+    suspend fun getTasks(
+        @Query("category_id") categoryId: String? = null,
+        @Query("active_only") activeOnly: Boolean? = true
+    ): Response<List<Task>>
+
+    /** Recupere une tache par son identifiant. */
+    @GET("tasks/{id}")
+    suspend fun getTask(@Path("id") taskId: String): Response<Task>
+
+    /** Cree une nouvelle tache. */
+    @POST("tasks")
+    suspend fun createTask(@Body request: CreateTaskRequest): Response<Task>
+
+    /** Met a jour une tache existante. */
+    @PUT("tasks/{id}")
+    suspend fun updateTask(
+        @Path("id") taskId: String,
+        @Body request: UpdateTaskRequest
+    ): Response<Task>
+
+    /** Supprime une tache (soft delete). */
+    @DELETE("tasks/{id}")
+    suspend fun deleteTask(@Path("id") taskId: String): Response<Map<String, Any>>
+
+    /** Marquer une tache comme completee. */
+    @POST("tasks/{id}/complete")
+    suspend fun completeTask(
+        @Path("id") taskId: String,
+        @Body request: CompleteTaskRequest = CompleteTaskRequest()
+    ): Response<Completion>
+
+    /** Modifier une completion (qui, quand). */
+    @PUT("completions/{completionId}")
+    suspend fun updateCompletion(
+        @Path("completionId") completionId: String,
+        @Body body: Map<String, String>
+    ): Response<Map<String, Any>>
+
+    /** Supprimer une completion (soft delete). */
+    @DELETE("tasks/{taskId}/completions/{completionId}")
+    suspend fun deleteCompletion(
+        @Path("taskId") taskId: String,
+        @Path("completionId") completionId: String
+    ): Response<Map<String, Any>>
+
+    // --- Categories ---
+
+    /** Liste de toutes les categories. */
+    @GET("categories")
+    suspend fun getCategories(): Response<List<Category>>
+
+    /** Creer une categorie. */
+    @POST("categories")
+    suspend fun createCategory(@Body request: CategoryCreateRequest): Response<Category>
+
+    /** Modifier une categorie. */
+    @PUT("categories/{id}")
+    suspend fun updateCategory(
+        @Path("id") catId: String,
+        @Body request: CategoryUpdateRequest
+    ): Response<Category>
+
+    /** Supprimer une categorie. */
+    @DELETE("categories/{id}")
+    suspend fun deleteCategory(@Path("id") catId: String): Response<Map<String, Any>>
+
+    // --- Completions ---
+
+    /** Liste des completions avec filtres optionnels. */
+    @GET("completions")
+    suspend fun getCompletions(
+        @Query("user_id") userId: String? = null,
+        @Query("task_id") taskId: String? = null,
+        @Query("limit") limit: Int? = null
+    ): Response<List<Completion>>
+
+    // --- Gamification ---
+
+    /** Suggestions de taches. */
+    @GET("suggestions")
+    suspend fun getSuggestions(
+        @Query("freshness_threshold") freshnessThreshold: Double = 80.0
+    ): Response<List<Suggestion>>
+
+    /** Tache en attente de notation d'affinite/effort. */
+    @GET("pending-affinity")
+    suspend fun getPendingAffinity(
+        @Query("expiry_months") expiryMonths: Int = 6
+    ): Response<List<PendingAffinity>>
+
+    /** Tache avec la notation la plus ancienne (mode manuel). */
+    @GET("oldest-rating")
+    suspend fun getOldestRating(): Response<List<PendingAffinity>>
+
+    /** Recuperer les ratings (affinite+effort) de tous les users pour une tache. */
+    @GET("tasks/{id}/ratings")
+    suspend fun getTaskRatings(@Path("id") taskId: String): Response<Map<String, Any>>
+
+    /** Definir l'affinite pour une tache. */
+    @PUT("tasks/{id}/affinity")
+    suspend fun setAffinity(
+        @Path("id") taskId: String,
+        @Body request: AffinityRequest
+    ): Response<Map<String, Any>>
+
+    /** Definir l'effort estime pour une tache (1pt=5min). */
+    @PUT("tasks/{id}/effort")
+    suspend fun setEffort(
+        @Path("id") taskId: String,
+        @Body request: Map<String, Int>
+    ): Response<Map<String, Any>>
+
+    /** Marquer une tache comme en cours. */
+    @POST("tasks/{id}/start")
+    suspend fun startTask(@Path("id") taskId: String): Response<TaskInProgress>
+
+    /** Annuler une tache en cours. */
+    @DELETE("tasks/{id}/start")
+    suspend fun cancelTaskInProgress(@Path("id") taskId: String): Response<Map<String, Any>>
+
+    /** Taches en cours de l'utilisateur. */
+    @GET("tasks/in-progress")
+    suspend fun getInProgress(): Response<List<TaskInProgress>>
+
+    /** Statut fair-share. */
+    @GET("fair-share/status")
+    suspend fun getFairShareStatus(): Response<List<FairShareStatus>>
+
+    /** Mettre a jour la config fair-share. */
+    @PUT("fair-share/config")
+    suspend fun updateFairShareConfig(@Body config: List<Map<String, Any>>): Response<Map<String, Any>>
+
+    // --- Stats ---
+
+    /** Historique global. */
+    @GET("history")
+    suspend fun getHistory(@Query("limit") limit: Int = 50): Response<List<Map<String, Any>>>
+
+    /** Statistiques par utilisateur. */
+    @GET("stats")
+    suspend fun getStats(): Response<List<UserStats>>
+
+    /** Leaderboard par periode. */
+    @GET("leaderboard")
+    suspend fun getLeaderboard(@Query("period") period: String = "week"): Response<List<LeaderboardEntry>>
+
+    /** Streaks. */
+    @GET("streaks")
+    suspend fun getStreaks(): Response<List<StreakInfo>>
+
+    /** Badges. */
+    @GET("badges")
+    suspend fun getBadges(): Response<List<BadgeInfo>>
+
+    // --- Settings ---
+
+    /** Recuperer les reglages utilisateur. */
+    @GET("settings")
+    suspend fun getSettings(): Response<Map<String, Any>>
+
+    /** Mettre a jour les reglages utilisateur. */
+    @PUT("settings")
+    suspend fun updateSettings(@Body body: Map<String, Any>): Response<Map<String, Any>>
+
+    // --- Notifications ---
+
+    /** Enregistrer un token FCM. */
+    @POST("notifications/register")
+    suspend fun registerNotificationToken(@Body body: Map<String, String>): Response<Map<String, Any>>
+
+    // --- Sante ---
+
+    /** Verification de l'etat du serveur. */
+    @GET("health")
+    suspend fun health(): Response<Map<String, Any>>
+}

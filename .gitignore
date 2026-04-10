@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+backend/.venv/
+*.egg-info/
+
+# Environment
+.env
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.claude/
+
+# Session
+session_resume.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+*.aab
+
+# Firebase
+backend/firebase-key.json
+android/app/google-services.json
+
+# Docker
+ts_pgdata/

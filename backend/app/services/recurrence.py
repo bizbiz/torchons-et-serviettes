@@ -1,0 +1,150 @@
+"""Moteur de recurrence — calcul next_due, is_overdue, interval_hours."""
+
+from __future__ import annotations
+
+import math
+from datetime import date, datetime, timedelta, timezone
+
+
+def next_due(rule: dict | None, last_completed: datetime | None) -> datetime | None:
+    """Calcule la prochaine echeance d'une tache recurrente."""
+    if rule is None:
+        return None  # tache ponctuelle
+
+    now = datetime.now(timezone.utc)
+    anchor = last_completed or now
+
+    rtype = rule.get("type")
+
+    if rtype == "interval":
+        n = rule.get("every_n_days", 1)
+        if last_completed is None:
+            return now
+        return last_completed + timedelta(days=n)
+
+    elif rtype == "weekdays":
+        days = rule.get("days", [])  # ISO: 1=lundi ... 7=dimanche
+        if not days:
+            return None
+        start = (anchor + timedelta(days=1)).date() if last_completed else anchor.date()
+        for offset in range(8):  # max 7 jours + 1
+            candidate = start + timedelta(days=offset)
+            if candidate.isoweekday() in days:
+                return datetime(candidate.year, candidate.month, candidate.day, tzinfo=timezone.utc)
+        return None
+
+    elif rtype == "monthly":
+        dom = rule.get("day_of_month", 1)
+        ref = anchor.date() if last_completed else anchor.date() - timedelta(days=1)
+        # Mois suivant si on a deja passe le jour ce mois-ci
+        year, month = ref.year, ref.month
+        if ref.day >= dom:
+            month += 1
+            if month > 12:
+                month, year = 1, year + 1
+        # Clamp au dernier jour du mois si dom > nb jours
+        import calendar
+        max_day = calendar.monthrange(year, month)[1]
+        day = min(dom, max_day)
+        return datetime(year, month, day, tzinfo=timezone.utc)
+
+    elif rtype == "custom":
+        n_weeks = rule.get("every_n_weeks", 1)
+        day = rule.get("day", 1)  # ISO weekday
+        if last_completed is None:
+            return now
+        start = last_completed.date() + timedelta(days=1)
+        # Avancer de n_weeks semaines depuis la derniere completion, trouver le bon jour
+        target = last_completed.date() + timedelta(weeks=n_weeks)
+        # Ajuster au jour de la semaine voulu
+        diff = (day - target.isoweekday()) % 7
+        target = target + timedelta(days=diff)
+        return datetime(target.year, target.month, target.day, tzinfo=timezone.utc)
+
+    elif rtype == "monthly_variable":
+        # Recurrence variable par mois : days_per_month = {"1": 30, "7": 3, ...}
+        dpm = rule.get("days_per_month", {})
+        current_month = str(now.month)
+        n_days = dpm.get(current_month)
+        if n_days is None:
+            # Mois inactif — chercher le prochain mois actif
+            for offset in range(1, 13):
+                m = ((now.month - 1 + offset) % 12) + 1
+                if str(m) in dpm:
+                    year = now.year + ((now.month - 1 + offset) // 12)
+                    return datetime(year, m, 1, tzinfo=timezone.utc)
+            return None
+        if last_completed is None:
+            return now
+        return last_completed + timedelta(days=n_days)
+
+    return None
+
+
+def is_overdue(rule: dict | None, last_completed: datetime | None) -> bool:
+    """Verifie si une tache recurrente est en retard."""
+    due = next_due(rule, last_completed)
+    if due is None:
+        return False
+    return due <= datetime.now(timezone.utc)
+
+
+def interval_hours(rule: dict | None) -> float:
+    """Calcule l'intervalle nominal en heures (pour freshness)."""
+    if rule is None:
+        return float("inf")
+
+    rtype = rule.get("type")
+
+    if rtype == "interval":
+        return rule.get("every_n_days", 1) * 24.0
+
+    elif rtype == "weekdays":
+        days = rule.get("days", [])
+        if not days:
+            return float("inf")
+        return (7.0 / len(days)) * 24.0
+
+    elif rtype == "monthly":
+        return 30.44 * 24.0  # moyenne mois
+
+    elif rtype == "custom":
+        return rule.get("every_n_weeks", 1) * 7.0 * 24.0
+
+    elif rtype == "monthly_variable":
+        now = datetime.now(timezone.utc)
+        dpm = rule.get("days_per_month", {})
+        n = dpm.get(str(now.month))
+        if n:
+            return float(n) * 24.0
+        return 30.44 * 24.0
+
+    return float("inf")
+
+
+def compute_freshness(
+    rule: dict | None,
+    last_completed: datetime | None,
+    created_at: datetime | None = None,
+    half_life_override: float | None = None,
+) -> float:
+    """Calcule le score de freshness (0-100). Decroissance exponentielle."""
+    half_life = half_life_override or interval_hours(rule)
+    if half_life == float("inf") or half_life <= 0:
+        return 100.0
+
+    now = datetime.now(timezone.utc)
+
+    # Jamais completee = fraicheur 0% (a faire)
+    if last_completed is None:
+        return 0.0
+
+    reference = last_completed
+    if reference.tzinfo is None:
+        reference = reference.replace(tzinfo=timezone.utc)
+
+    hours_since = (now - reference).total_seconds() / 3600.0
+    if hours_since <= 0:
+        return 100.0
+
+    return max(0.0, min(100.0, 100.0 * math.exp(-0.693 * hours_since / half_life)))

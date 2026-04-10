@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme de base pour le splash/demarrage avant Compose -->
+    <style name="Theme.TorchonsServiettes" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#6366F1</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+    </style>
+</resources>
