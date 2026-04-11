@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,20 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
     id("com.google.gms.google-services")
+}
+
+// URL de base de l'API : lue depuis local.properties (gitignore) via la cle
+// `ts.api.base.url`. Fallback sur l'emulateur Android (10.0.2.2 = host machine)
+// pour les contributeurs sans Tailscale.
+val tsApiBaseUrl: String = run {
+    val props = Properties()
+    val localProps = rootProject.file("local.properties")
+    if (localProps.exists()) {
+        localProps.inputStream().use { props.load(it) }
+    }
+    (props.getProperty("ts.api.base.url")
+        ?: providers.gradleProperty("ts.api.base.url").orNull
+        ?: "http://10.0.2.2:8002/api")
 }
 
 android {
@@ -15,11 +31,11 @@ android {
         applicationId = "com.torchons.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.1"
 
-        // URL de base via Tailscale (IP du PC)
-        buildConfigField("String", "API_BASE_URL", "\"http://REDACTED_TAILSCALE_IP:8002/api\"")
+        // URL de base de l'API — voir tsApiBaseUrl ci-dessus.
+        buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrl\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

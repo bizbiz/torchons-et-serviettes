@@ -61,7 +61,7 @@ class TaskWidget : GlanceAppWidget() {
 
     private suspend fun fetchSuggestions(): List<Suggestion> = withContext(Dispatchers.IO) {
         try {
-            val authConn = (URL("http://REDACTED_TAILSCALE_IP:8002/api/auth/auto").openConnection() as HttpURLConnection).apply {
+            val authConn = (URL("${com.torchons.app.BuildConfig.API_BASE_URL}/auth/auto").openConnection() as HttpURLConnection).apply {
                 connectTimeout = 3000
                 readTimeout = 3000
             }
@@ -70,7 +70,7 @@ class TaskWidget : GlanceAppWidget() {
             val authMap = Gson().fromJson(authJson, Map::class.java) as Map<*, *>
             val token = authMap["token"] as? String ?: return@withContext emptyList()
 
-            val conn = (URL("http://REDACTED_TAILSCALE_IP:8002/api/suggestions?freshness_threshold=10").openConnection() as HttpURLConnection).apply {
+            val conn = (URL("${com.torchons.app.BuildConfig.API_BASE_URL}/suggestions?freshness_threshold=10").openConnection() as HttpURLConnection).apply {
                 connectTimeout = 3000
                 readTimeout = 3000
                 setRequestProperty("Authorization", "Bearer $token")
@@ -216,7 +216,7 @@ class CompleteTaskAction : ActionCallback {
         try {
             withContext(Dispatchers.IO) {
                 // Auto-login
-                val authConn = (URL("http://REDACTED_TAILSCALE_IP:8002/api/auth/auto").openConnection() as HttpURLConnection).apply {
+                val authConn = (URL("${com.torchons.app.BuildConfig.API_BASE_URL}/auth/auto").openConnection() as HttpURLConnection).apply {
                     connectTimeout = 3000
                     readTimeout = 3000
                 }
@@ -225,7 +225,7 @@ class CompleteTaskAction : ActionCallback {
                 val token = (Gson().fromJson(authJson, Map::class.java) as Map<*, *>)["token"] as? String ?: return@withContext
 
                 // Complete task
-                val conn = (URL("http://REDACTED_TAILSCALE_IP:8002/api/tasks/$taskId/complete").openConnection() as HttpURLConnection).apply {
+                val conn = (URL("${com.torchons.app.BuildConfig.API_BASE_URL}/tasks/$taskId/complete").openConnection() as HttpURLConnection).apply {
                     connectTimeout = 3000
                     readTimeout = 3000
                     requestMethod = "POST"

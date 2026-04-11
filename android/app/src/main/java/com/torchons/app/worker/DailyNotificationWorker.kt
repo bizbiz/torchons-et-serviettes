@@ -63,7 +63,7 @@ class DailyNotificationWorker(
 
         // Recuperer les suggestions
         val suggestions = try {
-            val url = URL("http://REDACTED_TAILSCALE_IP:8002/api/suggestions")
+            val url = URL("${com.torchons.app.BuildConfig.API_BASE_URL}/suggestions")
             val conn = url.openConnection() as HttpURLConnection
             conn.connectTimeout = 5000
             conn.readTimeout = 5000

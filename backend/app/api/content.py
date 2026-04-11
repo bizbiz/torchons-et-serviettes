@@ -20,7 +20,7 @@ _CONTENT_DIR = Path(__file__).resolve().parent.parent / "content"
 
 # Version courante de l'app cote backend. A bumper en meme temps que
 # l'ajout d'une nouvelle section dans changelog.md.
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.2.1"
 
 
 def _read_markdown(filename: str) -> str:

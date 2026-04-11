@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.2.1 — 2026-04-11
+
+### Maintenance
+- Ameliorations internes du stockage des configurations sensibles. Transparent pour l'utilisateur.
+
 ## v0.2.0 — 2026-04-11
 
 ### Filtres puissants sur la liste des taches
