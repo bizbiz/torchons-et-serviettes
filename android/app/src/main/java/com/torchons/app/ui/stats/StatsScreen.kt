@@ -1,6 +1,7 @@
 package com.torchons.app.ui.stats
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,26 +36,39 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.data.model.BadgeInfo
 import com.torchons.app.data.model.LeaderboardEntry
 import com.torchons.app.data.model.StreakInfo
 import com.torchons.app.data.model.UserStats
+import com.torchons.app.ui.user.UserProfileDialog
+import com.torchons.app.ui.user.UserProfileRequest
 import com.torchons.app.util.FreshnessCalculator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsScreen(
+    onTaskClick: (String) -> Unit = {},
     viewModel: StatsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val tabs = listOf("Resume", "Classement", "Badges", "Historique")
+
+    // Etat pour l'ouverture du modal profil utilisateur.
+    var userProfileRequest by remember { mutableStateOf<UserProfileRequest?>(null) }
 
     if (uiState.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -74,23 +88,55 @@ fun StatsScreen(
                     Tab(
                         selected = uiState.selectedTab == index,
                         onClick = { viewModel.selectTab(index) },
-                        text = { Text(title) }
+                        text = {
+                            Text(
+                                text = title,
+                                maxLines = 1,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
                     )
                 }
             }
 
+            val onUserClick: (UserProfileRequest) -> Unit = { req -> userProfileRequest = req }
+
             when (uiState.selectedTab) {
-                0 -> ResumeTab(uiState.stats, uiState.streaks)
-                1 -> LeaderboardTab(uiState.leaderboardWeek, uiState.leaderboardMonth)
+                0 -> ResumeTab(uiState.stats, uiState.streaks, onUserClick)
+                1 -> LeaderboardTab(
+                    week = uiState.leaderboardWeek,
+                    month = uiState.leaderboardMonth,
+                    onUserClick = onUserClick
+                )
                 2 -> BadgesTab(uiState.badges)
-                3 -> HistoryTab(uiState.history)
+                3 -> HistoryTab(
+                    history = uiState.history,
+                    onTaskClick = onTaskClick,
+                    onUserClick = onUserClick
+                )
             }
         }
+    }
+
+    // Modal profil utilisateur (affiche quand un nom est clique).
+    userProfileRequest?.let { req ->
+        UserProfileDialog(
+            request = req,
+            onDismiss = { userProfileRequest = null },
+            onTaskClick = { taskId ->
+                userProfileRequest = null
+                onTaskClick(taskId)
+            }
+        )
     }
 }
 
 @Composable
-private fun ResumeTab(stats: List<UserStats>, streaks: List<StreakInfo>) {
+private fun ResumeTab(
+    stats: List<UserStats>,
+    streaks: List<StreakInfo>,
+    onUserClick: (UserProfileRequest) -> Unit,
+) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -108,7 +154,12 @@ private fun ResumeTab(stats: List<UserStats>, streaks: List<StreakInfo>) {
                     Text(
                         text = userStat.displayName,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier.clickable {
+                            onUserClick(UserProfileRequest(userStat.userId, userStat.displayName))
+                        }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -160,7 +211,14 @@ private fun ResumeTab(stats: List<UserStats>, streaks: List<StreakInfo>) {
                             Text(
                                 text = streak.displayName,
                                 style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.primary,
+                                textDecoration = TextDecoration.Underline,
+                                modifier = Modifier.clickable {
+                                    onUserClick(
+                                        UserProfileRequest(streak.userId, streak.displayName)
+                                    )
+                                }
                             )
                             Text(
                                 text = "Record : ${streak.bestStreak} jours",
@@ -212,7 +270,11 @@ private fun StatRow(label: String, points: Int, tasks: Int) {
 }
 
 @Composable
-private fun LeaderboardTab(week: List<LeaderboardEntry>, month: List<LeaderboardEntry>) {
+private fun LeaderboardTab(
+    week: List<LeaderboardEntry>,
+    month: List<LeaderboardEntry>,
+    onUserClick: (UserProfileRequest) -> Unit,
+) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -226,7 +288,7 @@ private fun LeaderboardTab(week: List<LeaderboardEntry>, month: List<Leaderboard
                 fontWeight = FontWeight.Bold
             )
         }
-        items(week) { entry -> LeaderboardRow(entry) }
+        items(week) { entry -> LeaderboardRow(entry, onUserClick) }
 
         item {
             Spacer(modifier = Modifier.height(8.dp))
@@ -236,14 +298,17 @@ private fun LeaderboardTab(week: List<LeaderboardEntry>, month: List<Leaderboard
                 fontWeight = FontWeight.Bold
             )
         }
-        items(month) { entry -> LeaderboardRow(entry) }
+        items(month) { entry -> LeaderboardRow(entry, onUserClick) }
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
     }
 }
 
 @Composable
-private fun LeaderboardRow(entry: LeaderboardEntry) {
+private fun LeaderboardRow(
+    entry: LeaderboardEntry,
+    onUserClick: (UserProfileRequest) -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -290,7 +355,13 @@ private fun LeaderboardRow(entry: LeaderboardEntry) {
                 text = entry.displayName,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(1f)
+                color = MaterialTheme.colorScheme.primary,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        onUserClick(UserProfileRequest(entry.userId, entry.displayName))
+                    }
             )
             Column(horizontalAlignment = Alignment.End) {
                 Text(
@@ -391,7 +462,11 @@ private fun BadgeRow(badge: BadgeInfo) {
 }
 
 @Composable
-private fun HistoryTab(history: List<Map<String, Any>>) {
+private fun HistoryTab(
+    history: List<Map<String, Any>>,
+    onTaskClick: (String) -> Unit,
+    onUserClick: (UserProfileRequest) -> Unit,
+) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -413,11 +488,24 @@ private fun HistoryTab(history: List<Map<String, Any>>) {
             val type = event["type"] as? String ?: ""
             val desc = event["description"] as? String ?: ""
             val date = event["date"] as? String ?: ""
+            val actor = event["actor"] as? Map<*, *>
+            val actorId = actor?.get("id") as? String
+            val actorName = actor?.get("name") as? String
+            val task = event["task"] as? Map<*, *>
+            val taskId = task?.get("id") as? String
+            val taskTitle = task?.get("title") as? String
+
             val icon = when (type) {
                 "completion" -> "✅"
                 "affinity" -> "❤️"
                 "effort" -> "⏱️"
-                "modification" -> "✏️"
+                "task_created" -> "➕"
+                "task_updated" -> "✏️"
+                "task_deleted" -> "🗑️"
+                "category_changed" -> "🏷️"
+                "completion_edited" -> "✏️"
+                "completion_deleted" -> "🗑️"
+                "modification" -> "✏️" // retro-compat ancien backend
                 else -> "•"
             }
             val formattedDate = try {
@@ -426,16 +514,51 @@ private fun HistoryTab(history: List<Map<String, Any>>) {
                 local.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM HH:mm"))
             } catch (_: Exception) { date.take(16) }
 
+            // La Card est cliquable vers la tache si on a un taskId.
+            val cardModifier = if (taskId != null) {
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { onTaskClick(taskId) }
+            } else {
+                Modifier.fillMaxWidth()
+            }
+
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = cardModifier,
                 shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
                     Text(icon, modifier = Modifier.width(28.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(desc, style = MaterialTheme.typography.bodyMedium)
-                        Text(formattedDate, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        // Ligne 1 : nom cliquable + reste de la description.
+                        // Si on a un actor avec id/name, on rend son nom cliquable ;
+                        // sinon on affiche la description brute.
+                        if (actorId != null && actorName != null && desc.startsWith(actorName)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = actorName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    textDecoration = TextDecoration.Underline,
+                                    modifier = Modifier.clickable {
+                                        onUserClick(UserProfileRequest(actorId, actorName))
+                                    }
+                                )
+                                Text(
+                                    text = desc.removePrefix(actorName),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        } else {
+                            Text(desc, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Text(
+                            formattedDate,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }

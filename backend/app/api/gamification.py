@@ -70,6 +70,19 @@ class FairShareStatus(BaseModel):
 
 # --- Affinites ---
 
+@router.get("/my-affinities")
+async def my_affinities(
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Retourne toutes les affinites du user courant (pour filtres)."""
+    user_id = UUID(current["user_id"])
+    result = await session.execute(
+        select(TaskAffinity.task_id, TaskAffinity.score).where(TaskAffinity.user_id == user_id)
+    )
+    return [{"task_id": str(row[0]), "score": row[1]} for row in result.all()]
+
+
 @router.get("/tasks/{task_id}/affinity", response_model=AffinityResponse)
 async def get_affinity(
     task_id: UUID,
@@ -107,6 +120,10 @@ async def set_affinity(
     )
     aff = result.scalar_one_or_none()
     if aff:
+        # No-op si la valeur ne change pas : evite de bumper updated_at
+        # et de polluer le feed /history avec un faux event.
+        if aff.score == body.score:
+            return {"task_id": task_id, "user_id": user_id, "score": body.score}
         aff.score = body.score
     else:
         aff = TaskAffinity(task_id=task_id, user_id=user_id, score=body.score)
@@ -217,12 +234,7 @@ async def oldest_rating(
     if oldest_task is None:
         return []
 
-    return [{
-        "task_id": str(oldest_task.id),
-        "title": oldest_task.title,
-        "needs_affinity": True,
-        "needs_effort": True,
-    }]
+    return [await _build_pending_payload(session, oldest_task, user_id)]
 
 
 @router.put("/tasks/{task_id}/effort")
@@ -239,6 +251,10 @@ async def set_effort(
     )
     eff = result.scalar_one_or_none()
     if eff:
+        # No-op si la valeur ne change pas : evite de bumper updated_at
+        # et de polluer le feed /history avec un faux event.
+        if eff.points == body.points:
+            return {"task_id": str(task_id), "user_id": str(user_id), "points": body.points}
         eff.points = body.points
     else:
         eff = TaskEffort(task_id=task_id, user_id=user_id, points=body.points)
@@ -301,29 +317,62 @@ async def pending_affinity(
     if not task:
         return []
 
-    # Determiner ce qui manque
-    aff_result = await session.execute(
-        select(TaskAffinity).where(
+    return [await _build_pending_payload(session, task, user_id)]
+
+
+async def _build_pending_payload(session: AsyncSession, task: Task, user_id: UUID) -> dict:
+    """Construit le payload pour la popup d'affinite/effort avec valeurs pre-remplies.
+    Logique 3 cas :
+    - Cas 1 (rien) : valeur de base de la tache (weight pour effort, 5 pour affinite)
+    - Cas 2 (autres ont note) : moyenne des autres users
+    - Cas 3 (moi j'ai note) : ma valeur
+    """
+    # === Affinité ===
+    my_aff_r = await session.execute(
+        select(TaskAffinity.score).where(
             TaskAffinity.task_id == task.id, TaskAffinity.user_id == user_id,
-            TaskAffinity.updated_at >= expiry_cutoff,
         )
     )
-    has_affinity = aff_result.scalar_one_or_none() is not None
+    my_aff = my_aff_r.scalar()
 
-    eff_result = await session.execute(
-        select(TaskEffort).where(
+    if my_aff is not None:
+        affinity_value = my_aff
+    else:
+        # Moyenne des autres users
+        others_aff_r = await session.execute(
+            select(func.avg(TaskAffinity.score)).where(
+                TaskAffinity.task_id == task.id, TaskAffinity.user_id != user_id,
+            )
+        )
+        others_avg = others_aff_r.scalar()
+        affinity_value = round(others_avg) if others_avg else 5
+
+    # === Effort ===
+    my_eff_r = await session.execute(
+        select(TaskEffort.points).where(
             TaskEffort.task_id == task.id, TaskEffort.user_id == user_id,
-            TaskEffort.updated_at >= expiry_cutoff,
         )
     )
-    has_effort = eff_result.scalar_one_or_none() is not None
+    my_eff = my_eff_r.scalar()
 
-    return [{
+    if my_eff is not None:
+        effort_value = my_eff
+    else:
+        others_eff_r = await session.execute(
+            select(func.avg(TaskEffort.points)).where(
+                TaskEffort.task_id == task.id, TaskEffort.user_id != user_id,
+            )
+        )
+        others_avg = others_eff_r.scalar()
+        effort_value = round(others_avg) if others_avg else (task.weight or 3)
+
+    return {
         "task_id": str(task.id),
         "title": task.title,
-        "needs_affinity": not has_affinity,
-        "needs_effort": not has_effort,
-    }]
+        "current_affinity": affinity_value,
+        "current_effort_points": effort_value,
+        "recurrence_rule": task.recurrence_rule,
+    }
 
 
 # --- Taches en cours ---
@@ -367,7 +416,7 @@ async def cancel_task_in_progress(
     return {"ok": True}
 
 
-@router.get("/tasks/in-progress", response_model=list[InProgressResponse])
+@router.get("/in-progress", response_model=list[InProgressResponse])
 async def list_in_progress(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -18,6 +18,7 @@ from app.models.task_assignment import TaskAssignment
 from app.models.task_effort import TaskEffort
 from app.models.task_in_progress import TaskInProgress
 from app.schemas.completion import CompletionCreate, CompletionResponse
+from app.services.recurrence import min_completion_gap_seconds
 from app.utils.changelog import record_change
 
 router = APIRouter(tags=["completions"])
@@ -49,6 +50,39 @@ async def complete_task(
         raise HTTPException(status_code=404, detail="Tache introuvable")
 
     completed_by = body.completed_by or UUID(current["user_id"])
+
+    # Anti-doublon : verifier qu'aucune completion active n'existe dans la fenetre
+    # derivee de la recurrence (24h pour hebdo+, 1h sinon).
+    gap_seconds = min_completion_gap_seconds(task.recurrence_rule)
+    window_start = datetime.now(timezone.utc) - timedelta(seconds=gap_seconds)
+    recent = await session.execute(
+        select(TaskCompletion)
+        .where(
+            TaskCompletion.task_id == task_id,
+            TaskCompletion.completed_by == completed_by,
+            TaskCompletion.deleted_at.is_(None),
+            TaskCompletion.completed_at >= window_start,
+        )
+        .order_by(desc(TaskCompletion.completed_at))
+        .limit(1)
+    )
+    last = recent.scalar_one_or_none()
+    if last is not None:
+        elapsed = datetime.now(timezone.utc) - last.completed_at
+        retry_at = last.completed_at + timedelta(seconds=gap_seconds)
+        elapsed_min = int(elapsed.total_seconds() // 60)
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": (
+                    f"Tache deja completee il y a {elapsed_min} min. "
+                    f"Prochain creneau possible a {retry_at.isoformat()}."
+                ),
+                "last_completion_at": last.completed_at.isoformat(),
+                "retry_at": retry_at.isoformat(),
+                "gap_seconds": gap_seconds,
+            },
+        )
 
     # Points : moyenne des efforts si disponible, sinon weight. 0 pour taches perso.
     assign_result = await session.execute(

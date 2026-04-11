@@ -24,7 +24,9 @@ async def lifespan(app: FastAPI):
     logger.info("T&S backend stopped")
 
 
-app = FastAPI(title="Torchons & Serviettes", version="0.1.0", lifespan=lifespan)
+from app.api.content import APP_VERSION
+
+app = FastAPI(title="Torchons & Serviettes", version=APP_VERSION, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,6 +45,7 @@ from app.api.gamification import router as gamification_router
 from app.api.stats import router as stats_router
 from app.api.notifications import router as notifications_router
 from app.api.settings import router as settings_router
+from app.api.content import router as content_router
 
 app.include_router(auth_router)
 app.include_router(tasks_router)
@@ -52,6 +55,7 @@ app.include_router(gamification_router)
 app.include_router(stats_router)
 app.include_router(notifications_router)
 app.include_router(settings_router)
+app.include_router(content_router)
 
 
 @app.get("/api/health")
@@ -63,4 +67,4 @@ async def health():
         db_status = "ok"
     except Exception as e:
         db_status = f"error: {e}"
-    return {"status": "ok" if db_status == "ok" else "degraded", "database": db_status, "version": "0.1.0"}
+    return {"status": "ok" if db_status == "ok" else "degraded", "database": db_status, "version": APP_VERSION}

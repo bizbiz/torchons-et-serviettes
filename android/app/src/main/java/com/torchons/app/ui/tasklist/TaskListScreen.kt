@@ -3,6 +3,7 @@ package com.torchons.app.ui.tasklist
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -87,26 +88,63 @@ fun TaskListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var historicalTaskId by remember { mutableStateOf<String?>(null) }
+    var historicalUserId by remember { mutableStateOf<String?>(null) }
+    var showUserPicker by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    val users by viewModel.allUsers.collectAsState()
 
-    // Date picker pour "deja fait"
-    if (showDatePicker && historicalTaskId != null) {
+    // 1. User picker pour "deja fait" : qui a fait ?
+    if (showUserPicker && historicalTaskId != null) {
+        // Filtrer les users assignes a cette tache
+        val task = uiState.tasks.find { it.task.id == historicalTaskId }?.task
+        val assignedIds = task?.assignedToIds ?: emptyList()
+        val eligibleUsers = users.filter { it.id in assignedIds }
+
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showUserPicker = false; historicalTaskId = null },
+            title = { Text("Qui a fait cette tache ?", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    eligibleUsers.forEach { user ->
+                        androidx.compose.material3.Button(
+                            onClick = {
+                                historicalUserId = user.id
+                                showUserPicker = false
+                                showDatePicker = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(user.displayName) }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showUserPicker = false; historicalTaskId = null }) { Text("Annuler") }
+            }
+        )
+    }
+
+    // 2. Date picker pour "deja fait" : quand ?
+    if (showDatePicker && historicalTaskId != null && historicalUserId != null) {
         val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
         androidx.compose.material3.DatePickerDialog(
-            onDismissRequest = { showDatePicker = false; historicalTaskId = null },
+            onDismissRequest = { showDatePicker = false; historicalTaskId = null; historicalUserId = null },
             confirmButton = {
                 androidx.compose.material3.Button(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
+                    val millis = datePickerState.selectedDateMillis
+                    val tId = historicalTaskId
+                    val uId = historicalUserId
+                    if (millis != null && tId != null && uId != null) {
                         val date = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-                        scope.launch {
-                            viewModel.completeTaskAtDate(historicalTaskId!!, "${date}T12:00:00Z")
-                        }
+                        viewModel.completeTaskAtDate(tId, "${date}T12:00:00Z", uId)
                     }
-                    showDatePicker = false; historicalTaskId = null
+                    showDatePicker = false
+                    historicalTaskId = null
+                    historicalUserId = null
                 }) { Text("Valider") }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showDatePicker = false; historicalTaskId = null }) { Text("Annuler") }
+                androidx.compose.material3.TextButton(onClick = { showDatePicker = false; historicalTaskId = null; historicalUserId = null }) { Text("Annuler") }
             }
         ) { DatePicker(state = datePickerState) }
     }
@@ -220,6 +258,77 @@ fun TaskListScreen(
                 }
             }
 
+            // Chips de filtres avancés + label
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FilterIconChip(
+                    icon = "🔥",
+                    active = uiState.filterTodo,
+                    color = Color(0xFFEF4444),
+                    onClick = { viewModel.toggleFilterTodo() }
+                )
+                FilterIconChip(
+                    icon = "❤",
+                    state = uiState.filterAffinity,
+                    onClick = { viewModel.toggleFilterAffinity() }
+                )
+                FilterIconChip(
+                    icon = "⏱",
+                    state = uiState.filterEffort,
+                    onClick = { viewModel.toggleFilterEffort() }
+                )
+                FilterIconChip(
+                    icon = "🔁",
+                    state = uiState.filterRecurrence,
+                    onClick = { viewModel.toggleFilterRecurrence() }
+                )
+                FilterIconChip(
+                    icon = "🏠",
+                    state = uiState.filterHome,
+                    onClick = { viewModel.toggleFilterHome() }
+                )
+
+                // Label du filtre actif
+                val filterLabel = buildString {
+                    val parts = mutableListOf<String>()
+                    if (uiState.filterTodo) parts += "🔥 A faire"
+                    when (uiState.filterAffinity) {
+                        FilterState.HIGH -> parts += "❤ Aimees"
+                        FilterState.LOW -> parts += "❤ Detestees"
+                        else -> {}
+                    }
+                    when (uiState.filterEffort) {
+                        FilterState.HIGH -> parts += "⏱ Long"
+                        FilterState.LOW -> parts += "⏱ Court"
+                        else -> {}
+                    }
+                    when (uiState.filterRecurrence) {
+                        FilterState.HIGH -> parts += "🔁 Recurrentes"
+                        FilterState.LOW -> parts += "🔁 Ponctuelles"
+                        else -> {}
+                    }
+                    when (uiState.filterHome) {
+                        FilterState.HIGH -> parts += "🏠 Maison"
+                        FilterState.LOW -> parts += "🏠 Hors maison"
+                        else -> {}
+                    }
+                    append(parts.joinToString(" · "))
+                }
+                if (filterLabel.isNotEmpty()) {
+                    Text(
+                        text = filterLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+            }
+
             // Chips de filtrage par categorie
             if (uiState.categories.isNotEmpty()) {
                 Row(
@@ -229,10 +338,10 @@ fun TaskListScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Chip "Toutes"
+                    // Chip "Toutes" - clear le filtre
                     FilterChip(
-                        selected = uiState.selectedCategoryId == null,
-                        onClick = { viewModel.selectCategory(null) },
+                        selected = uiState.selectedCategoryIds.isEmpty(),
+                        onClick = { viewModel.clearCategoryFilter() },
                         label = { Text("Toutes") },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -240,8 +349,12 @@ fun TaskListScreen(
                         )
                     )
 
-                    // Chips pour chaque categorie
-                    uiState.categories.forEach { category ->
+                    // Chips pour chaque categorie qui contient au moins une tache (avant filtres)
+                    val categoriesWithTasks = uiState.categories.filter { cat ->
+                        uiState.tasks.any { it.task.categoryId == cat.id } ||
+                        cat.id in uiState.selectedCategoryIds
+                    }
+                    categoriesWithTasks.forEach { category ->
                         val catColor = try {
                             Color(android.graphics.Color.parseColor(category.color))
                         } catch (e: Exception) {
@@ -249,13 +362,37 @@ fun TaskListScreen(
                         }
 
                         FilterChip(
-                            selected = uiState.selectedCategoryId == category.id,
-                            onClick = { viewModel.selectCategory(category.id) },
+                            selected = category.id in uiState.selectedCategoryIds,
+                            onClick = { viewModel.toggleCategory(category.id) },
                             label = { Text(category.name) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = catColor,
                                 selectedLabelColor = Color.White
                             )
+                        )
+                    }
+                }
+            }
+
+            // Chips de filtrage par piece (extraite du titre)
+            if (uiState.availableRooms.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = uiState.selectedRoom == null,
+                        onClick = { viewModel.selectRoom(null) },
+                        label = { Text("Toutes pieces") }
+                    )
+                    uiState.availableRooms.forEach { room ->
+                        FilterChip(
+                            selected = uiState.selectedRoom == room,
+                            onClick = { viewModel.selectRoom(room) },
+                            label = { Text(room) }
                         )
                     }
                 }
@@ -319,7 +456,13 @@ fun TaskListScreen(
                                     onComplete = { viewModel.completeTask(taskWithFreshness.task.id) },
                                     onHistorical = {
                                         historicalTaskId = taskWithFreshness.task.id
-                                        showDatePicker = true
+                                        // Si un seul user assigne, skip le picker
+                                        if (taskWithFreshness.task.assignedToIds.size == 1) {
+                                            historicalUserId = taskWithFreshness.task.assignedToIds.first()
+                                            showDatePicker = true
+                                        } else {
+                                            showUserPicker = true
+                                        }
                                     }
                                 )
                             }
@@ -403,6 +546,63 @@ private fun SwipeableTaskCard(
             onClick = onClick,
             onComplete = onComplete,
             onHistorical = onHistorical
+        )
+    }
+}
+
+/** Chip icone pour filtre tri-state (off / high rouge / low vert). */
+@Composable
+private fun FilterIconChip(
+    icon: String,
+    state: FilterState,
+    onClick: () -> Unit
+) {
+    val bgColor = when (state) {
+        FilterState.OFF -> MaterialTheme.colorScheme.surfaceVariant
+        FilterState.HIGH -> Color(0xFFEF4444)
+        FilterState.LOW -> Color(0xFF10B981)
+    }
+    val textColor = if (state == FilterState.OFF) MaterialTheme.colorScheme.onSurfaceVariant else Color.White
+
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(bgColor)
+            .clickable(onClick = onClick)
+    ) {
+        Text(
+            text = icon,
+            modifier = Modifier.align(Alignment.Center),
+            color = textColor,
+            style = MaterialTheme.typography.titleMedium
+        )
+    }
+}
+
+/** Chip icone pour filtre simple on/off. */
+@Composable
+private fun FilterIconChip(
+    icon: String,
+    active: Boolean,
+    color: Color,
+    onClick: () -> Unit
+) {
+    val bgColor = if (active) color else MaterialTheme.colorScheme.surfaceVariant
+    val textColor = if (active) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(bgColor)
+            .clickable(onClick = onClick)
+    ) {
+        Text(
+            text = icon,
+            modifier = Modifier.align(Alignment.Center),
+            color = textColor,
+            style = MaterialTheme.typography.titleMedium
         )
     }
 }

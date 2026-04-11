@@ -25,8 +25,9 @@ data class TaskInProgress(
 data class PendingAffinity(
     @SerializedName("task_id") val taskId: String,
     @SerializedName("title") val title: String,
-    @SerializedName("needs_affinity") val needsAffinity: Boolean = true,
-    @SerializedName("needs_effort") val needsEffort: Boolean = true
+    @SerializedName("current_affinity") val currentAffinity: Int? = null,
+    @SerializedName("current_effort_points") val currentEffortPoints: Int? = null,
+    @SerializedName("recurrence_rule") val recurrenceRule: RecurrenceRule? = null
 )
 
 /** Statut fair-share. */

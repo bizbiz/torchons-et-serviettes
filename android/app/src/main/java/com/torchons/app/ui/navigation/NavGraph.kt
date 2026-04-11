@@ -25,6 +25,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import com.torchons.app.ui.changelog.ChangelogScreen
 import com.torchons.app.ui.home.HomeScreen
 import com.torchons.app.ui.login.LoginScreen
 import com.torchons.app.ui.settings.CategoriesScreen
@@ -49,6 +50,7 @@ object Routes {
     const val TASK_CREATE = "task_create"
     const val TASK_EDIT = "task_edit/{taskId}"
     const val CATEGORIES = "categories"
+    const val CHANGELOG = "changelog"
 
     fun taskDetail(taskId: String) = "task_detail/$taskId"
     fun taskEdit(taskId: String) = "task_edit/$taskId"
@@ -108,12 +110,20 @@ fun NavGraph(
                 onNavigateToCategories = {
                     navController.navigate(Routes.CATEGORIES)
                 },
+                onNavigateToChangelog = {
+                    navController.navigate(Routes.CHANGELOG)
+                },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.MAIN) { inclusive = true }
                     }
                 }
             )
+        }
+
+        // Notes de version + Roadmap
+        composable(Routes.CHANGELOG) {
+            ChangelogScreen(onBack = { navController.popBackStack() })
         }
 
         // Gestion des categories
@@ -183,6 +193,7 @@ fun MainScreen(
     onNavigateToCreateTask: () -> Unit,
     onNavigateToEditTask: (String) -> Unit,
     onNavigateToCategories: () -> Unit,
+    onNavigateToChangelog: () -> Unit,
     onLogout: () -> Unit
 ) {
     val innerNavController = androidx.navigation.compose.rememberNavController()
@@ -230,12 +241,13 @@ fun MainScreen(
                 )
             }
             composable(Routes.STATS) {
-                StatsScreen()
+                StatsScreen(onTaskClick = onNavigateToTaskDetail)
             }
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     onLogout = onLogout,
-                    onManageCategories = onNavigateToCategories
+                    onManageCategories = onNavigateToCategories,
+                    onOpenChangelog = onNavigateToChangelog
                 )
             }
         }

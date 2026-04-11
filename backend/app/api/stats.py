@@ -17,6 +17,7 @@ from app.models.completion import TaskCompletion
 from app.models.streak import Streak
 from app.models.task import Task
 from app.models.user import User
+from app.services.recurrence import min_completion_gap_seconds
 from app.utils.changelog import record_change
 
 router = APIRouter(prefix="/api", tags=["stats"])
@@ -451,87 +452,295 @@ async def completion_history(
 
 # --- Historique global ---
 
-@router.get("/history")
-async def global_history(
-    limit: int = 50,
-    session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
-):
-    """Historique global de toutes les actions : completions, affinites, efforts, modifications."""
+# Champs "techniques" ignores dans les UPDATE tasks : leur presence seule
+# ne doit pas generer un event d'historique.
+_TASK_TECHNICAL_FIELDS = {
+    "updated_at",
+    "version",
+    "last_completed_at",
+    "next_due_at",
+}
+
+# Libelles francais des champs metier pour les descriptions.
+_TASK_FIELD_LABELS = {
+    "title": "titre",
+    "description": "description",
+    "category_id": "categorie",
+    "assigned_to_ids": "attribution",
+    "points_value": "points",
+    "weight": "poids",
+    "recurrence_rule": "recurrence",
+    "freshness_half_life_hours": "demi-vie",
+    "deleted_at": "suppression",
+}
+
+
+def _format_minutes(points: int) -> str:
+    """Formate N points (1pt = 5min) en 'XhYY' ou 'Xmin'."""
+    minutes = points * 5
+    if minutes >= 60:
+        return f"{minutes // 60}h{minutes % 60:02d}"
+    return f"{minutes}min"
+
+
+async def _build_history(
+    session: AsyncSession,
+    limit: int,
+    before: datetime | None,
+    actor_id: UUID | None = None,
+) -> list[dict]:
+    """Construit le feed d'historique, filtrable par actor.
+
+    - Deduplique les completions consecutives (meme task + meme user dans la
+      fenetre derivee de la recurrence), pour masquer les doubles validations.
+    - Filtre les UPDATE tasks qui ne touchent que des champs techniques.
+    - Si `actor_id` est fourni, ne retourne que les events de cet utilisateur.
+    """
     from app.models.sync import ChangeLog
     from app.models.task_affinity import TaskAffinity
     from app.models.task_effort import TaskEffort
 
-    events = []
+    # On sur-echantillonne chaque source puis on tronque apres tri global,
+    # pour eviter de perdre des events quand une source domine.
+    fetch_limit = limit * 2
 
-    # Completions recentes
-    comp_result = await session.execute(
-        select(TaskCompletion, Task.title).join(
-            Task, Task.id == TaskCompletion.task_id
-        ).where(
-            TaskCompletion.deleted_at.is_(None)
-        ).order_by(TaskCompletion.completed_at.desc()).limit(limit)
-    )
-    # Charger les noms
+    # Charger tous les users en une passe (il y en a 2, pas un souci).
     users_result = await session.execute(select(User))
     user_names = {u.id: u.display_name for u in users_result.scalars().all()}
 
-    for comp, title in comp_result.all():
-        who = user_names.get(comp.completed_by, "?")
+    def _actor(user_id: UUID | None) -> dict | None:
+        if user_id is None:
+            return None
+        return {"id": str(user_id), "name": user_names.get(user_id, "?")}
+
+    events: list[dict] = []
+
+    # --- 1. Completions (avec recurrence pour dedup) ---
+    comp_query = select(TaskCompletion, Task.title, Task.recurrence_rule).join(
+        Task, Task.id == TaskCompletion.task_id
+    ).where(TaskCompletion.deleted_at.is_(None))
+    if before is not None:
+        comp_query = comp_query.where(TaskCompletion.completed_at < before)
+    if actor_id is not None:
+        comp_query = comp_query.where(TaskCompletion.completed_by == actor_id)
+    comp_query = comp_query.order_by(TaskCompletion.completed_at.desc()).limit(fetch_limit)
+
+    # Dedup : pour chaque (task_id, user_id), on ne garde la completion que si
+    # elle est separee de la precedente (plus recente deja vue) d'au moins la
+    # fenetre anti-doublon de cette tache.
+    seen_last: dict[tuple[UUID, UUID], datetime] = {}
+
+    for comp, title, rule in (await session.execute(comp_query)).all():
+        key = (comp.task_id, comp.completed_by)
+        last_seen = seen_last.get(key)
+        if last_seen is not None:
+            gap = min_completion_gap_seconds(rule)
+            if (last_seen - comp.completed_at).total_seconds() < gap:
+                # Doublon dans la fenetre : on skip.
+                continue
+        seen_last[key] = comp.completed_at
+
+        actor = _actor(comp.completed_by)
+        who = actor["name"] if actor else "?"
         events.append({
             "type": "completion",
-            "date": comp.completed_at.isoformat(),
+            "date": comp.completed_at,
             "description": f"{who} a complete : {title} (+{comp.points_earned} pts)",
             "user": who,
+            "actor": actor,
+            "task": {"id": str(comp.task_id), "title": title},
+            "meta": {"points": comp.points_earned},
         })
 
-    # Affinites recentes
-    aff_result = await session.execute(
-        select(TaskAffinity, Task.title).join(
-            Task, Task.id == TaskAffinity.task_id
-        ).order_by(TaskAffinity.updated_at.desc()).limit(limit)
-    )
-    for aff, title in aff_result.all():
-        who = user_names.get(aff.user_id, "?")
+    # --- 2. Affinites (seulement celles qui ont reellement change : created_at != updated_at) ---
+    aff_query = select(TaskAffinity, Task.title).join(
+        Task, Task.id == TaskAffinity.task_id
+    ).where(TaskAffinity.updated_at > TaskAffinity.created_at)
+    if before is not None:
+        aff_query = aff_query.where(TaskAffinity.updated_at < before)
+    if actor_id is not None:
+        aff_query = aff_query.where(TaskAffinity.user_id == actor_id)
+    aff_query = aff_query.order_by(TaskAffinity.updated_at.desc()).limit(fetch_limit)
+
+    for aff, title in (await session.execute(aff_query)).all():
+        actor = _actor(aff.user_id)
+        who = actor["name"] if actor else "?"
         events.append({
             "type": "affinity",
-            "date": aff.updated_at.isoformat(),
+            "date": aff.updated_at,
             "description": f"{who} a note l'affinite de '{title}' a {aff.score}/10",
             "user": who,
+            "actor": actor,
+            "task": {"id": str(aff.task_id), "title": title},
+            "meta": {"score": aff.score},
         })
 
-    # Efforts recents
-    eff_result = await session.execute(
-        select(TaskEffort, Task.title).join(
-            Task, Task.id == TaskEffort.task_id
-        ).order_by(TaskEffort.updated_at.desc()).limit(limit)
-    )
-    for eff, title in eff_result.all():
-        who = user_names.get(eff.user_id, "?")
-        minutes = eff.points * 5
-        time_str = f"{minutes // 60}h{minutes % 60:02d}" if minutes >= 60 else f"{minutes}min"
+    # --- 3. Efforts (idem : filtre created_at != updated_at) ---
+    eff_query = select(TaskEffort, Task.title).join(
+        Task, Task.id == TaskEffort.task_id
+    ).where(TaskEffort.updated_at > TaskEffort.created_at)
+    if before is not None:
+        eff_query = eff_query.where(TaskEffort.updated_at < before)
+    if actor_id is not None:
+        eff_query = eff_query.where(TaskEffort.user_id == actor_id)
+    eff_query = eff_query.order_by(TaskEffort.updated_at.desc()).limit(fetch_limit)
+
+    for eff, title in (await session.execute(eff_query)).all():
+        actor = _actor(eff.user_id)
+        who = actor["name"] if actor else "?"
         events.append({
             "type": "effort",
-            "date": eff.updated_at.isoformat(),
-            "description": f"{who} a estime l'effort de '{title}' a {time_str}",
+            "date": eff.updated_at,
+            "description": f"{who} a estime l'effort de '{title}' a {_format_minutes(eff.points)}",
             "user": who,
+            "actor": actor,
+            "task": {"id": str(eff.task_id), "title": title},
+            "meta": {"points": eff.points, "minutes": eff.points * 5},
         })
 
-    # Modifications (change_log) recentes
-    log_result = await session.execute(
-        select(ChangeLog).where(
-            ChangeLog.operation == "UPDATE"
-        ).order_by(ChangeLog.changed_at.desc()).limit(20)
+    # --- 4. Modifications via change_log ---
+    log_query = select(ChangeLog).where(
+        ChangeLog.table_name.in_(["tasks", "task_completions", "categories"]),
+        ChangeLog.operation.in_(["INSERT", "UPDATE", "DELETE"]),
     )
-    for log in log_result.scalars().all():
-        who = user_names.get(log.changed_by, "?") if log.changed_by else "?"
-        events.append({
-            "type": "modification",
-            "date": log.changed_at.isoformat(),
-            "description": f"{who} a modifie {log.table_name} ({log.operation})",
-            "user": who,
-        })
+    if before is not None:
+        log_query = log_query.where(ChangeLog.changed_at < before)
+    if actor_id is not None:
+        log_query = log_query.where(ChangeLog.changed_by == actor_id)
+    log_query = log_query.order_by(ChangeLog.changed_at.desc()).limit(fetch_limit * 2)
+    logs = (await session.execute(log_query)).scalars().all()
 
-    # Trier par date decroissante
+    # Eager-load des titres de taches mentionnes dans les logs (plus de N+1).
+    task_ids_needed: set[UUID] = set()
+    completion_ids_needed: set[UUID] = set()
+    for log in logs:
+        if log.table_name == "tasks":
+            task_ids_needed.add(log.row_id)
+        elif log.table_name == "task_completions":
+            completion_ids_needed.add(log.row_id)
+
+    task_titles: dict[UUID, str] = {}
+    if task_ids_needed:
+        rows = await session.execute(
+            select(Task.id, Task.title).where(Task.id.in_(task_ids_needed))
+        )
+        task_titles = {row[0]: row[1] for row in rows.all()}
+
+    completion_task_titles: dict[UUID, tuple[UUID, str]] = {}
+    if completion_ids_needed:
+        rows = await session.execute(
+            select(TaskCompletion.id, Task.id, Task.title)
+            .join(Task, Task.id == TaskCompletion.task_id)
+            .where(TaskCompletion.id.in_(completion_ids_needed))
+        )
+        completion_task_titles = {row[0]: (row[1], row[2]) for row in rows.all()}
+
+    for log in logs:
+        actor = _actor(log.changed_by)
+        who = actor["name"] if actor else "?"
+
+        if log.table_name == "tasks":
+            title = task_titles.get(log.row_id, "?")
+            task_info = {"id": str(log.row_id), "title": title}
+
+            if log.operation == "INSERT":
+                event_type = "task_created"
+                desc = f"{who} a cree la tache '{title}'"
+                meta = {}
+            elif log.operation == "DELETE":
+                event_type = "task_deleted"
+                desc = f"{who} a supprime la tache '{title}'"
+                meta = {}
+            else:  # UPDATE
+                # Filtrer les champs techniques : si rien ne reste, on saute.
+                raw_fields = list((log.new_data or {}).keys())
+                meaningful = [f for f in raw_fields if f not in _TASK_TECHNICAL_FIELDS]
+                if not meaningful:
+                    continue
+                labels = [_TASK_FIELD_LABELS.get(f, f) for f in meaningful]
+                event_type = "task_updated"
+                desc = f"{who} a modifie la tache '{title}' ({', '.join(labels)})"
+                meta = {"fields": meaningful}
+
+            events.append({
+                "type": event_type,
+                "date": log.changed_at,
+                "description": desc,
+                "user": who,
+                "actor": actor,
+                "task": task_info,
+                "meta": meta,
+            })
+
+        elif log.table_name == "task_completions":
+            # Les INSERT sont deja couverts par la branche "completion" ci-dessus.
+            # On ne garde ici que les UPDATE (edition manuelle) et DELETE.
+            if log.operation == "INSERT":
+                continue
+            info = completion_task_titles.get(log.row_id)
+            if info is None:
+                title = "?"
+                task_info = None
+            else:
+                task_id, title = info
+                task_info = {"id": str(task_id), "title": title}
+            action = "modifie" if log.operation == "UPDATE" else "supprime"
+            events.append({
+                "type": "completion_edited" if log.operation == "UPDATE" else "completion_deleted",
+                "date": log.changed_at,
+                "description": f"{who} a {action} une completion de '{title}'",
+                "user": who,
+                "actor": actor,
+                "task": task_info,
+                "meta": {},
+            })
+
+        elif log.table_name == "categories":
+            action_map = {"INSERT": "cree", "UPDATE": "modifie", "DELETE": "supprime"}
+            action = action_map.get(log.operation, log.operation.lower())
+            events.append({
+                "type": "category_changed",
+                "date": log.changed_at,
+                "description": f"{who} a {action} une categorie",
+                "user": who,
+                "actor": actor,
+                "task": None,
+                "meta": {"operation": log.operation},
+            })
+
+    # Tri global par datetime decroissant puis troncature au limit demande.
     events.sort(key=lambda e: e["date"], reverse=True)
-    return events[:limit]
+    events = events[:limit]
+
+    # Serialiser les dates en ISO pour la reponse JSON.
+    for e in events:
+        e["date"] = e["date"].isoformat()
+    return events
+
+
+@router.get("/history")
+async def global_history(
+    limit: int = 50,
+    before: datetime | None = None,
+    session: AsyncSession = Depends(get_session),
+    _user: dict = Depends(get_current_user),
+):
+    """Historique global : completions, modifications taches/categories, affinites, efforts.
+
+    - `limit` : nombre max d'evenements a retourner (defaut 50).
+    - `before` : curseur de pagination. Si fourni, ne retourne que les events
+      strictement anterieurs a cette date (utile pour scroller le passe).
+    """
+    return await _build_history(session, limit=limit, before=before, actor_id=None)
+
+
+@router.get("/users/{user_id}/history")
+async def user_history(
+    user_id: UUID,
+    limit: int = 50,
+    before: datetime | None = None,
+    session: AsyncSession = Depends(get_session),
+    _user: dict = Depends(get_current_user),
+):
+    """Historique personnel d'un utilisateur : meme format que /history filtre par acteur."""
+    return await _build_history(session, limit=limit, before=before, actor_id=user_id)

@@ -95,12 +95,35 @@ class HomeViewModel @Inject constructor(
     // Empeche loadData de reouvrir la popup apres un submit
     private var affinityDismissedThisSession = false
 
-    /** Envoie affinite + effort puis ferme la popup. */
-    fun submitRating(taskId: String, affinity: Int?, effortPoints: Int?) {
+    private suspend fun saveRatingData(
+        taskId: String,
+        affinity: Int,
+        effortPoints: Int,
+        recurrence: com.torchons.app.ui.home.RatingRecurrence?
+    ) {
+        apiService.setAffinity(taskId, AffinityRequest(affinity))
+        apiService.setEffort(taskId, mapOf("points" to effortPoints))
+        if (recurrence != null) {
+            // Mettre a jour la recurrence de la tache
+            val rule = com.torchons.app.data.model.RecurrenceRule(
+                type = "interval",
+                everyNDays = recurrence.everyNDays
+            )
+            apiService.updateTask(
+                taskId,
+                com.torchons.app.data.model.UpdateTaskRequest(
+                    recurrenceRule = rule,
+                    freshnessHalfLifeHours = recurrence.everyNDays * 24.0
+                )
+            )
+        }
+    }
+
+    /** Envoie affinite + effort + recurrence puis ferme la popup. */
+    fun submitRating(taskId: String, affinity: Int, effortPoints: Int, recurrence: com.torchons.app.ui.home.RatingRecurrence?) {
         viewModelScope.launch {
             try {
-                if (affinity != null) apiService.setAffinity(taskId, AffinityRequest(affinity))
-                if (effortPoints != null) apiService.setEffort(taskId, mapOf("points" to effortPoints))
+                saveRatingData(taskId, affinity, effortPoints, recurrence)
                 affinityDismissedThisSession = true
                 _uiState.value = _uiState.value.copy(showAffinityPopup = false)
                 refreshSuggestionsOnly()
@@ -111,11 +134,10 @@ class HomeViewModel @Inject constructor(
     }
 
     /** Envoie et charge la tache suivante a noter. */
-    fun submitRatingAndNext(taskId: String, affinity: Int?, effortPoints: Int?) {
+    fun submitRatingAndNext(taskId: String, affinity: Int, effortPoints: Int, recurrence: com.torchons.app.ui.home.RatingRecurrence?) {
         viewModelScope.launch {
             try {
-                if (affinity != null) apiService.setAffinity(taskId, AffinityRequest(affinity))
-                if (effortPoints != null) apiService.setEffort(taskId, mapOf("points" to effortPoints))
+                saveRatingData(taskId, affinity, effortPoints, recurrence)
                 val pendingResp = apiService.getPendingAffinity()
                 val next = if (pendingResp.isSuccessful) pendingResp.body()?.firstOrNull() else null
                 _uiState.value = _uiState.value.copy(

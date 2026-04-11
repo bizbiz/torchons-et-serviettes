@@ -92,9 +92,14 @@ class TaskRepository @Inject constructor(
     }
 
     /** Marque une tache comme completee. */
-    suspend fun completeTask(taskId: String, completedAt: String? = null, notes: String? = null): Result<Completion> {
+    suspend fun completeTask(
+        taskId: String,
+        completedAt: String? = null,
+        completedBy: String? = null,
+        notes: String? = null
+    ): Result<Completion> {
         return try {
-            val response = apiService.completeTask(taskId, CompleteTaskRequest(notes = notes, completedAt = completedAt))
+            val response = apiService.completeTask(taskId, CompleteTaskRequest(notes = notes, completedAt = completedAt, completedBy = completedBy))
             if (response.isSuccessful) {
                 Result.success(response.body()!!)
             } else {

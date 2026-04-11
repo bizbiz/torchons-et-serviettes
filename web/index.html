@@ -368,7 +368,7 @@ function fc(f) { return f >= 80 ? 'var(--green)' : f >= 50 ? 'var(--yellow)' : f
 // === ACCUEIL ===
 async function loadHome() {
   const [suggestions, inProgress, fairShare] = await Promise.all([
-    api('/suggestions?freshness_threshold=10'), api('/tasks/in-progress'), api('/fair-share/status'),
+    api('/suggestions?freshness_threshold=10'), api('/in-progress'), api('/fair-share/status'),
   ]);
   const el = document.getElementById('home-content');
   let html = '';

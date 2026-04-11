@@ -145,6 +145,10 @@ interface ApiService {
         @Query("freshness_threshold") freshnessThreshold: Double = 80.0
     ): Response<List<Suggestion>>
 
+    /** Recuperer les affinites du user courant pour toutes les taches. */
+    @GET("my-affinities")
+    suspend fun getMyAffinities(): Response<List<Map<String, Any>>>
+
     /** Tache en attente de notation d'affinite/effort. */
     @GET("pending-affinity")
     suspend fun getPendingAffinity(
@@ -182,7 +186,7 @@ interface ApiService {
     suspend fun cancelTaskInProgress(@Path("id") taskId: String): Response<Map<String, Any>>
 
     /** Taches en cours de l'utilisateur. */
-    @GET("tasks/in-progress")
+    @GET("in-progress")
     suspend fun getInProgress(): Response<List<TaskInProgress>>
 
     /** Statut fair-share. */
@@ -197,7 +201,18 @@ interface ApiService {
 
     /** Historique global. */
     @GET("history")
-    suspend fun getHistory(@Query("limit") limit: Int = 50): Response<List<Map<String, Any>>>
+    suspend fun getHistory(
+        @Query("limit") limit: Int = 50,
+        @Query("before") before: String? = null
+    ): Response<List<Map<String, Any>>>
+
+    /** Historique personnel d'un utilisateur. */
+    @GET("users/{user_id}/history")
+    suspend fun getUserHistory(
+        @Path("user_id") userId: String,
+        @Query("limit") limit: Int = 50,
+        @Query("before") before: String? = null
+    ): Response<List<Map<String, Any>>>
 
     /** Statistiques par utilisateur. */
     @GET("stats")
@@ -230,6 +245,16 @@ interface ApiService {
     /** Enregistrer un token FCM. */
     @POST("notifications/register")
     suspend fun registerNotificationToken(@Body body: Map<String, String>): Response<Map<String, Any>>
+
+    // --- Contenu (changelog / roadmap) ---
+
+    /** Notes de version de l'app (markdown). */
+    @GET("changelog")
+    suspend fun getChangelog(): Response<Map<String, Any>>
+
+    /** Roadmap de l'app (markdown). */
+    @GET("roadmap")
+    suspend fun getRoadmap(): Response<Map<String, Any>>
 
     // --- Sante ---
 

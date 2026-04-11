@@ -89,6 +89,42 @@ def is_overdue(rule: dict | None, last_completed: datetime | None) -> bool:
     return due <= datetime.now(timezone.utc)
 
 
+def min_completion_gap_seconds(rule: dict | None) -> int:
+    """Delai minimum (en secondes) entre deux completions consecutives.
+
+    Derive de la recurrence :
+    - Recurrence >= 7 jours d'intervalle effectif : 24h (meme journee bloquee)
+    - Recurrence plus frequente ou absente : 1h (meme heure bloquee)
+
+    Utilise pour empecher les doubles validations accidentelles.
+    """
+    one_hour = 3600
+    one_day = 86400
+
+    if rule is None:
+        return one_hour
+
+    rtype = rule.get("type")
+
+    if rtype == "interval":
+        every_n_days = rule.get("every_n_days", 1)
+        return one_day if every_n_days >= 7 else one_hour
+
+    if rtype == "weekdays":
+        days = rule.get("days", [])
+        # 1 jour/semaine ou moins = 24h, sinon 1h
+        return one_day if len(days) <= 1 else one_hour
+
+    if rtype == "monthly" or rtype == "monthly_variable":
+        return one_day
+
+    if rtype == "custom":
+        every_n_weeks = rule.get("every_n_weeks", 1)
+        return one_day if every_n_weeks >= 1 else one_hour
+
+    return one_hour
+
+
 def interval_hours(rule: dict | None) -> float:
     """Calcule l'intervalle nominal en heures (pour freshness)."""
     if rule is None:

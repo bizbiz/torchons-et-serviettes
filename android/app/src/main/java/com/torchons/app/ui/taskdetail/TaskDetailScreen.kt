@@ -47,6 +47,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,9 +59,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.data.model.Completion
+import com.torchons.app.ui.user.UserProfileDialog
+import com.torchons.app.ui.user.UserProfileRequest
 import com.torchons.app.util.FreshnessCalculator
 import java.time.Instant
 import java.time.ZoneId
@@ -80,6 +84,16 @@ fun TaskDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Etat du modal de profil utilisateur (ouvert au clic sur un nom).
+    var userProfileRequest by remember { mutableStateOf<UserProfileRequest?>(null) }
+    userProfileRequest?.let { req ->
+        UserProfileDialog(
+            request = req,
+            onDismiss = { userProfileRequest = null },
+            // Pas de nav depuis ici : on est deja sur une TaskDetail.
+        )
+    }
 
     // Afficher les messages
     LaunchedEffect(uiState.completionMessage) {
@@ -521,7 +535,14 @@ fun TaskDetailScreen(
                                 completion = completion,
                                 userName = uiState.userNames[completion.completedBy] ?: "?",
                                 onDelete = { viewModel.deleteCompletion(completion.id) },
-                                onEdit = { viewModel.showEditCompletion(completion) }
+                                onEdit = { viewModel.showEditCompletion(completion) },
+                                onUserClick = {
+                                    val name = uiState.userNames[completion.completedBy] ?: "?"
+                                    userProfileRequest = UserProfileRequest(
+                                        userId = completion.completedBy,
+                                        userName = name
+                                    )
+                                }
                             )
                         }
                     }
@@ -540,7 +561,13 @@ fun TaskDetailScreen(
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CompletionCard(completion: Completion, userName: String = "?", onDelete: () -> Unit, onEdit: () -> Unit = {}) {
+private fun CompletionCard(
+    completion: Completion,
+    userName: String = "?",
+    onDelete: () -> Unit,
+    onEdit: () -> Unit = {},
+    onUserClick: () -> Unit = {},
+) {
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
@@ -600,12 +627,22 @@ private fun CompletionCard(completion: Completion, userName: String = "?", onDel
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                // Qui + date
-                Text(
-                    text = "$userName — ${formatDateTime(completion.completedAt)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
+                // Qui + date — le nom est cliquable vers le profil utilisateur.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = userName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier.clickable { onUserClick() }
+                    )
+                    Text(
+                        text = " — ${formatDateTime(completion.completedAt)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
 
                 // Notes si presentes
                 if (!completion.notes.isNullOrBlank()) {

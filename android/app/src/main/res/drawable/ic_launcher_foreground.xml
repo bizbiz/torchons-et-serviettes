@@ -4,14 +4,72 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Fond transparent, le texte T&S centre -->
+
+    <!-- ============================================ -->
+    <!-- SERPILLERE (ensorcelee, sous le chapeau) -->
+    <!-- ============================================ -->
+
+    <!-- Manche en bois -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M36,58L36,44L32,44L32,40L44,40L44,44L40,44L40,58Z" />
+        android:fillColor="#78350F"
+        android:pathData="M51,67 L57,67 L57,77 L51,77 Z" />
+    <!-- Reflet du manche pour profondeur -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M48,50Q48,54 50,56Q52,58 56,58Q58,58 60,57L60,61Q58,62 56,62Q50,62 47,59Q44,56 44,50Q44,44 47,41Q50,38 56,38Q58,38 60,39L60,43Q58,42 56,42Q52,42 50,44Q48,46 48,50Z" />
+        android:fillColor="#A16207"
+        android:pathData="M51,67 L53,67 L53,77 L51,77 Z" />
+
+    <!-- Embout metallique reliant manche et tete -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M64,58L64,48Q64,44 66,42Q68,40 72,40Q74,40 76,41L76,45Q74,44 72,44Q70,44 69,45Q68,46 68,48L68,58Z" />
+        android:fillColor="#9CA3AF"
+        android:pathData="M49,76 L59,76 L59,79 L49,79 Z" />
+
+    <!-- Tete de serpillere (trapeze beige avec franges) -->
+    <path
+        android:fillColor="#FEF3C7"
+        android:pathData="M42,78 L66,78 L64,84 Q61,86 58,84 Q55,86 52,84 Q49,86 46,84 Q43,86 42,84 Z" />
+    <!-- Ombre sur la tete pour profondeur -->
+    <path
+        android:fillColor="#FDE68A"
+        android:pathData="M42,82 L66,82 L64,84 Q61,86 58,84 Q55,86 52,84 Q49,86 46,84 Q43,86 42,84 Z" />
+
+    <!-- ============================================ -->
+    <!-- CHAPEAU DE MAGICIEN (par-dessus la serpillere) -->
+    <!-- ============================================ -->
+
+    <!-- Corps conique du chapeau (bleu vif) -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M54,24 L38,58 L70,58 Z" />
+    <!-- Cote ombre du chapeau pour donner du volume -->
+    <path
+        android:fillColor="#1E40AF"
+        android:pathData="M54,24 L62,58 L70,58 Z" />
+
+    <!-- Rebord du chapeau (ellipse aplatie bleu fonce) -->
+    <path
+        android:fillColor="#1E3A8A"
+        android:pathData="M28,60 Q54,52 80,60 Q54,68 28,60 Z" />
+    <!-- Reflet superieur du rebord -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M30,60 Q54,54 78,60 Q54,57 30,60 Z" />
+
+    <!-- ============================================ -->
+    <!-- ETOILES JAUNES A 5 BRANCHES SUR LE CHAPEAU -->
+    <!-- ============================================ -->
+
+    <!-- Etoile 1 (grande) a (47,36) rayon 3 -->
+    <path
+        android:fillColor="#FCD34D"
+        android:pathData="M47,33 L47.674,35.073 L49.853,35.073 L48.090,36.354 L48.763,38.427 L47,37.146 L45.237,38.427 L45.910,36.354 L44.147,35.073 L46.326,35.073 Z" />
+
+    <!-- Etoile 2 (moyenne) a (60,42) rayon 2.5 -->
+    <path
+        android:fillColor="#FCD34D"
+        android:pathData="M60,39.5 L60.562,41.228 L62.378,41.228 L60.908,42.295 L61.469,44.022 L60,42.955 L58.531,44.022 L59.092,42.295 L57.622,41.228 L59.438,41.228 Z" />
+
+    <!-- Etoile 3 (petite) a (50,49) rayon 2 -->
+    <path
+        android:fillColor="#FCD34D"
+        android:pathData="M50,47 L50.449,48.382 L51.902,48.382 L50.727,49.236 L51.176,50.618 L50,49.764 L48.824,50.618 L49.273,49.236 L48.098,48.382 L49.551,48.382 Z" />
 </vector>
