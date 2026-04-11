@@ -3,37 +3,56 @@ package com.torchons.app.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.AffinityRequest
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.TaskInProgress
-import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.repository.AuthRepository
+import com.torchons.app.data.repository.HomeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Etat UI de l'accueil.
+ *
+ * @param hasCachedData true des qu'au moins un snapshot non-null a ete observe
+ *   depuis le cache Room. Permet de distinguer "ecran vide initial" de
+ *   "tout est frais reellement".
+ * @param lastRefreshFailed true si le dernier refresh API a echoue (au moins
+ *   un des sub-fetches). Combine avec hasCachedData = false, indique au UI
+ *   qu'on est dans un etat "rien a afficher car backend injoignable".
+ */
 data class HomeUiState(
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val suggestions: List<Suggestion> = emptyList(),
     val inProgress: List<TaskInProgress> = emptyList(),
     val fairShare: List<FairShareStatus> = emptyList(),
     val pendingAffinity: PendingAffinity? = null,
     val showAffinityPopup: Boolean = false,
-    val error: String? = null
+    val hasCachedData: Boolean = false,
+    val lastRefreshFailed: Boolean = false,
+    val error: String? = null,
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val apiService: ApiService,
+    private val homeRepository: HomeRepository,
     private val authRepository: AuthRepository,
-    private val tokenManager: TokenManager
+    @Suppress("unused") private val tokenManager: TokenManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
@@ -49,100 +68,131 @@ class HomeViewModel @Inject constructor(
     val affinityPopupEnabled: StateFlow<Boolean> = _affinityPopupEnabled.asStateFlow()
 
     private var cachedThreshold = 10.0
+    private var affinityDismissedThisSession = false
 
     init {
-        loadData()
+        observeCache()
+        refresh()
     }
 
-    fun loadData() {
+    /**
+     * Observe les snapshots Room en continu. Le combine emet a chaque fois
+     * qu'un des snapshots est mis a jour (par refresh ou par une ecriture).
+     * Garantit affichage instantane au demarrage et reactif aux changements.
+     */
+    private fun observeCache() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            try {
-                // Charger les settings depuis le backend
-                val settingsResp = apiService.getSettings()
-                if (settingsResp.isSuccessful) {
-                    val data = settingsResp.body() ?: emptyMap()
-                    _affinityPopupEnabled.value = data["affinity_popup_enabled"] as? Boolean ?: true
-                    cachedThreshold = (data["freshness_threshold"] as? Double) ?: 10.0
-                }
-                val suggestionsResp = apiService.getSuggestions(cachedThreshold)
-                val inProgressResp = apiService.getInProgress()
-                val fairShareResp = apiService.getFairShareStatus()
-                val pendingResp = apiService.getPendingAffinity()
+            combine(
+                homeRepository.observeSuggestions(),
+                homeRepository.observeInProgress(),
+                homeRepository.observeFairShare(),
+                homeRepository.observePendingAffinity(),
+                homeRepository.observeUserSettings(),
+            ) { suggestions, inProgress, fairShare, pending, settings ->
+                CachedHome(suggestions, inProgress, fairShare, pending, settings)
+            }.collect { cached ->
+                val popupEnabled = (cached.settings?.get("affinity_popup_enabled") as? Boolean) ?: true
+                _affinityPopupEnabled.value = popupEnabled
+                cachedThreshold = (cached.settings?.get("freshness_threshold") as? Double) ?: cachedThreshold
 
-                val suggestions = if (suggestionsResp.isSuccessful) suggestionsResp.body() ?: emptyList() else emptyList()
-                val inProgress = if (inProgressResp.isSuccessful) inProgressResp.body() ?: emptyList() else emptyList()
-                val fairShare = if (fairShareResp.isSuccessful) fairShareResp.body() ?: emptyList() else emptyList()
-                val pending = if (pendingResp.isSuccessful) pendingResp.body()?.firstOrNull() else null
+                val firstPending = cached.pending?.firstOrNull()
+                val hasCache = cached.suggestions != null || cached.inProgress != null
 
-                _uiState.value = HomeUiState(
-                    isLoading = false,
-                    suggestions = suggestions,
-                    inProgress = inProgress,
-                    fairShare = fairShare,
-                    pendingAffinity = pending,
-                    showAffinityPopup = pending != null && !affinityDismissedThisSession,
-                )
-            } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = e.message
+                    suggestions = cached.suggestions ?: emptyList(),
+                    inProgress = cached.inProgress ?: emptyList(),
+                    fairShare = cached.fairShare ?: emptyList(),
+                    pendingAffinity = firstPending,
+                    showAffinityPopup = firstPending != null
+                        && !affinityDismissedThisSession
+                        && popupEnabled,
+                    hasCachedData = hasCache,
+                    // Des qu'on a du cache, on n'est plus en "loading initial".
+                    isLoading = if (hasCache) false else _uiState.value.isLoading,
                 )
             }
         }
     }
 
-    // Empeche loadData de reouvrir la popup apres un submit
-    private var affinityDismissedThisSession = false
+    /**
+     * Refresh tous les snapshots de l'accueil depuis l'API.
+     * Echec silencieux : si l'API ne repond pas, le cache reste affiche et
+     * lastRefreshFailed est mis a true pour que l'UI puisse signaler l'etat.
+     */
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isRefreshing = true)
+
+            // Settings en premier pour avoir le freshness_threshold a jour.
+            val settingsOk = homeRepository.refreshUserSettings()
+            val settings = try {
+                homeRepository.observeUserSettings().first()
+            } catch (_: Exception) {
+                null
+            }
+            val threshold = (settings?.get("freshness_threshold") as? Double) ?: cachedThreshold
+            cachedThreshold = threshold
+
+            // Sub-fetches en parallele.
+            val results = listOf(
+                async { homeRepository.refreshSuggestions(threshold) },
+                async { homeRepository.refreshInProgress() },
+                async { homeRepository.refreshFairShare() },
+                async { homeRepository.refreshPendingAffinity(6) },
+            ).awaitAll()
+
+            val allOk = settingsOk && results.all { it }
+
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                isRefreshing = false,
+                lastRefreshFailed = !allOk,
+            )
+        }
+    }
+
+    /** Alias historique conserve pour la compat avec HomeScreen. */
+    fun loadData() = refresh()
 
     private suspend fun saveRatingData(
         taskId: String,
         affinity: Int,
         effortPoints: Int,
-        recurrence: com.torchons.app.ui.home.RatingRecurrence?
+        recurrence: RatingRecurrence?,
     ) {
         apiService.setAffinity(taskId, AffinityRequest(affinity))
         apiService.setEffort(taskId, mapOf("points" to effortPoints))
         if (recurrence != null) {
-            // Mettre a jour la recurrence de la tache
             val rule = com.torchons.app.data.model.RecurrenceRule(
                 type = "interval",
-                everyNDays = recurrence.everyNDays
+                everyNDays = recurrence.everyNDays,
             )
             apiService.updateTask(
                 taskId,
-                com.torchons.app.data.model.UpdateTaskRequest(
-                    recurrenceRule = rule,
-                )
+                com.torchons.app.data.model.UpdateTaskRequest(recurrenceRule = rule),
             )
         }
     }
 
-    /** Envoie affinite + effort + recurrence puis ferme la popup. */
-    fun submitRating(taskId: String, affinity: Int, effortPoints: Int, recurrence: com.torchons.app.ui.home.RatingRecurrence?) {
+    fun submitRating(taskId: String, affinity: Int, effortPoints: Int, recurrence: RatingRecurrence?) {
         viewModelScope.launch {
             try {
                 saveRatingData(taskId, affinity, effortPoints, recurrence)
                 affinityDismissedThisSession = true
                 _uiState.value = _uiState.value.copy(showAffinityPopup = false)
-                refreshSuggestionsOnly()
+                refresh()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
         }
     }
 
-    /** Envoie et charge la tache suivante a noter. */
-    fun submitRatingAndNext(taskId: String, affinity: Int, effortPoints: Int, recurrence: com.torchons.app.ui.home.RatingRecurrence?) {
+    fun submitRatingAndNext(taskId: String, affinity: Int, effortPoints: Int, recurrence: RatingRecurrence?) {
         viewModelScope.launch {
             try {
                 saveRatingData(taskId, affinity, effortPoints, recurrence)
-                val pendingResp = apiService.getPendingAffinity()
-                val next = if (pendingResp.isSuccessful) pendingResp.body()?.firstOrNull() else null
-                _uiState.value = _uiState.value.copy(
-                    pendingAffinity = next,
-                    showAffinityPopup = next != null,
-                )
+                homeRepository.refreshPendingAffinity(6)
+                // Le combine va automatiquement re-emettre via le Flow.
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
@@ -154,7 +204,6 @@ class HomeViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(showAffinityPopup = false)
     }
 
-    /** Mode manuel : affiche la popup pour la tache la plus anciennement notee. */
     fun showManualRating() {
         viewModelScope.launch {
             try {
@@ -166,79 +215,55 @@ class HomeViewModel @Inject constructor(
                         showAffinityPopup = true,
                     )
                 }
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
         }
     }
 
-    private fun refreshSuggestionsOnly() {
-        viewModelScope.launch {
-            try {
-                val suggestionsResp = apiService.getSuggestions(cachedThreshold)
-                val inProgressResp = apiService.getInProgress()
-                val fairShareResp = apiService.getFairShareStatus()
-                _uiState.value = _uiState.value.copy(
-                    suggestions = if (suggestionsResp.isSuccessful) suggestionsResp.body() ?: emptyList() else _uiState.value.suggestions,
-                    inProgress = if (inProgressResp.isSuccessful) inProgressResp.body() ?: emptyList() else _uiState.value.inProgress,
-                    fairShare = if (fairShareResp.isSuccessful) fairShareResp.body() ?: emptyList() else _uiState.value.fairShare,
-                )
-            } catch (_: Exception) {}
-        }
-    }
-
-    /** Marquer une tache comme en cours. */
     fun startTask(taskId: String) {
         viewModelScope.launch {
             try {
                 apiService.startTask(taskId)
-                loadData()
+                refresh()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
         }
     }
 
-    /** Completer une tache. */
     fun completeTask(taskId: String) {
         viewModelScope.launch {
             try {
                 apiService.completeTask(taskId)
-                // Retirer immediatement des suggestions
-                _uiState.value = _uiState.value.copy(
-                    suggestions = _uiState.value.suggestions.filter { it.taskId != taskId },
-                    inProgress = _uiState.value.inProgress.filter { it.taskId != taskId },
-                )
-                refreshSuggestionsOnly()
+                refresh()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
         }
     }
 
-    /** Completer une tache avec une date historique et un user specifique. */
     fun completeTaskAtDate(taskId: String, isoDate: String, completedBy: String? = null) {
         viewModelScope.launch {
             try {
-                apiService.completeTask(taskId, com.torchons.app.data.model.CompleteTaskRequest(completedAt = isoDate, completedBy = completedBy))
-                _uiState.value = _uiState.value.copy(
-                    suggestions = _uiState.value.suggestions.filter { it.taskId != taskId },
-                    inProgress = _uiState.value.inProgress.filter { it.taskId != taskId },
+                apiService.completeTask(
+                    taskId,
+                    com.torchons.app.data.model.CompleteTaskRequest(
+                        completedAt = isoDate,
+                        completedBy = completedBy,
+                    ),
                 )
-                refreshSuggestionsOnly()
+                refresh()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
         }
     }
 
-    /** Annuler une tache en cours (pas faite). */
     fun cancelInProgress(taskId: String) {
         viewModelScope.launch {
             try {
                 apiService.cancelTaskInProgress(taskId)
-                _uiState.value = _uiState.value.copy(
-                    inProgress = _uiState.value.inProgress.filter { it.taskId != taskId },
-                )
-                refreshSuggestionsOnly()
+                refresh()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
@@ -249,3 +274,12 @@ class HomeViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null)
     }
 }
+
+/** Conteneur interne pour le combine des 5 flows snapshot. */
+private data class CachedHome(
+    val suggestions: List<Suggestion>?,
+    val inProgress: List<TaskInProgress>?,
+    val fairShare: List<FairShareStatus>?,
+    val pending: List<PendingAffinity>?,
+    val settings: Map<String, Any>?,
+)

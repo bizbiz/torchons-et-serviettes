@@ -1,5 +1,7 @@
 package com.torchons.app.ui.navigation
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
@@ -15,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.torchons.app.ui.components.OfflineBanner
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -222,33 +225,42 @@ fun MainScreen(
             }
         }
     ) { paddingValues ->
-        NavHost(
-            navController = innerNavController,
-            startDestination = Routes.HOME,
-            modifier = Modifier.padding(paddingValues)
+        // Bandeau "hors ligne" global au-dessus de tous les ecrans de la
+        // navigation principale. Visible uniquement quand le BackendHealthMonitor
+        // detecte une panne de connexion. Le NavHost prend la place restante.
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
-            composable(Routes.HOME) {
-                HomeScreen(
-                    onTaskClick = onNavigateToTaskDetail,
-                    onEditTask = onNavigateToEditTask
-                )
-            }
-            composable(Routes.TASK_LIST) {
-                TaskListScreen(
-                    onTaskClick = onNavigateToTaskDetail,
-                    onCreateTask = onNavigateToCreateTask,
-                    onLogout = onLogout
-                )
-            }
-            composable(Routes.STATS) {
-                StatsScreen(onTaskClick = onNavigateToTaskDetail)
-            }
-            composable(Routes.SETTINGS) {
-                SettingsScreen(
-                    onLogout = onLogout,
-                    onManageCategories = onNavigateToCategories,
-                    onOpenChangelog = onNavigateToChangelog
-                )
+            OfflineBanner()
+            NavHost(
+                navController = innerNavController,
+                startDestination = Routes.HOME,
+            ) {
+                composable(Routes.HOME) {
+                    HomeScreen(
+                        onTaskClick = onNavigateToTaskDetail,
+                        onEditTask = onNavigateToEditTask
+                    )
+                }
+                composable(Routes.TASK_LIST) {
+                    TaskListScreen(
+                        onTaskClick = onNavigateToTaskDetail,
+                        onCreateTask = onNavigateToCreateTask,
+                        onLogout = onLogout
+                    )
+                }
+                composable(Routes.STATS) {
+                    StatsScreen(onTaskClick = onNavigateToTaskDetail)
+                }
+                composable(Routes.SETTINGS) {
+                    SettingsScreen(
+                        onLogout = onLogout,
+                        onManageCategories = onNavigateToCategories,
+                        onOpenChangelog = onNavigateToChangelog
+                    )
+                }
             }
         }
     }

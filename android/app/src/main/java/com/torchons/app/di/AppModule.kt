@@ -2,6 +2,8 @@ package com.torchons.app.di
 
 import android.content.Context
 import com.torchons.app.BuildConfig
+import com.torchons.app.core.network.BackendHealthInterceptor
+import com.torchons.app.core.network.RetryGetInterceptor
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.api.AuthInterceptor
 import com.torchons.app.data.local.TokenManager
@@ -37,19 +39,36 @@ object AppModule {
     }
 
     /**
-     * Fournit le client OkHttp avec l'intercepteur d'authentification
-     * et le logging des requetes en mode debug.
+     * Fournit le client OkHttp.
+     *
+     * Ordre des intercepteurs (important) :
+     * 1. AuthInterceptor : ajoute le header Authorization
+     * 2. RetryGetInterceptor : retry une fois les GET en cas d'IOException
+     *    (avant le BackendHealthInterceptor pour que le retry ne pollue pas
+     *    l'etat de connexion sur un blip)
+     * 3. BackendHealthInterceptor : notifie le moniteur de l'etat backend
+     * 4. HttpLoggingInterceptor (debug uniquement) : log des requetes
+     *
+     * Timeouts reduits par rapport au defaut 30s/30s/30s :
+     * - connect 5s : un backend qui n'accepte pas la connexion en 5s est down
+     * - read 10s : 10s laisse de la marge pour les endpoints lents (stats)
+     *   tout en gardant l'app reactive si le backend rame
      */
     @Provides
     @Singleton
     fun provideOkHttpClient(
-        authInterceptor: AuthInterceptor
+        authInterceptor: AuthInterceptor,
+        retryGetInterceptor: RetryGetInterceptor,
+        healthInterceptor: BackendHealthInterceptor,
     ): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(retryGetInterceptor)
+            .addInterceptor(healthInterceptor)
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
 
         // Logging des requetes HTTP en mode debug
         if (BuildConfig.DEBUG) {
