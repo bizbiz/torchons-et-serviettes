@@ -1,5 +1,19 @@
 # Notes de version
 
+## v0.2.2 — 2026-04-11
+
+### Tolerance au retard sur les taches recurrentes
+- Tu peux maintenant choisir, pour chaque tache recurrente, a quel point l'app est severe sur le retard : Strict, Normal ou Souple. Le choix est dans le formulaire d'edition de la tache, juste apres la recurrence.
+- Strict : la tache devient orange/rouge avant l'echeance.
+- Normal (defaut) : la tache est jaune a l'echeance — comportement actuel.
+- Souple : la tache reste verte meme un peu apres l'echeance.
+
+### Felicitations fair-share plus intelligentes
+- Le message "Tu as fait plus que ta part" sur l'accueil arrive maintenant uniquement quand tu as fait *vraiment* plus que ta part, et non au moindre ecart. Par defaut il faut avoir fait 30% de plus que ton ratio cible.
+- Ce seuil de tolerance est reglable dans Reglages avances ("Tolerance fair-share", de 0% a 100%).
+- Le message ne s'affiche plus quand l'app n'a pas assez de donnees (moins de 10 taches completees au total sur les 30 derniers jours).
+- Le texte du message dit maintenant "ces 30 derniers jours" au lieu de "ce mois-ci", plus precis par rapport au calcul reel.
+
 ## v0.2.1 — 2026-04-11
 
 ### Maintenance

@@ -508,7 +508,7 @@ async def get_suggestions(
         last_comp = last_completions.get(task.id)
         freshness = compute_freshness(
             task.recurrence_rule, last_comp,
-            task.created_at, task.freshness_half_life_hours,
+            task.created_at, task.tolerance,
         )
         raw_aff = affinities.get(task.id, 5)
         norm_aff = (raw_aff - mean_aff) / std_aff  # Positif = aime, negatif = deteste
@@ -564,24 +564,52 @@ async def fair_share_status(
     session: AsyncSession = Depends(get_session),
     _user: dict = Depends(get_current_user),
 ):
-    """Retourne le statut fair-share : ratio cible vs reel sur les 30 derniers jours."""
+    """Retourne le statut fair-share : ratio cible vs reel sur les 30 derniers jours.
+
+    Le booleen `above_target` integre la tolerance perso de chaque user
+    (`fair_share_tolerance_percent` dans user_settings) ET un seuil
+    minimum de complétions cumulees, pour eviter d'afficher le message
+    de felicitation quand les donnees sont trop maigres.
+    """
     from app.models.user import User
+    from app.models.user_settings import UserSettings
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=30)
 
-    # Total points par user sur 30 jours
-    points_result = await session.execute(
-        select(TaskCompletion.completed_by, func.sum(TaskCompletion.points_earned)).where(
+    # Compte total et points par user sur 30 jours.
+    completions_result = await session.execute(
+        select(
+            TaskCompletion.completed_by,
+            func.sum(TaskCompletion.points_earned),
+            func.count(TaskCompletion.id),
+        ).where(
             TaskCompletion.completed_at >= cutoff,
             TaskCompletion.deleted_at.is_(None),
         ).group_by(TaskCompletion.completed_by)
     )
-    user_points = {row[0]: row[1] or 0 for row in points_result.all()}
+    user_points: dict[UUID, int] = {}
+    user_counts: dict[UUID, int] = {}
+    for row in completions_result.all():
+        user_points[row[0]] = row[1] or 0
+        user_counts[row[0]] = row[2] or 0
     total_points = sum(user_points.values()) or 1
+    total_completions = sum(user_counts.values())
 
-    # Configs fair-share
+    # Seuil minimum de complétions cumulees pour qu'on ose afficher le
+    # message "tu as fait plus que ta part". En dessous, le ratio est
+    # statistiquement bruite, on se tait.
+    min_completions = 10
+    has_enough_data = total_completions >= min_completions
+
+    # Configs fair-share (target ratio par user).
     fs_result = await session.execute(select(FairShareConfig))
     fs_configs = {row.user_id: row.target_ratio for row in fs_result.scalars().all()}
+
+    # Tolerances perso (chaque user a sa propre sensibilite).
+    tol_result = await session.execute(
+        select(UserSettings.user_id, UserSettings.fair_share_tolerance_percent)
+    )
+    tolerances = {row[0]: row[1] for row in tol_result.all()}
 
     # Users
     users_result = await session.execute(select(User))
@@ -591,12 +619,14 @@ async def fair_share_status(
     for user in users:
         target = fs_configs.get(user.id, 0.5)
         actual = user_points.get(user.id, 0) / total_points
+        tol = tolerances.get(user.id, 30) / 100.0
+        threshold = target * (1.0 + tol)
         statuses.append(FairShareStatus(
             user_id=user.id,
             display_name=user.display_name,
             target_ratio=target,
             actual_ratio=actual,
-            above_target=actual > target,
+            above_target=has_enough_data and actual > threshold,
         ))
 
     return statuses

@@ -155,7 +155,7 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Tu as fait plus que ta part ce mois-ci ! C'est a ${otherFairShare.displayName} de faire des taches. Mais tu peux quand meme continuer !",
+                        text = "Tu as fait plus que ta part ces 30 derniers jours ! C'est a ${otherFairShare.displayName} de faire des taches. Mais tu peux quand meme continuer !",
                         style = MaterialTheme.typography.bodyMedium,
                         color = FreshnessCalculator.VERT
                     )

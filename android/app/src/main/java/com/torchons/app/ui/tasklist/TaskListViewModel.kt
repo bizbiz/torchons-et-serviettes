@@ -364,7 +364,8 @@ class TaskListViewModel @Inject constructor(
 
             val freshness = FreshnessCalculator.calculateFreshness(
                 lastCompletedAt = lastCompletion?.completedAt,
-                halfLifeHours = task.freshnessHalfLifeHours
+                rule = task.recurrenceRule,
+                tolerance = task.tolerance,
             )
 
             val category = allCategories.find { it.id == task.categoryId }

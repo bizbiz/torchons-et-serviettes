@@ -6,6 +6,7 @@ recoivent le markdown brut et le rendent eux-memes.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -18,9 +19,29 @@ router = APIRouter(prefix="/api", tags=["content"])
 _CONTENT_DIR = Path(__file__).resolve().parent.parent / "content"
 
 
-# Version courante de l'app cote backend. A bumper en meme temps que
-# l'ajout d'une nouvelle section dans changelog.md.
-APP_VERSION = "0.2.1"
+def _read_app_version() -> str:
+    """Derive la version courante depuis la premiere entree du changelog.
+
+    Source unique de verite : la ligne `## vX.Y.Z - YYYY-MM-DD` la plus
+    haute dans `changelog.md`. Evite la duplication d'une constante a
+    bumper a la main a chaque release.
+
+    Si le fichier est absent ou mal forme, retourne `0.0.0` pour ne pas
+    casser le boot du backend.
+    """
+    try:
+        text = (_CONTENT_DIR / "changelog.md").read_text(encoding="utf-8")
+        match = re.search(r"^##\s+v(\d+\.\d+\.\d+)", text, re.MULTILINE)
+        if match:
+            return match.group(1)
+    except OSError:
+        pass
+    return "0.0.0"
+
+
+# Version courante exposee via /api/health, /api/changelog et la title
+# FastAPI. Calculee une fois au boot a partir du changelog.
+APP_VERSION = _read_app_version()
 
 
 def _read_markdown(filename: str) -> str:

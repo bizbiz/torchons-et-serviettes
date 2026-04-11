@@ -33,7 +33,7 @@ data class TaskEditUiState(
     val recurrenceEveryNDays: String = "7",
     val daysPerMonth: Map<String, String> = (1..12).associate { it.toString() to "" },
     val weight: Int = 1,
-    val freshnessHalfLifeHours: String = "",
+    val tolerance: String = "NORMAL",
     val categories: List<Category> = emptyList(),
     val users: List<User> = emptyList(),
     val error: String? = null,
@@ -85,8 +85,7 @@ class TaskEditViewModel @Inject constructor(
                         recurrenceEveryNDays = task.recurrenceRule?.everyNDays?.toString() ?: "7",
                         daysPerMonth = dpm,
                         weight = task.weight,
-                        freshnessHalfLifeHours = if (task.freshnessHalfLifeHours > 0)
-                            task.freshnessHalfLifeHours.toString() else "",
+                        tolerance = task.tolerance,
                         categories = categories,
                         users = users,
                     )
@@ -148,6 +147,10 @@ class TaskEditViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(weight = value.coerceIn(1, 18))
     }
 
+    fun updateTolerance(value: String) {
+        _uiState.value = _uiState.value.copy(tolerance = value)
+    }
+
     /** Sauvegarde la tache (creation ou mise a jour). */
     fun save(taskId: String?) {
         val state = _uiState.value
@@ -173,15 +176,6 @@ class TaskEditViewModel @Inject constructor(
                 else -> null
             }
 
-            val halfLife = when (state.recurrenceType) {
-                "interval" -> (state.recurrenceEveryNDays.toIntOrNull() ?: 7) * 24.0
-                "monthly_variable" -> {
-                    val vals = state.daysPerMonth.values.mapNotNull { it.toIntOrNull() }
-                    if (vals.isNotEmpty()) vals.average() * 24.0 else null
-                }
-                else -> null
-            }
-
             val result = if (taskId != null) {
                 taskRepository.updateTask(
                     taskId,
@@ -192,7 +186,7 @@ class TaskEditViewModel @Inject constructor(
                         assignedToIds = state.assignedToIds,
                         recurrenceRule = recurrenceRule,
                         weight = state.weight,
-                        freshnessHalfLifeHours = halfLife,
+                        tolerance = state.tolerance,
                     )
                 )
             } else {
@@ -204,7 +198,7 @@ class TaskEditViewModel @Inject constructor(
                         assignedToIds = state.assignedToIds,
                         recurrenceRule = recurrenceRule,
                         weight = state.weight,
-                        freshnessHalfLifeHours = halfLife,
+                        tolerance = state.tolerance,
                     )
                 )
             }

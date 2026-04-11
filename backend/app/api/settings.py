@@ -24,6 +24,7 @@ class SettingsResponse(BaseModel):
     affinity_popup_enabled: bool
     affinity_expiry_months: int
     freshness_threshold: int
+    fair_share_tolerance_percent: int
     home_ssids: list[str]
 
 
@@ -35,6 +36,7 @@ class SettingsUpdate(BaseModel):
     affinity_popup_enabled: bool | None = None
     affinity_expiry_months: int | None = Field(default=None, ge=1, le=24)
     freshness_threshold: int | None = Field(default=None, ge=1, le=99)
+    fair_share_tolerance_percent: int | None = Field(default=None, ge=0, le=100)
     home_ssids: list[str] | None = None
 
 
@@ -64,6 +66,7 @@ async def get_settings(
         affinity_popup_enabled=settings.affinity_popup_enabled,
         affinity_expiry_months=settings.affinity_expiry_months,
         freshness_threshold=settings.freshness_threshold,
+        fair_share_tolerance_percent=settings.fair_share_tolerance_percent,
         home_ssids=[s for s in settings.home_ssids.split("|") if s] if settings.home_ssids else [],
     )
 
@@ -103,5 +106,6 @@ async def update_settings(
         affinity_popup_enabled=settings.affinity_popup_enabled,
         affinity_expiry_months=settings.affinity_expiry_months,
         freshness_threshold=settings.freshness_threshold,
+        fair_share_tolerance_percent=settings.fair_share_tolerance_percent,
         home_ssids=[s for s in settings.home_ssids.split("|") if s] if settings.home_ssids else [],
     )

@@ -1,7 +1,9 @@
 package com.torchons.app.util
 
 import androidx.compose.ui.graphics.Color
+import com.torchons.app.data.model.RecurrenceRule
 import java.time.Instant
+import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import kotlin.math.exp
 
@@ -12,6 +14,9 @@ import kotlin.math.exp
  * a sa derniere completion. Elle decroit exponentiellement avec le temps.
  *
  * Formule : freshness = 100 * exp(-0.693 * heures_depuis / half_life_hours)
+ *
+ * La demi-vie est derivee de l'intervalle nominal de la recurrence,
+ * multipliee par le facteur de tolerance (STRICT x0.5, NORMAL x1, SOUPLE x2).
  *
  * Niveaux de fraicheur :
  * - Vert (>=80%) : la tache est recente
@@ -27,14 +32,53 @@ object FreshnessCalculator {
     val ORANGE = Color(0xFFF97316)
     val ROUGE = Color(0xFFEF4444)
 
+    private val TOLERANCE_MULTIPLIER = mapOf(
+        "STRICT" to 0.5,
+        "NORMAL" to 1.0,
+        "SOUPLE" to 2.0,
+    )
+
+    /**
+     * Calcule l'intervalle nominal en heures d'une recurrence.
+     * Equivalent Kotlin de `interval_hours` cote backend.
+     */
+    fun intervalHours(rule: RecurrenceRule?): Double {
+        if (rule == null) return Double.POSITIVE_INFINITY
+        return when (rule.type) {
+            "interval" -> (rule.everyNDays ?: 1) * 24.0
+            "weekdays" -> {
+                val n = rule.days?.size ?: 0
+                if (n > 0) (7.0 / n) * 24.0 else Double.POSITIVE_INFINITY
+            }
+            "monthly" -> 30.44 * 24.0
+            "custom" -> (rule.everyNWeeks ?: 1) * 7 * 24.0
+            "monthly_variable" -> {
+                val month = LocalDate.now().monthValue.toString()
+                val n = rule.daysPerMonth?.get(month)
+                if (n != null && n > 0) n * 24.0 else 30.44 * 24.0
+            }
+            else -> Double.POSITIVE_INFINITY
+        }
+    }
+
     /**
      * Calcule le pourcentage de fraicheur d'une tache.
      *
      * @param lastCompletedAt Date/heure de la derniere completion (format ISO 8601), ou null.
-     * @param halfLifeHours Demi-vie en heures (temps pour que la fraicheur passe a 50%).
+     * @param rule Regle de recurrence (sert a deriver l'intervalle nominal).
+     * @param tolerance Tolerance au retard ("STRICT", "NORMAL", "SOUPLE").
      * @return Pourcentage de fraicheur entre 0 et 100.
      */
-    fun calculateFreshness(lastCompletedAt: String?, halfLifeHours: Double): Double {
+    fun calculateFreshness(
+        lastCompletedAt: String?,
+        rule: RecurrenceRule?,
+        tolerance: String,
+    ): Double {
+        val base = intervalHours(rule)
+        if (!base.isFinite() || base <= 0.0) return 100.0
+        val halfLife = base * (TOLERANCE_MULTIPLIER[tolerance] ?: 1.0)
+        if (halfLife <= 0.0) return 100.0
+
         if (lastCompletedAt == null) return 0.0
 
         val completedInstant = try {
@@ -53,7 +97,7 @@ object FreshnessCalculator {
 
         if (hoursSince < 0) return 100.0 // Completion dans le futur = fraicheur maximale
 
-        return 100.0 * exp(-0.693 * hoursSince / halfLifeHours)
+        return (100.0 * exp(-0.693 * hoursSince / halfLife)).coerceIn(0.0, 100.0)
     }
 
     /**

@@ -113,7 +113,6 @@ class HomeViewModel @Inject constructor(
                 taskId,
                 com.torchons.app.data.model.UpdateTaskRequest(
                     recurrenceRule = rule,
-                    freshnessHalfLifeHours = recurrence.everyNDays * 24.0
                 )
             )
         }

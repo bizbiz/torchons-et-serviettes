@@ -14,7 +14,7 @@ data class Task(
     @SerializedName("assigned_to_ids") val assignedToIds: List<String> = emptyList(),
     @SerializedName("recurrence_rule") val recurrenceRule: RecurrenceRule? = null,
     @SerializedName("weight") val weight: Int = 1,
-    @SerializedName("freshness_half_life_hours") val freshnessHalfLifeHours: Double = 168.0,
+    @SerializedName("tolerance") val tolerance: String = "NORMAL",
     @SerializedName("is_active") val isActive: Boolean = true,
     @SerializedName("sort_order") val sortOrder: Int = 0,
     @SerializedName("created_at") val createdAt: String = "",
@@ -31,7 +31,7 @@ data class CreateTaskRequest(
     @SerializedName("assigned_to_ids") val assignedToIds: List<String>,
     @SerializedName("recurrence_rule") val recurrenceRule: RecurrenceRule? = null,
     @SerializedName("weight") val weight: Int = 1,
-    @SerializedName("freshness_half_life_hours") val freshnessHalfLifeHours: Double? = null
+    @SerializedName("tolerance") val tolerance: String = "NORMAL"
 )
 
 /**
@@ -44,7 +44,7 @@ data class UpdateTaskRequest(
     @SerializedName("assigned_to_ids") val assignedToIds: List<String>? = null,
     @SerializedName("recurrence_rule") val recurrenceRule: RecurrenceRule? = null,
     @SerializedName("weight") val weight: Int? = null,
-    @SerializedName("freshness_half_life_hours") val freshnessHalfLifeHours: Double? = null,
+    @SerializedName("tolerance") val tolerance: String? = null,
     @SerializedName("is_active") val isActive: Boolean? = null
 )
 

@@ -455,15 +455,15 @@ fun TaskDetailScreen(
                                     Spacer(modifier = Modifier.height(12.dp))
                                 }
 
-                                // Demi-vie
+                                // Tolerance au retard
                                 Text(
-                                    text = "Demi-vie",
+                                    text = "Tolerance au retard",
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = formatHalfLife(task.freshnessHalfLifeHours),
+                                    text = formatTolerance(task.tolerance),
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                             }
@@ -697,11 +697,12 @@ private fun formatRecurrence(rule: com.torchons.app.data.model.RecurrenceRule): 
     }
 }
 
-/** Formate la demi-vie en texte lisible. */
-private fun formatHalfLife(hours: Double): String {
-    return when {
-        hours >= 168.0 -> "${(hours / 168.0).toInt()} semaine(s)"
-        hours >= 24.0 -> "${(hours / 24.0).toInt()} jour(s)"
-        else -> "${hours.toInt()} heure(s)"
+/** Formate la tolerance en texte lisible. */
+private fun formatTolerance(tolerance: String): String {
+    return when (tolerance) {
+        "STRICT" -> "Strict"
+        "NORMAL" -> "Normal"
+        "SOUPLE" -> "Souple"
+        else -> tolerance
     }
 }

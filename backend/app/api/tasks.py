@@ -38,7 +38,7 @@ async def _task_to_response(session: AsyncSession, task: Task) -> dict:
         "assigned_to_ids": assigned_ids,
         "recurrence_rule": task.recurrence_rule,
         "weight": task.weight,
-        "freshness_half_life_hours": task.freshness_half_life_hours,
+        "tolerance": task.tolerance,
         "is_active": task.is_active,
         "sort_order": task.sort_order,
         "created_at": task.created_at,
@@ -104,7 +104,7 @@ async def create_task(
         category_id=body.category_id,
         recurrence_rule=body.recurrence_rule.model_dump() if body.recurrence_rule else None,
         weight=body.weight,
-        freshness_half_life_hours=body.freshness_half_life_hours,
+        tolerance=body.tolerance,
     )
     session.add(task)
     await session.flush()

@@ -470,7 +470,7 @@ _TASK_FIELD_LABELS = {
     "points_value": "points",
     "weight": "poids",
     "recurrence_rule": "recurrence",
-    "freshness_half_life_hours": "demi-vie",
+    "tolerance": "tolerance",
     "deleted_at": "suppression",
 }
 

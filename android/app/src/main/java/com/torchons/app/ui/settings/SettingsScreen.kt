@@ -81,6 +81,7 @@ fun SettingsScreen(
     val affinityPopup = s.affinityPopup
     val freshnessThreshold = s.freshnessThreshold
     val affinityExpiry = s.affinityExpiry
+    val fairShareTolerance = s.fairShareTolerance
     val homeSsids = s.homeSsids
     var showWifiExplanation by remember { mutableStateOf(false) }
     var showAdvanced by remember { mutableStateOf(false) }
@@ -534,6 +535,28 @@ fun SettingsScreen(
                         onValueChange = { viewModel.setAffinityExpiry(it.toInt()) },
                         valueRange = 1f..12f,
                         steps = 10,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                    // Tolerance fair-share
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Tolerance fair-share : ${fairShareTolerance}%",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        InfoTooltip(
+                            title = "Tolerance fair-share",
+                            description = "L'app te dit 'tu as fait plus que ta part' quand tu as fait au moins X% de plus que ton ratio cible. A 30% (defaut) avec un ratio 50/50, l'app te felicite quand tu as fait 65% du boulot ou plus. A 0%, l'app te felicite des que tu depasses ton ratio. A 100%, jamais (sauf si tu fais tout)."
+                        )
+                    }
+                    Slider(
+                        value = fairShareTolerance.toFloat(),
+                        onValueChange = { viewModel.setFairShareTolerance(it.toInt()) },
+                        valueRange = 0f..100f,
+                        steps = 19,
                         modifier = Modifier.fillMaxWidth()
                     )
 

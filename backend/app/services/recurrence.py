@@ -5,6 +5,17 @@ from __future__ import annotations
 import math
 from datetime import date, datetime, timedelta, timezone
 
+from app.models.enums import TaskTolerance
+
+
+# Multiplicateur applique a l'intervalle nominal pour obtenir la demi-vie
+# de freshness selon la tolerance choisie pour la tache.
+_TOLERANCE_MULTIPLIER: dict[TaskTolerance, float] = {
+    TaskTolerance.STRICT: 0.5,
+    TaskTolerance.NORMAL: 1.0,
+    TaskTolerance.SOUPLE: 2.0,
+}
+
 
 def next_due(rule: dict | None, last_completed: datetime | None) -> datetime | None:
     """Calcule la prochaine echeance d'une tache recurrente."""
@@ -162,11 +173,18 @@ def compute_freshness(
     rule: dict | None,
     last_completed: datetime | None,
     created_at: datetime | None = None,
-    half_life_override: float | None = None,
+    tolerance: TaskTolerance = TaskTolerance.NORMAL,
 ) -> float:
-    """Calcule le score de freshness (0-100). Decroissance exponentielle."""
-    half_life = half_life_override or interval_hours(rule)
-    if half_life == float("inf") or half_life <= 0:
+    """Calcule le score de freshness (0-100). Decroissance exponentielle.
+
+    La demi-vie est derivee de l'intervalle nominal de la recurrence,
+    multipliee par le facteur de tolerance (STRICT x0.5, NORMAL x1, SOUPLE x2).
+    """
+    base = interval_hours(rule)
+    if base == float("inf") or base <= 0:
+        return 100.0
+    half_life = base * _TOLERANCE_MULTIPLIER[tolerance]
+    if half_life <= 0:
         return 100.0
 
     now = datetime.now(timezone.utc)

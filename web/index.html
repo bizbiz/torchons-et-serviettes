@@ -425,12 +425,22 @@ function renderChips() {
   document.getElementById('categories-chips').innerHTML = h;
 }
 function fCat(id) { selCat=id; renderChips(); renderTasks(); }
+function intervalHours(rule){
+  if(!rule) return Infinity;
+  if(rule.type==='interval') return (rule.every_n_days||1)*24;
+  if(rule.type==='weekdays'){const n=(rule.days||[]).length; return n?(7/n)*24:Infinity;}
+  if(rule.type==='monthly') return 30.44*24;
+  if(rule.type==='custom') return (rule.every_n_weeks||1)*7*24;
+  if(rule.type==='monthly_variable'){const n=(rule.days_per_month||{})[String(new Date().getMonth()+1)]; return n?n*24:30.44*24;}
+  return Infinity;
+}
+const TOL_MULT={STRICT:0.5,NORMAL:1.0,SOUPLE:2.0};
 function renderTasks() {
   let tasks = selCat ? allTasks.filter(t=>t.category_id===selCat) : allTasks;
   tasks = tasks.map(t => {
     const cs = allComps.filter(c=>c.task_id===t.id);
     const last = cs.length?cs.reduce((a,b)=>a.completed_at>b.completed_at?a:b):null;
-    let f=0;if(last){const h=(Date.now()-new Date(last.completed_at).getTime())/3600000;f=Math.max(0,Math.min(100,100*Math.exp(-0.693*h/(t.freshness_half_life_hours||168))));}
+    let f=0;if(last){const base=intervalHours(t.recurrence_rule);const hl=base*(TOL_MULT[t.tolerance]||1);if(isFinite(hl)&&hl>0){const h=(Date.now()-new Date(last.completed_at).getTime())/3600000;f=Math.max(0,Math.min(100,100*Math.exp(-0.693*h/hl)));}else{f=100;}}
     const cat=allCats.find(c=>c.id===t.category_id);
     return {...t,freshness:f,catName:cat?.name,catColor:cat?.color};
   }).sort((a,b)=>a.freshness-b.freshness);

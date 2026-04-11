@@ -28,6 +28,9 @@ class UserSettings(Base):
     affinity_expiry_months: Mapped[int] = mapped_column(Integer, default=6)
     # Suggestions
     freshness_threshold: Mapped[int] = mapped_column(Integer, default=10)
+    # Tolerance fair-share : message "tu as fait plus que ta part" affiche
+    # quand actual > target * (1 + tolerance/100). Defaut 30 = +30%.
+    fair_share_tolerance_percent: Mapped[int] = mapped_column(Integer, default=30)
     # WiFi maison (SSIDs separes par |)
     home_ssids: Mapped[str] = mapped_column(Text, default="")
     # Timestamps

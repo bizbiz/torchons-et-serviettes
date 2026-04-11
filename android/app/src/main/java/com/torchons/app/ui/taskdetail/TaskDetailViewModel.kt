@@ -106,7 +106,8 @@ class TaskDetailViewModel @Inject constructor(
                 val lastCompletion = completions.maxByOrNull { it.completedAt }
                 val freshness = FreshnessCalculator.calculateFreshness(
                     lastCompletedAt = lastCompletion?.completedAt,
-                    halfLifeHours = task?.freshnessHalfLifeHours ?: 168.0
+                    rule = task?.recurrenceRule,
+                    tolerance = task?.tolerance ?: "NORMAL",
                 )
 
                 _uiState.value = TaskDetailUiState(
@@ -141,7 +142,8 @@ class TaskDetailViewModel @Inject constructor(
                     val updatedCompletions = listOf(completion) + _uiState.value.completions
                     val freshness = FreshnessCalculator.calculateFreshness(
                         lastCompletedAt = completion.completedAt,
-                        halfLifeHours = _uiState.value.task?.freshnessHalfLifeHours ?: 168.0
+                        rule = _uiState.value.task?.recurrenceRule,
+                        tolerance = _uiState.value.task?.tolerance ?: "NORMAL",
                     )
 
                     _uiState.value = _uiState.value.copy(

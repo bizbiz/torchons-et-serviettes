@@ -2,11 +2,12 @@
 
 import uuid
 
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Enum as SAEnum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, UUIDMixin, TimestampMixin, SoftDeleteMixin
+from app.models.enums import TaskTolerance
 
 
 class Task(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
@@ -23,7 +24,13 @@ class Task(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # Gamification (P2)
     weight: Mapped[int] = mapped_column(Integer, default=1)
-    freshness_half_life_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Tolerance au retard (multiplicateur applique a l'intervalle nominal
+    # pour obtenir la demi-vie de la freshness). Voir TaskTolerance.
+    tolerance: Mapped[TaskTolerance] = mapped_column(
+        SAEnum(TaskTolerance, name="task_tolerance"),
+        nullable=False,
+        default=TaskTolerance.NORMAL,
+    )
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)

@@ -7,6 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.models.enums import TaskTolerance
+
 
 class RecurrenceRule(BaseModel):
     type: str  # interval, weekdays, monthly, custom
@@ -24,7 +26,7 @@ class TaskCreate(BaseModel):
     assigned_to_ids: list[UUID] = Field(min_length=1)
     recurrence_rule: RecurrenceRule | None = None
     weight: int = Field(default=1, ge=1, le=18)
-    freshness_half_life_hours: float | None = None
+    tolerance: TaskTolerance = TaskTolerance.NORMAL
 
 
 class TaskUpdate(BaseModel):
@@ -34,7 +36,7 @@ class TaskUpdate(BaseModel):
     assigned_to_ids: list[UUID] | None = Field(default=None, min_length=1)
     recurrence_rule: RecurrenceRule | None = None
     weight: int | None = Field(default=None, ge=1, le=18)
-    freshness_half_life_hours: float | None = None
+    tolerance: TaskTolerance | None = None
     is_active: bool | None = None
     sort_order: int | None = None
 
@@ -47,7 +49,7 @@ class TaskResponse(BaseModel):
     assigned_to_ids: list[UUID]
     recurrence_rule: dict | None
     weight: int
-    freshness_half_life_hours: float | None
+    tolerance: TaskTolerance
     is_active: bool
     sort_order: int
     created_at: datetime

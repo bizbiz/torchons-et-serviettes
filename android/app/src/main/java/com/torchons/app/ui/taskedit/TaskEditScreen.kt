@@ -33,6 +33,9 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -358,6 +361,36 @@ fun TaskEditScreen(
                                 singleLine = true
                             )
                         }
+                    }
+                }
+            }
+
+            // Tolerance au retard (uniquement pour les taches recurrentes)
+            if (uiState.recurrenceType != "none") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Tolerance au retard",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    InfoTooltip(
+                        title = "Tolerance au retard",
+                        description = "Strict : la tache devient rouge avant l'echeance. Normal : la tache est jaune a l'echeance. Souple : la tache reste verte meme apres l'echeance."
+                    )
+                }
+                val tolerances = listOf(
+                    "STRICT" to "Strict",
+                    "NORMAL" to "Normal",
+                    "SOUPLE" to "Souple",
+                )
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    tolerances.forEachIndexed { idx, (value, label) ->
+                        SegmentedButton(
+                            selected = uiState.tolerance == value,
+                            onClick = { viewModel.updateTolerance(value) },
+                            shape = SegmentedButtonDefaults.itemShape(idx, tolerances.size),
+                        ) { Text(label) }
                     }
                 }
             }
