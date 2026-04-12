@@ -105,11 +105,10 @@ class HomeViewModel @Inject constructor(
                     inProgress = cached.inProgress ?: emptyList(),
                     fairShare = cached.fairShare ?: emptyList(),
                     pendingAffinity = firstPending,
-                    showAffinityPopup = firstPending != null
-                        && !affinityDismissedThisSession
-                        && popupEnabled,
+                    // Ne PAS toggler showAffinityPopup ici — le combine emet
+                    // plusieurs fois pendant le refresh et ca provoque un flicker.
+                    // showAffinityPopup est controle par refresh() et submitRatingAndNext().
                     hasCachedData = hasCache,
-                    // Des qu'on a du cache, on n'est plus en "loading initial".
                     isLoading = if (hasCache) false else _uiState.value.isLoading,
                 )
             }
@@ -145,10 +144,17 @@ class HomeViewModel @Inject constructor(
 
             val allOk = settingsOk && results.all { it }
 
+            // Afficher la popup affinite UNE SEULE FOIS apres le refresh
+            val pending = _uiState.value.pendingAffinity
+            val popupEnabled = _affinityPopupEnabled.value
+
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 isRefreshing = false,
                 lastRefreshFailed = !allOk,
+                showAffinityPopup = pending != null
+                    && !affinityDismissedThisSession
+                    && popupEnabled,
             )
         }
     }
@@ -193,8 +199,28 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 saveRatingData(taskId, affinity, effortPoints, recurrence)
+                _uiState.value = _uiState.value.copy(showAffinityPopup = false)
+
+                // Essayer d'abord les taches non-notees
                 homeRepository.refreshPendingAffinity(6)
-                // Le combine va automatiquement re-emettre via le Flow.
+                var next = homeRepository.observePendingAffinity().first()?.firstOrNull()
+
+                // Si plus de non-notees, fallback sur oldest-rating (re-notation)
+                if (next == null) {
+                    val resp = apiService.getOldestRating()
+                    next = if (resp.isSuccessful) resp.body()?.firstOrNull() else null
+                }
+
+                if (next != null) {
+                    _uiState.value = _uiState.value.copy(
+                        pendingAffinity = next,
+                        showAffinityPopup = true,
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        error = "Toutes les taches sont deja notees !",
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
@@ -212,9 +238,14 @@ class HomeViewModel @Inject constructor(
                 val resp = apiService.getOldestRating()
                 val task = if (resp.isSuccessful) resp.body()?.firstOrNull() else null
                 if (task != null) {
+                    affinityDismissedThisSession = false
                     _uiState.value = _uiState.value.copy(
                         pendingAffinity = task,
                         showAffinityPopup = true,
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        error = "Toutes les taches sont deja notees !",
                     )
                 }
             } catch (_: Exception) {

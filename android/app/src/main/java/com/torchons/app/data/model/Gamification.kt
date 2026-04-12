@@ -27,7 +27,8 @@ data class PendingAffinity(
     @SerializedName("title") val title: String,
     @SerializedName("current_affinity") val currentAffinity: Int? = null,
     @SerializedName("current_effort_points") val currentEffortPoints: Int? = null,
-    @SerializedName("recurrence_rule") val recurrenceRule: RecurrenceRule? = null
+    @SerializedName("recurrence_rule") val recurrenceRule: RecurrenceRule? = null,
+    @SerializedName("pending_total") val pendingTotal: Int? = null,
 )
 
 /** Statut fair-share. */

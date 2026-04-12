@@ -1,5 +1,6 @@
 package com.torchons.app.ui.settings
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
@@ -89,8 +90,8 @@ class SettingsViewModel @Inject constructor(
                         homeSsids = (data["home_ssids"] as? List<*>)?.map { it.toString() } ?: emptyList(),
                         isLoaded = true,
                     )
-                    // Sync notif_completed to SharedPreferences for FCM service
-                    tokenManager.setNotifCompleted(_settings.value.notifCompleted)
+                    // Sync tous les reglages vers TokenManager local
+                    syncToTokenManager(_settings.value)
                 }
 
                 // Fair-share
@@ -118,20 +119,38 @@ class SettingsViewModel @Inject constructor(
     }
 
     private fun updateSetting(key: String, value: Any) {
+        Log.d("SettingsVM", "updateSetting: $key = $value")
         viewModelScope.launch {
             try {
-                apiService.updateSettings(mapOf(key to value))
-            } catch (_: Exception) {}
+                val resp = apiService.updateSettings(mapOf(key to value))
+                Log.d("SettingsVM", "updateSetting response: ${resp.code()} ${resp.isSuccessful}")
+            } catch (e: Exception) {
+                Log.e("SettingsVM", "updateSetting FAILED: $key", e)
+            }
+            syncToTokenManager(_settings.value)
         }
+    }
+
+    /**
+     * Synchronise tous les reglages vers le TokenManager local (DataStore).
+     * Necessaire pour que les services hors ViewModel (FCM Worker, widget,
+     * filtres WiFi maison) aient les bonnes valeurs.
+     */
+    private suspend fun syncToTokenManager(s: UserSettingsState) {
+        tokenManager.setNotifDaily(s.notifDaily)
+        tokenManager.setNotifUrgent(s.notifUrgent)
+        tokenManager.setNotifCompleted(s.notifCompleted)
+        tokenManager.setNotifHour(s.notifHour)
+        tokenManager.setAffinityPopup(s.affinityPopup)
+        tokenManager.setFreshnessThreshold(s.freshnessThreshold)
+        tokenManager.setAffinityExpiry(s.affinityExpiry)
+        // home_ssids : remplacer entierement (clear + re-add)
+        tokenManager.setHomeSsids(s.homeSsids)
     }
 
     fun setNotifDaily(v: Boolean) { _settings.value = _settings.value.copy(notifDaily = v); updateSetting("notif_daily", v) }
     fun setNotifUrgent(v: Boolean) { _settings.value = _settings.value.copy(notifUrgent = v); updateSetting("notif_urgent", v) }
-    fun setNotifCompleted(v: Boolean) {
-        _settings.value = _settings.value.copy(notifCompleted = v)
-        updateSetting("notif_completed", v)
-        viewModelScope.launch { tokenManager.setNotifCompleted(v) }
-    }
+    fun setNotifCompleted(v: Boolean) { _settings.value = _settings.value.copy(notifCompleted = v); updateSetting("notif_completed", v) }
     fun setNotifHour(v: Int) { _settings.value = _settings.value.copy(notifHour = v); updateSetting("notif_hour", v) }
     fun setAffinityPopup(v: Boolean) { _settings.value = _settings.value.copy(affinityPopup = v); updateSetting("affinity_popup_enabled", v) }
     fun setAffinityExpiry(v: Int) { _settings.value = _settings.value.copy(affinityExpiry = v); updateSetting("affinity_expiry_months", v) }

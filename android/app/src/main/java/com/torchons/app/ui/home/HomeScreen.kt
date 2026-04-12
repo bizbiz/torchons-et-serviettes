@@ -42,13 +42,16 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.rememberDatePickerState
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Alignment
@@ -77,6 +80,14 @@ fun HomeScreen(
     val displayName by viewModel.displayName.collectAsState()
     val userId by viewModel.userId.collectAsState()
     val affinityEnabled by viewModel.affinityPopupEnabled.collectAsState()
+    val toastContext = LocalContext.current
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            Toast.makeText(toastContext, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
 
     // Recharger au retour sur cet ecran
     LifecycleResumeEffect(Unit) {
@@ -566,11 +577,20 @@ private fun RatingPopup(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                text = pending.title,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Column {
+                if (pending.pendingTotal != null && pending.pendingTotal > 0) {
+                    Text(
+                        text = "${pending.pendingTotal} tache(s) a noter",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    text = pending.title,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {

@@ -240,7 +240,7 @@ interface ApiService {
 
     /** Mettre a jour les reglages utilisateur. */
     @PUT("settings")
-    suspend fun updateSettings(@Body body: Map<String, Any>): Response<Map<String, Any>>
+    suspend fun updateSettings(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<Map<String, Any>>
 
     // --- Notifications ---
 

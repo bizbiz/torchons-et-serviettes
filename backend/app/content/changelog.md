@@ -1,5 +1,15 @@
 # Notes de version
 
+## v0.4.1 — 2026-04-12
+
+### Corrections
+- Les reglages (WiFi maison, notifications, seuil de suggestions, etc.) se sauvegardent maintenant correctement — avant, les modifications pouvaient etre perdues a la reouverture de l'app.
+- La popup de notation d'affinite n'apparait plus en double a l'ouverture de l'app.
+- Le bouton "Une autre" dans la popup de notation fonctionne : il passe bien a la tache suivante au lieu de simplement fermer la popup.
+- Le bouton "?" affiche maintenant une tache differente a chaque utilisation (avant, il montrait toujours la meme).
+- La popup de notation affiche le nombre de taches restantes a noter.
+- Quand toutes les taches sont deja notees, un message le confirme au lieu de ne rien faire.
+
 ## v0.4.0 — 2026-04-12
 
 ### Toute l'app fonctionne hors ligne

@@ -105,6 +105,12 @@ class TokenManager @Inject constructor(
     val affinityExpiryFlow: Flow<Int> = context.dataStore.data.map { it[AFFINITY_EXPIRY_KEY] ?: 6 }
     suspend fun setAffinityExpiry(months: Int) { context.dataStore.edit { it[AFFINITY_EXPIRY_KEY] = months } }
 
+    suspend fun setHomeSsids(ssids: List<String>) {
+        context.dataStore.edit { prefs ->
+            prefs[HOME_SSIDS_KEY] = ssids.filter { it.isNotBlank() }.joinToString("|")
+        }
+    }
+
     suspend fun removeHomeSsid(ssid: String) {
         context.dataStore.edit { prefs ->
             val current = prefs[HOME_SSIDS_KEY]?.split("|")?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()

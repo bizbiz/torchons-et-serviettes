@@ -120,11 +120,10 @@ async def set_affinity(
     )
     aff = result.scalar_one_or_none()
     if aff:
-        # No-op si la valeur ne change pas : evite de bumper updated_at
-        # et de polluer le feed /history avec un faux event.
-        if aff.score == body.score:
-            return {"task_id": task_id, "user_id": user_id, "score": body.score}
         aff.score = body.score
+        # Touch updated_at meme si valeur identique (marque comme "revu")
+        from sqlalchemy import func as sa_func
+        aff.updated_at = sa_func.now()
     else:
         aff = TaskAffinity(task_id=task_id, user_id=user_id, score=body.score)
         session.add(aff)
@@ -251,11 +250,9 @@ async def set_effort(
     )
     eff = result.scalar_one_or_none()
     if eff:
-        # No-op si la valeur ne change pas : evite de bumper updated_at
-        # et de polluer le feed /history avec un faux event.
-        if eff.points == body.points:
-            return {"task_id": str(task_id), "user_id": str(user_id), "points": body.points}
         eff.points = body.points
+        from sqlalchemy import func as sa_func
+        eff.updated_at = sa_func.now()
     else:
         eff = TaskEffort(task_id=task_id, user_id=user_id, points=body.points)
         session.add(eff)
@@ -303,21 +300,34 @@ async def pending_affinity(
         TaskEffort.updated_at >= expiry_cutoff,
     ).scalar_subquery()
 
-    # Taches sans affinite recente OU sans effort recent
+    # Condition commune : taches sans affinite recente OU sans effort recent
     from sqlalchemy import or_
+    pending_condition = [
+        Task.id.in_(assigned),
+        or_(Task.id.notin_(rated_affinity), Task.id.notin_(rated_effort)),
+        Task.deleted_at.is_(None),
+        Task.is_active.is_(True),
+    ]
+
+    # Compter le total AVANT le limit pour le compteur "X/Y"
+    total_result = await session.execute(
+        select(func.count(Task.id)).where(*pending_condition)
+    )
+    pending_total = total_result.scalar() or 0
+
+    if pending_total == 0:
+        return []
+
     result = await session.execute(
-        select(Task).where(
-            Task.id.in_(assigned),
-            or_(Task.id.notin_(rated_affinity), Task.id.notin_(rated_effort)),
-            Task.deleted_at.is_(None),
-            Task.is_active.is_(True),
-        ).order_by(func.random()).limit(1)
+        select(Task).where(*pending_condition).order_by(func.random()).limit(1)
     )
     task = result.scalar_one_or_none()
     if not task:
         return []
 
-    return [await _build_pending_payload(session, task, user_id)]
+    payload = await _build_pending_payload(session, task, user_id)
+    payload["pending_total"] = pending_total
+    return [payload]
 
 
 async def _build_pending_payload(session: AsyncSession, task: Task, user_id: UUID) -> dict:
