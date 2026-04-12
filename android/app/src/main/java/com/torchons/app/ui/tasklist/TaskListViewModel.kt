@@ -2,23 +2,27 @@ package com.torchons.app.ui.tasklist
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
-import com.torchons.app.data.local.TokenManager
-import com.torchons.app.util.WifiHelper
-import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.lifecycle.viewModelScope
+import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.Task
+import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
-import com.torchons.app.data.model.CompleteTaskRequest
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.util.FreshnessCalculator
+import com.torchons.app.util.WifiHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,9 +38,6 @@ data class TaskWithFreshness(
     val myAffinity: Int? = null
 )
 
-/**
- * Etat de l'interface de la liste des taches.
- */
 /** Etat tri-state pour les filtres : Off / High / Low */
 enum class FilterState { OFF, HIGH, LOW }
 
@@ -49,173 +50,183 @@ data class TaskListUiState(
     val isAtHome: Boolean = true,
     val showAllTasks: Boolean = false,
     val homeTasksHidden: Int = 0,
-    // Filtres
-    val filterTodo: Boolean = false,            // Seulement les a faire
+    val filterTodo: Boolean = false,
     val filterAffinity: FilterState = FilterState.OFF,
     val filterEffort: FilterState = FilterState.OFF,
-    val filterRecurrence: FilterState = FilterState.OFF, // HIGH = recurrentes, LOW = ponctuelles
-    val filterHome: FilterState = FilterState.OFF, // HIGH = a la maison, LOW = pas a la maison
+    val filterRecurrence: FilterState = FilterState.OFF,
+    val filterHome: FilterState = FilterState.OFF,
     val selectedRoom: String? = null,
     val availableRooms: List<String> = emptyList(),
     val error: String? = null,
-    val completionMessage: String? = null
+    val completionMessage: String? = null,
+    val hasCachedData: Boolean = false,
+    val lastRefreshFailed: Boolean = false,
 )
 
 /**
- * ViewModel pour l'ecran de liste des taches.
- * Charge les taches, categories et completions depuis le backend,
- * calcule la fraicheur et gere le filtrage par categorie.
+ * Etat des filtres en memoire. Stocke dans un Flow pour reactiver le
+ * combine automatiquement a chaque changement de filtre.
+ */
+private data class TaskListFilters(
+    val filterTodo: Boolean = false,
+    val filterAffinity: FilterState = FilterState.OFF,
+    val filterEffort: FilterState = FilterState.OFF,
+    val filterRecurrence: FilterState = FilterState.OFF,
+    val filterHome: FilterState = FilterState.OFF,
+    val selectedRoom: String? = null,
+    val selectedCategoryIds: Set<String> = emptySet(),
+    val showAllTasks: Boolean = false,
+    val myAffinities: Map<String, Int> = emptyMap(),
+    val freshnessThreshold: Int = 10,
+)
+
+/** Conteneur interne pour le combine des 4 flows. */
+private data class CachedTaskList(
+    val tasks: List<Task>,
+    val categories: List<Category>,
+    val completions: List<Completion>,
+    val filters: TaskListFilters,
+)
+
+/** Resultat du filtrage pur. */
+private data class FilteredResult(
+    val tasks: List<TaskWithFreshness>,
+    val rooms: List<String>,
+    val isAtHome: Boolean,
+    val homeTasksHidden: Int,
+)
+
+/**
+ * ViewModel de la liste des taches — pattern stale-while-revalidate.
+ *
+ * Observe les donnees depuis Room en continu via combine() et lance un
+ * refresh() API en background. L'ecran affiche le cache instantanement
+ * meme si le backend est injoignable.
  */
 @HiltViewModel
 class TaskListViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
-    private val apiService: com.torchons.app.data.api.ApiService,
+    private val apiService: ApiService,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TaskListUiState(isLoading = true))
     val uiState: StateFlow<TaskListUiState> = _uiState.asStateFlow()
 
-    /** Nom d'affichage de l'utilisateur connecte. */
     val displayName: StateFlow<String?> = authRepository.displayNameFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    /** Identifiant de l'utilisateur connecte. */
     val userId: StateFlow<String?> = authRepository.userIdFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    /** Liste des utilisateurs du foyer. */
-    private val _allUsers = MutableStateFlow<List<com.torchons.app.data.model.User>>(emptyList())
-    val allUsers: StateFlow<List<com.torchons.app.data.model.User>> = _allUsers.asStateFlow()
+    val allUsers: StateFlow<List<User>> = taskRepository.observeUsers()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Cache local des completions pour le calcul de fraicheur
-    private var allCompletions: List<Completion> = emptyList()
-    private var allTasks: List<Task> = emptyList()
-    private var allCategories: List<Category> = emptyList()
-    private var myAffinities: Map<String, Int> = emptyMap()
-    private var freshnessThreshold: Int = 10
+    private val filtersFlow = MutableStateFlow(TaskListFilters())
 
     init {
-        loadData()
+        observeCache()
+        refresh()
     }
 
     /**
-     * Charge toutes les donnees depuis le backend (taches, categories, completions).
+     * Observe les donnees Room + filtres en continu. Le combine emet a chaque
+     * fois qu'un des flux change (nouveau cache apres refresh, ou changement
+     * de filtre). Garantit affichage instantane au demarrage.
      */
-    fun loadData() {
+    private fun observeCache() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            combine(
+                taskRepository.observeActiveTasks(),
+                taskRepository.observeCategories(),
+                taskRepository.observeRecentCompletions(500),
+                filtersFlow,
+            ) { tasks, categories, completions, filters ->
+                CachedTaskList(tasks, categories, completions, filters)
+            }.collect { cached ->
+                val hasCache = cached.tasks.isNotEmpty() || cached.categories.isNotEmpty()
+                val homeSsids = tokenManager.homeSsidsFlow.first()
+                val isAtHome = WifiHelper.isAtHome(context, homeSsids)
+                val filtered = applyFilters(
+                    cached.tasks, cached.categories, cached.completions,
+                    cached.filters, isAtHome,
+                )
 
-            try {
-                // Charger les donnees en parallele
-                val tasksResult = taskRepository.getTasks()
-                val categoriesResult = taskRepository.getCategories()
-                val completionsResult = taskRepository.getCompletions()
-                val usersResult = taskRepository.getUsers()
-
-                val tasks = tasksResult.getOrNull() ?: emptyList()
-                val categories = categoriesResult.getOrNull() ?: emptyList()
-                val completions = completionsResult.getOrNull() ?: emptyList()
-                val users = usersResult.getOrNull() ?: emptyList()
-
-                allTasks = tasks
-                allCategories = categories
-                allCompletions = completions
-                _allUsers.value = users
-
-                // Charger les affinites du user courant
-                try {
-                    val affResp = apiService.getMyAffinities()
-                    if (affResp.isSuccessful) {
-                        myAffinities = (affResp.body() ?: emptyList()).associate {
-                            (it["task_id"] as? String ?: "") to ((it["score"] as? Double)?.toInt() ?: 5)
-                        }
-                    }
-                } catch (_: Exception) {}
-
-                // Charger le seuil de fraicheur depuis les settings
-                try {
-                    val sResp = apiService.getSettings()
-                    if (sResp.isSuccessful) {
-                        freshnessThreshold = (sResp.body()?.get("freshness_threshold") as? Double)?.toInt() ?: 10
-                    }
-                } catch (_: Exception) {}
-
-                val error = when {
-                    tasksResult.isFailure -> tasksResult.exceptionOrNull()?.message
-                    categoriesResult.isFailure -> categoriesResult.exceptionOrNull()?.message
-                    else -> null
-                }
-
-                updateFilteredTasks(error = error)
-            } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    isRefreshing = false,
-                    error = e.message ?: "Erreur inconnue"
+                    tasks = filtered.tasks,
+                    categories = cached.categories,
+                    availableRooms = filtered.rooms,
+                    isAtHome = filtered.isAtHome,
+                    homeTasksHidden = filtered.homeTasksHidden,
+                    selectedCategoryIds = cached.filters.selectedCategoryIds,
+                    showAllTasks = cached.filters.showAllTasks,
+                    filterTodo = cached.filters.filterTodo,
+                    filterAffinity = cached.filters.filterAffinity,
+                    filterEffort = cached.filters.filterEffort,
+                    filterRecurrence = cached.filters.filterRecurrence,
+                    filterHome = cached.filters.filterHome,
+                    selectedRoom = cached.filters.selectedRoom,
+                    hasCachedData = hasCache,
+                    isLoading = if (hasCache) false else _uiState.value.isLoading,
                 )
             }
         }
     }
 
     /**
-     * Rafraichit les donnees (pull-to-refresh).
+     * Refresh les donnees depuis l'API en parallele. Echec silencieux :
+     * si le backend ne repond pas, le cache Room reste affiche et
+     * lastRefreshFailed passe a true.
      */
     fun refresh() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isRefreshing = true, error = null)
+            _uiState.value = _uiState.value.copy(isRefreshing = true)
+
+            val results = listOf(
+                async { taskRepository.refreshTasks() },
+                async { taskRepository.refreshCategories() },
+                async { taskRepository.refreshCompletions() },
+                async { taskRepository.refreshUsers() },
+            ).awaitAll()
 
             try {
-                val tasksResult = taskRepository.getTasks()
-                val categoriesResult = taskRepository.getCategories()
-                val completionsResult = taskRepository.getCompletions()
+                val affResp = apiService.getMyAffinities()
+                if (affResp.isSuccessful) {
+                    val affinities = (affResp.body() ?: emptyList()).associate {
+                        (it["task_id"] as? String ?: "") to ((it["score"] as? Double)?.toInt() ?: 5)
+                    }
+                    filtersFlow.value = filtersFlow.value.copy(myAffinities = affinities)
+                }
+            } catch (_: Exception) {}
 
-                allTasks = tasksResult.getOrNull() ?: allTasks
-                allCategories = categoriesResult.getOrNull() ?: allCategories
-                allCompletions = completionsResult.getOrNull() ?: allCompletions
+            try {
+                val sResp = apiService.getSettings()
+                if (sResp.isSuccessful) {
+                    val threshold = (sResp.body()?.get("freshness_threshold") as? Double)?.toInt() ?: 10
+                    filtersFlow.value = filtersFlow.value.copy(freshnessThreshold = threshold)
+                }
+            } catch (_: Exception) {}
 
-                updateFilteredTasks()
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isRefreshing = false,
-                    error = e.message
-                )
-            }
+            val allOk = results.all { it }
+
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                isRefreshing = false,
+                lastRefreshFailed = !allOk,
+            )
         }
     }
 
-    /**
-     * Filtre les taches par categorie.
-     * @param categoryId Identifiant de la categorie, ou null pour toutes.
-     */
-    fun toggleCategory(categoryId: String) {
-        val current = _uiState.value.selectedCategoryIds.toMutableSet()
-        if (categoryId in current) current.remove(categoryId) else current.add(categoryId)
-        _uiState.value = _uiState.value.copy(selectedCategoryIds = current)
-        updateFilteredTasks()
-    }
+    fun loadData() = refresh()
 
-    fun clearCategoryFilter() {
-        _uiState.value = _uiState.value.copy(selectedCategoryIds = emptySet())
-        updateFilteredTasks()
-    }
-
-    /**
-     * Marque une tache comme completee.
-     */
     fun completeTask(taskId: String) {
         viewModelScope.launch {
             val result = taskRepository.completeTask(taskId)
             result.fold(
-                onSuccess = { completion ->
-                    // Ajouter la nouvelle completion au cache local
-                    allCompletions = allCompletions + completion
-                    updateFilteredTasks()
-                    _uiState.value = _uiState.value.copy(
-                        completionMessage = "Tache completee !"
-                    )
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
                 },
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
@@ -226,14 +237,11 @@ class TaskListViewModel @Inject constructor(
         }
     }
 
-    /** Complete une tache a une date historique avec un user specifique. */
     fun completeTaskAtDate(taskId: String, isoDate: String, completedBy: String? = null) {
         viewModelScope.launch {
             val result = taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy)
             result.fold(
-                onSuccess = { completion ->
-                    allCompletions = allCompletions + completion
-                    updateFilteredTasks()
+                onSuccess = {
                     _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
                 },
                 onFailure = { error ->
@@ -243,44 +251,54 @@ class TaskListViewModel @Inject constructor(
         }
     }
 
-    /** Efface le message de completion affiche. */
     fun clearCompletionMessage() {
         _uiState.value = _uiState.value.copy(completionMessage = null)
     }
 
-    /** Efface le message d'erreur affiche. */
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
 
     fun toggleFilterTodo() {
-        _uiState.value = _uiState.value.copy(filterTodo = !_uiState.value.filterTodo)
-        updateFilteredTasks()
+        filtersFlow.value = filtersFlow.value.copy(filterTodo = !filtersFlow.value.filterTodo)
     }
 
     fun toggleFilterAffinity() {
-        _uiState.value = _uiState.value.copy(filterAffinity = nextFilterState(_uiState.value.filterAffinity))
-        updateFilteredTasks()
+        filtersFlow.value = filtersFlow.value.copy(filterAffinity = nextFilterState(filtersFlow.value.filterAffinity))
     }
 
     fun toggleFilterEffort() {
-        _uiState.value = _uiState.value.copy(filterEffort = nextFilterState(_uiState.value.filterEffort))
-        updateFilteredTasks()
+        filtersFlow.value = filtersFlow.value.copy(filterEffort = nextFilterState(filtersFlow.value.filterEffort))
     }
 
     fun toggleFilterRecurrence() {
-        _uiState.value = _uiState.value.copy(filterRecurrence = nextFilterState(_uiState.value.filterRecurrence))
-        updateFilteredTasks()
+        filtersFlow.value = filtersFlow.value.copy(filterRecurrence = nextFilterState(filtersFlow.value.filterRecurrence))
     }
 
     fun toggleFilterHome() {
-        _uiState.value = _uiState.value.copy(filterHome = nextFilterState(_uiState.value.filterHome))
-        updateFilteredTasks()
+        filtersFlow.value = filtersFlow.value.copy(filterHome = nextFilterState(filtersFlow.value.filterHome))
     }
 
     fun selectRoom(room: String?) {
-        _uiState.value = _uiState.value.copy(selectedRoom = room)
-        updateFilteredTasks()
+        filtersFlow.value = filtersFlow.value.copy(selectedRoom = room)
+    }
+
+    fun toggleCategory(categoryId: String) {
+        val current = filtersFlow.value.selectedCategoryIds.toMutableSet()
+        if (categoryId in current) current.remove(categoryId) else current.add(categoryId)
+        filtersFlow.value = filtersFlow.value.copy(selectedCategoryIds = current)
+    }
+
+    fun clearCategoryFilter() {
+        filtersFlow.value = filtersFlow.value.copy(selectedCategoryIds = emptySet())
+    }
+
+    fun toggleShowAll() {
+        filtersFlow.value = filtersFlow.value.copy(showAllTasks = !filtersFlow.value.showAllTasks)
+    }
+
+    suspend fun logout() {
+        authRepository.logout()
     }
 
     private fun nextFilterState(current: FilterState): FilterState = when (current) {
@@ -289,37 +307,19 @@ class TaskListViewModel @Inject constructor(
         FilterState.LOW -> FilterState.OFF
     }
 
-    /** Bascule l'affichage de toutes les taches (ignore le filtre WiFi). */
-    fun toggleShowAll() {
-        _uiState.value = _uiState.value.copy(showAllTasks = !_uiState.value.showAllTasks)
-        updateFilteredTasks()
-    }
-
-    /** Deconnexion de l'utilisateur. */
-    suspend fun logout() {
-        authRepository.logout()
-    }
-
     /**
-     * Met a jour la liste filtree des taches avec calcul de fraicheur.
-     * Les taches sont triees par urgence (les plus urgentes d'abord).
+     * Applique les filtres et calcule la fraicheur. Fonction pure.
      */
-    private fun updateFilteredTasks(error: String? = null) {
-        val state = _uiState.value
-        val selectedCategoryIds = state.selectedCategoryIds
-        val showAll = state.showAllTasks
+    private fun applyFilters(
+        tasks: List<Task>,
+        categories: List<Category>,
+        completions: List<Completion>,
+        filters: TaskListFilters,
+        isAtHome: Boolean,
+    ): FilteredResult {
+        val homeCategoryIds = categories.filter { it.requiresHome }.map { it.id }.toSet()
 
-        // Detecter si on est a la maison
-        val homeSsids = kotlinx.coroutines.runBlocking {
-            tokenManager.homeSsidsFlow.first()
-        }
-        val isAtHome = WifiHelper.isAtHome(context, homeSsids)
-
-        // Categories qui necessitent d'etre a la maison
-        val homeCategoryIds = allCategories.filter { it.requiresHome }.map { it.id }.toSet()
-
-        // Extraire toutes les pieces uniques (apres le " — " dans le titre)
-        val rooms = allTasks
+        val rooms = tasks
             .mapNotNull {
                 val parts = it.title.split(" — ")
                 if (parts.size >= 2) parts.last().trim() else null
@@ -327,38 +327,33 @@ class TaskListViewModel @Inject constructor(
             .toSet()
             .sorted()
 
-        // Filtrer par categories selectionnees (multi-selection)
-        var filteredTasks = if (selectedCategoryIds.isNotEmpty()) {
-            allTasks.filter { it.categoryId in selectedCategoryIds }
+        var filteredTasks = if (filters.selectedCategoryIds.isNotEmpty()) {
+            tasks.filter { it.categoryId in filters.selectedCategoryIds }
         } else {
-            allTasks
+            tasks
         }
 
-        // Filtrer par piece
-        if (state.selectedRoom != null) {
+        if (filters.selectedRoom != null) {
             filteredTasks = filteredTasks.filter {
-                it.title.endsWith(" — ${state.selectedRoom}")
+                it.title.endsWith(" — ${filters.selectedRoom}")
             }
         }
 
-        // Filtre WiFi maison (filterHome)
-        when (state.filterHome) {
+        when (filters.filterHome) {
             FilterState.HIGH -> filteredTasks = filteredTasks.filter { it.categoryId in homeCategoryIds }
             FilterState.LOW -> filteredTasks = filteredTasks.filter { it.categoryId !in homeCategoryIds }
             FilterState.OFF -> {}
         }
 
-        // Filtrer les taches "a la maison" si pas au WiFi maison et pas en mode "tout afficher"
         var homeTasksHidden = 0
-        if (!isAtHome && !showAll && homeCategoryIds.isNotEmpty()) {
+        if (!isAtHome && !filters.showAllTasks && homeCategoryIds.isNotEmpty()) {
             val before = filteredTasks.size
             filteredTasks = filteredTasks.filter { it.categoryId !in homeCategoryIds }
             homeTasksHidden = before - filteredTasks.size
         }
 
-        // Calculer la fraicheur pour chaque tache
         var tasksWithFreshness = filteredTasks.map { task ->
-            val lastCompletion = allCompletions
+            val lastCompletion = completions
                 .filter { it.taskId == task.id }
                 .maxByOrNull { it.completedAt }
 
@@ -368,60 +363,47 @@ class TaskListViewModel @Inject constructor(
                 tolerance = task.tolerance,
             )
 
-            val category = allCategories.find { it.id == task.categoryId }
+            val category = categories.find { it.id == task.categoryId }
 
             TaskWithFreshness(
                 task = task,
                 freshness = freshness,
                 categoryName = category?.name,
-                categoryColor = category?.color
+                categoryColor = category?.color,
             )
         }
 
-        // === FILTRES ===
-
-        // Filtre "a faire" : seulement les taches sous le seuil de suggestion configure
-        if (state.filterTodo) {
-            tasksWithFreshness = tasksWithFreshness.filter { it.freshness < freshnessThreshold.toDouble() }
+        if (filters.filterTodo) {
+            tasksWithFreshness = tasksWithFreshness.filter {
+                it.freshness < filters.freshnessThreshold.toDouble()
+            }
         }
 
-        // Filtre recurrence
-        when (state.filterRecurrence) {
+        when (filters.filterRecurrence) {
             FilterState.HIGH -> tasksWithFreshness = tasksWithFreshness.filter { it.task.recurrenceRule != null }
             FilterState.LOW -> tasksWithFreshness = tasksWithFreshness.filter { it.task.recurrenceRule == null }
             FilterState.OFF -> {}
         }
 
-        // Filtre effort : seuil absolu (1pt = 5min)
-        // HIGH = long (> 30min, ≥ 7 pts), LOW = court (≤ 15min, ≤ 3 pts)
-        when (state.filterEffort) {
+        when (filters.filterEffort) {
             FilterState.HIGH -> tasksWithFreshness = tasksWithFreshness.filter { it.task.weight >= 7 }
             FilterState.LOW -> tasksWithFreshness = tasksWithFreshness.filter { it.task.weight <= 3 }
             FilterState.OFF -> {}
         }
 
-        // Filtre affinite : seuil absolu (HIGH = aime ≥ 7, LOW = deteste ≤ 4)
-        if (state.filterAffinity != FilterState.OFF) {
-            tasksWithFreshness = tasksWithFreshness.map { it.copy(myAffinity = myAffinities[it.task.id]) }
-            tasksWithFreshness = when (state.filterAffinity) {
+        if (filters.filterAffinity != FilterState.OFF) {
+            tasksWithFreshness = tasksWithFreshness.map {
+                it.copy(myAffinity = filters.myAffinities[it.task.id])
+            }
+            tasksWithFreshness = when (filters.filterAffinity) {
                 FilterState.HIGH -> tasksWithFreshness.filter { (it.myAffinity ?: 5) >= 7 }
                 FilterState.LOW -> tasksWithFreshness.filter { (it.myAffinity ?: 5) <= 4 }
                 else -> tasksWithFreshness
             }
         }
 
-        // Tri par urgence
         tasksWithFreshness = tasksWithFreshness.sortedBy { FreshnessCalculator.getUrgencyOrder(it.freshness) }
 
-        _uiState.value = _uiState.value.copy(
-            isLoading = false,
-            isRefreshing = false,
-            tasks = tasksWithFreshness,
-            categories = allCategories,
-            availableRooms = rooms,
-            isAtHome = isAtHome,
-            homeTasksHidden = homeTasksHidden,
-            error = error
-        )
+        return FilteredResult(tasksWithFreshness, rooms, isAtHome, homeTasksHidden)
     }
 }

@@ -1,5 +1,18 @@
 # Notes de version
 
+## v0.4.0 — 2026-04-12
+
+### Toute l'app fonctionne hors ligne
+- Les ecrans Taches et Detail d'une tache affichent maintenant les dernieres donnees connues meme quand le backend ne repond pas (avant, ils restaient vides).
+- Le bandeau "Hors ligne" affiche la date et l'heure des dernieres donnees ("donnees du 12/04 14:32").
+- Quand la connexion revient, les donnees se rafraichissent automatiquement sans avoir a fermer et rouvrir l'ecran.
+
+### Creation et validation de taches sans reseau
+- On peut maintenant creer, modifier, supprimer et valider des taches meme sans connexion au backend.
+- Les operations s'appliquent instantanement dans l'app et se synchronisent automatiquement quand la connexion revient.
+- Un badge "X operation(s) en attente" s'affiche dans le bandeau quand des operations n'ont pas encore ete envoyees au serveur.
+- Quand la synchronisation se fait, un indicateur "Synchronisation en cours..." s'affiche brievement.
+
 ## v0.3.0 — 2026-04-11
 
 ### Mode hors ligne sur l'accueil

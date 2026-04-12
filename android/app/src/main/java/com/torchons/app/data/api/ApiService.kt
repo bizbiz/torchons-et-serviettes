@@ -15,6 +15,8 @@ import com.torchons.app.data.model.LoginResponse
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.StreakInfo
 import com.torchons.app.data.model.Suggestion
+import com.torchons.app.data.model.SyncRequest
+import com.torchons.app.data.model.SyncResponse
 import com.torchons.app.data.model.UserStats
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskInProgress
@@ -255,6 +257,11 @@ interface ApiService {
     /** Roadmap de l'app (markdown). */
     @GET("roadmap")
     suspend fun getRoadmap(): Response<Map<String, Any>>
+
+    // --- Sync offline ---
+
+    @POST("sync")
+    suspend fun sync(@Body request: SyncRequest): Response<SyncResponse>
 
     // --- Sante ---
 

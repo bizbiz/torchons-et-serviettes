@@ -6,18 +6,19 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.Task
+import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.util.FreshnessCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * Etat de l'interface du detail d'une tache.
- */
 data class TaskRating(
     val displayName: String,
     val affinity: Int?,
@@ -36,12 +37,17 @@ data class TaskDetailUiState(
     val showEditRating: Boolean = false,
     val editingCompletion: Completion? = null,
     val error: String? = null,
-    val completionMessage: String? = null
+    val completionMessage: String? = null,
+    val hasCachedData: Boolean = false,
+    val lastRefreshFailed: Boolean = false,
 )
 
 /**
- * ViewModel pour l'ecran de detail d'une tache.
- * Charge les informations de la tache et son historique de completions.
+ * ViewModel du detail d'une tache — pattern stale-while-revalidate.
+ *
+ * Observe task + completions + users depuis Room en continu via combine().
+ * Les ratings (affinite/effort par user) restent en appel direct API car
+ * trop peu structurees pour Room.
  */
 @HiltViewModel
 class TaskDetailViewModel @Inject constructor(
@@ -50,7 +56,6 @@ class TaskDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    /** Identifiant de la tache recupere depuis les arguments de navigation. */
     private val taskId: String = savedStateHandle.get<String>("taskId")
         ?: throw IllegalArgumentException("taskId manquant dans les arguments de navigation")
 
@@ -58,99 +63,102 @@ class TaskDetailViewModel @Inject constructor(
     val uiState: StateFlow<TaskDetailUiState> = _uiState.asStateFlow()
 
     init {
-        loadData()
+        observeCache()
+        refresh()
     }
 
     /**
-     * Charge les donnees de la tache et ses completions.
+     * Observe la tache, ses completions et les users depuis Room en continu.
+     * Le combine emet a chaque changement (ex: apres un refresh ou une
+     * completion reussie qui upsert dans Room).
      */
-    private fun loadData() {
+    private fun observeCache() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            combine(
+                taskRepository.observeTaskById(taskId),
+                taskRepository.observeCompletionsByTask(taskId),
+                taskRepository.observeUsers(),
+            ) { task, completions, users ->
+                CachedDetail(task, completions, users)
+            }.collect { cached ->
+                val hasCache = cached.task != null
+                val userNames = cached.users.associate { it.id to it.displayName }
 
-            try {
-                // Charger les taches, completions et users
-                val tasksResult = taskRepository.getTasks()
-                val completionsResult = taskRepository.getCompletions(taskId = taskId)
-                val usersResult = taskRepository.getUsers()
-
-                val tasks = tasksResult.getOrNull() ?: emptyList()
-                val task = tasks.find { it.id == taskId }
-                val completions = completionsResult.getOrNull() ?: emptyList()
-                val users = usersResult.getOrNull() ?: emptyList()
-                val userNames = users.associate { it.id to it.displayName }
-
-                // Charger les ratings (affinite + effort par user)
-                var ratings = emptyList<TaskRating>()
-                var avgEffortTimeMin: Int? = null
-                var scorePoints: Int? = null
-                try {
-                    val ratingsResp = apiService.getTaskRatings(taskId)
-                    if (ratingsResp.isSuccessful) {
-                        val data = ratingsResp.body() ?: emptyMap()
-                        @Suppress("UNCHECKED_CAST")
-                        val ratingsData = data["ratings"] as? List<Map<String, Any?>> ?: emptyList()
-                        ratings = ratingsData.map { r ->
-                            TaskRating(
-                                displayName = r["display_name"] as? String ?: "?",
-                                affinity = (r["affinity"] as? Double)?.toInt(),
-                                effortTimeMin = (r["effort_time_min"] as? Double)?.toInt(),
-                            )
-                        }
-                        avgEffortTimeMin = (data["avg_effort_time_min"] as? Double)?.toInt()
-                        scorePoints = (data["score_points"] as? Double)?.toInt()
-                    }
-                } catch (_: Exception) {}
-
-                // Calculer la fraicheur
-                val lastCompletion = completions.maxByOrNull { it.completedAt }
+                val sortedCompletions = cached.completions.sortedByDescending { it.completedAt }
+                val lastCompletion = sortedCompletions.firstOrNull()
                 val freshness = FreshnessCalculator.calculateFreshness(
                     lastCompletedAt = lastCompletion?.completedAt,
-                    rule = task?.recurrenceRule,
-                    tolerance = task?.tolerance ?: "NORMAL",
+                    rule = cached.task?.recurrenceRule,
+                    tolerance = cached.task?.tolerance ?: "NORMAL",
                 )
 
-                _uiState.value = TaskDetailUiState(
-                    isLoading = false,
-                    task = task,
-                    completions = completions.sortedByDescending { it.completedAt },
-                    userNames = userNames,
-                    ratings = ratings,
-                    avgEffortTimeMin = avgEffortTimeMin,
-                    scorePoints = scorePoints,
-                    freshness = freshness,
-                    error = if (task == null) "Tache introuvable" else null
-                )
-            } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = e.message ?: "Erreur lors du chargement"
+                    task = cached.task,
+                    completions = sortedCompletions,
+                    userNames = userNames,
+                    freshness = freshness,
+                    hasCachedData = hasCache,
+                    isLoading = if (hasCache) false else _uiState.value.isLoading,
+                    error = if (!hasCache && !_uiState.value.isLoading && _uiState.value.lastRefreshFailed)
+                        "Tache introuvable" else _uiState.value.error,
                 )
             }
         }
     }
 
     /**
-     * Marque la tache comme completee.
+     * Refresh les donnees depuis l'API. Les ratings sont chargees en direct
+     * (non cachees) ; si l'appel echoue, l'UI conserve la derniere valeur.
      */
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = _uiState.value.task == null)
+
+            val results = listOf(
+                async { taskRepository.refreshTasks() },
+                async { taskRepository.refreshCompletions(taskId = taskId) },
+                async { taskRepository.refreshUsers() },
+            ).awaitAll()
+
+            // Ratings en direct API (best-effort)
+            try {
+                val ratingsResp = apiService.getTaskRatings(taskId)
+                if (ratingsResp.isSuccessful) {
+                    val data = ratingsResp.body() ?: emptyMap()
+                    @Suppress("UNCHECKED_CAST")
+                    val ratingsData = data["ratings"] as? List<Map<String, Any?>> ?: emptyList()
+                    val ratings = ratingsData.map { r ->
+                        TaskRating(
+                            displayName = r["display_name"] as? String ?: "?",
+                            affinity = (r["affinity"] as? Double)?.toInt(),
+                            effortTimeMin = (r["effort_time_min"] as? Double)?.toInt(),
+                        )
+                    }
+                    val avgEffortTimeMin = (data["avg_effort_time_min"] as? Double)?.toInt()
+                    val scorePoints = (data["score_points"] as? Double)?.toInt()
+                    _uiState.value = _uiState.value.copy(
+                        ratings = ratings,
+                        avgEffortTimeMin = avgEffortTimeMin,
+                        scorePoints = scorePoints,
+                    )
+                }
+            } catch (_: Exception) {}
+
+            val allOk = results.all { it }
+
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                lastRefreshFailed = !allOk,
+            )
+        }
+    }
+
     fun completeTask() {
         viewModelScope.launch {
             val result = taskRepository.completeTask(taskId)
             result.fold(
-                onSuccess = { completion ->
-                    // Mettre a jour l'etat avec la nouvelle completion
-                    val updatedCompletions = listOf(completion) + _uiState.value.completions
-                    val freshness = FreshnessCalculator.calculateFreshness(
-                        lastCompletedAt = completion.completedAt,
-                        rule = _uiState.value.task?.recurrenceRule,
-                        tolerance = _uiState.value.task?.tolerance ?: "NORMAL",
-                    )
-
-                    _uiState.value = _uiState.value.copy(
-                        completions = updatedCompletions,
-                        freshness = freshness,
-                        completionMessage = "Tache completee !"
-                    )
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
                 },
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
@@ -161,16 +169,12 @@ class TaskDetailViewModel @Inject constructor(
         }
     }
 
-    /** Supprime une completion (soft delete). */
     fun deleteCompletion(completionId: String) {
         viewModelScope.launch {
             try {
                 apiService.deleteCompletion(taskId, completionId)
-                // Retirer de la liste locale
-                _uiState.value = _uiState.value.copy(
-                    completions = _uiState.value.completions.filter { it.id != completionId },
-                    completionMessage = "Completion supprimee"
-                )
+                taskRepository.refreshCompletions(taskId = taskId)
+                _uiState.value = _uiState.value.copy(completionMessage = "Completion supprimee")
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     error = e.message ?: "Erreur lors de la suppression"
@@ -195,7 +199,7 @@ class TaskDetailViewModel @Inject constructor(
                     "completed_at" to completedAt
                 ))
                 _uiState.value = _uiState.value.copy(editingCompletion = null, completionMessage = "Completion modifiee")
-                loadData()
+                taskRepository.refreshCompletions(taskId = taskId)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
@@ -216,20 +220,25 @@ class TaskDetailViewModel @Inject constructor(
                 apiService.setAffinity(taskId, com.torchons.app.data.model.AffinityRequest(affinity))
                 apiService.setEffort(taskId, mapOf("points" to effortPoints))
                 _uiState.value = _uiState.value.copy(showEditRating = false, completionMessage = "Notes mises a jour")
-                loadData()
+                refresh()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
         }
     }
 
-    /** Efface le message de completion affiche. */
     fun clearCompletionMessage() {
         _uiState.value = _uiState.value.copy(completionMessage = null)
     }
 
-    /** Efface le message d'erreur affiche. */
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
 }
+
+/** Conteneur interne pour le combine des 3 flows. */
+private data class CachedDetail(
+    val task: Task?,
+    val completions: List<Completion>,
+    val users: List<User>,
+)

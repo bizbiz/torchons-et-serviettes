@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.database import get_session
 from app.models.user_settings import UserSettings
+from app.utils.changelog import record_change
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -95,6 +96,10 @@ async def update_settings(
     for key, val in updates.items():
         setattr(settings, key, val)
 
+    await record_change(
+        session, "user_settings", settings.user_id, "UPDATE", current["user_id"],
+        new_data=body.model_dump(mode="json", exclude_unset=True),
+    )
     await session.commit()
     await session.refresh(settings)
 

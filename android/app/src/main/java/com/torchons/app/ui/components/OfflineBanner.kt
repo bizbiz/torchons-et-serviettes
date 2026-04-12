@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,22 +29,34 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.core.network.ConnectionState
 import com.torchons.app.ui.theme.FreshnessOrange
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-/**
- * Bandeau global affichant l'etat "hors ligne" en haut de l'app.
- *
- * Visible uniquement quand [com.torchons.app.core.network.BackendHealthMonitor]
- * indique [ConnectionState.Offline]. Quand on revient online (via le polling
- * de fond ou un appel API qui reussit), le bandeau se ferme automatiquement.
- *
- * Affiche un bouton "Reessayer" qui force un check immediat de /api/health.
- */
 @Composable
 fun OfflineBanner(
     viewModel: ConnectionViewModel = hiltViewModel(),
 ) {
     val state by viewModel.connectionState.collectAsState()
-    val visible = state is ConnectionState.Offline
+    val cacheTs by viewModel.cacheTimestamp.collectAsState()
+    val pendingCount by viewModel.pendingOpsCount.collectAsState()
+    val isOffline = state is ConnectionState.Offline
+    val visible = isOffline || pendingCount > 0
+
+    val bannerText = when {
+        isOffline && pendingCount > 0 -> "Hors ligne — $pendingCount operation(s) en attente"
+        isOffline && cacheTs != null -> {
+            val fmt = SimpleDateFormat("dd/MM HH:mm", Locale.FRANCE)
+            "Hors ligne — donnees du ${fmt.format(Date(cacheTs!!))}"
+        }
+        isOffline -> "Hors ligne — donnees en cache"
+        pendingCount > 0 -> "Synchronisation en cours..."
+        else -> ""
+    }
+
+    val bgColor = if (isOffline) FreshnessOrange else MaterialTheme.colorScheme.primaryContainer
+    val textColor = if (isOffline) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+    val icon = if (isOffline) Icons.Default.CloudOff else Icons.Default.Sync
 
     AnimatedVisibility(
         visible = visible,
@@ -53,35 +66,37 @@ fun OfflineBanner(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(FreshnessOrange)
+                .background(bgColor)
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start,
         ) {
             Icon(
-                imageVector = Icons.Default.CloudOff,
+                imageVector = icon,
                 contentDescription = null,
-                tint = Color.White,
+                tint = textColor,
                 modifier = Modifier.size(20.dp),
             )
             Text(
-                text = "Hors ligne — donnees en cache",
-                color = Color.White,
+                text = bannerText,
+                color = textColor,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier
                     .padding(start = 10.dp)
                     .weight(1f),
             )
-            IconButton(
-                onClick = { viewModel.retry() },
-                modifier = Modifier.size(32.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Reessayer",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp),
-                )
+            if (isOffline) {
+                IconButton(
+                    onClick = { viewModel.retry() },
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Reessayer",
+                        tint = textColor,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
         }
     }

@@ -1,18 +1,20 @@
 package com.torchons.app
 
 import android.app.Application
+import com.torchons.app.core.sync.SyncTrigger
 import com.torchons.app.worker.DailyNotificationWorker
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
-/**
- * Classe Application principale avec Hilt.
- * Point d'entree pour l'injection de dependances.
- */
 @HiltAndroidApp
 class TorchonsApp : Application() {
+
+    @Inject
+    lateinit var syncTrigger: SyncTrigger
+
     override fun onCreate() {
         super.onCreate()
-        // Planifier la notification quotidienne
         DailyNotificationWorker.schedule(this)
+        syncTrigger.schedulePeriodic()
     }
 }

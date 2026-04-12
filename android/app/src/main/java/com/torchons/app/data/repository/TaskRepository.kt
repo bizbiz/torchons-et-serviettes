@@ -1,14 +1,17 @@
 package com.torchons.app.data.repository
 
+import com.google.gson.Gson
+import com.torchons.app.core.sync.SyncTrigger
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.dao.CategoryDao
 import com.torchons.app.data.local.dao.CompletionDao
+import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.UserDao
+import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.toDomain
 import com.torchons.app.data.local.entities.toEntity
 import com.torchons.app.data.model.Category
-import com.torchons.app.data.model.CompleteTaskRequest
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.CreateTaskRequest
 import com.torchons.app.data.model.Task
@@ -16,21 +19,18 @@ import com.torchons.app.data.model.UpdateTaskRequest
 import com.torchons.app.data.model.User
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.time.Instant
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repository des taches, categories, completions, users — stale-while-revalidate.
+ * Repository des taches — stale-while-revalidate + ecritures offline.
  *
- * Pattern :
- * - Les `observe*` retournent un Flow depuis Room : affichage instantane
- *   meme si l'app est offline ou vient juste de demarrer.
- * - Les `refresh*` font le fetch API + upsert dans Room. Le Flow emet
- *   automatiquement les nouvelles donnees. Echec silencieux : si l'API ne
- *   repond pas, le cache reste ce qu'il etait.
- * - Les ecritures (create/update/delete/complete) tapent l'API directement
- *   et invalident le cache local apres succes. En P1 elles echouent si offline ;
- *   la queue d'ecritures offline arrivera en P3.
+ * Lectures : observe* retourne un Flow Room, refresh* fetch l'API et upsert.
+ * Ecritures : write-local-first. L'operation est ecrite dans Room immediatement
+ * (UI optimiste), enqueue dans pending_operations, et le SyncWorker la pousse
+ * vers le backend quand la connexion est disponible.
  */
 @Singleton
 class TaskRepository @Inject constructor(
@@ -39,24 +39,21 @@ class TaskRepository @Inject constructor(
     private val categoryDao: CategoryDao,
     private val completionDao: CompletionDao,
     private val userDao: UserDao,
+    private val pendingDao: PendingOperationDao,
+    private val syncTrigger: SyncTrigger,
 ) {
+    private val gson = Gson()
 
     // -------------------------------------------------------------------
     // Tasks — observe / refresh
     // -------------------------------------------------------------------
 
-    /** Flow des taches actives (cache local Room, mis a jour par refresh). */
     fun observeActiveTasks(): Flow<List<Task>> =
         taskDao.observeActive().map { list -> list.map { it.toDomain() } }
 
-    /** Flow d'une tache par id. */
     fun observeTaskById(id: String): Flow<Task?> =
         taskDao.observeById(id).map { it?.toDomain() }
 
-    /**
-     * Refresh la liste des taches depuis l'API et upsert dans Room.
-     * Retourne true en cas de succes, false sinon (le Flow reste sur le cache).
-     */
     suspend fun refreshTasks(): Boolean {
         return try {
             val response = apiService.getTasks(activeOnly = null)
@@ -135,8 +132,6 @@ class TaskRepository @Inject constructor(
             val response = apiService.getCompletions(userId, taskId, limit)
             if (response.isSuccessful) {
                 val completions = response.body() ?: emptyList()
-                // Pour un fetch global (sans filtre tache), on remplace tout.
-                // Pour un fetch par tache, on upsert sans purger les autres.
                 if (taskId == null && userId == null) {
                     completionDao.replaceAll(completions.map { it.toEntity() })
                 } else {
@@ -152,53 +147,87 @@ class TaskRepository @Inject constructor(
     }
 
     // -------------------------------------------------------------------
-    // Ecritures (P1 : tape l'API direct, invalide le cache local apres succes)
-    // En P3 ces methodes seront refactorees pour ecrire d'abord dans Room
-    // (UI optimiste) et pousser dans la queue de sync.
+    // Ecritures offline-first
     // -------------------------------------------------------------------
 
     suspend fun createTask(request: CreateTaskRequest): Result<Task> {
-        return try {
-            val response = apiService.createTask(request)
-            if (response.isSuccessful) {
-                val task = response.body()!!
-                taskDao.upsert(task.toEntity())
-                Result.success(task)
-            } else {
-                Result.failure(Exception("Erreur lors de la creation: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        val clientOpId = UUID.randomUUID().toString()
+        val rowId = UUID.randomUUID().toString()
+        val now = Instant.now().toString()
+
+        val optimistic = Task(
+            id = rowId,
+            title = request.title,
+            description = request.description,
+            categoryId = request.categoryId,
+            assignedToIds = request.assignedToIds,
+            recurrenceRule = request.recurrenceRule,
+            weight = request.weight,
+            tolerance = request.tolerance,
+            isActive = true,
+            sortOrder = 0,
+            createdAt = now,
+            updatedAt = now,
+        )
+
+        taskDao.upsert(optimistic.toEntity())
+
+        val payload = mapOf(
+            "title" to request.title,
+            "description" to request.description,
+            "category_id" to request.categoryId,
+            "assigned_to_ids" to request.assignedToIds,
+            "recurrence_rule" to request.recurrenceRule,
+            "weight" to request.weight,
+            "tolerance" to request.tolerance,
+        )
+        enqueue(clientOpId, "tasks", "INSERT", rowId, payload)
+
+        return Result.success(optimistic)
     }
 
     suspend fun updateTask(taskId: String, request: UpdateTaskRequest): Result<Task> {
-        return try {
-            val response = apiService.updateTask(taskId, request)
-            if (response.isSuccessful) {
-                val task = response.body()!!
-                taskDao.upsert(task.toEntity())
-                Result.success(task)
-            } else {
-                Result.failure(Exception("Erreur lors de la mise a jour: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        val clientOpId = UUID.randomUUID().toString()
+
+        val existing = taskDao.getById(taskId)?.toDomain()
+        val updated = existing?.copy(
+            title = request.title ?: existing.title,
+            description = request.description ?: existing.description,
+            categoryId = request.categoryId ?: existing.categoryId,
+            assignedToIds = request.assignedToIds ?: existing.assignedToIds,
+            recurrenceRule = request.recurrenceRule ?: existing.recurrenceRule,
+            weight = request.weight ?: existing.weight,
+            tolerance = request.tolerance ?: existing.tolerance,
+            isActive = request.isActive ?: existing.isActive,
+            updatedAt = Instant.now().toString(),
+        )
+
+        if (updated != null) {
+            taskDao.upsert(updated.toEntity())
         }
+
+        val payload = mutableMapOf<String, Any?>()
+        request.title?.let { payload["title"] = it }
+        request.description?.let { payload["description"] = it }
+        request.categoryId?.let { payload["category_id"] = it }
+        request.assignedToIds?.let { payload["assigned_to_ids"] = it }
+        request.recurrenceRule?.let { payload["recurrence_rule"] = it }
+        request.weight?.let { payload["weight"] = it }
+        request.tolerance?.let { payload["tolerance"] = it }
+        request.isActive?.let { payload["is_active"] = it }
+
+        enqueue(clientOpId, "tasks", "UPDATE", taskId, payload)
+
+        return Result.success(updated ?: existing ?: Task(id = taskId, title = ""))
     }
 
     suspend fun deleteTask(taskId: String): Result<Unit> {
-        return try {
-            val response = apiService.deleteTask(taskId)
-            if (response.isSuccessful) {
-                taskDao.deleteById(taskId)
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Erreur lors de la suppression: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        val clientOpId = UUID.randomUUID().toString()
+
+        taskDao.deleteById(taskId)
+        enqueue(clientOpId, "tasks", "DELETE", taskId, null)
+
+        return Result.success(Unit)
     }
 
     suspend fun completeTask(
@@ -207,28 +236,54 @@ class TaskRepository @Inject constructor(
         completedBy: String? = null,
         notes: String? = null,
     ): Result<Completion> {
-        return try {
-            val response = apiService.completeTask(
-                taskId,
-                CompleteTaskRequest(notes = notes, completedAt = completedAt, completedBy = completedBy),
+        val clientOpId = UUID.randomUUID().toString()
+        val rowId = UUID.randomUUID().toString()
+        val now = completedAt ?: Instant.now().toString()
+
+        val optimistic = Completion(
+            id = rowId,
+            taskId = taskId,
+            completedBy = completedBy ?: "",
+            completedAt = now,
+            pointsEarned = 1,
+            notes = notes,
+        )
+
+        completionDao.upsertAll(listOf(optimistic.toEntity()))
+
+        val payload = mapOf<String, Any?>(
+            "task_id" to taskId,
+            "completed_by" to completedBy,
+            "completed_at" to completedAt,
+            "notes" to notes,
+        )
+        enqueue(clientOpId, "task_completions", "INSERT", rowId, payload)
+
+        return Result.success(optimistic)
+    }
+
+    private suspend fun enqueue(
+        clientOpId: String,
+        table: String,
+        operation: String,
+        rowId: String,
+        payload: Any?,
+    ) {
+        pendingDao.insert(
+            PendingOperationEntity(
+                clientOpId = clientOpId,
+                tableName = table,
+                operation = operation,
+                rowId = rowId,
+                payloadJson = gson.toJson(payload),
+                createdAt = System.currentTimeMillis(),
             )
-            if (response.isSuccessful) {
-                val completion = response.body()!!
-                completionDao.upsertAll(listOf(completion.toEntity()))
-                Result.success(completion)
-            } else {
-                Result.failure(Exception("Erreur lors de la completion: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        )
+        syncTrigger.requestSync()
     }
 
     // -------------------------------------------------------------------
-    // Methodes legacy "one-shot" — gardees pour rester compatibles avec
-    // les ViewModels qui n'ont pas encore ete refactores. Elles font un
-    // refresh + lisent depuis le cache. Seront supprimees apres migration
-    // complete.
+    // Legacy one-shot (gardes pour compat)
     // -------------------------------------------------------------------
 
     suspend fun getTasks(

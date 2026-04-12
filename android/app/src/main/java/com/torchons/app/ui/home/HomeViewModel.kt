@@ -11,6 +11,7 @@ import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.TaskInProgress
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.HomeRepository
+import com.torchons.app.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -52,6 +53,7 @@ class HomeViewModel @Inject constructor(
     private val apiService: ApiService,
     private val homeRepository: HomeRepository,
     private val authRepository: AuthRepository,
+    private val taskRepository: TaskRepository,
     @Suppress("unused") private val tokenManager: TokenManager,
 ) : ViewModel() {
 
@@ -233,29 +235,19 @@ class HomeViewModel @Inject constructor(
 
     fun completeTask(taskId: String) {
         viewModelScope.launch {
-            try {
-                apiService.completeTask(taskId)
-                refresh()
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
+            taskRepository.completeTask(taskId).fold(
+                onSuccess = { refresh() },
+                onFailure = { _uiState.value = _uiState.value.copy(error = it.message) },
+            )
         }
     }
 
     fun completeTaskAtDate(taskId: String, isoDate: String, completedBy: String? = null) {
         viewModelScope.launch {
-            try {
-                apiService.completeTask(
-                    taskId,
-                    com.torchons.app.data.model.CompleteTaskRequest(
-                        completedAt = isoDate,
-                        completedBy = completedBy,
-                    ),
-                )
-                refresh()
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
+            taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
+                onSuccess = { refresh() },
+                onFailure = { _uiState.value = _uiState.value.copy(error = it.message) },
+            )
         }
     }
 

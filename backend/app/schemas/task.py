@@ -27,6 +27,8 @@ class TaskCreate(BaseModel):
     recurrence_rule: RecurrenceRule | None = None
     weight: int = Field(default=1, ge=1, le=18)
     tolerance: TaskTolerance = TaskTolerance.NORMAL
+    client_supplied_id: UUID | None = None
+    client_op_id: UUID | None = None
 
 
 class TaskUpdate(BaseModel):

@@ -46,6 +46,7 @@ from app.api.stats import router as stats_router
 from app.api.notifications import router as notifications_router
 from app.api.settings import router as settings_router
 from app.api.content import router as content_router
+from app.api.sync import router as sync_router
 
 app.include_router(auth_router)
 app.include_router(tasks_router)
@@ -56,6 +57,7 @@ app.include_router(stats_router)
 app.include_router(notifications_router)
 app.include_router(settings_router)
 app.include_router(content_router)
+app.include_router(sync_router)
 
 
 @app.get("/api/health")

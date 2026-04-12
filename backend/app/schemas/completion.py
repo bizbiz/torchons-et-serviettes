@@ -12,6 +12,8 @@ class CompletionCreate(BaseModel):
     completed_by: UUID | None = None  # NULL = utilisateur courant
     completed_at: datetime | None = None  # NULL = maintenant, sinon date historique
     notes: str | None = None
+    client_supplied_id: UUID | None = None
+    client_op_id: UUID | None = None
 
 
 class CompletionResponse(BaseModel):

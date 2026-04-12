@@ -6,11 +6,14 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -43,6 +46,9 @@ class TokenManager @Inject constructor(
         private val HOME_SSIDS_KEY = stringPreferencesKey("home_ssids")
         // Duree de persistance affinites/efforts en mois
         private val AFFINITY_EXPIRY_KEY = intPreferencesKey("affinity_expiry_months")
+        // Sync offline
+        private val DEVICE_ID_KEY = stringPreferencesKey("device_id")
+        private val SYNC_CURSOR_KEY = longPreferencesKey("last_server_version")
     }
 
     /** Flow du token JWT. Emet null si aucun token stocke. */
@@ -125,5 +131,24 @@ class TokenManager @Inject constructor(
             preferences.remove(USERNAME_KEY)
             preferences.remove(DISPLAY_NAME_KEY)
         }
+    }
+
+    // --- Sync offline ---
+
+    /** UUID stable par installation. Genere une seule fois, persiste ensuite. */
+    suspend fun getOrCreateDeviceId(): String {
+        val existing = context.dataStore.data.first()[DEVICE_ID_KEY]
+        if (existing != null) return existing
+        val newId = UUID.randomUUID().toString()
+        context.dataStore.edit { it[DEVICE_ID_KEY] = newId }
+        return newId
+    }
+
+    suspend fun getSyncCursor(): Long {
+        return context.dataStore.data.first()[SYNC_CURSOR_KEY] ?: 0L
+    }
+
+    suspend fun setSyncCursor(version: Long) {
+        context.dataStore.edit { it[SYNC_CURSOR_KEY] = version }
     }
 }

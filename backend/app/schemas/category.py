@@ -13,6 +13,8 @@ class CategoryCreate(BaseModel):
     color: str = Field(default="#6B7280", max_length=7)
     icon: str | None = None
     requires_home: bool = False
+    client_supplied_id: UUID | None = None
+    client_op_id: UUID | None = None
 
 
 class CategoryUpdate(BaseModel):
