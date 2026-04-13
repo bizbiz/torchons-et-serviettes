@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.5.7 — 2026-04-13
+
+### Liste des taches
+- Encore plus de fluidite au scroll (optimisations internes : Compose peut maintenant detecter les cartes inchangees et ne pas les redessiner inutilement quand la liste se met a jour).
+
 ## v0.5.6 — 2026-04-13
 
 ### Liste des taches

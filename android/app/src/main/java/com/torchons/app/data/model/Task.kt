@@ -1,11 +1,18 @@
 package com.torchons.app.data.model
 
+import androidx.compose.runtime.Immutable
 import com.google.gson.annotations.SerializedName
 
 /**
  * Modele representant une tache menagere.
  * Le champ recurrenceRule est un objet JSON libre (JSONB cote backend).
+ *
+ * @Immutable car le data class contient List<String> qui est instable
+ * pour Compose par defaut. On promet que ces collections ne mutent jamais
+ * (data class = nouvelle instance a chaque modification). Permet a Compose
+ * de smart-skip les items LazyColumn inchanges et stabilise le scroll.
  */
+@Immutable
 data class Task(
     @SerializedName("id") val id: String,
     @SerializedName("title") val title: String,
@@ -51,7 +58,10 @@ data class UpdateTaskRequest(
 /**
  * Regle de recurrence pour une tache.
  * Types supportes : interval, weekdays, monthly, custom.
+ *
+ * @Immutable pour les memes raisons que Task (champs List/Map).
  */
+@Immutable
 data class RecurrenceRule(
     @SerializedName("type") val type: String,
     @SerializedName("every_n_days") val everyNDays: Int? = null,

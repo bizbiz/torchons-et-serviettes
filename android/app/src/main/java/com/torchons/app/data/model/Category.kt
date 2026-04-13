@@ -1,11 +1,16 @@
 package com.torchons.app.data.model
 
+import androidx.compose.runtime.Immutable
 import com.google.gson.annotations.SerializedName
 
 /**
  * Modele representant une categorie de taches.
  * Chaque categorie a une couleur hexadecimale et un icone optionnel.
+ *
+ * @Immutable : tous les champs sont des primitifs/String stables, mais on
+ * marque explicitement pour que Compose smart-skip dans les listes.
  */
+@Immutable
 data class Category(
     @SerializedName("id") val id: String,
     @SerializedName("name") val name: String,

@@ -1,6 +1,7 @@
 package com.torchons.app.ui.tasklist
 
 import android.content.Context
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
@@ -31,7 +32,13 @@ import javax.inject.Inject
 
 /**
  * Donnees d'une tache avec sa fraicheur calculee.
+ *
+ * @Immutable : permet a Compose de smart-skip les items LazyColumn dont la
+ * valeur n'a pas change (meme contenu = pas de recompose). Sans cette
+ * annotation, le `task: Task` (qui contient List<String>) rend la classe
+ * instable et chaque emission de la liste recompose tous les items visibles.
  */
+@Immutable
 data class TaskWithFreshness(
     val task: Task,
     val freshness: Double,

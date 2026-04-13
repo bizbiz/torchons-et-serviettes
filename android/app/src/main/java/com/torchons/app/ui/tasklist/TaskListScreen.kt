@@ -461,7 +461,8 @@ fun TaskListScreen(
                         ) {
                             items(
                                 items = uiState.tasks,
-                                key = { it.task.id }
+                                key = { it.task.id },
+                                contentType = { "task_card" },
                             ) { taskWithFreshness ->
                                 TaskCard(
                                     taskWithFreshness = taskWithFreshness,
