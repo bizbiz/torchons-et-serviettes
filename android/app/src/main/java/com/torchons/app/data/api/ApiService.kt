@@ -132,6 +132,29 @@ interface ApiService {
     @DELETE("categories/{id}")
     suspend fun deleteCategory(@Path("id") catId: String): Response<Map<String, Any>>
 
+    // --- Pieces (rooms) ---
+
+    /** Liste de toutes les pieces (tri alphabetique). */
+    @GET("rooms")
+    suspend fun getRooms(): Response<List<com.torchons.app.data.model.Room>>
+
+    /** Creer une piece. */
+    @POST("rooms")
+    suspend fun createRoom(
+        @Body request: com.torchons.app.data.model.RoomCreateRequest
+    ): Response<com.torchons.app.data.model.Room>
+
+    /** Modifier une piece. */
+    @PUT("rooms/{id}")
+    suspend fun updateRoom(
+        @Path("id") roomId: String,
+        @Body request: com.torchons.app.data.model.RoomUpdateRequest
+    ): Response<com.torchons.app.data.model.Room>
+
+    /** Supprimer une piece (soft delete, les taches passent en room_id=NULL). */
+    @DELETE("rooms/{id}")
+    suspend fun deleteRoom(@Path("id") roomId: String): Response<Map<String, Any>>
+
     // --- Completions ---
 
     /** Liste des completions avec filtres optionnels. */

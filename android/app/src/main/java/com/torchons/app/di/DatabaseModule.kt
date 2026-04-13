@@ -8,6 +8,7 @@ import com.torchons.app.data.local.AppDatabase
 import com.torchons.app.data.local.dao.CategoryDao
 import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.PendingOperationDao
+import com.torchons.app.data.local.dao.RoomDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.TaskHistoryDao
 import com.torchons.app.data.local.dao.UserDao
@@ -60,6 +61,25 @@ private val migration2to3 = object : Migration(2, 3) {
     }
 }
 
+private val migration3to4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Cache local des pieces (rooms). Rempli depuis GET /api/rooms.
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS rooms (
+                id TEXT NOT NULL PRIMARY KEY,
+                name TEXT NOT NULL,
+                color TEXT NOT NULL,
+                icon TEXT,
+                emoji TEXT,
+                createdAt TEXT NOT NULL
+            )
+        """.trimIndent())
+        // Ajout de la colonne roomId sur tasks. Defaut NULL pour les
+        // taches existantes — le prochain refresh API les remplira.
+        db.execSQL("ALTER TABLE tasks ADD COLUMN roomId TEXT DEFAULT NULL")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -72,7 +92,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2, migration2to3)
+            .addMigrations(migration1to2, migration2to3, migration3to4)
             .build()
     }
 
@@ -96,4 +116,7 @@ object DatabaseModule {
 
     @Provides
     fun provideTaskHistoryDao(db: AppDatabase): TaskHistoryDao = db.taskHistoryDao()
+
+    @Provides
+    fun provideRoomDao(db: AppDatabase): RoomDao = db.roomDao()
 }

@@ -24,8 +24,10 @@ async def list_categories(
     session: AsyncSession = Depends(get_session),
     _user: dict = Depends(get_current_user),
 ):
+    # Tri alphabetique pour uniformite avec rooms (sort_order conserve en
+    # base mais ignore par l'API).
     result = await session.execute(
-        select(Category).where(Category.deleted_at.is_(None)).order_by(Category.sort_order)
+        select(Category).where(Category.deleted_at.is_(None)).order_by(Category.name)
     )
     return result.scalars().all()
 

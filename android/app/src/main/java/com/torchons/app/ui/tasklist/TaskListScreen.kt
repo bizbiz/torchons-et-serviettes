@@ -345,7 +345,8 @@ fun TaskListScreen(
                 }
             }
 
-            // Chips de filtrage par piece (extraite du titre) — meme espacement uniforme
+            // Chips de filtrage par piece (depuis v0.6.0 : vraies entites Room
+            // avec emoji, plus du parsing string).
             if (uiState.availableRooms.isNotEmpty()) {
                 Row(
                     modifier = Modifier
@@ -355,15 +356,20 @@ fun TaskListScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FilterChip(
-                        selected = uiState.selectedRoom == null,
+                        selected = uiState.selectedRoomId == null,
                         onClick = { viewModel.selectRoom(null) },
                         label = { Text("Toutes pieces") }
                     )
                     uiState.availableRooms.forEach { room ->
+                        val label = if (!room.emoji.isNullOrBlank()) {
+                            "${room.emoji} ${room.name}"
+                        } else {
+                            room.name
+                        }
                         FilterChip(
-                            selected = uiState.selectedRoom == room,
-                            onClick = { viewModel.selectRoom(room) },
-                            label = { Text(room) }
+                            selected = uiState.selectedRoomId == room.id,
+                            onClick = { viewModel.selectRoom(room.id) },
+                            label = { Text(label) }
                         )
                     }
                 }

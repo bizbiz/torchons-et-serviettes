@@ -8,6 +8,7 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.Completion
+import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
@@ -31,7 +32,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Donnees d'une tache avec sa fraicheur calculee.
+ * Donnees d'une tache avec sa fraicheur calculee + infos d'affichage
+ * pre-resolues (categorie, piece). Pre-calcule dans applyFilters pour
+ * eviter au TaskCard de faire des lookups dans des maps a chaque recompose.
  *
  * @Immutable : permet a Compose de smart-skip les items LazyColumn dont la
  * valeur n'a pas change (meme contenu = pas de recompose). Sans cette
@@ -44,7 +47,9 @@ data class TaskWithFreshness(
     val freshness: Double,
     val categoryName: String?,
     val categoryColor: String?,
-    val myAffinity: Int? = null
+    val roomName: String?,
+    val roomEmoji: String?,
+    val myAffinity: Int? = null,
 )
 
 /** Etat tri-state pour les filtres : Off / High / Low */
@@ -64,8 +69,8 @@ data class TaskListUiState(
     val filterEffort: FilterState = FilterState.OFF,
     val filterRecurrence: FilterState = FilterState.OFF,
     val filterHome: FilterState = FilterState.OFF,
-    val selectedRoom: String? = null,
-    val availableRooms: List<String> = emptyList(),
+    val selectedRoomId: String? = null,
+    val availableRooms: List<Room> = emptyList(),
     val error: String? = null,
     val completionMessage: String? = null,
     val hasCachedData: Boolean = false,
@@ -87,17 +92,18 @@ private data class TaskListFilters(
     val filterEffort: FilterState = FilterState.OFF,
     val filterRecurrence: FilterState = FilterState.OFF,
     val filterHome: FilterState = FilterState.OFF,
-    val selectedRoom: String? = null,
+    val selectedRoomId: String? = null,
     val selectedCategoryIds: Set<String> = emptySet(),
     val showAllTasks: Boolean = false,
     val myAffinities: Map<String, Int> = emptyMap(),
     val freshnessThreshold: Int = 10,
 )
 
-/** Conteneur interne pour le combine des 4 flows. */
+/** Conteneur interne pour le combine des 5 flows. */
 private data class CachedTaskList(
     val tasks: List<Task>,
     val categories: List<Category>,
+    val rooms: List<Room>,
     val completions: List<Completion>,
     val filters: TaskListFilters,
 )
@@ -107,13 +113,14 @@ private data class ProcessedTaskList(
     val filtered: FilteredResult,
     val hasCache: Boolean,
     val categories: List<Category>,
+    val rooms: List<Room>,
     val filters: TaskListFilters,
 )
 
 /** Resultat du filtrage pur. */
 private data class FilteredResult(
     val tasks: List<TaskWithFreshness>,
-    val rooms: List<String>,
+    val rooms: List<Room>,
     val isAtHome: Boolean,
     val homeTasksHidden: Int,
 )
@@ -167,14 +174,20 @@ class TaskListViewModel @Inject constructor(
             combine(
                 taskRepository.observeActiveTasks(),
                 taskRepository.observeCategories(),
+                taskRepository.observeRooms(),
                 taskRepository.observeRecentCompletions(500),
                 filtersFlow,
-            ) { tasks, categories, completions, filters ->
+            ) { tasks, categories, rooms, completions, filters ->
                 val homeSsids = tokenManager.homeSsidsFlow.first()
                 val isAtHome = WifiHelper.isAtHome(context, homeSsids)
-                val filtered = applyFilters(tasks, categories, completions, filters, isAtHome)
-                ProcessedTaskList(filtered, tasks.isNotEmpty() || categories.isNotEmpty(),
-                    categories, filters)
+                val filtered = applyFilters(tasks, categories, rooms, completions, filters, isAtHome)
+                ProcessedTaskList(
+                    filtered = filtered,
+                    hasCache = tasks.isNotEmpty() || categories.isNotEmpty(),
+                    categories = categories,
+                    rooms = rooms,
+                    filters = filters,
+                )
             }.flowOn(Dispatchers.Default).collect { processed ->
                 _uiState.value = _uiState.value.copy(
                     tasks = processed.filtered.tasks,
@@ -189,7 +202,7 @@ class TaskListViewModel @Inject constructor(
                     filterEffort = processed.filters.filterEffort,
                     filterRecurrence = processed.filters.filterRecurrence,
                     filterHome = processed.filters.filterHome,
-                    selectedRoom = processed.filters.selectedRoom,
+                    selectedRoomId = processed.filters.selectedRoomId,
                     hasCachedData = processed.hasCache,
                     isLoading = if (processed.hasCache) false else _uiState.value.isLoading,
                 )
@@ -209,6 +222,7 @@ class TaskListViewModel @Inject constructor(
             val results = listOf(
                 async { taskRepository.refreshTasks() },
                 async { taskRepository.refreshCategories() },
+                async { taskRepository.refreshRooms() },
                 async { taskRepository.refreshCompletions() },
                 async { taskRepository.refreshUsers() },
             ).awaitAll()
@@ -301,8 +315,8 @@ class TaskListViewModel @Inject constructor(
         filtersFlow.value = filtersFlow.value.copy(filterHome = nextFilterState(filtersFlow.value.filterHome))
     }
 
-    fun selectRoom(room: String?) {
-        filtersFlow.value = filtersFlow.value.copy(selectedRoom = room)
+    fun selectRoom(roomId: String?) {
+        filtersFlow.value = filtersFlow.value.copy(selectedRoomId = roomId)
     }
 
     fun toggleCategory(categoryId: String) {
@@ -331,23 +345,27 @@ class TaskListViewModel @Inject constructor(
 
     /**
      * Applique les filtres et calcule la fraicheur. Fonction pure.
+     *
+     * Depuis v0.6.0 : la piece est lue depuis task.roomId (joint avec
+     * la table rooms) au lieu d'etre parsee du titre comme avant.
      */
     private fun applyFilters(
         tasks: List<Task>,
         categories: List<Category>,
+        rooms: List<Room>,
         completions: List<Completion>,
         filters: TaskListFilters,
         isAtHome: Boolean,
     ): FilteredResult {
         val homeCategoryIds = categories.filter { it.requiresHome }.map { it.id }.toSet()
+        val roomsById = rooms.associateBy { it.id }
 
-        val rooms = tasks
-            .mapNotNull {
-                val parts = it.title.split(" — ")
-                if (parts.size >= 2) parts.last().trim() else null
-            }
-            .toSet()
-            .sorted()
+        // availableRooms = pieces qui ont au moins une tache associee, triees
+        // alphabetiquement (mirror de la regle backend ORDER BY name).
+        val roomIdsWithTasks = tasks.mapNotNullTo(mutableSetOf()) { it.roomId }
+        val availableRooms = rooms
+            .filter { it.id in roomIdsWithTasks }
+            .sortedBy { it.name }
 
         var filteredTasks = if (filters.selectedCategoryIds.isNotEmpty()) {
             tasks.filter { it.categoryId in filters.selectedCategoryIds }
@@ -355,10 +373,8 @@ class TaskListViewModel @Inject constructor(
             tasks
         }
 
-        if (filters.selectedRoom != null) {
-            filteredTasks = filteredTasks.filter {
-                it.title.endsWith(" — ${filters.selectedRoom}")
-            }
+        if (filters.selectedRoomId != null) {
+            filteredTasks = filteredTasks.filter { it.roomId == filters.selectedRoomId }
         }
 
         when (filters.filterHome) {
@@ -396,12 +412,15 @@ class TaskListViewModel @Inject constructor(
                 tolerance = task.tolerance,
             )
             val category = task.categoryId?.let { categoriesById[it] }
+            val room = task.roomId?.let { roomsById[it] }
 
             TaskWithFreshness(
                 task = task,
                 freshness = freshness,
                 categoryName = category?.name,
                 categoryColor = category?.color,
+                roomName = room?.name,
+                roomEmoji = room?.emoji,
             )
         }
 
@@ -436,6 +455,6 @@ class TaskListViewModel @Inject constructor(
 
         tasksWithFreshness = tasksWithFreshness.sortedBy { FreshnessCalculator.getUrgencyOrder(it.freshness) }
 
-        return FilteredResult(tasksWithFreshness, rooms, isAtHome, homeTasksHidden)
+        return FilteredResult(tasksWithFreshness, availableRooms, isAtHome, homeTasksHidden)
     }
 }

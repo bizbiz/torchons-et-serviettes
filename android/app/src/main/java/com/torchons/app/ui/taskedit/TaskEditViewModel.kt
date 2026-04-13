@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.CreateTaskRequest
 import com.torchons.app.data.model.RecurrenceRule
+import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.UpdateTaskRequest
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,6 +30,7 @@ data class TaskEditUiState(
     val title: String = "",
     val description: String = "",
     val categoryId: String? = null,
+    val roomId: String? = null,
     val assignedToIds: List<String> = emptyList(),
     val recurrenceType: String = "none",
     val recurrenceEveryNDays: String = "7",
@@ -35,6 +38,7 @@ data class TaskEditUiState(
     val weight: Int = 1,
     val tolerance: String = "NORMAL",
     val categories: List<Category> = emptyList(),
+    val rooms: List<Room> = emptyList(),
     val users: List<User> = emptyList(),
     val error: String? = null,
     val saved: Boolean = false,
@@ -56,13 +60,21 @@ class TaskEditViewModel @Inject constructor(
     val currentUserId: StateFlow<String?> = authRepository.userIdFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    /** Charge les donnees de reference (categories, users) et la tache si edition. */
+    /** Charge les donnees de reference (categories, rooms, users) et la tache si edition. */
     fun loadData(taskId: String?) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             val categoriesResult = taskRepository.getCategories()
             val usersResult = taskRepository.getUsers()
+            // Refresh rooms via cache + API (pattern observe non utilise ici car
+            // l'ecran d'edition est one-shot, pas reactif).
+            taskRepository.refreshRooms()
+            val rooms = try {
+                taskRepository.observeRooms().first()
+            } catch (_: Exception) {
+                emptyList()
+            }
 
             val categories = categoriesResult.getOrNull() ?: emptyList()
             val users = usersResult.getOrNull() ?: emptyList()
@@ -80,6 +92,7 @@ class TaskEditViewModel @Inject constructor(
                         title = task.title,
                         description = task.description ?: "",
                         categoryId = task.categoryId,
+                        roomId = task.roomId,
                         assignedToIds = task.assignedToIds,
                         recurrenceType = task.recurrenceRule?.type ?: "none",
                         recurrenceEveryNDays = task.recurrenceRule?.everyNDays?.toString() ?: "7",
@@ -87,6 +100,7 @@ class TaskEditViewModel @Inject constructor(
                         weight = task.weight,
                         tolerance = task.tolerance,
                         categories = categories,
+                        rooms = rooms,
                         users = users,
                     )
                 } else {
@@ -101,6 +115,7 @@ class TaskEditViewModel @Inject constructor(
                     isEditMode = false,
                     assignedToIds = users.map { it.id },
                     categories = categories,
+                    rooms = rooms,
                     users = users,
                 )
             }
@@ -117,6 +132,10 @@ class TaskEditViewModel @Inject constructor(
 
     fun updateCategoryId(value: String?) {
         _uiState.value = _uiState.value.copy(categoryId = value)
+    }
+
+    fun updateRoomId(value: String?) {
+        _uiState.value = _uiState.value.copy(roomId = value)
     }
 
     fun toggleUserAssignment(userId: String) {
@@ -183,6 +202,7 @@ class TaskEditViewModel @Inject constructor(
                         title = state.title,
                         description = state.description.ifBlank { null },
                         categoryId = state.categoryId,
+                        roomId = state.roomId,
                         assignedToIds = state.assignedToIds,
                         recurrenceRule = recurrenceRule,
                         weight = state.weight,
@@ -195,6 +215,7 @@ class TaskEditViewModel @Inject constructor(
                         title = state.title,
                         description = state.description.ifBlank { null },
                         categoryId = state.categoryId,
+                        roomId = state.roomId,
                         assignedToIds = state.assignedToIds,
                         recurrenceRule = recurrenceRule,
                         weight = state.weight,

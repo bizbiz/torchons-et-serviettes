@@ -242,6 +242,51 @@ fun TaskEditScreen(
                 }
             }
 
+            // Piece (room)
+            var roomExpanded by remember { mutableStateOf(false) }
+            val selectedRoom = uiState.rooms.find { it.id == uiState.roomId }
+
+            ExposedDropdownMenuBox(
+                expanded = roomExpanded,
+                onExpandedChange = { roomExpanded = it }
+            ) {
+                val roomLabel = selectedRoom?.let {
+                    if (!it.emoji.isNullOrBlank()) "${it.emoji} ${it.name}" else it.name
+                } ?: "Aucune"
+                OutlinedTextField(
+                    value = roomLabel,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Piece") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roomExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                )
+                ExposedDropdownMenu(
+                    expanded = roomExpanded,
+                    onDismissRequest = { roomExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Aucune") },
+                        onClick = {
+                            viewModel.updateRoomId(null)
+                            roomExpanded = false
+                        }
+                    )
+                    uiState.rooms.forEach { r ->
+                        val label = if (!r.emoji.isNullOrBlank()) "${r.emoji} ${r.name}" else r.name
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                viewModel.updateRoomId(r.id)
+                                roomExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
             // Assignes
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Text(

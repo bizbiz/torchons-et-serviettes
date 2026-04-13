@@ -32,6 +32,7 @@ import com.torchons.app.ui.changelog.ChangelogScreen
 import com.torchons.app.ui.home.HomeScreen
 import com.torchons.app.ui.login.LoginScreen
 import com.torchons.app.ui.settings.CategoriesScreen
+import com.torchons.app.ui.settings.RoomsScreen
 import com.torchons.app.ui.settings.SettingsScreen
 import com.torchons.app.ui.stats.StatsScreen
 import com.torchons.app.ui.taskdetail.TaskDetailScreen
@@ -53,6 +54,7 @@ object Routes {
     const val TASK_CREATE = "task_create"
     const val TASK_EDIT = "task_edit/{taskId}"
     const val CATEGORIES = "categories"
+    const val ROOMS = "rooms"
     const val CHANGELOG = "changelog"
 
     fun taskDetail(taskId: String) = "task_detail/$taskId"
@@ -113,6 +115,9 @@ fun NavGraph(
                 onNavigateToCategories = {
                     navController.navigate(Routes.CATEGORIES)
                 },
+                onNavigateToRooms = {
+                    navController.navigate(Routes.ROOMS)
+                },
                 onNavigateToChangelog = {
                     navController.navigate(Routes.CHANGELOG)
                 },
@@ -139,6 +144,20 @@ fun NavGraph(
                 ).apiService()
             }
             CategoriesScreen(
+                apiService = apiService.get(),
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // Gestion des pieces (rooms) — meme pattern que CategoriesScreen
+        composable(Routes.ROOMS) {
+            val apiService = javax.inject.Provider<ApiService> {
+                dagger.hilt.android.EntryPointAccessors.fromApplication(
+                    navController.context.applicationContext,
+                    ApiServiceEntryPoint::class.java
+                ).apiService()
+            }
+            RoomsScreen(
                 apiService = apiService.get(),
                 onBack = { navController.popBackStack() }
             )
@@ -196,6 +215,7 @@ fun MainScreen(
     onNavigateToCreateTask: () -> Unit,
     onNavigateToEditTask: (String) -> Unit,
     onNavigateToCategories: () -> Unit,
+    onNavigateToRooms: () -> Unit,
     onNavigateToChangelog: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -258,6 +278,7 @@ fun MainScreen(
                     SettingsScreen(
                         onLogout = onLogout,
                         onManageCategories = onNavigateToCategories,
+                        onManageRooms = onNavigateToRooms,
                         onOpenChangelog = onNavigateToChangelog
                     )
                 }

@@ -23,6 +23,7 @@ class TaskCreate(BaseModel):
     title: str = Field(max_length=300)
     description: str | None = None
     category_id: UUID | None = None
+    room_id: UUID | None = None
     assigned_to_ids: list[UUID] = Field(min_length=1)
     recurrence_rule: RecurrenceRule | None = None
     weight: int = Field(default=1, ge=1, le=18)
@@ -35,6 +36,7 @@ class TaskUpdate(BaseModel):
     title: str | None = Field(default=None, max_length=300)
     description: str | None = None
     category_id: UUID | None = None
+    room_id: UUID | None = None
     assigned_to_ids: list[UUID] | None = Field(default=None, min_length=1)
     recurrence_rule: RecurrenceRule | None = None
     weight: int | None = Field(default=None, ge=1, le=18)
@@ -48,6 +50,7 @@ class TaskResponse(BaseModel):
     title: str
     description: str | None
     category_id: UUID | None
+    room_id: UUID | None
     assigned_to_ids: list[UUID]
     recurrence_rule: dict | None
     weight: int

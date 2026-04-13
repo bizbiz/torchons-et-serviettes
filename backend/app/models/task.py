@@ -18,6 +18,11 @@ class Task(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     category_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True
     )
+    # Piece (room) optionnelle. ON DELETE SET NULL : si la piece est
+    # supprimee, la tache reste sans piece au lieu d'etre cascade-deleted.
+    room_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True
+    )
 
     # Recurrence — JSONB flexible (voir CLAUDE.md pour les formats)
     recurrence_rule: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

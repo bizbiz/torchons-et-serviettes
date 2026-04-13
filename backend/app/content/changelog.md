@@ -1,5 +1,15 @@
 # Notes de version
 
+## v0.6.0 — 2026-04-13
+
+### Pieces : nouvelle gestion
+- Les pieces de la maison sont maintenant des entites de plein droit (Cuisine, SDB, Chambre, Salon, etc.) au lieu d'etre cachees dans les titres des taches.
+- Nouvel ecran "Gerer les pieces" dans Reglages : ajoute, modifie, supprime tes pieces. Chacune a un nom, une couleur et un emoji optionnel.
+- Quand tu cree ou modifie une tache, un selecteur "Piece" apparait a cote de "Categorie".
+- Les filtres par piece dans la liste affichent maintenant l'emoji a cote du nom.
+- Dans la liste des taches, le nom de la piece (avec son emoji si defini) apparait sous le titre.
+- Migration automatique : tes 29 taches existantes ont ete liees aux pieces extraites de leurs titres. Les titres ont ete nettoyes du suffixe " — Piece". Les 13 taches sans suffixe restent sans piece, tu peux les editer pour en attribuer une.
+
 ## v0.5.8 — 2026-04-13
 
 ### Liste des taches

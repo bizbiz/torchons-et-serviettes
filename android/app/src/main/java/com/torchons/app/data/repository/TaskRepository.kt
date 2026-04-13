@@ -6,6 +6,7 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.dao.CategoryDao
 import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.PendingOperationDao
+import com.torchons.app.data.local.dao.RoomDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.TaskHistoryDao
 import com.torchons.app.data.local.dao.UserDao
@@ -16,6 +17,7 @@ import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.CreateTaskRequest
 import com.torchons.app.data.model.FrequencyRequest
+import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.UpdateTaskRequest
@@ -44,6 +46,7 @@ class TaskRepository @Inject constructor(
     private val userDao: UserDao,
     private val pendingDao: PendingOperationDao,
     private val taskHistoryDao: TaskHistoryDao,
+    private val roomDao: RoomDao,
     private val syncTrigger: SyncTrigger,
 ) {
     private val gson = Gson()
@@ -86,6 +89,28 @@ class TaskRepository @Inject constructor(
             if (response.isSuccessful) {
                 val categories = response.body() ?: emptyList()
                 categoryDao.replaceAll(categories.map { it.toEntity() })
+                true
+            } else {
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Rooms (pieces)
+    // -------------------------------------------------------------------
+
+    fun observeRooms(): Flow<List<Room>> =
+        roomDao.observeAll().map { list -> list.map { it.toDomain() } }
+
+    suspend fun refreshRooms(): Boolean {
+        return try {
+            val response = apiService.getRooms()
+            if (response.isSuccessful) {
+                val rooms = response.body() ?: emptyList()
+                roomDao.replaceAll(rooms.map { it.toEntity() })
                 true
             } else {
                 false

@@ -24,7 +24,6 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -59,15 +58,17 @@ fun TaskCard(
     val taskId = task.id
     val freshnessColor = FreshnessCalculator.getFreshnessColor(taskWithFreshness.freshness)
 
-    // Separe le titre et la piece (pattern "Nom — Piece"). Si pas de
-    // separateur, room = null et on affiche uniquement le titre brut.
-    val titleAndRoom: Pair<String, String?> = remember(task.title) {
-        val parts = task.title.split(" — ", limit = 2)
-        if (parts.size == 2) parts[0] to parts[1].trim()
-        else task.title to null
+    // Depuis v0.6.0 : le titre est propre (sans suffixe " — Piece"), la piece
+    // vient directement de TaskWithFreshness.roomName / roomEmoji (pre-resolus
+    // dans applyFilters via task.roomId).
+    val displayTitle = task.title
+    val roomLabel = taskWithFreshness.roomName?.let { name ->
+        if (!taskWithFreshness.roomEmoji.isNullOrBlank()) {
+            "${taskWithFreshness.roomEmoji} $name"
+        } else {
+            name
+        }
     }
-    val displayTitle = titleAndRoom.first
-    val room = titleAndRoom.second
 
     Card(
         onClick = { onClick(taskId) },
@@ -106,9 +107,9 @@ fun TaskCard(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                if (room != null) {
+                if (roomLabel != null) {
                     Text(
-                        text = room,
+                        text = roomLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

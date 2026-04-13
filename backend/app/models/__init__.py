@@ -1,6 +1,7 @@
 from app.models.base import Base
 from app.models.user import User
 from app.models.category import Category
+from app.models.room import Room
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
 from app.models.task_affinity import TaskAffinity
@@ -16,7 +17,7 @@ from app.models.badge import Badge
 from app.models.user_settings import UserSettings
 
 __all__ = [
-    "Base", "User", "Category", "Task", "TaskAssignment", "TaskAffinity",
+    "Base", "User", "Category", "Room", "Task", "TaskAssignment", "TaskAffinity",
     "TaskEffort", "TaskFrequencyVote", "TaskInProgress", "TaskCompletion",
     "FairShareConfig", "Streak", "ChangeLog", "NotificationToken", "Badge",
     "UserSettings",
