@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -34,13 +33,16 @@ import androidx.compose.ui.unit.dp
 import com.torchons.app.util.FreshnessCalculator
 
 /**
- * Carte tache simplifiee — version v0.5.5.
+ * Carte tache simplifiee — version v0.5.5/v0.5.6.
  *
  * Affiche uniquement les infos essentielles : titre + piece + indicateur
- * de retard (bordure verticale gauche couleur freshness). Tous les autres
- * elements (badge categorie, etoiles weight, barre de progression, texte
- * "Rouge X%", pastille) ont ete retires pour gagner en sobriete et en
- * fluidite de scroll.
+ * de retard (bordure verticale gauche couleur freshness).
+ *
+ * IMPORTANT cote perf : les callbacks prennent un String (taskId) et NON
+ * une lambda sans argument. Ca permet au caller de passer des references
+ * stables (method ref ou val remember) plutot que de creer une nouvelle
+ * lambda par item a chaque recompose, ce qui ferait recomposer tous les
+ * items visibles a chaque emission du combine du ViewModel.
  *
  * La piece est extraite du titre (pattern "Nom — Piece") jusqu'a la refonte
  * en v0.6.0 ou elle deviendra une vraie colonne.
@@ -48,12 +50,13 @@ import com.torchons.app.util.FreshnessCalculator
 @Composable
 fun TaskCard(
     taskWithFreshness: TaskWithFreshness,
-    onClick: () -> Unit,
-    onComplete: (() -> Unit)? = null,
-    onHistorical: (() -> Unit)? = null,
+    onClick: (String) -> Unit,
+    onComplete: (String) -> Unit,
+    onHistorical: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val task = taskWithFreshness.task
+    val taskId = task.id
     val freshnessColor = FreshnessCalculator.getFreshnessColor(taskWithFreshness.freshness)
 
     // Separe le titre et la piece (pattern "Nom — Piece"). Si pas de
@@ -67,10 +70,8 @@ fun TaskCard(
     val room = titleAndRoom.second
 
     Card(
-        onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min),
+        onClick = { onClick(taskId) },
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -80,7 +81,7 @@ fun TaskCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min),
+                .height(72.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Bordure verticale gauche colorée (couleur freshness) — donne
@@ -96,7 +97,7 @@ fun TaskCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
@@ -115,40 +116,36 @@ fun TaskCard(
             }
 
             // Boutons d'action (taille v0.5.3)
-            if (onHistorical != null) {
-                FilledIconButton(
-                    onClick = onHistorical,
-                    modifier = Modifier.size(48.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = "Deja fait",
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
+            FilledIconButton(
+                onClick = { onHistorical(taskId) },
+                modifier = Modifier.size(48.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = "Deja fait",
+                    modifier = Modifier.size(24.dp),
+                )
             }
-            if (onComplete != null) {
-                FilledIconButton(
-                    onClick = onComplete,
-                    modifier = Modifier.size(48.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = FreshnessCalculator.VERT,
-                        contentColor = Color.White,
-                    ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Fait",
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            FilledIconButton(
+                onClick = { onComplete(taskId) },
+                modifier = Modifier.size(48.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = FreshnessCalculator.VERT,
+                    contentColor = Color.White,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Fait",
+                    modifier = Modifier.size(24.dp),
+                )
             }
+            Spacer(modifier = Modifier.width(12.dp))
         }
     }
 }

@@ -15,6 +15,7 @@ import com.torchons.app.util.FreshnessCalculator
 import com.torchons.app.util.WifiHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -93,6 +95,14 @@ private data class CachedTaskList(
     val filters: TaskListFilters,
 )
 
+/** Resultat post-traitement (filtrage + freshness) pousse vers l'UI thread. */
+private data class ProcessedTaskList(
+    val filtered: FilteredResult,
+    val hasCache: Boolean,
+    val categories: List<Category>,
+    val filters: TaskListFilters,
+)
+
 /** Resultat du filtrage pur. */
 private data class FilteredResult(
     val tasks: List<TaskWithFreshness>,
@@ -143,38 +153,38 @@ class TaskListViewModel @Inject constructor(
      */
     private fun observeCache() {
         viewModelScope.launch {
+            // Tout le pipeline (combine + applyFilters + WifiHelper) tourne sur
+            // Dispatchers.Default pour ne pas bloquer le main thread. Sinon
+            // chaque changement de filtre / refresh fait un freeze visible
+            // pendant le scroll.
             combine(
                 taskRepository.observeActiveTasks(),
                 taskRepository.observeCategories(),
                 taskRepository.observeRecentCompletions(500),
                 filtersFlow,
             ) { tasks, categories, completions, filters ->
-                CachedTaskList(tasks, categories, completions, filters)
-            }.collect { cached ->
-                val hasCache = cached.tasks.isNotEmpty() || cached.categories.isNotEmpty()
                 val homeSsids = tokenManager.homeSsidsFlow.first()
                 val isAtHome = WifiHelper.isAtHome(context, homeSsids)
-                val filtered = applyFilters(
-                    cached.tasks, cached.categories, cached.completions,
-                    cached.filters, isAtHome,
-                )
-
+                val filtered = applyFilters(tasks, categories, completions, filters, isAtHome)
+                ProcessedTaskList(filtered, tasks.isNotEmpty() || categories.isNotEmpty(),
+                    categories, filters)
+            }.flowOn(Dispatchers.Default).collect { processed ->
                 _uiState.value = _uiState.value.copy(
-                    tasks = filtered.tasks,
-                    categories = cached.categories,
-                    availableRooms = filtered.rooms,
-                    isAtHome = filtered.isAtHome,
-                    homeTasksHidden = filtered.homeTasksHidden,
-                    selectedCategoryIds = cached.filters.selectedCategoryIds,
-                    showAllTasks = cached.filters.showAllTasks,
-                    filterTodo = cached.filters.filterTodo,
-                    filterAffinity = cached.filters.filterAffinity,
-                    filterEffort = cached.filters.filterEffort,
-                    filterRecurrence = cached.filters.filterRecurrence,
-                    filterHome = cached.filters.filterHome,
-                    selectedRoom = cached.filters.selectedRoom,
-                    hasCachedData = hasCache,
-                    isLoading = if (hasCache) false else _uiState.value.isLoading,
+                    tasks = processed.filtered.tasks,
+                    categories = processed.categories,
+                    availableRooms = processed.filtered.rooms,
+                    isAtHome = processed.filtered.isAtHome,
+                    homeTasksHidden = processed.filtered.homeTasksHidden,
+                    selectedCategoryIds = processed.filters.selectedCategoryIds,
+                    showAllTasks = processed.filters.showAllTasks,
+                    filterTodo = processed.filters.filterTodo,
+                    filterAffinity = processed.filters.filterAffinity,
+                    filterEffort = processed.filters.filterEffort,
+                    filterRecurrence = processed.filters.filterRecurrence,
+                    filterHome = processed.filters.filterHome,
+                    selectedRoom = processed.filters.selectedRoom,
+                    hasCachedData = processed.hasCache,
+                    isLoading = if (processed.hasCache) false else _uiState.value.isLoading,
                 )
             }
         }

@@ -1,5 +1,11 @@
 # Notes de version
 
+## v0.5.6 — 2026-04-13
+
+### Liste des taches
+- Marge en haut de la liste reduite : la 1ere rangee de filtres colle directement sous la barre d'etat Android (avant : trop d'air en haut).
+- Defilement nettement plus fluide grace a plusieurs optimisations internes (pipeline de filtrage deporte hors du thread principal, callbacks stabilises pour eviter les recompositions inutiles).
+
 ## v0.5.5 — 2026-04-13
 
 ### Liste des taches : refonte visuelle

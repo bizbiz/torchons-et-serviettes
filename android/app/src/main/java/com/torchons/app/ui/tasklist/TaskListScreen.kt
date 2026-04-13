@@ -217,11 +217,12 @@ fun TaskListScreen(
                 }
             }
 
-            // Chips de filtres avancés + label — premiere rangee, plus d'air en haut
+            // Chips de filtres avancés + label — premiere rangee colle au top
+            // (juste sous la barre de sync). Le Scaffold gere le status bar inset.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -416,6 +417,32 @@ fun TaskListScreen(
                 }
 
                 else -> {
+                    // Callbacks stables : on les memoise une SEULE fois (sans key
+                    // sur les donnees) pour qu'elles ne changent jamais. Sinon
+                    // chaque emission du combine du ViewModel = nouvelles lambdas
+                    // = tous les items recomposent (~50 cards) = scroll qui rame.
+                    // rememberUpdatedState permet a la lambda historical de lire
+                    // la valeur courante de tasks sans s'invalider.
+                    val tasksState = androidx.compose.runtime.rememberUpdatedState(uiState.tasks)
+                    val onCardClick: (String) -> Unit = remember {
+                        { id -> onTaskClick(id) }
+                    }
+                    val onCardComplete: (String) -> Unit = remember {
+                        { id -> viewModel.completeTask(id) }
+                    }
+                    val onCardHistorical: (String) -> Unit = remember {
+                        { id ->
+                            val task = tasksState.value.firstOrNull { it.task.id == id }?.task
+                            historicalTaskId = id
+                            if (task != null && task.assignedToIds.size == 1) {
+                                historicalUserId = task.assignedToIds.first()
+                                showDatePicker = true
+                            } else {
+                                showUserPicker = true
+                            }
+                        }
+                    }
+
                     // Liste des taches avec pull-to-refresh
                     PullToRefreshBox(
                         isRefreshing = uiState.isRefreshing,
@@ -438,18 +465,9 @@ fun TaskListScreen(
                             ) { taskWithFreshness ->
                                 TaskCard(
                                     taskWithFreshness = taskWithFreshness,
-                                    onClick = { onTaskClick(taskWithFreshness.task.id) },
-                                    onComplete = { viewModel.completeTask(taskWithFreshness.task.id) },
-                                    onHistorical = {
-                                        historicalTaskId = taskWithFreshness.task.id
-                                        // Si un seul user assigne, skip le picker
-                                        if (taskWithFreshness.task.assignedToIds.size == 1) {
-                                            historicalUserId = taskWithFreshness.task.assignedToIds.first()
-                                            showDatePicker = true
-                                        } else {
-                                            showUserPicker = true
-                                        }
-                                    },
+                                    onClick = onCardClick,
+                                    onComplete = onCardComplete,
+                                    onHistorical = onCardHistorical,
                                 )
                             }
 
