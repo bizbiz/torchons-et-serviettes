@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.PendingAffinity
+import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.User
@@ -42,6 +43,8 @@ data class TaskDetailUiState(
     val scorePoints: Int? = null,
     val freshness: Double = 0.0,
     val history: List<TaskHistoryEvent> = emptyList(),
+    /** Piece de la tache (resolue depuis task.roomId via le cache rooms). */
+    val room: Room? = null,
     /** Contexte de notation pour le modal unifie. Non-null = modal ouvert. */
     val ratingContext: PendingAffinity? = null,
     val editingCompletion: Completion? = null,
@@ -93,8 +96,9 @@ class TaskDetailViewModel @Inject constructor(
                 taskRepository.observeCompletionsByTask(taskId),
                 taskRepository.observeUsers(),
                 taskRepository.observeTaskHistory(taskId),
-            ) { task, completions, users, history ->
-                CachedDetail(task, completions, users, history)
+                taskRepository.observeRooms(),
+            ) { task, completions, users, history, rooms ->
+                CachedDetail(task, completions, users, history, rooms)
             }.collect { cached ->
                 val hasCache = cached.task != null
                 val userNames = cached.users.associate { it.id to it.displayName }
@@ -107,12 +111,18 @@ class TaskDetailViewModel @Inject constructor(
                     tolerance = cached.task?.tolerance ?: "NORMAL",
                 )
 
+                // Resolve la piece de la tache (si elle a un roomId).
+                val room = cached.task?.roomId?.let { rid ->
+                    cached.rooms.firstOrNull { it.id == rid }
+                }
+
                 _uiState.value = _uiState.value.copy(
                     task = cached.task,
                     completions = sortedCompletions,
                     userNames = userNames,
                     freshness = freshness,
                     history = cached.history,
+                    room = room,
                     hasCachedData = hasCache,
                     isLoading = if (hasCache) false else _uiState.value.isLoading,
                     error = if (!hasCache && !_uiState.value.isLoading && _uiState.value.lastRefreshFailed)
@@ -135,6 +145,7 @@ class TaskDetailViewModel @Inject constructor(
                 async { taskRepository.refreshCompletions(taskId = taskId) },
                 async { taskRepository.refreshUsers() },
                 async { taskRepository.refreshTaskHistory(taskId) },
+                async { taskRepository.refreshRooms() },
             ).awaitAll()
 
             // Ratings en direct API (best-effort)
@@ -308,4 +319,5 @@ private data class CachedDetail(
     val completions: List<Completion>,
     val users: List<User>,
     val history: List<TaskHistoryEvent>,
+    val rooms: List<Room>,
 )

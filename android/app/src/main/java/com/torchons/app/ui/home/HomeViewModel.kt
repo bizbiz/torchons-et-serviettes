@@ -9,6 +9,9 @@ import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.TaskInProgress
+import com.torchons.app.data.model.Category
+import com.torchons.app.data.model.Room
+import com.torchons.app.data.model.Task
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.HomeRepository
 import com.torchons.app.data.repository.TaskRepository
@@ -66,6 +69,20 @@ class HomeViewModel @Inject constructor(
 
     val displayName: StateFlow<String?> = authRepository.displayNameFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /**
+     * Caches partages avec TaskListViewModel pour resolver les pieces/categories
+     * affichees sur les cartes Home (suggestions + in-progress). Pas de fetch
+     * supplementaire — on consomme directement les flows Room du repo.
+     */
+    val rooms: StateFlow<List<Room>> = taskRepository.observeRooms()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val categories: StateFlow<List<Category>> = taskRepository.observeCategories()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val activeTasks: StateFlow<List<Task>> = taskRepository.observeActiveTasks()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _affinityPopupEnabled = MutableStateFlow(true)
     val affinityPopupEnabled: StateFlow<Boolean> = _affinityPopupEnabled.asStateFlow()
@@ -135,12 +152,18 @@ class HomeViewModel @Inject constructor(
             val threshold = (settings?.get("freshness_threshold") as? Double) ?: cachedThreshold
             cachedThreshold = threshold
 
-            // Sub-fetches en parallele.
+            // Sub-fetches en parallele. On rafraichit aussi rooms/categories/tasks
+            // pour que les SuggestionCard puissent resoudre leur piece+categorie
+            // au premier affichage Home (sinon il faut visiter TaskListScreen
+            // d'abord pour que ces caches se remplissent).
             val results = listOf(
                 async { homeRepository.refreshSuggestions(threshold) },
                 async { homeRepository.refreshInProgress() },
                 async { homeRepository.refreshFairShare() },
                 async { homeRepository.refreshPendingAffinity(6) },
+                async { taskRepository.refreshRooms() },
+                async { taskRepository.refreshCategories() },
+                async { taskRepository.refreshTasks() },
             ).awaitAll()
 
             val allOk = settingsOk && results.all { it }

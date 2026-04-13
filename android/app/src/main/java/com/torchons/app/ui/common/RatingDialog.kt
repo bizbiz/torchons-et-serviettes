@@ -54,6 +54,8 @@ data class RatingRecurrence(
  *
  * @param onSubmitAndNext callback chaine vers la tache pending suivante
  *   (Home uniquement). Si null, le bouton "Une autre !" n'est pas affiche.
+ * @param roomLabel libelle de la piece a afficher sous le titre (ex: "🛁 SDB").
+ *   Null = aucun rappel de piece. Caller resoud depuis le cache rooms.
  */
 @Composable
 fun RatingDialog(
@@ -61,6 +63,7 @@ fun RatingDialog(
     onSubmit: (Int, Int, RatingRecurrence?) -> Unit,
     onSubmitAndNext: ((Int, Int, RatingRecurrence?) -> Unit)? = null,
     onDismiss: () -> Unit,
+    roomLabel: String? = null,
 ) {
     // Pre-remplissage avec les valeurs serveur. Key sur taskId pour
     // reinitialiser quand on change de tache (flow Home "Une autre !").
@@ -98,6 +101,13 @@ fun RatingDialog(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                 )
+                if (roomLabel != null) {
+                    Text(
+                        text = roomLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(
                     text = formatLastRated(pending.lastRatedAt),
                     style = MaterialTheme.typography.labelSmall,

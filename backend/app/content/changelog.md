@@ -1,5 +1,13 @@
 # Notes de version
 
+## v0.6.1 — 2026-04-13
+
+### Pieces visibles partout
+- Sur la page d'accueil, les cartes "Suggestions" et "En cours" affichent maintenant la piece (avec son emoji si tu en as defini un) et la categorie en pastille colore sous le titre.
+- Les cartes de suggestions tres en retard ont un liseret rouge autour pour attirer l'oeil.
+- La fiche detail d'une tache affiche aussi la piece (read-only — pour la modifier passe par le crayon en haut a droite).
+- La popup de notation affiche la piece sous le titre de la tache pour rappel visuel.
+
 ## v0.6.0 — 2026-04-13
 
 ### Pieces : nouvelle gestion

@@ -206,6 +206,11 @@ fun TaskDetailScreen(
     // Ouvert depuis le bouton "Modifier" sur la card "Effort & Affinite".
     val ratingContext = uiState.ratingContext
     if (ratingContext != null) {
+        // Resoud le libelle de la piece a passer au modal — uiState.room est
+        // deja resolu par le ViewModel.
+        val ratingRoomLabel = uiState.room?.let { r ->
+            if (!r.emoji.isNullOrBlank()) "${r.emoji} ${r.name}" else r.name
+        }
         RatingDialog(
             pending = ratingContext,
             onSubmit = { affinity, effort, recurrence ->
@@ -214,6 +219,7 @@ fun TaskDetailScreen(
             // Pas de chain "Une autre" depuis TaskDetail : on est sur UNE tache.
             onSubmitAndNext = null,
             onDismiss = { viewModel.dismissRatingDialog() },
+            roomLabel = ratingRoomLabel,
         )
     }
 
@@ -388,6 +394,25 @@ fun TaskDetailScreen(
                                     Text(
                                         text = task.description,
                                         style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    HorizontalDivider()
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                }
+
+                                // Piece (read-only — l'edition se fait via le crayon top-bar)
+                                if (uiState.room != null) {
+                                    Text(
+                                        text = "Piece",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    val r = uiState.room!!
+                                    val label = if (!r.emoji.isNullOrBlank()) "${r.emoji} ${r.name}" else r.name
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.bodyLarge,
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
                                     HorizontalDivider()

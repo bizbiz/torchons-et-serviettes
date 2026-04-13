@@ -57,11 +57,14 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.PendingAffinity
+import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.TaskInProgress
 import com.torchons.app.ui.common.RatingDialog
@@ -82,7 +85,16 @@ fun HomeScreen(
     val displayName by viewModel.displayName.collectAsState()
     val userId by viewModel.userId.collectAsState()
     val affinityEnabled by viewModel.affinityPopupEnabled.collectAsState()
+    val rooms by viewModel.rooms.collectAsState()
+    val categories by viewModel.categories.collectAsState()
+    val activeTasks by viewModel.activeTasks.collectAsState()
     val toastContext = LocalContext.current
+
+    // Maps de lookup memoisees pour pouvoir resolver task -> room/category sans
+    // refaire .find() a chaque card.
+    val tasksById = remember(activeTasks) { activeTasks.associateBy { it.id } }
+    val roomsById = remember(rooms) { rooms.associateBy { it.id } }
+    val categoriesById = remember(categories) { categories.associateBy { it.id } }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -100,6 +112,12 @@ fun HomeScreen(
     // Popup affinite + effort (si active dans les reglages)
     if (affinityEnabled && uiState.showAffinityPopup && uiState.pendingAffinity != null) {
         val pending = uiState.pendingAffinity!!
+        // Resoudre le label de la piece via le cache : task -> roomId -> Room
+        val pendingTask = tasksById[pending.taskId]
+        val pendingRoom = pendingTask?.roomId?.let { roomsById[it] }
+        val pendingRoomLabel = pendingRoom?.let { r ->
+            if (!r.emoji.isNullOrBlank()) "${r.emoji} ${r.name}" else r.name
+        }
         RatingDialog(
             pending = pending,
             onSubmit = { affinity, effort, recurrence ->
@@ -108,7 +126,8 @@ fun HomeScreen(
             onSubmitAndNext = { affinity, effort, recurrence ->
                 viewModel.submitRatingAndNext(pending.taskId, affinity, effort, recurrence)
             },
-            onDismiss = { viewModel.dismissAffinityPopup() }
+            onDismiss = { viewModel.dismissAffinityPopup() },
+            roomLabel = pendingRoomLabel,
         )
     }
 
@@ -184,8 +203,13 @@ fun HomeScreen(
                 fontWeight = FontWeight.SemiBold
             )
             uiState.inProgress.forEach { tip ->
+                val task = tasksById[tip.taskId]
+                val room = task?.roomId?.let { roomsById[it] }
+                val category = task?.categoryId?.let { categoriesById[it] }
                 InProgressCard(
                     tip = tip,
+                    room = room,
+                    category = category,
                     onClick = { onTaskClick(tip.taskId) },
                     onComplete = { viewModel.completeTask(tip.taskId) },
                     onCancel = { viewModel.cancelInProgress(tip.taskId) }
@@ -201,8 +225,13 @@ fun HomeScreen(
                 fontWeight = FontWeight.SemiBold
             )
             uiState.suggestions.forEach { suggestion ->
+                val task = tasksById[suggestion.taskId]
+                val room = task?.roomId?.let { roomsById[it] }
+                val category = task?.categoryId?.let { categoriesById[it] }
                 SuggestionCard(
                     suggestion = suggestion,
+                    room = room,
+                    category = category,
                     onClick = { onTaskClick(suggestion.taskId) },
                     onStart = { viewModel.startTask(suggestion.taskId) },
                     onComplete = { viewModel.completeTask(suggestion.taskId) },
@@ -287,6 +316,8 @@ fun HomeScreen(
 @Composable
 private fun SuggestionCard(
     suggestion: Suggestion,
+    room: Room?,
+    category: Category?,
     onClick: () -> Unit,
     onStart: () -> Unit,
     onComplete: () -> Unit,
@@ -297,6 +328,8 @@ private fun SuggestionCard(
     val freshnessColor = FreshnessCalculator.getFreshnessColor(suggestion.freshness)
     val reasonLabel = if (suggestion.reason == "urgent") "La plus urgente" else "Tu aimes bien"
     val reasonIcon = if (suggestion.reason == "urgent") Icons.Default.Warning else Icons.Default.Favorite
+    // Liseret rouge si la tache est en zone "rouge" (freshness < 25 = en retard).
+    val isLate = suggestion.freshness < 25.0
     var showUserPicker by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var selectedUserId by remember { mutableStateOf<String?>(null) }
@@ -343,7 +376,8 @@ private fun SuggestionCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = if (isLate) androidx.compose.foundation.BorderStroke(2.dp, FreshnessCalculator.ROUGE) else null,
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Badge raison + bouton edit
@@ -379,6 +413,9 @@ private fun SuggestionCard(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
+
+            // Piece + categorie (ligne discrete sous le titre)
+            TaskMetaRow(room = room, category = category)
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -476,6 +513,8 @@ private fun DatePickerDialog(
 @Composable
 private fun InProgressCard(
     tip: TaskInProgress,
+    room: Room?,
+    category: Category?,
     onClick: () -> Unit,
     onComplete: () -> Unit,
     onCancel: () -> Unit
@@ -505,6 +544,9 @@ private fun InProgressCard(
                 )
             }
 
+            // Piece + categorie sous le titre
+            TaskMetaRow(room = room, category = category)
+
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
@@ -533,6 +575,50 @@ private fun InProgressCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Fait !")
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Ligne de meta sous un titre de tache : emoji+nom de la piece + nom de
+ * la categorie en pastille discrete. Affiche rien si les deux sont null.
+ *
+ * Pattern utilise par SuggestionCard et InProgressCard pour rappeler le
+ * contexte (ou est la tache, dans quel "univers" elle vit).
+ */
+@Composable
+private fun TaskMetaRow(room: Room?, category: Category?) {
+    if (room == null && category == null) return
+    Spacer(modifier = Modifier.height(4.dp))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (room != null) {
+            val label = if (!room.emoji.isNullOrBlank()) "${room.emoji} ${room.name}" else room.name
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (category != null) {
+            val catColor = remember(category.color) {
+                try { Color(android.graphics.Color.parseColor(category.color)) }
+                catch (_: Exception) { Color.Gray }
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(catColor.copy(alpha = 0.15f))
+                    .padding(horizontal = 6.dp, vertical = 1.dp),
+            ) {
+                Text(
+                    text = category.name,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = catColor,
+                )
             }
         }
     }
