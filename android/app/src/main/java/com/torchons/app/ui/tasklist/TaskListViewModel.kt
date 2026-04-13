@@ -75,6 +75,10 @@ data class TaskListUiState(
     val completionMessage: String? = null,
     val hasCachedData: Boolean = false,
     val lastRefreshFailed: Boolean = false,
+    /** Id de la tache en cours de "celebration" (animation post-completion). */
+    val celebratingTaskId: String? = null,
+    /** Compteur incremente a chaque celebration pour relancer konfetti. */
+    val celebrationTrigger: Int = 0,
 )
 
 /**
@@ -258,7 +262,7 @@ class TaskListViewModel @Inject constructor(
     fun loadData() = refresh()
 
     fun completeTask(taskId: String) {
-        viewModelScope.launch {
+        celebrateThen(taskId) {
             val result = taskRepository.completeTask(taskId)
             result.fold(
                 onSuccess = {
@@ -274,7 +278,7 @@ class TaskListViewModel @Inject constructor(
     }
 
     fun completeTaskAtDate(taskId: String, isoDate: String, completedBy: String? = null) {
-        viewModelScope.launch {
+        celebrateThen(taskId) {
             val result = taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy)
             result.fold(
                 onSuccess = {
@@ -284,6 +288,24 @@ class TaskListViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(error = error.message)
                 }
             )
+        }
+    }
+
+    /**
+     * Affiche la celebration (emoji + confetti) pendant ~2s avant d'executer
+     * le bloc de completion. La tache reste visible dans la liste pendant
+     * la celebration parce que l'ecriture Room n'a pas encore eu lieu, donc
+     * le combine ne re-emet pas et le filtre "a faire" ne masque pas l'item.
+     */
+    private fun celebrateThen(taskId: String, block: suspend () -> Unit) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                celebratingTaskId = taskId,
+                celebrationTrigger = _uiState.value.celebrationTrigger + 1,
+            )
+            kotlinx.coroutines.delay(2000L)
+            _uiState.value = _uiState.value.copy(celebratingTaskId = null)
+            block()
         }
     }
 

@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.util.FreshnessCalculator
 
 /**
@@ -156,6 +157,7 @@ fun TaskListScreen(
         }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
@@ -475,6 +477,7 @@ fun TaskListScreen(
                             ) { taskWithFreshness ->
                                 TaskCard(
                                     taskWithFreshness = taskWithFreshness,
+                                    isCelebrating = uiState.celebratingTaskId == taskWithFreshness.task.id,
                                     onClick = onCardClick,
                                     onComplete = onCardComplete,
                                     onHistorical = onCardHistorical,
@@ -489,6 +492,12 @@ fun TaskListScreen(
             }
         }
     }
+
+    // Overlay konfetti plein ecran — declenche par celebrationTrigger.
+    androidx.compose.runtime.key(uiState.celebrationTrigger) {
+        CelebrationOverlay(isCelebrating = uiState.celebratingTaskId != null)
+    }
+    } // fin du Box outer (celebration overlay layer)
 }
 
 /** Chip icone pour filtre tri-state (off / high rouge / low vert). */

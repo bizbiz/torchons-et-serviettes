@@ -67,8 +67,11 @@ import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.TaskInProgress
+import com.torchons.app.ui.common.CelebrationCardContent
+import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.common.RatingRecurrence
+import com.torchons.app.ui.common.randomCelebration
 import com.torchons.app.util.FreshnessCalculator
 import java.time.Instant
 import java.time.ZoneId
@@ -138,6 +141,7 @@ fun HomeScreen(
         return
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -210,6 +214,7 @@ fun HomeScreen(
                     tip = tip,
                     room = room,
                     category = category,
+                    isCelebrating = uiState.celebratingTaskId == tip.taskId,
                     onClick = { onTaskClick(tip.taskId) },
                     onComplete = { viewModel.completeTask(tip.taskId) },
                     onCancel = { viewModel.cancelInProgress(tip.taskId) }
@@ -232,6 +237,7 @@ fun HomeScreen(
                     suggestion = suggestion,
                     room = room,
                     category = category,
+                    isCelebrating = uiState.celebratingTaskId == suggestion.taskId,
                     onClick = { onTaskClick(suggestion.taskId) },
                     onStart = { viewModel.startTask(suggestion.taskId) },
                     onComplete = { viewModel.completeTask(suggestion.taskId) },
@@ -311,6 +317,14 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
     }
+
+    // Overlay confetti plein ecran — declenche par celebrationTrigger et
+    // visible tant que celebratingTaskId est non-null. La key force konfetti
+    // a relancer une nouvelle vague a chaque celebration.
+    androidx.compose.runtime.key(uiState.celebrationTrigger) {
+        CelebrationOverlay(isCelebrating = uiState.celebratingTaskId != null)
+    }
+    } // fin du Box outer (celebration overlay layer)
 }
 
 @Composable
@@ -318,6 +332,7 @@ private fun SuggestionCard(
     suggestion: Suggestion,
     room: Room?,
     category: Category?,
+    isCelebrating: Boolean,
     onClick: () -> Unit,
     onStart: () -> Unit,
     onComplete: () -> Unit,
@@ -330,6 +345,10 @@ private fun SuggestionCard(
     val reasonIcon = if (suggestion.reason == "urgent") Icons.Default.Warning else Icons.Default.Favorite
     // Liseret rouge si la tache est en zone "rouge" (freshness < 25 = en retard).
     val isLate = suggestion.freshness < 25.0
+    // Pickee une seule fois pour cette celebration (key suggestion.taskId).
+    val celebration = remember(suggestion.taskId, isCelebrating) {
+        if (isCelebrating) randomCelebration() else null
+    }
     var showUserPicker by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var selectedUserId by remember { mutableStateOf<String?>(null) }
@@ -377,8 +396,14 @@ private fun SuggestionCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = if (isLate) androidx.compose.foundation.BorderStroke(2.dp, FreshnessCalculator.ROUGE) else null,
+        border = if (isLate && !isCelebrating) androidx.compose.foundation.BorderStroke(2.dp, FreshnessCalculator.ROUGE) else null,
     ) {
+        // Mode celebration : on remplace tout le contenu par les emoji de
+        // felicitations. Le confetti est gere au niveau du Box parent.
+        if (celebration != null) {
+            CelebrationCardContent(emoji = celebration.first, text = celebration.second)
+            return@Card
+        }
         Column(modifier = Modifier.padding(16.dp)) {
             // Badge raison + bouton edit
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -515,10 +540,14 @@ private fun InProgressCard(
     tip: TaskInProgress,
     room: Room?,
     category: Category?,
+    isCelebrating: Boolean,
     onClick: () -> Unit,
     onComplete: () -> Unit,
     onCancel: () -> Unit
 ) {
+    val celebration = remember(tip.taskId, isCelebrating) {
+        if (isCelebrating) randomCelebration() else null
+    }
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -527,6 +556,10 @@ private fun InProgressCard(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         )
     ) {
+        if (celebration != null) {
+            CelebrationCardContent(emoji = celebration.first, text = celebration.second)
+            return@Card
+        }
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(

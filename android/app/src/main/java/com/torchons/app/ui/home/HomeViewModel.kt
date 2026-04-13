@@ -50,6 +50,10 @@ data class HomeUiState(
     val hasCachedData: Boolean = false,
     val lastRefreshFailed: Boolean = false,
     val error: String? = null,
+    /** Id de la tache en cours de "celebration" (animation post-completion). */
+    val celebratingTaskId: String? = null,
+    /** Compteur incremente a chaque celebration pour relancer l'animation konfetti. */
+    val celebrationTrigger: Int = 0,
 )
 
 @HiltViewModel
@@ -284,7 +288,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun completeTask(taskId: String) {
-        viewModelScope.launch {
+        celebrateThen(taskId) {
             taskRepository.completeTask(taskId).fold(
                 onSuccess = { refresh() },
                 onFailure = { _uiState.value = _uiState.value.copy(error = it.message) },
@@ -293,11 +297,29 @@ class HomeViewModel @Inject constructor(
     }
 
     fun completeTaskAtDate(taskId: String, isoDate: String, completedBy: String? = null) {
-        viewModelScope.launch {
+        celebrateThen(taskId) {
             taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
                 onSuccess = { refresh() },
                 onFailure = { _uiState.value = _uiState.value.copy(error = it.message) },
             )
+        }
+    }
+
+    /**
+     * Affiche la celebration (emoji + confetti) pendant ~2s, puis execute
+     * le bloc de completion qui est diff(ere d'autant. La card reste visible
+     * pendant la celebration parce que la completion n'a pas encore touche
+     * Room — le flow ne re-emet donc pas et ne fait pas disparaitre l'item.
+     */
+    private fun celebrateThen(taskId: String, block: suspend () -> Unit) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                celebratingTaskId = taskId,
+                celebrationTrigger = _uiState.value.celebrationTrigger + 1,
+            )
+            kotlinx.coroutines.delay(2000L)
+            _uiState.value = _uiState.value.copy(celebratingTaskId = null)
+            block()
         }
     }
 

@@ -71,7 +71,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.TaskHistoryEventType
+import com.torchons.app.ui.common.CelebrationCardContent
+import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.RatingDialog
+import com.torchons.app.ui.common.randomCelebration
 import com.torchons.app.ui.user.UserProfileDialog
 import com.torchons.app.ui.user.UserProfileRequest
 import com.torchons.app.util.FreshnessCalculator
@@ -223,6 +226,7 @@ fun TaskDetailScreen(
         )
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -516,29 +520,48 @@ fun TaskDetailScreen(
                         }
                     }
 
-                    // Bouton completer
+                    // Bouton completer (ou celebration si la tache vient
+                    // d'etre validee — confetti gere au niveau du Box parent)
                     item {
-                        Button(
-                            onClick = { viewModel.completeTask() },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = FreshnessCalculator.VERT
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Marquer comme fait",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                        if (uiState.isCelebrating) {
+                            val celebration = remember(uiState.celebrationTrigger) {
+                                randomCelebration()
+                            }
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = FreshnessCalculator.VERT.copy(alpha = 0.15f)
+                                ),
+                            ) {
+                                CelebrationCardContent(
+                                    emoji = celebration.first,
+                                    text = celebration.second,
+                                )
+                            }
+                        } else {
+                            Button(
+                                onClick = { viewModel.completeTask() },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = FreshnessCalculator.VERT
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Marquer comme fait",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
                     }
 
@@ -638,6 +661,12 @@ fun TaskDetailScreen(
             }
         }
     }
+
+    // Overlay konfetti plein ecran pendant la celebration.
+    androidx.compose.runtime.key(uiState.celebrationTrigger) {
+        CelebrationOverlay(isCelebrating = uiState.isCelebrating)
+    }
+    } // fin du Box outer (celebration overlay layer)
 }
 
 /** Carte compacte affichant un evenement de l'historique de modification. */

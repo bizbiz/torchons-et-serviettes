@@ -24,11 +24,14 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.ui.common.CelebrationCardContent
+import com.torchons.app.ui.common.randomCelebration
 import com.torchons.app.util.FreshnessCalculator
 
 /**
@@ -49,6 +52,7 @@ import com.torchons.app.util.FreshnessCalculator
 @Composable
 fun TaskCard(
     taskWithFreshness: TaskWithFreshness,
+    isCelebrating: Boolean,
     onClick: (String) -> Unit,
     onComplete: (String) -> Unit,
     onHistorical: (String) -> Unit,
@@ -57,6 +61,9 @@ fun TaskCard(
     val task = taskWithFreshness.task
     val taskId = task.id
     val freshnessColor = FreshnessCalculator.getFreshnessColor(taskWithFreshness.freshness)
+    val celebration = remember(taskId, isCelebrating) {
+        if (isCelebrating) randomCelebration() else null
+    }
 
     // Depuis v0.6.0 : le titre est propre (sans suffixe " — Piece"), la piece
     // vient directement de TaskWithFreshness.roomName / roomEmoji (pre-resolus
@@ -79,6 +86,11 @@ fun TaskCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
+        // Mode celebration : remplace tout le contenu pendant ~2s.
+        if (celebration != null) {
+            CelebrationCardContent(emoji = celebration.first, text = celebration.second)
+            return@Card
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()

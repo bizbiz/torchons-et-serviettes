@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.6.2 — 2026-04-13
+
+### Felicitations a chaque tache validee
+- Quand tu valides une tache (peu importe ou : accueil, liste ou fiche detail, et que ce soit "fait" ou "deja fait"), la carte affiche maintenant un emoji de felicitations ("Bravo !", "Bien joue !", etc.) et des confetti tombent sur l'ecran pendant 2 secondes avant que la tache disparaisse / la suivante apparaisse. Plus de validation invisible.
+
 ## v0.6.1 — 2026-04-13
 
 ### Pieces visibles partout

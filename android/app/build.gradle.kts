@@ -31,8 +31,8 @@ android {
         applicationId = "com.torchons.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "0.6.1"
+        versionCode = 19
+        versionName = "0.6.2"
 
         // URL de base de l'API — voir tsApiBaseUrl ci-dessus.
         buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrl\"")
@@ -120,4 +120,8 @@ dependencies {
 
     // WorkManager pour notifications locales
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+
+    // Konfetti — animation de confetti pour les felicitations apres validation
+    // d'une tache. Lib populaire et legere (~50ko), bien integree avec Compose.
+    implementation("nl.dionsegijn:konfetti-compose:2.0.5")
 }

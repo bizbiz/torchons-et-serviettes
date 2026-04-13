@@ -52,6 +52,10 @@ data class TaskDetailUiState(
     val completionMessage: String? = null,
     val hasCachedData: Boolean = false,
     val lastRefreshFailed: Boolean = false,
+    /** True pendant l'animation de celebration post-completion. */
+    val isCelebrating: Boolean = false,
+    /** Compteur incremente a chaque celebration pour relancer konfetti. */
+    val celebrationTrigger: Int = 0,
 )
 
 /**
@@ -184,6 +188,16 @@ class TaskDetailViewModel @Inject constructor(
 
     fun completeTask() {
         viewModelScope.launch {
+            // Celebration : le bouton "Marquer comme fait" est remplace par
+            // une grosse carte felicitations + confetti pendant ~2s, puis on
+            // execute la completion reelle (et on revient en mode normal).
+            _uiState.value = _uiState.value.copy(
+                isCelebrating = true,
+                celebrationTrigger = _uiState.value.celebrationTrigger + 1,
+            )
+            kotlinx.coroutines.delay(2000L)
+            _uiState.value = _uiState.value.copy(isCelebrating = false)
+
             val result = taskRepository.completeTask(taskId)
             result.fold(
                 onSuccess = {
