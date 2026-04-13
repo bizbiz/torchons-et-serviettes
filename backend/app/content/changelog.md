@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.5.4 — 2026-04-13
+
+### Liste des taches
+- Au demarrage de l'app, le filtre "🔥 A faire" est maintenant active par defaut : tu vois directement les taches urgentes, sans scroller dans toute la liste. Tu peux desactiver le filtre en tapant sur la chip rouge si tu veux voir toutes les taches.
+
 ## v0.5.3 — 2026-04-13
 
 ### Liste des taches

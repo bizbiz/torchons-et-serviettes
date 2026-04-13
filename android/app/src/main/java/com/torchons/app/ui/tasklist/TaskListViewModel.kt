@@ -50,7 +50,7 @@ data class TaskListUiState(
     val isAtHome: Boolean = true,
     val showAllTasks: Boolean = false,
     val homeTasksHidden: Int = 0,
-    val filterTodo: Boolean = false,
+    val filterTodo: Boolean = true,
     val filterAffinity: FilterState = FilterState.OFF,
     val filterEffort: FilterState = FilterState.OFF,
     val filterRecurrence: FilterState = FilterState.OFF,
@@ -66,9 +66,14 @@ data class TaskListUiState(
 /**
  * Etat des filtres en memoire. Stocke dans un Flow pour reactiver le
  * combine automatiquement a chaque changement de filtre.
+ *
+ * Note : filterTodo est ON par defaut. Au demarrage, on n'affiche que les
+ * taches urgentes (freshness < freshnessThreshold), ce qui reduit
+ * drastiquement le nombre d'items rendu et donne un scroll fluide d'emblee.
+ * L'utilisateur peut desactiver le filtre via la chip pour voir tout.
  */
 private data class TaskListFilters(
-    val filterTodo: Boolean = false,
+    val filterTodo: Boolean = true,
     val filterAffinity: FilterState = FilterState.OFF,
     val filterEffort: FilterState = FilterState.OFF,
     val filterRecurrence: FilterState = FilterState.OFF,
