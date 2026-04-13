@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.5.1 — 2026-04-13
+
+### Corrections
+- L'app ne crashe plus au demarrage apres mise a jour vers v0.5.0 (incompatibilite de schema de base locale sur la table d'historique).
+
 ## v0.5.0 — 2026-04-13
 
 ### Historique des modifications

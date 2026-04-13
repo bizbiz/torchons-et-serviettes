@@ -1,6 +1,7 @@
 package com.torchons.app.data.local.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.google.gson.Gson
 import com.torchons.app.data.model.TaskHistoryDto
@@ -10,8 +11,12 @@ import com.torchons.app.data.model.TaskHistoryEventType
 /**
  * Entite Room pour le cache d'historique d'une tache.
  * L'id du serveur (change_log.id) sert de cle primaire — stable et monotone.
+ * Index sur taskId : la requete principale `observeByTask` filtre dessus.
  */
-@Entity(tableName = "task_history")
+@Entity(
+    tableName = "task_history",
+    indices = [Index(name = "ix_task_history_taskId", value = ["taskId"])],
+)
 data class TaskHistoryEntity(
     @PrimaryKey val id: Long,
     val taskId: String,
