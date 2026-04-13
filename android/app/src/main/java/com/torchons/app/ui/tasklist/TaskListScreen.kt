@@ -14,38 +14,31 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.DatePicker
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -78,7 +71,6 @@ fun TaskListScreen(
     viewModel: TaskListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val displayName by viewModel.displayName.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var historicalTaskId by remember { mutableStateOf<String?>(null) }
     var historicalUserId by remember { mutableStateOf<String?>(null) }
@@ -177,56 +169,30 @@ fun TaskListScreen(
                 )
             }
         },
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.CleaningServices,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Torchons & Serviettes",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                },
-                actions = {
-                    // Initiale de l'utilisateur
-                    if (displayName != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = displayName!!.first().uppercase(),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        }
+        // Pas de topBar : l'ancien bandeau "Torchons & Serviettes" + avatar
+        // a ete retire (rien de cliquable dedans). Le Scaffold gere automatiquement
+        // l'inset top via paddingValues.calculateTopPadding() quand topBar est absent.
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Barre de sync fine en haut, visible pendant chaque refresh
+            // (initial, pull-to-refresh, ou retour sur l'ecran).
+            if (uiState.isRefreshing || uiState.isLoading) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                )
+            } else {
+                // Reserve la place pour eviter le saut visuel quand la barre disparait.
+                Spacer(modifier = Modifier.height(2.dp))
+            }
+
             // Bandeau "pas a la maison"
             if (!uiState.isAtHome && uiState.homeTasksHidden > 0) {
                 androidx.compose.material3.Surface(
@@ -251,11 +217,11 @@ fun TaskListScreen(
                 }
             }
 
-            // Chips de filtres avancés + label
+            // Chips de filtres avancés + label — premiere rangee, plus d'air en haut
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -322,13 +288,13 @@ fun TaskListScreen(
                 }
             }
 
-            // Chips de filtrage par categorie
+            // Chips de filtrage par categorie — espacement uniforme 6dp
             if (uiState.categories.isNotEmpty()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Chip "Toutes" - clear le filtre
@@ -375,13 +341,13 @@ fun TaskListScreen(
                 }
             }
 
-            // Chips de filtrage par piece (extraite du titre)
+            // Chips de filtrage par piece (extraite du titre) — meme espacement uniforme
             if (uiState.availableRooms.isNotEmpty()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FilterChip(
@@ -399,18 +365,10 @@ fun TaskListScreen(
                 }
             }
 
-            // Contenu principal
+            // Contenu principal — pas de loading central, c'est la barre fine
+            // en haut qui signale le sync. Le pattern stale-while-revalidate
+            // affiche le cache si dispo, sinon empty state ou message backend HS.
             when {
-                uiState.isLoading -> {
-                    // Indicateur de chargement
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-
                 uiState.tasks.isEmpty() && !uiState.isRefreshing -> {
                     val backendUnreachable = uiState.lastRefreshFailed && !uiState.hasCachedData
                     Box(
@@ -466,7 +424,12 @@ fun TaskListScreen(
                     ) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 8.dp,
+                                bottom = 16.dp,
+                            ),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(
@@ -490,8 +453,8 @@ fun TaskListScreen(
                                 )
                             }
 
-                            // Espace en bas de la liste
-                            item { Spacer(modifier = Modifier.height(16.dp)) }
+                            // Pas de spacer bottom : la decision 4c (FAB cache) est volontairement
+                            // non corrigee a la demande de l'utilisateur.
                         }
                     }
                 }

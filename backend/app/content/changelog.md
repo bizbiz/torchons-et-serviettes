@@ -1,5 +1,13 @@
 # Notes de version
 
+## v0.5.5 — 2026-04-13
+
+### Liste des taches : refonte visuelle
+- Le bandeau violet "Torchons & Serviettes" en haut a ete retire — il prenait de la place sans rien proposer de cliquable.
+- Nouvelle barre de synchronisation fine et discrete tout en haut, qui apparait pendant les chargements (au lieu d'un gros spinner plein ecran qui masquait les taches).
+- Espacements entre les rangees de filtres revus : plus d'air en haut, espacement uniforme entre les rangees.
+- Cartes de tache simplifiees : on ne garde plus que le nom, la piece et un indicateur de retard sous forme de bordure colore a gauche (vert/jaune/orange/rouge). Plus de badge categorie, d'etoiles, de barre de progression ni de texte "Rouge X%". Les cartes sont plus compactes, on en voit plus a l'ecran et le scroll est plus fluide.
+
 ## v0.5.4 — 2026-04-13
 
 ### Liste des taches
