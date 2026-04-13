@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -169,9 +170,11 @@ fun TaskListScreen(
                 )
             }
         },
-        // Pas de topBar : l'ancien bandeau "Torchons & Serviettes" + avatar
-        // a ete retire (rien de cliquable dedans). Le Scaffold gere automatiquement
-        // l'inset top via paddingValues.calculateTopPadding() quand topBar est absent.
+        // contentWindowInsets = 0 : le Scaffold parent dans NavGraph.MainScreen
+        // consomme deja les system bars (status + nav bottom) via son bottomBar
+        // NavigationBar. Sans cette ligne, on double-consomme l'inset top et
+        // les chips de filtres se retrouvent loin du status bar.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { paddingValues ->
         Column(
             modifier = Modifier

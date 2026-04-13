@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.5.8 — 2026-04-13
+
+### Liste des taches
+- Plus d'air superflu en haut de l'ecran : la 1ere rangee de filtres colle vraiment au status bar Android (correction du double padding).
+
 ## v0.5.7 — 2026-04-13
 
 ### Liste des taches
