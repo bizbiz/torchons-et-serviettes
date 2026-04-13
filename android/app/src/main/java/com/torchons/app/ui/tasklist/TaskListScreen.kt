@@ -1,7 +1,5 @@
 package com.torchons.app.ui.tasklist
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -43,19 +41,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,7 +60,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.util.FreshnessCalculator
-import kotlinx.coroutines.launch
 
 /**
  * Ecran principal affichant la liste des taches.
@@ -87,7 +80,6 @@ fun TaskListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val displayName by viewModel.displayName.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     var historicalTaskId by remember { mutableStateOf<String?>(null) }
     var historicalUserId by remember { mutableStateOf<String?>(null) }
     var showUserPicker by remember { mutableStateOf(false) }
@@ -350,10 +342,18 @@ fun TaskListScreen(
                         )
                     )
 
-                    // Chips pour chaque categorie qui contient au moins une tache (avant filtres)
-                    val categoriesWithTasks = uiState.categories.filter { cat ->
-                        uiState.tasks.any { it.task.categoryId == cat.id } ||
-                        cat.id in uiState.selectedCategoryIds
+                    // Chips pour chaque categorie qui contient au moins une tache.
+                    // Memoise pour eviter le O(catégories × taches) a chaque
+                    // recompose (changement de filtre, scroll, etc.).
+                    val categoriesWithTasks = remember(
+                        uiState.categories,
+                        uiState.tasks,
+                        uiState.selectedCategoryIds,
+                    ) {
+                        val taskCategoryIds = uiState.tasks.mapNotNullTo(mutableSetOf()) { it.task.categoryId }
+                        uiState.categories.filter { cat ->
+                            cat.id in taskCategoryIds || cat.id in uiState.selectedCategoryIds
+                        }
                     }
                     categoriesWithTasks.forEach { category ->
                         val catColor = try {
@@ -473,7 +473,7 @@ fun TaskListScreen(
                                 items = uiState.tasks,
                                 key = { it.task.id }
                             ) { taskWithFreshness ->
-                                SwipeableTaskCard(
+                                TaskCard(
                                     taskWithFreshness = taskWithFreshness,
                                     onClick = { onTaskClick(taskWithFreshness.task.id) },
                                     onComplete = { viewModel.completeTask(taskWithFreshness.task.id) },
@@ -486,7 +486,7 @@ fun TaskListScreen(
                                         } else {
                                             showUserPicker = true
                                         }
-                                    }
+                                    },
                                 )
                             }
 
@@ -497,79 +497,6 @@ fun TaskListScreen(
                 }
             }
         }
-    }
-}
-
-/**
- * Carte de tache avec swipe pour completer.
- * Swipe vers la droite = marquer comme completee.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SwipeableTaskCard(
-    taskWithFreshness: TaskWithFreshness,
-    onClick: () -> Unit,
-    onComplete: () -> Unit,
-    onHistorical: () -> Unit = {}
-) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.StartToEnd) {
-                onComplete()
-                false // Ne pas supprimer visuellement la carte, juste declencher l'action
-            } else {
-                false
-            }
-        }
-    )
-
-    SwipeToDismissBox(
-        state = dismissState,
-        backgroundContent = {
-            // Fond vert avec icone de validation lors du swipe
-            val color by animateColorAsState(
-                when (dismissState.targetValue) {
-                    SwipeToDismissBoxValue.StartToEnd -> FreshnessCalculator.VERT
-                    else -> Color.Transparent
-                },
-                label = "swipe_bg"
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(color)
-                    .padding(start = 20.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                if (dismissState.targetValue == SwipeToDismissBoxValue.StartToEnd) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Completer",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Fait !",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        },
-        enableDismissFromEndToStart = false
-    ) {
-        TaskCard(
-            taskWithFreshness = taskWithFreshness,
-            onClick = onClick,
-            onComplete = onComplete,
-            onHistorical = onHistorical
-        )
     }
 }
 

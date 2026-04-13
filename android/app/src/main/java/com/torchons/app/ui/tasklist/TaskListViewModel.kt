@@ -352,18 +352,28 @@ class TaskListViewModel @Inject constructor(
             homeTasksHidden = before - filteredTasks.size
         }
 
-        var tasksWithFreshness = filteredTasks.map { task ->
-            val lastCompletion = completions
-                .filter { it.taskId == task.id }
-                .maxByOrNull { it.completedAt }
+        // Pre-calcul O(M) : pour chaque tache, on connait sa derniere completion
+        // en une seule passe. Avant, on faisait completions.filter().maxBy() PAR
+        // tache => O(N×M). Sur ~50 taches × 500 completions = 25 000 ops par
+        // recompute (changement de filtre, refresh, scroll), suffisant pour
+        // faire ramer le scroll de la liste.
+        val lastCompletionByTaskId = HashMap<String, Completion>(completions.size)
+        for (c in completions) {
+            val existing = lastCompletionByTaskId[c.taskId]
+            if (existing == null || c.completedAt > existing.completedAt) {
+                lastCompletionByTaskId[c.taskId] = c
+            }
+        }
+        val categoriesById = categories.associateBy { it.id }
 
+        var tasksWithFreshness = filteredTasks.map { task ->
+            val lastCompletion = lastCompletionByTaskId[task.id]
             val freshness = FreshnessCalculator.calculateFreshness(
                 lastCompletedAt = lastCompletion?.completedAt,
                 rule = task.recurrenceRule,
                 tolerance = task.tolerance,
             )
-
-            val category = categories.find { it.id == task.categoryId }
+            val category = task.categoryId?.let { categoriesById[it] }
 
             TaskWithFreshness(
                 task = task,

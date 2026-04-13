@@ -17,14 +17,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -96,10 +98,15 @@ fun TaskCard(
                 ) {
                     // Badge de categorie
                     if (taskWithFreshness.categoryName != null) {
-                        val catColor = try {
-                            Color(android.graphics.Color.parseColor(taskWithFreshness.categoryColor ?: "#6366F1"))
-                        } catch (e: Exception) {
-                            MaterialTheme.colorScheme.primary
+                        // Memoise le parsing de la couleur — sinon ce parse hexa
+                        // s'execute a chaque recompose pour chaque carte visible.
+                        val fallbackColor = MaterialTheme.colorScheme.primary
+                        val catColor = remember(taskWithFreshness.categoryColor, fallbackColor) {
+                            try {
+                                Color(android.graphics.Color.parseColor(taskWithFreshness.categoryColor ?: "#6366F1"))
+                            } catch (_: Exception) {
+                                fallbackColor
+                            }
                         }
 
                         Box(
@@ -159,24 +166,39 @@ fun TaskCard(
                 )
             }
 
-            // Boutons actions
+            // Boutons actions — FilledIconButton avec background colore + bord
+            // arrondi pour clairement signaler que c'est cliquable.
+            Spacer(modifier = Modifier.width(8.dp))
             if (onHistorical != null) {
-                IconButton(onClick = onHistorical, modifier = Modifier.size(32.dp)) {
+                FilledIconButton(
+                    onClick = onHistorical,
+                    modifier = Modifier.size(48.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                ) {
                     Icon(
                         imageVector = Icons.Default.CalendarMonth,
                         contentDescription = "Deja fait",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        modifier = Modifier.size(24.dp),
                     )
                 }
+                Spacer(modifier = Modifier.width(8.dp))
             }
             if (onComplete != null) {
-                IconButton(onClick = onComplete, modifier = Modifier.size(32.dp)) {
+                FilledIconButton(
+                    onClick = onComplete,
+                    modifier = Modifier.size(48.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = FreshnessCalculator.VERT,
+                        contentColor = Color.White,
+                    ),
+                ) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Fait",
-                        modifier = Modifier.size(18.dp),
-                        tint = FreshnessCalculator.VERT
+                        modifier = Modifier.size(24.dp),
                     )
                 }
             }

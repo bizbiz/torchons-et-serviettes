@@ -1,5 +1,12 @@
 # Notes de version
 
+## v0.5.3 — 2026-04-13
+
+### Liste des taches
+- Le swipe pour valider une tache est supprime — il declenchait parfois des validations accidentelles.
+- Les deux boutons d'action sur chaque carte (calendrier "deja fait" et check "valider") sont plus gros, avec un fond colore (vert pour valider, gris pour le calendrier) et clairement identifiables comme boutons cliquables.
+- Le defilement de la liste est nettement plus fluide, surtout quand il y a beaucoup de taches.
+
 ## v0.5.2 — 2026-04-13
 
 ### Notation unifiee
