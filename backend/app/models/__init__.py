@@ -5,6 +5,7 @@ from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
 from app.models.task_affinity import TaskAffinity
 from app.models.task_effort import TaskEffort
+from app.models.task_frequency_vote import TaskFrequencyVote
 from app.models.task_in_progress import TaskInProgress
 from app.models.completion import TaskCompletion
 from app.models.fair_share import FairShareConfig
@@ -16,7 +17,7 @@ from app.models.user_settings import UserSettings
 
 __all__ = [
     "Base", "User", "Category", "Task", "TaskAssignment", "TaskAffinity",
-    "TaskEffort", "TaskInProgress", "TaskCompletion",
+    "TaskEffort", "TaskFrequencyVote", "TaskInProgress", "TaskCompletion",
     "FairShareConfig", "Streak", "ChangeLog", "NotificationToken", "Badge",
     "UserSettings",
 ]

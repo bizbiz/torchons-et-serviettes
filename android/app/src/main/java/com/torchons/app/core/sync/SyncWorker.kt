@@ -15,6 +15,7 @@ import com.torchons.app.data.local.entities.toEntity
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.ChangeLogEntry
 import com.torchons.app.data.model.Completion
+import com.torchons.app.data.model.FrequencyRequest
 import com.torchons.app.data.model.SyncOperation
 import com.torchons.app.data.model.SyncRequest
 import com.torchons.app.data.model.Task
@@ -58,10 +59,35 @@ class SyncWorker(
         val pending = pendingDao.getAll()
         if (pending.isEmpty()) return Result.success()
 
+        // Les votes de frequence ne transitent pas par /sync (table absente
+        // du contrat serveur). On les pousse directement via setFrequency.
+        val (freqVotes, rest) = pending.partition { it.tableName == "task_frequency_votes" }
+        freqVotes.forEach { op ->
+            runCatching {
+                @Suppress("UNCHECKED_CAST")
+                val payload = gson.fromJson(op.payloadJson, Map::class.java) as? Map<String, Any?>
+                val days = (payload?.get("every_n_days") as? Number)?.toInt()
+                if (days != null) {
+                    val resp = apiService.setFrequency(op.rowId, FrequencyRequest(days))
+                    if (resp.isSuccessful) {
+                        pendingDao.delete(op.clientOpId)
+                    } else {
+                        pendingDao.incrementAttempt(op.clientOpId, "HTTP ${resp.code()}")
+                    }
+                } else {
+                    pendingDao.delete(op.clientOpId)
+                }
+            }.onFailure {
+                pendingDao.incrementAttempt(op.clientOpId, it.message ?: "error")
+            }
+        }
+
+        if (rest.isEmpty()) return Result.success()
+
         val deviceId = tokenManager.getOrCreateDeviceId()
         val cursor = tokenManager.getSyncCursor()
 
-        val ops = pending.map { it.toSyncOperation() }
+        val ops = rest.map { it.toSyncOperation() }
         val request = SyncRequest(deviceId, cursor, ops)
 
         val resp = try {

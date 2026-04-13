@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.Task
+import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.util.FreshnessCalculator
@@ -34,6 +35,7 @@ data class TaskDetailUiState(
     val avgEffortTimeMin: Int? = null,
     val scorePoints: Int? = null,
     val freshness: Double = 0.0,
+    val history: List<TaskHistoryEvent> = emptyList(),
     val showEditRating: Boolean = false,
     val editingCompletion: Completion? = null,
     val error: String? = null,
@@ -78,8 +80,9 @@ class TaskDetailViewModel @Inject constructor(
                 taskRepository.observeTaskById(taskId),
                 taskRepository.observeCompletionsByTask(taskId),
                 taskRepository.observeUsers(),
-            ) { task, completions, users ->
-                CachedDetail(task, completions, users)
+                taskRepository.observeTaskHistory(taskId),
+            ) { task, completions, users, history ->
+                CachedDetail(task, completions, users, history)
             }.collect { cached ->
                 val hasCache = cached.task != null
                 val userNames = cached.users.associate { it.id to it.displayName }
@@ -97,6 +100,7 @@ class TaskDetailViewModel @Inject constructor(
                     completions = sortedCompletions,
                     userNames = userNames,
                     freshness = freshness,
+                    history = cached.history,
                     hasCachedData = hasCache,
                     isLoading = if (hasCache) false else _uiState.value.isLoading,
                     error = if (!hasCache && !_uiState.value.isLoading && _uiState.value.lastRefreshFailed)
@@ -118,6 +122,7 @@ class TaskDetailViewModel @Inject constructor(
                 async { taskRepository.refreshTasks() },
                 async { taskRepository.refreshCompletions(taskId = taskId) },
                 async { taskRepository.refreshUsers() },
+                async { taskRepository.refreshTaskHistory(taskId) },
             ).awaitAll()
 
             // Ratings en direct API (best-effort)
@@ -236,9 +241,10 @@ class TaskDetailViewModel @Inject constructor(
     }
 }
 
-/** Conteneur interne pour le combine des 3 flows. */
+/** Conteneur interne pour le combine des flows. */
 private data class CachedDetail(
     val task: Task?,
     val completions: List<Completion>,
     val users: List<User>,
+    val history: List<TaskHistoryEvent>,
 )

@@ -171,14 +171,9 @@ class HomeViewModel @Inject constructor(
         apiService.setAffinity(taskId, AffinityRequest(affinity))
         apiService.setEffort(taskId, mapOf("points" to effortPoints))
         if (recurrence != null) {
-            val rule = com.torchons.app.data.model.RecurrenceRule(
-                type = "interval",
-                everyNDays = recurrence.everyNDays,
-            )
-            apiService.updateTask(
-                taskId,
-                com.torchons.app.data.model.UpdateTaskRequest(recurrenceRule = rule),
-            )
+            // Vote de frequence individuel — le serveur recalcule le consensus
+            // (moyenne arrondie des votes) et met a jour tasks.recurrence_rule.
+            taskRepository.voteFrequency(taskId, recurrence.everyNDays)
         }
     }
 

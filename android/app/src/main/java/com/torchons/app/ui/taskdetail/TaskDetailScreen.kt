@@ -21,8 +21,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
@@ -66,6 +69,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.data.model.Completion
+import com.torchons.app.data.model.TaskHistoryEvent
+import com.torchons.app.data.model.TaskHistoryEventType
 import com.torchons.app.ui.user.UserProfileDialog
 import com.torchons.app.ui.user.UserProfileRequest
 import com.torchons.app.util.FreshnessCalculator
@@ -578,12 +583,177 @@ fun TaskDetailScreen(
                         }
                     }
 
+                    // Section historique des modifications (votes + edits)
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Historique des modifications (${uiState.history.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    if (uiState.history.isEmpty()) {
+                        item {
+                            Text(
+                                text = "Aucune modification enregistree",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
+                    } else {
+                        items(
+                            items = uiState.history,
+                            key = { it.id }
+                        ) { event ->
+                            HistoryEventCard(event = event)
+                        }
+                    }
+
                     // Espace en bas
                     item { Spacer(modifier = Modifier.height(32.dp)) }
                 }
             }
         }
     }
+}
+
+/** Carte compacte affichant un evenement de l'historique de modification. */
+@Composable
+private fun HistoryEventCard(event: TaskHistoryEvent) {
+    val icon = when (event.type) {
+        TaskHistoryEventType.VOTE_AFFINITY -> Icons.Default.Favorite
+        TaskHistoryEventType.VOTE_EFFORT -> Icons.Default.Timer
+        TaskHistoryEventType.VOTE_FREQUENCY -> Icons.Default.Schedule
+        TaskHistoryEventType.TASK_UPDATE -> Icons.Default.Edit
+        TaskHistoryEventType.UNKNOWN -> Icons.Default.History
+    }
+    val label = formatHistoryEvent(event)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                if (event.at != null) {
+                    Text(
+                        text = formatDateTime(event.at),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Formate un evenement d'historique en libelle francais.
+ *
+ * - VOTE_EFFORT : les points sont convertis en minutes (1pt = 5min)
+ * - VOTE_FREQUENCY / VOTE_AFFINITY : valeurs affichees telles quelles
+ * - TASK_UPDATE : liste des champs modifies (titre, recurrence, ...)
+ */
+private fun formatHistoryEvent(event: TaskHistoryEvent): String {
+    val actor = event.actorName.ifBlank { "Quelqu'un" }
+    return when (event.type) {
+        TaskHistoryEventType.VOTE_FREQUENCY -> {
+            val value = event.voteValue ?: return "$actor a vote une frequence"
+            val consensus = event.consensusAfter
+            if (consensus != null) {
+                "$actor a vote ${value}j frequence → consensus ${consensus}j"
+            } else {
+                "$actor a vote ${value}j frequence"
+            }
+        }
+        TaskHistoryEventType.VOTE_AFFINITY -> {
+            val value = event.voteValue ?: return "$actor a vote une affinite"
+            val consensus = event.consensusAfter
+            if (consensus != null) {
+                "$actor a vote ${value}/10 affinite → consensus ${consensus}/10"
+            } else {
+                "$actor a vote ${value}/10 affinite"
+            }
+        }
+        TaskHistoryEventType.VOTE_EFFORT -> {
+            val points = event.voteValue ?: return "$actor a vote un effort"
+            val minutes = points * 5
+            val consensusMin = event.consensusAfter?.let { it * 5 }
+            val voteLabel = formatMinutes(minutes)
+            if (consensusMin != null) {
+                "$actor a vote $voteLabel effort → consensus ${formatMinutes(consensusMin)}"
+            } else {
+                "$actor a vote $voteLabel effort"
+            }
+        }
+        TaskHistoryEventType.TASK_UPDATE -> {
+            val fields = event.fieldsChanged.mapNotNull { frenchFieldName(it) }
+            when {
+                fields.isEmpty() -> "$actor a modifie la tache"
+                fields.size == 1 -> "$actor a modifie ${fields[0]}"
+                else -> "$actor a modifie ${fields.size} champs"
+            }
+        }
+        TaskHistoryEventType.UNKNOWN -> "$actor a modifie la tache"
+    }
+}
+
+private fun formatMinutes(min: Int): String =
+    if (min >= 60) "${min / 60}h${if (min % 60 > 0) "%02d".format(min % 60) else ""}"
+    else "${min}min"
+
+private fun frenchFieldName(key: String): String? = when (key) {
+    "title" -> "le titre"
+    "description" -> "la description"
+    "category_id" -> "la categorie"
+    "tolerance" -> "la tolerance"
+    "assigned_to_ids" -> "les affectations"
+    "recurrence_rule" -> "la recurrence"
+    "weight" -> "le poids"
+    "is_active" -> "l'activation"
+    "sort_order" -> "l'ordre"
+    else -> null
 }
 
 /**

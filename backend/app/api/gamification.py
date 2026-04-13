@@ -19,8 +19,10 @@ from app.models.task import Task
 from app.models.task_affinity import TaskAffinity
 from app.models.task_assignment import TaskAssignment
 from app.models.task_effort import TaskEffort
+from app.models.task_frequency_vote import TaskFrequencyVote
 from app.models.task_in_progress import TaskInProgress
 from app.services.recurrence import compute_freshness
+from app.utils.changelog import record_change
 
 router = APIRouter(prefix="/api", tags=["gamification"])
 
@@ -35,6 +37,10 @@ class AffinityUpdate(BaseModel):
 
 class EffortUpdate(BaseModel):
     points: int = Field(ge=1, le=18)
+
+
+class FrequencyUpdate(BaseModel):
+    every_n_days: int = Field(ge=1, le=60)
 
 
 class AffinityResponse(BaseModel):
@@ -110,8 +116,20 @@ async def set_affinity(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Definit l'affinite de l'utilisateur courant pour une tache."""
+    """Definit l'affinite de l'utilisateur courant pour une tache.
+    Enregistre le vote dans change_log avec consensus_before/after pour
+    alimenter l'historique de modification (table_name='task_affinities',
+    row_id=task_id car PK composite).
+    """
     user_id = UUID(current["user_id"])
+
+    # Consensus avant : moyenne arrondie des scores existants.
+    cb_result = await session.execute(
+        select(func.avg(TaskAffinity.score)).where(TaskAffinity.task_id == task_id)
+    )
+    cb_raw = cb_result.scalar()
+    consensus_before = round(cb_raw) if cb_raw is not None else None
+
     result = await session.execute(
         select(TaskAffinity).where(
             TaskAffinity.task_id == task_id,
@@ -127,6 +145,23 @@ async def set_affinity(
     else:
         aff = TaskAffinity(task_id=task_id, user_id=user_id, score=body.score)
         session.add(aff)
+    await session.flush()
+
+    # Consensus apres : moyenne arrondie apres ce vote.
+    ca_result = await session.execute(
+        select(func.avg(TaskAffinity.score)).where(TaskAffinity.task_id == task_id)
+    )
+    ca_raw = ca_result.scalar()
+    consensus_after = round(ca_raw) if ca_raw is not None else None
+
+    await record_change(
+        session, "task_affinities", task_id, "VOTE", current["user_id"],
+        new_data={
+            "score": body.score,
+            "consensus_before": consensus_before,
+            "consensus_after": consensus_after,
+        },
+    )
     await session.commit()
     return {"task_id": task_id, "user_id": user_id, "score": body.score}
 
@@ -243,8 +278,17 @@ async def set_effort(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Definit l'effort estime par l'utilisateur courant pour une tache (1pt=5min)."""
+    """Definit l'effort estime par l'utilisateur courant pour une tache (1pt=5min).
+    Enregistre le vote dans change_log avec consensus_before/after (points)
+    pour alimenter l'historique de modification.
+    """
     user_id = UUID(current["user_id"])
+
+    # Consensus avant : task.weight actuel (deja = round(avg)).
+    task_result = await session.execute(select(Task).where(Task.id == task_id))
+    task = task_result.scalar_one_or_none()
+    consensus_before = task.weight if task else None
+
     result = await session.execute(
         select(TaskEffort).where(TaskEffort.task_id == task_id, TaskEffort.user_id == user_id)
     )
@@ -256,21 +300,113 @@ async def set_effort(
     else:
         eff = TaskEffort(task_id=task_id, user_id=user_id, points=body.points)
         session.add(eff)
-    await session.commit()
+    await session.flush()
 
-    # Recalculer le weight moyen de la tache
+    # Recalculer le weight moyen de la tache = consensus apres.
     avg_result = await session.execute(
         select(func.avg(TaskEffort.points)).where(TaskEffort.task_id == task_id)
     )
     avg = avg_result.scalar()
-    if avg:
-        task_result = await session.execute(select(Task).where(Task.id == task_id))
-        task = task_result.scalar_one_or_none()
-        if task:
-            task.weight = round(avg)
-            await session.commit()
+    consensus_after = round(avg) if avg is not None else None
+    if consensus_after is not None and task:
+        task.weight = consensus_after
+
+    await record_change(
+        session, "task_efforts", task_id, "VOTE", current["user_id"],
+        new_data={
+            "points": body.points,
+            "consensus_before": consensus_before,
+            "consensus_after": consensus_after,
+        },
+    )
+    await session.commit()
 
     return {"task_id": str(task_id), "user_id": str(user_id), "points": body.points}
+
+
+@router.put("/tasks/{task_id}/frequency")
+async def set_frequency(
+    task_id: UUID,
+    body: FrequencyUpdate,
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Definit le vote de frequence (every_n_days) de l'utilisateur courant.
+    Recalcule le consensus (moyenne arrondie) et l'ecrit dans
+    tasks.recurrence_rule. Enregistre deux entrees change_log :
+    - task_frequency_votes/VOTE (value + consensus_before/after)
+    - tasks/UPDATE (pour que le client sync recupere la nouvelle recurrence)
+    Le GET /tasks/{id}/history dedoublonne ces deux entrees.
+    """
+    user_id = UUID(current["user_id"])
+
+    task_result = await session.execute(
+        select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
+    )
+    task = task_result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Tache introuvable")
+
+    old_rule = dict(task.recurrence_rule) if task.recurrence_rule else None
+    consensus_before = None
+    if old_rule and isinstance(old_rule.get("every_n_days"), int):
+        consensus_before = old_rule["every_n_days"]
+
+    # Upsert du vote
+    result = await session.execute(
+        select(TaskFrequencyVote).where(
+            TaskFrequencyVote.task_id == task_id,
+            TaskFrequencyVote.user_id == user_id,
+        )
+    )
+    vote = result.scalar_one_or_none()
+    if vote:
+        vote.every_n_days = body.every_n_days
+        from sqlalchemy import func as sa_func
+        vote.updated_at = sa_func.now()
+    else:
+        vote = TaskFrequencyVote(
+            task_id=task_id, user_id=user_id, every_n_days=body.every_n_days
+        )
+        session.add(vote)
+    await session.flush()
+
+    # Consensus apres : moyenne arrondie des votes de frequence.
+    avg_result = await session.execute(
+        select(func.avg(TaskFrequencyVote.every_n_days)).where(
+            TaskFrequencyVote.task_id == task_id
+        )
+    )
+    avg = avg_result.scalar()
+    consensus_after = round(avg) if avg is not None else body.every_n_days
+
+    # Mettre a jour la recurrence de la tache.
+    task.recurrence_rule = {"type": "interval", "every_n_days": consensus_after}
+    task.version += 1
+
+    # Log du changement de la tache (cote sync) — sera dedoublonne en GET /history.
+    await record_change(
+        session, "tasks", task_id, "UPDATE", current["user_id"],
+        old_data={"recurrence_rule": old_rule},
+        new_data={"recurrence_rule": task.recurrence_rule},
+    )
+    # Log du vote individuel (alimente l'historique UI).
+    await record_change(
+        session, "task_frequency_votes", task_id, "VOTE", current["user_id"],
+        new_data={
+            "every_n_days": body.every_n_days,
+            "consensus_before": consensus_before,
+            "consensus_after": consensus_after,
+        },
+    )
+    await session.commit()
+
+    return {
+        "task_id": str(task_id),
+        "user_id": str(user_id),
+        "every_n_days": body.every_n_days,
+        "consensus": consensus_after,
+    }
 
 
 @router.get("/pending-affinity", response_model=list[dict])

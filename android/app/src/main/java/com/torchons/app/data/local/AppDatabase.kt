@@ -8,12 +8,14 @@ import com.torchons.app.data.local.dao.CategoryDao
 import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.TaskDao
+import com.torchons.app.data.local.dao.TaskHistoryDao
 import com.torchons.app.data.local.dao.UserDao
 import com.torchons.app.data.local.dao.ViewSnapshotDao
 import com.torchons.app.data.local.entities.CategoryEntity
 import com.torchons.app.data.local.entities.CompletionEntity
 import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.TaskEntity
+import com.torchons.app.data.local.entities.TaskHistoryEntity
 import com.torchons.app.data.local.entities.UserEntity
 import com.torchons.app.data.local.entities.ViewSnapshotEntity
 
@@ -25,8 +27,9 @@ import com.torchons.app.data.local.entities.ViewSnapshotEntity
         CompletionEntity::class,
         ViewSnapshotEntity::class,
         PendingOperationEntity::class,
+        TaskHistoryEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -37,4 +40,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun completionDao(): CompletionDao
     abstract fun viewSnapshotDao(): ViewSnapshotDao
     abstract fun pendingOperationDao(): PendingOperationDao
+    abstract fun taskHistoryDao(): TaskHistoryDao
 }

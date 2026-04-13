@@ -9,6 +9,7 @@ import com.torchons.app.data.local.dao.CategoryDao
 import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.TaskDao
+import com.torchons.app.data.local.dao.TaskHistoryDao
 import com.torchons.app.data.local.dao.UserDao
 import com.torchons.app.data.local.dao.ViewSnapshotDao
 import dagger.Module
@@ -35,6 +36,30 @@ private val migration1to2 = object : Migration(1, 2) {
     }
 }
 
+private val migration2to3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Cache local de l'historique de modification d'une tache.
+        // Rempli via GET /tasks/{id}/history, clef primaire = change_log.id serveur.
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS task_history (
+                id INTEGER NOT NULL PRIMARY KEY,
+                taskId TEXT NOT NULL,
+                eventType TEXT NOT NULL,
+                actorUserId TEXT,
+                actorName TEXT NOT NULL,
+                at TEXT,
+                voteValue INTEGER,
+                consensusBefore INTEGER,
+                consensusAfter INTEGER,
+                fieldsChangedJson TEXT,
+                oldJson TEXT,
+                newJson TEXT
+            )
+        """.trimIndent())
+        db.execSQL("CREATE INDEX IF NOT EXISTS ix_task_history_taskId ON task_history(taskId)")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -47,7 +72,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2)
+            .addMigrations(migration1to2, migration2to3)
             .build()
     }
 
@@ -68,4 +93,7 @@ object DatabaseModule {
 
     @Provides
     fun providePendingOperationDao(db: AppDatabase): PendingOperationDao = db.pendingOperationDao()
+
+    @Provides
+    fun provideTaskHistoryDao(db: AppDatabase): TaskHistoryDao = db.taskHistoryDao()
 }

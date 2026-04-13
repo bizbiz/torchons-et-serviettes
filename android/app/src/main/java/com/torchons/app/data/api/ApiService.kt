@@ -2,6 +2,9 @@ package com.torchons.app.data.api
 
 import com.torchons.app.data.model.AffinityRequest
 import com.torchons.app.data.model.BadgeInfo
+import com.torchons.app.data.model.FrequencyRequest
+import com.torchons.app.data.model.FrequencyVoteResponse
+import com.torchons.app.data.model.TaskHistoryDto
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.CategoryCreateRequest
 import com.torchons.app.data.model.CategoryUpdateRequest
@@ -178,6 +181,20 @@ interface ApiService {
         @Path("id") taskId: String,
         @Body request: Map<String, Int>
     ): Response<Map<String, Any>>
+
+    /** Definir le vote de frequence (every_n_days) et recalculer le consensus. */
+    @PUT("tasks/{id}/frequency")
+    suspend fun setFrequency(
+        @Path("id") taskId: String,
+        @Body request: FrequencyRequest
+    ): Response<FrequencyVoteResponse>
+
+    /** Historique de modification d'une tache (votes + modifs directes). */
+    @GET("tasks/{id}/history")
+    suspend fun getTaskHistory(
+        @Path("id") taskId: String,
+        @Query("limit") limit: Int = 100
+    ): Response<List<TaskHistoryDto>>
 
     /** Marquer une tache comme en cours. */
     @POST("tasks/{id}/start")

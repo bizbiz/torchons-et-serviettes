@@ -7,6 +7,7 @@ import com.torchons.app.data.local.dao.CategoryDao
 import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.TaskDao
+import com.torchons.app.data.local.dao.TaskHistoryDao
 import com.torchons.app.data.local.dao.UserDao
 import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.toDomain
@@ -14,7 +15,9 @@ import com.torchons.app.data.local.entities.toEntity
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.CreateTaskRequest
+import com.torchons.app.data.model.FrequencyRequest
 import com.torchons.app.data.model.Task
+import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.UpdateTaskRequest
 import com.torchons.app.data.model.User
 import kotlinx.coroutines.flow.Flow
@@ -40,6 +43,7 @@ class TaskRepository @Inject constructor(
     private val completionDao: CompletionDao,
     private val userDao: UserDao,
     private val pendingDao: PendingOperationDao,
+    private val taskHistoryDao: TaskHistoryDao,
     private val syncTrigger: SyncTrigger,
 ) {
     private val gson = Gson()
@@ -260,6 +264,56 @@ class TaskRepository @Inject constructor(
         enqueue(clientOpId, "task_completions", "INSERT", rowId, payload)
 
         return Result.success(optimistic)
+    }
+
+    // -------------------------------------------------------------------
+    // Historique de modification — observe / refresh / vote frequence
+    // -------------------------------------------------------------------
+
+    fun observeTaskHistory(taskId: String): Flow<List<TaskHistoryEvent>> =
+        taskHistoryDao.observeByTask(taskId).map { list -> list.map { it.toDomain() } }
+
+    suspend fun refreshTaskHistory(taskId: String, limit: Int = 100): Boolean {
+        return try {
+            val response = apiService.getTaskHistory(taskId, limit)
+            if (response.isSuccessful) {
+                val dtos = response.body() ?: emptyList()
+                val entities = dtos.map { it.toEntity(taskId) }
+                taskHistoryDao.replaceForTask(taskId, entities)
+                true
+            } else {
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Envoie un vote de frequence au backend. En cas d'echec reseau,
+     * l'op est mise en file d'attente (SyncWorker appellera setFrequency
+     * directement — la table task_frequency_votes n'est pas geree par /sync).
+     */
+    suspend fun voteFrequency(taskId: String, everyNDays: Int): Result<Unit> {
+        return try {
+            val response = apiService.setFrequency(taskId, FrequencyRequest(everyNDays))
+            if (response.isSuccessful) {
+                refreshTaskHistory(taskId)
+                Result.success(Unit)
+            } else {
+                enqueueFrequencyVote(taskId, everyNDays)
+                Result.success(Unit)
+            }
+        } catch (_: Exception) {
+            enqueueFrequencyVote(taskId, everyNDays)
+            Result.success(Unit)
+        }
+    }
+
+    private suspend fun enqueueFrequencyVote(taskId: String, everyNDays: Int) {
+        val clientOpId = UUID.randomUUID().toString()
+        val payload = mapOf("every_n_days" to everyNDays)
+        enqueue(clientOpId, "task_frequency_votes", "VOTE", taskId, payload)
     }
 
     private suspend fun enqueue(
