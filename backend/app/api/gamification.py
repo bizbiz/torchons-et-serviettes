@@ -36,7 +36,7 @@ class AffinityUpdate(BaseModel):
 
 
 class EffortUpdate(BaseModel):
-    points: int = Field(ge=1, le=18)
+    points: int = Field(ge=1, le=12)  # 1pt=5min, 12pt=1h (max slider UI)
 
 
 class FrequencyUpdate(BaseModel):
@@ -409,6 +409,26 @@ async def set_frequency(
     }
 
 
+@router.get("/tasks/{task_id}/rating-context")
+async def task_rating_context(
+    task_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Retourne le payload de notation pour une tache specifique et l'user courant.
+    Meme shape que /pending-affinity et /oldest-rating — alimente le modal de
+    notation unifie depuis la fiche detail (bouton Modifier).
+    """
+    user_id = UUID(current["user_id"])
+    result = await session.execute(
+        select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
+    )
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Tache introuvable")
+    return await _build_pending_payload(session, task, user_id)
+
+
 @router.get("/pending-affinity", response_model=list[dict])
 async def pending_affinity(
     expiry_months: int = 6,
@@ -472,14 +492,19 @@ async def _build_pending_payload(session: AsyncSession, task: Task, user_id: UUI
     - Cas 1 (rien) : valeur de base de la tache (weight pour effort, 5 pour affinite)
     - Cas 2 (autres ont note) : moyenne des autres users
     - Cas 3 (moi j'ai note) : ma valeur
+
+    Retourne aussi last_rated_at = max(affinity.updated_at, effort.updated_at)
+    filtre sur le user courant — pour afficher "Derniere notation il y a Xj".
     """
     # === Affinité ===
     my_aff_r = await session.execute(
-        select(TaskAffinity.score).where(
+        select(TaskAffinity.score, TaskAffinity.updated_at).where(
             TaskAffinity.task_id == task.id, TaskAffinity.user_id == user_id,
         )
     )
-    my_aff = my_aff_r.scalar()
+    my_aff_row = my_aff_r.first()
+    my_aff = my_aff_row[0] if my_aff_row else None
+    my_aff_date = my_aff_row[1] if my_aff_row else None
 
     if my_aff is not None:
         affinity_value = my_aff
@@ -495,11 +520,13 @@ async def _build_pending_payload(session: AsyncSession, task: Task, user_id: UUI
 
     # === Effort ===
     my_eff_r = await session.execute(
-        select(TaskEffort.points).where(
+        select(TaskEffort.points, TaskEffort.updated_at).where(
             TaskEffort.task_id == task.id, TaskEffort.user_id == user_id,
         )
     )
-    my_eff = my_eff_r.scalar()
+    my_eff_row = my_eff_r.first()
+    my_eff = my_eff_row[0] if my_eff_row else None
+    my_eff_date = my_eff_row[1] if my_eff_row else None
 
     if my_eff is not None:
         effort_value = my_eff
@@ -512,12 +539,17 @@ async def _build_pending_payload(session: AsyncSession, task: Task, user_id: UUI
         others_avg = others_eff_r.scalar()
         effort_value = round(others_avg) if others_avg else (task.weight or 3)
 
+    # === Derniere notation (per-user) : max des 2 updated_at ===
+    dates = [d for d in (my_aff_date, my_eff_date) if d is not None]
+    last_rated_at = max(dates).isoformat() if dates else None
+
     return {
         "task_id": str(task.id),
         "title": task.title,
         "current_affinity": affinity_value,
         "current_effort_points": effort_value,
         "recurrence_rule": task.recurrence_rule,
+        "last_rated_at": last_rated_at,
     }
 
 

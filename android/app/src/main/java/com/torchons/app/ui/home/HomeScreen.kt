@@ -64,6 +64,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.TaskInProgress
+import com.torchons.app.ui.common.RatingDialog
+import com.torchons.app.ui.common.RatingRecurrence
 import com.torchons.app.util.FreshnessCalculator
 import java.time.Instant
 import java.time.ZoneId
@@ -98,7 +100,7 @@ fun HomeScreen(
     // Popup affinite + effort (si active dans les reglages)
     if (affinityEnabled && uiState.showAffinityPopup && uiState.pendingAffinity != null) {
         val pending = uiState.pendingAffinity!!
-        RatingPopup(
+        RatingDialog(
             pending = pending,
             onSubmit = { affinity, effort, recurrence ->
                 viewModel.submitRating(pending.taskId, affinity, effort, recurrence)
@@ -534,185 +536,6 @@ private fun InProgressCard(
             }
         }
     }
-}
-
-/** Convertit des points effort (1-18) en texte temps lisible. */
-private fun effortPointsToTime(points: Int): String {
-    val minutes = points * 5
-    return when {
-        minutes >= 60 -> "${minutes / 60}h${if (minutes % 60 > 0) "%02d".format(minutes % 60) else ""}"
-        else -> "${minutes}min"
-    }
-}
-
-/** Resultat de la popup rating : affinity, effort, et update de recurrence optionnel. */
-data class RatingRecurrence(
-    val makeRecurring: Boolean = false,
-    val everyNDays: Int = 7
-)
-
-@Composable
-private fun RatingPopup(
-    pending: PendingAffinity,
-    onSubmit: (Int, Int, RatingRecurrence?) -> Unit,
-    onSubmitAndNext: (Int, Int, RatingRecurrence?) -> Unit,
-    onDismiss: () -> Unit
-) {
-    // Pre-remplir avec valeurs existantes ou defaut
-    // Key sur taskId pour reinitialiser quand on change de tache
-    var affinityValue by remember(pending.taskId) { mutableFloatStateOf((pending.currentAffinity ?: 5).toFloat()) }
-    var effortValue by remember(pending.taskId) { mutableFloatStateOf((pending.currentEffortPoints ?: 3).toFloat()) }
-
-    // Recurrence : analyser la rule existante
-    val currentRecurrence = pending.recurrenceRule
-    val isAlreadyInterval = currentRecurrence?.type == "interval"
-    val currentDays = currentRecurrence?.everyNDays ?: 7
-
-    var makeRecurring by remember(pending.taskId) { mutableStateOf(isAlreadyInterval) }
-    // Slider va de 50% a 200% de la valeur actuelle si deja recurrente, sinon 1-30 jours
-    val minDays = if (isAlreadyInterval) (currentDays * 0.5f).coerceAtLeast(1f) else 1f
-    val maxDays = if (isAlreadyInterval) (currentDays * 2f).coerceAtLeast(2f) else 30f
-    var daysValue by remember(pending.taskId) { mutableFloatStateOf(currentDays.toFloat()) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column {
-                if (pending.pendingTotal != null && pending.pendingTotal > 0) {
-                    Text(
-                        text = "${pending.pendingTotal} tache(s) a noter",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Text(
-                    text = pending.title,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                // === Affinite ===
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Affinite", style = MaterialTheme.typography.labelLarge)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    com.torchons.app.ui.common.InfoTooltip(
-                        title = "Affinite",
-                        description = "Est-ce que tu aimes faire cette tache ? 1 = pas du tout, 10 = j'adore."
-                    )
-                }
-                Text(
-                    text = "${affinityValue.toInt()}/10",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
-                Slider(
-                    value = affinityValue,
-                    onValueChange = { affinityValue = it },
-                    valueRange = 1f..10f,
-                    steps = 8
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Pas du tout", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-                    Text("A fond !", style = MaterialTheme.typography.labelSmall, color = FreshnessCalculator.VERT)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // === Effort ===
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Effort", style = MaterialTheme.typography.labelLarge)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    com.torchons.app.ui.common.InfoTooltip(
-                        title = "Effort",
-                        description = "Estimation du temps que prend cette tache. Sert a calculer les points."
-                    )
-                }
-                Text(
-                    text = effortPointsToTime(effortValue.toInt()),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
-                Slider(
-                    value = effortValue,
-                    onValueChange = { effortValue = it },
-                    valueRange = 1f..12f,  // 5min a 1h
-                    steps = 10
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("5min", style = MaterialTheme.typography.labelSmall)
-                    Text("1h", style = MaterialTheme.typography.labelSmall)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // === Frequence ===
-                if (isAlreadyInterval) {
-                    // Tache deja recurrente : ajuster la frequence
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Frequence : tous les ${daysValue.toInt()} jours", style = MaterialTheme.typography.labelLarge)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        com.torchons.app.ui.common.InfoTooltip(
-                            title = "Frequence",
-                            description = "Ajuste la frequence de la tache. Tu peux modifier de 50% a 200% de la valeur actuelle ($currentDays jours)."
-                        )
-                    }
-                    Slider(
-                        value = daysValue,
-                        onValueChange = { daysValue = it },
-                        valueRange = minDays..maxDays
-                    )
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${minDays.toInt()}j", style = MaterialTheme.typography.labelSmall)
-                        Text("${maxDays.toInt()}j", style = MaterialTheme.typography.labelSmall)
-                    }
-                } else {
-                    // Tache ponctuelle : proposer de la rendre recurrente
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Recurrente ?", style = MaterialTheme.typography.labelLarge)
-                            Text("Faire revenir cette tache regulierement", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        androidx.compose.material3.Switch(
-                            checked = makeRecurring,
-                            onCheckedChange = { makeRecurring = it }
-                        )
-                    }
-                    if (makeRecurring) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Tous les ${daysValue.toInt()} jours", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                        Slider(
-                            value = daysValue,
-                            onValueChange = { daysValue = it },
-                            valueRange = 1f..30f,
-                            steps = 28
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = {
-                    val rec = if (isAlreadyInterval || makeRecurring) RatingRecurrence(true, daysValue.toInt()) else null
-                    onSubmitAndNext(affinityValue.toInt(), effortValue.toInt(), rec)
-                }) { Text("Une autre !") }
-                Button(onClick = {
-                    val rec = if (isAlreadyInterval || makeRecurring) RatingRecurrence(true, daysValue.toInt()) else null
-                    onSubmit(affinityValue.toInt(), effortValue.toInt(), rec)
-                }) { Text("Ok") }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Plus tard") }
-        }
-    )
 }
 
 private fun formatDateTime(isoDateTime: String): String {

@@ -1,5 +1,17 @@
 # Notes de version
 
+## v0.5.2 — 2026-04-13
+
+### Notation unifiee
+- Le bouton "Modifier" sur la fiche d'une tache ouvre maintenant la meme popup de notation que celle de l'accueil — avec affinite, effort ET frequence dans un seul ecran.
+- Les valeurs precedentes sont prechargees correctement (avant, le bouton "Modifier" affichait toujours 5/10 et 15min par defaut).
+- Affichage de la date de derniere notation au-dessus des reglages : "Derniere notation il y a 3 jours" / "Jamais note".
+
+### Frequence
+- La frequence d'une tache existante ne se modifie plus depuis l'ecran d'edition de la tache : il faut passer par la popup de notation (chacun vote sa frequence et la moyenne est utilisee).
+- Lors de la creation d'une tache, le choix de la frequence reste disponible.
+- Le slider d'effort est cap a 1h max (avant : 1h30 sur la fiche detail, 1h sur l'accueil — incoherent).
+
 ## v0.5.1 — 2026-04-13
 
 ### Corrections

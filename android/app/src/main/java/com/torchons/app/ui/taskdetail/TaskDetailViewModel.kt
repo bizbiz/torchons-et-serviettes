@@ -5,25 +5,31 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.Completion
+import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.User
+import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.ui.common.RatingRecurrence
 import com.torchons.app.util.FreshnessCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class TaskRating(
+    val userId: String?,
     val displayName: String,
     val affinity: Int?,
-    val effortTimeMin: Int?
+    val effortTimeMin: Int?,
 )
 
 data class TaskDetailUiState(
@@ -36,7 +42,8 @@ data class TaskDetailUiState(
     val scorePoints: Int? = null,
     val freshness: Double = 0.0,
     val history: List<TaskHistoryEvent> = emptyList(),
-    val showEditRating: Boolean = false,
+    /** Contexte de notation pour le modal unifie. Non-null = modal ouvert. */
+    val ratingContext: PendingAffinity? = null,
     val editingCompletion: Completion? = null,
     val error: String? = null,
     val completionMessage: String? = null,
@@ -55,6 +62,7 @@ data class TaskDetailUiState(
 class TaskDetailViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val apiService: ApiService,
+    authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -63,6 +71,10 @@ class TaskDetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(TaskDetailUiState(isLoading = true))
     val uiState: StateFlow<TaskDetailUiState> = _uiState.asStateFlow()
+
+    /** Id de l'utilisateur courant — utilise pour identifier sa notation. */
+    val currentUserId: StateFlow<String?> = authRepository.userIdFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     init {
         observeCache()
@@ -134,6 +146,7 @@ class TaskDetailViewModel @Inject constructor(
                     val ratingsData = data["ratings"] as? List<Map<String, Any?>> ?: emptyList()
                     val ratings = ratingsData.map { r ->
                         TaskRating(
+                            userId = r["user_id"] as? String,
                             displayName = r["display_name"] as? String ?: "?",
                             affinity = (r["affinity"] as? Double)?.toInt(),
                             effortTimeMin = (r["effort_time_min"] as? Double)?.toInt(),
@@ -211,20 +224,68 @@ class TaskDetailViewModel @Inject constructor(
         }
     }
 
-    fun showEditRating() {
-        _uiState.value = _uiState.value.copy(showEditRating = true)
+    /**
+     * Ouvre le modal de notation unifie. Strategie cache-first :
+     * 1. Construit immediatement un PendingAffinity depuis l'uiState
+     *    (task + ma valeur extraite des ratings) — affichage instantane.
+     * 2. Fetch GET /tasks/{id}/rating-context en parallele pour avoir les
+     *    valeurs serveur fraiches + last_rated_at — overwrite le state quand
+     *    la reponse arrive.
+     */
+    fun openRatingDialog(currentUserId: String?) {
+        val task = _uiState.value.task ?: return
+
+        // Cache-first : construire un PendingAffinity local depuis l'uiState.
+        // Identifie ma notation par user_id (les ratings sont retournes avec
+        // user_id par GET /tasks/{id}/ratings).
+        val myRating = _uiState.value.ratings.firstOrNull {
+            currentUserId != null && it.userId == currentUserId
+        }
+        val cachedContext = PendingAffinity(
+            taskId = task.id,
+            title = task.title,
+            currentAffinity = myRating?.affinity,
+            currentEffortPoints = myRating?.effortTimeMin?.let { it / 5 },
+            recurrenceRule = task.recurrenceRule,
+            pendingTotal = null,
+            lastRatedAt = null,
+        )
+        _uiState.value = _uiState.value.copy(ratingContext = cachedContext)
+
+        // Fetch serveur en background
+        viewModelScope.launch {
+            try {
+                val resp = apiService.getRatingContext(taskId)
+                if (resp.isSuccessful) {
+                    resp.body()?.let { fresh ->
+                        // Ne remplace que si le modal est toujours ouvert
+                        if (_uiState.value.ratingContext != null) {
+                            _uiState.value = _uiState.value.copy(ratingContext = fresh)
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+                // Cache reste affiche, c'est OK
+            }
+        }
     }
 
-    fun dismissEditRating() {
-        _uiState.value = _uiState.value.copy(showEditRating = false)
+    fun dismissRatingDialog() {
+        _uiState.value = _uiState.value.copy(ratingContext = null)
     }
 
-    fun saveRating(affinity: Int, effortPoints: Int) {
+    fun submitRating(affinity: Int, effortPoints: Int, recurrence: RatingRecurrence?) {
         viewModelScope.launch {
             try {
                 apiService.setAffinity(taskId, com.torchons.app.data.model.AffinityRequest(affinity))
                 apiService.setEffort(taskId, mapOf("points" to effortPoints))
-                _uiState.value = _uiState.value.copy(showEditRating = false, completionMessage = "Notes mises a jour")
+                if (recurrence != null) {
+                    taskRepository.voteFrequency(taskId, recurrence.everyNDays)
+                }
+                _uiState.value = _uiState.value.copy(
+                    ratingContext = null,
+                    completionMessage = "Notes enregistrees",
+                )
                 refresh()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)

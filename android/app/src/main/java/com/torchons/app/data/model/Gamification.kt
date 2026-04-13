@@ -29,6 +29,8 @@ data class PendingAffinity(
     @SerializedName("current_effort_points") val currentEffortPoints: Int? = null,
     @SerializedName("recurrence_rule") val recurrenceRule: RecurrenceRule? = null,
     @SerializedName("pending_total") val pendingTotal: Int? = null,
+    /** Date ISO de la derniere notation (max affinity/effort updated_at) du user courant. */
+    @SerializedName("last_rated_at") val lastRatedAt: String? = null,
 )
 
 /** Statut fair-share. */

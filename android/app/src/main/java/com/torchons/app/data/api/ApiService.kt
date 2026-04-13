@@ -168,6 +168,10 @@ interface ApiService {
     @GET("tasks/{id}/ratings")
     suspend fun getTaskRatings(@Path("id") taskId: String): Response<Map<String, Any>>
 
+    /** Contexte de notation pour une tache donnee (preremplissage du modal unifie). */
+    @GET("tasks/{id}/rating-context")
+    suspend fun getRatingContext(@Path("id") taskId: String): Response<PendingAffinity>
+
     /** Definir l'affinite pour une tache. */
     @PUT("tasks/{id}/affinity")
     suspend fun setAffinity(

@@ -12,6 +12,7 @@ import com.torchons.app.data.model.TaskInProgress
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.HomeRepository
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.ui.common.RatingRecurrence
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

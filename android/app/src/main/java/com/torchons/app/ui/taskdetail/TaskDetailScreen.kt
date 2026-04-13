@@ -71,6 +71,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.TaskHistoryEventType
+import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.user.UserProfileDialog
 import com.torchons.app.ui.user.UserProfileRequest
 import com.torchons.app.util.FreshnessCalculator
@@ -91,6 +92,7 @@ fun TaskDetailScreen(
     viewModel: TaskDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val currentUserId by viewModel.currentUserId.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Etat du modal de profil utilisateur (ouvert au clic sur un nom).
@@ -200,35 +202,18 @@ fun TaskDetailScreen(
         )
     }
 
-    // Dialog edition affinite/effort
-    if (uiState.showEditRating) {
-        var affSlider by remember { mutableStateOf(5f) }
-        var effSlider by remember { mutableStateOf(3f) }
-
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissEditRating() },
-            title = { Text("Modifier mes notes", fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    Text("Affinite : ${affSlider.toInt()}/10", fontWeight = FontWeight.SemiBold)
-                    Slider(value = affSlider, onValueChange = { affSlider = it }, valueRange = 1f..10f, steps = 8)
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    val min = effSlider.toInt() * 5
-                    val timeStr = if (min >= 60) "${min/60}h${if(min%60>0) "%02d".format(min%60) else ""}" else "${min}min"
-                    Text("Effort : $timeStr", fontWeight = FontWeight.SemiBold)
-                    Slider(value = effSlider, onValueChange = { effSlider = it }, valueRange = 1f..18f, steps = 16)
-                }
+    // Modal de notation unifie (partage avec HomeScreen via ui/common/RatingDialog).
+    // Ouvert depuis le bouton "Modifier" sur la card "Effort & Affinite".
+    val ratingContext = uiState.ratingContext
+    if (ratingContext != null) {
+        RatingDialog(
+            pending = ratingContext,
+            onSubmit = { affinity, effort, recurrence ->
+                viewModel.submitRating(affinity, effort, recurrence)
             },
-            confirmButton = {
-                Button(onClick = { viewModel.saveRating(affSlider.toInt(), effSlider.toInt()) }) {
-                    Text("Enregistrer")
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { viewModel.dismissEditRating() }) { Text("Annuler") }
-            }
+            // Pas de chain "Une autre" depuis TaskDetail : on est sur UNE tache.
+            onSubmitAndNext = null,
+            onDismiss = { viewModel.dismissRatingDialog() },
         )
     }
 
@@ -418,7 +403,7 @@ fun TaskDetailScreen(
                                         modifier = Modifier.weight(1f)
                                     )
                                     androidx.compose.material3.TextButton(
-                                        onClick = { viewModel.showEditRating() }
+                                        onClick = { viewModel.openRatingDialog(currentUserId) }
                                     ) { Text("Modifier") }
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))

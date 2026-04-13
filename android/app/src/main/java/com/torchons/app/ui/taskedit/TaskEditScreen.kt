@@ -267,99 +267,103 @@ fun TaskEditScreen(
                 }
             }
 
-            // Recurrence
-            var recurrenceExpanded by remember { mutableStateOf(false) }
-            val recurrenceLabel = when (uiState.recurrenceType) {
-                "none" -> "Ponctuelle (pas de recurrence)"
-                "interval" -> "Tous les X jours"
-                "monthly_variable" -> "Variable par mois"
-                else -> uiState.recurrenceType
-            }
+            // Recurrence — uniquement en mode CREATION. En edition, la frequence
+            // se modifie via le vote individuel (modal de notation depuis TaskDetail
+            // ou la popup d'accueil). Voir RatingDialog.
+            if (!uiState.isEditMode) {
+                var recurrenceExpanded by remember { mutableStateOf(false) }
+                val recurrenceLabel = when (uiState.recurrenceType) {
+                    "none" -> "Ponctuelle (pas de recurrence)"
+                    "interval" -> "Tous les X jours"
+                    "monthly_variable" -> "Variable par mois"
+                    else -> uiState.recurrenceType
+                }
 
-            ExposedDropdownMenuBox(
-                expanded = recurrenceExpanded,
-                onExpandedChange = { recurrenceExpanded = it }
-            ) {
-                OutlinedTextField(
-                    value = recurrenceLabel,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Recurrence") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = recurrenceExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                )
-                ExposedDropdownMenu(
+                ExposedDropdownMenuBox(
                     expanded = recurrenceExpanded,
-                    onDismissRequest = { recurrenceExpanded = false }
+                    onExpandedChange = { recurrenceExpanded = it }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Ponctuelle (pas de recurrence)") },
-                        onClick = {
-                            viewModel.updateRecurrenceType("none")
-                            recurrenceExpanded = false
-                        }
+                    OutlinedTextField(
+                        value = recurrenceLabel,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Recurrence") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = recurrenceExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
-                    DropdownMenuItem(
-                        text = { Text("Tous les X jours") },
-                        onClick = {
-                            viewModel.updateRecurrenceType("interval")
-                            recurrenceExpanded = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Variable par mois") },
-                        onClick = {
-                            viewModel.updateRecurrenceType("monthly_variable")
-                            recurrenceExpanded = false
-                        }
+                    ExposedDropdownMenu(
+                        expanded = recurrenceExpanded,
+                        onDismissRequest = { recurrenceExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Ponctuelle (pas de recurrence)") },
+                            onClick = {
+                                viewModel.updateRecurrenceType("none")
+                                recurrenceExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Tous les X jours") },
+                            onClick = {
+                                viewModel.updateRecurrenceType("interval")
+                                recurrenceExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Variable par mois") },
+                            onClick = {
+                                viewModel.updateRecurrenceType("monthly_variable")
+                                recurrenceExpanded = false
+                            }
+                        )
+                    }
+                }
+
+                // Nombre de jours si interval
+                if (uiState.recurrenceType == "interval") {
+                    OutlinedTextField(
+                        value = uiState.recurrenceEveryNDays,
+                        onValueChange = { viewModel.updateRecurrenceEveryNDays(it) },
+                        label = { Text("Tous les combien de jours ?") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
                 }
-            }
 
-            // Nombre de jours si interval
-            if (uiState.recurrenceType == "interval") {
-                OutlinedTextField(
-                    value = uiState.recurrenceEveryNDays,
-                    onValueChange = { viewModel.updateRecurrenceEveryNDays(it) },
-                    label = { Text("Tous les combien de jours ?") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-
-            // Tableau 12 mois si monthly_variable
-            if (uiState.recurrenceType == "monthly_variable") {
-                val monthNames = listOf("Jan", "Fev", "Mar", "Avr", "Mai", "Jun", "Jul", "Aou", "Sep", "Oct", "Nov", "Dec")
-                Text(
-                    text = "Jours entre chaque repetition par mois (vide = inactif)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                // 2 colonnes de 6 mois
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        (1..6).forEach { m ->
-                            OutlinedTextField(
-                                value = uiState.daysPerMonth[m.toString()] ?: "",
-                                onValueChange = { viewModel.updateDaysPerMonth(m.toString(), it) },
-                                label = { Text(monthNames[m - 1]) },
-                                singleLine = true
-                            )
+                // Tableau 12 mois si monthly_variable
+                if (uiState.recurrenceType == "monthly_variable") {
+                    val monthNames = listOf("Jan", "Fev", "Mar", "Avr", "Mai", "Jun", "Jul", "Aou", "Sep", "Oct", "Nov", "Dec")
+                    Text(
+                        text = "Jours entre chaque repetition par mois (vide = inactif)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    // 2 colonnes de 6 mois
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            (1..6).forEach { m ->
+                                OutlinedTextField(
+                                    value = uiState.daysPerMonth[m.toString()] ?: "",
+                                    onValueChange = { viewModel.updateDaysPerMonth(m.toString(), it) },
+                                    label = { Text(monthNames[m - 1]) },
+                                    singleLine = true
+                                )
+                            }
                         }
-                    }
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        (7..12).forEach { m ->
-                            OutlinedTextField(
-                                value = uiState.daysPerMonth[m.toString()] ?: "",
-                                onValueChange = { viewModel.updateDaysPerMonth(m.toString(), it) },
-                                label = { Text(monthNames[m - 1]) },
-                                singleLine = true
-                            )
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            (7..12).forEach { m ->
+                                OutlinedTextField(
+                                    value = uiState.daysPerMonth[m.toString()] ?: "",
+                                    onValueChange = { viewModel.updateDaysPerMonth(m.toString(), it) },
+                                    label = { Text(monthNames[m - 1]) },
+                                    singleLine = true
+                                )
+                            }
                         }
                     }
                 }
