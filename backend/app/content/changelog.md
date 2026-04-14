@@ -1,6 +1,6 @@
 # Notes de version
 
-## v0.7.1 — 2026-04-14
+## v0.7.2 — 2026-04-14
 
 ### Multi-foyer : stats isolees par foyer
 - Les statistiques (points, taches completees, leaderboard, streaks, badges, historique) ne melangent plus les donnees de tous tes foyers : chaque ecran stats affiche uniquement les chiffres du foyer actif.
