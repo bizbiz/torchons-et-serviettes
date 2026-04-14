@@ -25,15 +25,17 @@ class LoginRequest(BaseModel):
 
 @router.post("/login")
 async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)):
-    """Login par username (alice/bob). Retourne un JWT."""
+    """Login par username. Retourne un JWT avec foyer_id = last_active_foyer_id."""
     result = await session.execute(select(User).where(User.username == body.username))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail=f"Utilisateur inconnu: {body.username}")
-    token = create_token(str(user.id), body.device_id)
+    foyer_id = str(user.last_active_foyer_id) if user.last_active_foyer_id else None
+    token = create_token(str(user.id), body.device_id, foyer_id=foyer_id)
     return {
         "token": token,
         "user": {"id": str(user.id), "username": user.username, "display_name": user.display_name},
+        "foyer_id": foyer_id,
     }
 
 
@@ -79,10 +81,12 @@ async def auto_login(request: Request, session: AsyncSession = Depends(get_sessi
     if not user:
         raise HTTPException(status_code=404, detail=f"Utilisateur '{username}' introuvable")
 
-    token = create_token(str(user.id), f"tailscale-{client_ip}")
+    foyer_id = str(user.last_active_foyer_id) if user.last_active_foyer_id else None
+    token = create_token(str(user.id), f"tailscale-{client_ip}", foyer_id=foyer_id)
     return {
         "token": token,
         "user": {"id": str(user.id), "username": user.username, "display_name": user.display_name},
+        "foyer_id": foyer_id,
     }
 
 
@@ -104,10 +108,12 @@ async def claim_ip(request: Request, body: ClaimIP, session: AsyncSession = Depe
     # Enregistrer le mapping
     ip_map[client_ip] = body.username
 
-    token = create_token(str(user.id), f"tailscale-{client_ip}")
+    foyer_id = str(user.last_active_foyer_id) if user.last_active_foyer_id else None
+    token = create_token(str(user.id), f"tailscale-{client_ip}", foyer_id=foyer_id)
     return {
         "token": token,
         "user": {"id": str(user.id), "username": user.username, "display_name": user.display_name},
+        "foyer_id": foyer_id,
     }
 
 

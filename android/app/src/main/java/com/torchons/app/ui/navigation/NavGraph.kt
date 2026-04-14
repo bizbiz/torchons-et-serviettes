@@ -32,6 +32,7 @@ import com.torchons.app.ui.changelog.ChangelogScreen
 import com.torchons.app.ui.home.HomeScreen
 import com.torchons.app.ui.login.LoginScreen
 import com.torchons.app.ui.settings.CategoriesScreen
+import com.torchons.app.ui.settings.FoyersScreen
 import com.torchons.app.ui.settings.RoomsScreen
 import com.torchons.app.ui.settings.SettingsScreen
 import com.torchons.app.ui.stats.StatsScreen
@@ -55,6 +56,7 @@ object Routes {
     const val TASK_EDIT = "task_edit/{taskId}"
     const val CATEGORIES = "categories"
     const val ROOMS = "rooms"
+    const val FOYERS = "foyers"
     const val CHANGELOG = "changelog"
 
     fun taskDetail(taskId: String) = "task_detail/$taskId"
@@ -118,6 +120,9 @@ fun NavGraph(
                 onNavigateToRooms = {
                     navController.navigate(Routes.ROOMS)
                 },
+                onNavigateToFoyers = {
+                    navController.navigate(Routes.FOYERS)
+                },
                 onNavigateToChangelog = {
                     navController.navigate(Routes.CHANGELOG)
                 },
@@ -160,6 +165,20 @@ fun NavGraph(
             RoomsScreen(
                 apiService = apiService.get(),
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        // Gestion des foyers (multi-tenant v0.7.0)
+        composable(Routes.FOYERS) {
+            val ep = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                navController.context.applicationContext,
+                FoyersEntryPoint::class.java,
+            )
+            FoyersScreen(
+                apiService = ep.apiService(),
+                authRepository = ep.authRepository(),
+                taskRepository = ep.taskRepository(),
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -216,6 +235,7 @@ fun MainScreen(
     onNavigateToEditTask: (String) -> Unit,
     onNavigateToCategories: () -> Unit,
     onNavigateToRooms: () -> Unit,
+    onNavigateToFoyers: () -> Unit,
     onNavigateToChangelog: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -279,6 +299,7 @@ fun MainScreen(
                         onLogout = onLogout,
                         onManageCategories = onNavigateToCategories,
                         onManageRooms = onNavigateToRooms,
+                        onManageFoyers = onNavigateToFoyers,
                         onOpenChangelog = onNavigateToChangelog
                     )
                 }
@@ -292,4 +313,16 @@ fun MainScreen(
 @InstallIn(SingletonComponent::class)
 interface ApiServiceEntryPoint {
     fun apiService(): ApiService
+}
+
+/**
+ * EntryPoint Hilt pour FoyersScreen qui a besoin de plusieurs dependances :
+ * ApiService + AuthRepository (pour le switch) + TaskRepository (pour le wipe cache).
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface FoyersEntryPoint {
+    fun apiService(): ApiService
+    fun authRepository(): com.torchons.app.data.repository.AuthRepository
+    fun taskRepository(): com.torchons.app.data.repository.TaskRepository
 }

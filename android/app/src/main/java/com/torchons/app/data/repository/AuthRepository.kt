@@ -18,6 +18,8 @@ class AuthRepository @Inject constructor(
     val usernameFlow: Flow<String?> = tokenManager.usernameFlow
     val displayNameFlow: Flow<String?> = tokenManager.displayNameFlow
     val userIdFlow: Flow<String?> = tokenManager.userIdFlow
+    /** Flow du foyer actif (v0.7.0 multi-foyer). */
+    val foyerIdFlow: Flow<String?> = tokenManager.foyerIdFlow
 
     /**
      * Auto-login via Tailscale. Si IP inconnue, retourne une erreur CHOOSE_USER.
@@ -41,8 +43,9 @@ class AuthRepository @Inject constructor(
                 val userId = userMap["id"] as? String ?: ""
                 val username = userMap["username"] as? String ?: ""
                 val displayName = userMap["display_name"] as? String ?: ""
+                val foyerId = body["foyer_id"] as? String
 
-                tokenManager.saveAuthData(token, userId, username, displayName)
+                tokenManager.saveAuthData(token, userId, username, displayName, foyerId)
 
                 Result.success(LoginResponse(
                     token = token,
@@ -57,8 +60,14 @@ class AuthRepository @Inject constructor(
     }
 
     /** Sauvegarde directe des donnees d'auth (apres claim IP). */
-    suspend fun saveAuthDirect(token: String, userId: String, username: String, displayName: String) {
-        tokenManager.saveAuthData(token, userId, username, displayName)
+    suspend fun saveAuthDirect(
+        token: String,
+        userId: String,
+        username: String,
+        displayName: String,
+        foyerId: String? = null,
+    ) {
+        tokenManager.saveAuthData(token, userId, username, displayName, foyerId)
     }
 
     suspend fun login(username: String, deviceId: String): Result<LoginResponse> {
@@ -66,10 +75,38 @@ class AuthRepository @Inject constructor(
             val response = apiService.login(LoginRequest(username, deviceId))
             if (response.isSuccessful) {
                 val body = response.body()!!
-                tokenManager.saveAuthData(body.token, body.user.id, body.user.username, body.user.displayName)
+                tokenManager.saveAuthData(
+                    body.token,
+                    body.user.id,
+                    body.user.username,
+                    body.user.displayName,
+                    foyerId = body.foyerId,
+                )
                 Result.success(body)
             } else {
                 Result.failure(Exception("Erreur de connexion: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Switch vers un autre foyer. Remplace le JWT et le foyer_id dans les prefs,
+     * mais ne touche PAS aux autres données d'auth (username, display_name).
+     *
+     * Le caller doit ensuite wiper le cache Room local pour eviter de voir les
+     * donnees du foyer precedent.
+     */
+    suspend fun switchFoyer(foyerId: String): Result<Unit> {
+        return try {
+            val response = apiService.switchFoyer(foyerId)
+            if (response.isSuccessful) {
+                val body = response.body()!!
+                tokenManager.updateTokenAndFoyer(body.token, body.foyerId)
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Switch echoue: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

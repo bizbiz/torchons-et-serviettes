@@ -155,6 +155,24 @@ interface ApiService {
     @DELETE("rooms/{id}")
     suspend fun deleteRoom(@Path("id") roomId: String): Response<Map<String, Any>>
 
+    // --- Foyers (multi-tenant) ---
+
+    /** Liste les foyers auxquels l'user courant appartient. */
+    @GET("foyers")
+    suspend fun getMyFoyers(): Response<List<com.torchons.app.data.model.Foyer>>
+
+    /** Cree un nouveau foyer (l'user devient admin). */
+    @POST("foyers")
+    suspend fun createFoyer(
+        @Body request: com.torchons.app.data.model.FoyerCreateRequest
+    ): Response<com.torchons.app.data.model.Foyer>
+
+    /** Switch le foyer actif. Retourne un nouveau JWT a remplacer cote client. */
+    @POST("foyers/{id}/switch")
+    suspend fun switchFoyer(
+        @Path("id") foyerId: String
+    ): Response<com.torchons.app.data.model.SwitchFoyerResponse>
+
     // --- Completions ---
 
     /** Liste des completions avec filtres optionnels. */

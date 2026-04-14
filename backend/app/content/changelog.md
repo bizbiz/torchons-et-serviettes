@@ -1,5 +1,22 @@
 # Notes de version
 
+## v0.7.0 — 2026-04-14
+
+### Multi-foyer (refonte invisible mais fondamentale)
+- L'app est maintenant prete a gerer plusieurs foyers : tu peux creer un nouveau foyer (par exemple pour une colloc d'amis) et basculer entre tes foyers sans perdre les donnees de l'autre.
+- Nouvel ecran **Reglages → Mes foyers** : tu vois la liste des foyers auxquels tu appartiens, tu peux en creer un nouveau via le bouton + et basculer en cliquant dessus. Au basculement, l'app vide son cache local et recharge les donnees du nouveau foyer (quelques secondes).
+- Pour l'instant Quentin et ***REMOVED*** partagent un seul foyer "Maison" — toutes les taches, categories et pieces existantes y ont ete migrees automatiquement.
+- L'invitation d'amis par QR code pour creer un foyer commun sera ajoutee dans une prochaine version (ca necessite une infra de deploiement publique).
+
+### Taches ponctuelles visibles
+- Une tache creee sans recurrence (ponctuelle) apparait maintenant dans la liste "a faire" et dans les suggestions de l'accueil tant qu'elle n'a pas ete faite. Avant, elle etait invisible tant qu'on n'avait pas desactive le filtre "a faire".
+
+### Piece correctement sauvegardee
+- Quand on cree ou modifie une tache et qu'on lui assigne une piece, la piece est maintenant bien enregistree. Avant, la piece choisie pouvait etre perdue apres sauvegarde.
+
+### Popup de notation moins intrusive
+- La popup qui demande de noter l'affinite/effort d'une tache ne reapparait plus a chaque fois qu'on revient sur l'accueil. Elle s'affiche a l'ouverture de l'app et au retour depuis le multitache, puis plus jusqu'a la prochaine session.
+
 ## v0.6.2 — 2026-04-13
 
 ### Felicitations a chaque tache validee

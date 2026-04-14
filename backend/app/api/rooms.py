@@ -15,6 +15,7 @@ from app.models.room import Room
 from app.models.task import Task
 from app.schemas.room import RoomCreate, RoomResponse, RoomUpdate
 from app.utils.changelog import record_change
+from app.utils.scoping import current_foyer_uuid, scoped
 
 router = APIRouter(prefix="/api/rooms", tags=["rooms"])
 
@@ -22,11 +23,11 @@ router = APIRouter(prefix="/api/rooms", tags=["rooms"])
 @router.get("", response_model=list[RoomResponse])
 async def list_rooms(
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
-    """Liste les pieces non supprimees, triees alphabetiquement."""
+    """Liste les pieces non supprimees, triees alphabetiquement, scope foyer."""
     result = await session.execute(
-        select(Room).where(Room.deleted_at.is_(None)).order_by(Room.name)
+        scoped(Room, current).where(Room.deleted_at.is_(None)).order_by(Room.name)
     )
     return result.scalars().all()
 
@@ -37,8 +38,9 @@ async def create_room(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Cree une nouvelle piece. Le nom doit etre unique."""
+    """Cree une nouvelle piece. Le nom doit etre unique par foyer."""
     room = Room(
+        foyer_id=current_foyer_uuid(current),
         name=body.name,
         color=body.color,
         icon=body.icon,
@@ -46,7 +48,10 @@ async def create_room(
     )
     session.add(room)
     await session.flush()
-    await record_change(session, "rooms", room.id, "INSERT", current["user_id"])
+    await record_change(
+        session, "rooms", room.id, "INSERT", current["user_id"],
+        foyer_id=current["foyer_id"],
+    )
     await session.commit()
     await session.refresh(room)
     return room
@@ -61,7 +66,7 @@ async def update_room(
 ):
     """Met a jour une piece existante."""
     result = await session.execute(
-        select(Room).where(Room.id == room_id, Room.deleted_at.is_(None))
+        scoped(Room, current).where(Room.id == room_id, Room.deleted_at.is_(None))
     )
     room = result.scalar_one_or_none()
     if not room:
@@ -69,7 +74,10 @@ async def update_room(
     for key, val in body.model_dump(exclude_unset=True).items():
         setattr(room, key, val)
     room.version += 1
-    await record_change(session, "rooms", room.id, "UPDATE", current["user_id"])
+    await record_change(
+        session, "rooms", room.id, "UPDATE", current["user_id"],
+        foyer_id=current["foyer_id"],
+    )
     await session.commit()
     await session.refresh(room)
     return room
@@ -81,24 +89,28 @@ async def delete_room(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Soft delete d'une piece. Les taches liees passent en room_id=NULL.
-    Mirror du comportement de delete_category.
-    """
+    """Soft delete d'une piece. Les taches liees passent en room_id=NULL."""
     result = await session.execute(
-        select(Room).where(Room.id == room_id, Room.deleted_at.is_(None))
+        scoped(Room, current).where(Room.id == room_id, Room.deleted_at.is_(None))
     )
     room = result.scalar_one_or_none()
     if not room:
         raise HTTPException(status_code=404, detail="Piece introuvable")
 
-    # Detache les taches de cette piece
+    # Detache les taches de cette piece (scope foyer)
     result_tasks = await session.execute(
-        update(Task).where(Task.room_id == room_id).values(room_id=None).returning(Task.id)
+        update(Task)
+        .where(Task.room_id == room_id, Task.foyer_id == current_foyer_uuid(current))
+        .values(room_id=None)
+        .returning(Task.id)
     )
     orphaned_count = len(result_tasks.all())
 
     room.deleted_at = datetime.now(timezone.utc)
     room.version += 1
-    await record_change(session, "rooms", room.id, "DELETE", current["user_id"])
+    await record_change(
+        session, "rooms", room.id, "DELETE", current["user_id"],
+        foyer_id=current["foyer_id"],
+    )
     await session.commit()
     return {"ok": True, "orphaned_tasks": orphaned_count}

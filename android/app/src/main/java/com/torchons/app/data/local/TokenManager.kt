@@ -33,6 +33,8 @@ class TokenManager @Inject constructor(
         private val USER_ID_KEY = stringPreferencesKey("user_id")
         private val USERNAME_KEY = stringPreferencesKey("username")
         private val DISPLAY_NAME_KEY = stringPreferencesKey("display_name")
+        // Foyer actif (multi-tenant v0.7.0)
+        private val FOYER_ID_KEY = stringPreferencesKey("foyer_id")
         // Reglages notifications
         private val NOTIF_DAILY_KEY = booleanPreferencesKey("notif_daily")
         private val NOTIF_URGENT_KEY = booleanPreferencesKey("notif_urgent")
@@ -69,6 +71,11 @@ class TokenManager @Inject constructor(
     /** Flow du nom d'affichage. */
     val displayNameFlow: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[DISPLAY_NAME_KEY]
+    }
+
+    /** Flow du foyer actif (multi-tenant). Null si pas encore associe. */
+    val foyerIdFlow: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[FOYER_ID_KEY]
     }
 
     // --- Reglages ---
@@ -120,12 +127,29 @@ class TokenManager @Inject constructor(
     }
 
     /** Sauvegarde le token et les informations utilisateur apres connexion. */
-    suspend fun saveAuthData(token: String, userId: String, username: String, displayName: String) {
+    suspend fun saveAuthData(
+        token: String,
+        userId: String,
+        username: String,
+        displayName: String,
+        foyerId: String? = null,
+    ) {
         context.dataStore.edit { preferences ->
             preferences[TOKEN_KEY] = token
             preferences[USER_ID_KEY] = userId
             preferences[USERNAME_KEY] = username
             preferences[DISPLAY_NAME_KEY] = displayName
+            if (foyerId != null) {
+                preferences[FOYER_ID_KEY] = foyerId
+            }
+        }
+    }
+
+    /** Met a jour le token et le foyer_id apres un switch de foyer. */
+    suspend fun updateTokenAndFoyer(token: String, foyerId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[TOKEN_KEY] = token
+            preferences[FOYER_ID_KEY] = foyerId
         }
     }
 
@@ -136,6 +160,7 @@ class TokenManager @Inject constructor(
             preferences.remove(USER_ID_KEY)
             preferences.remove(USERNAME_KEY)
             preferences.remove(DISPLAY_NAME_KEY)
+            preferences.remove(FOYER_ID_KEY)
         }
     }
 

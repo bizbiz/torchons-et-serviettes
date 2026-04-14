@@ -99,6 +99,28 @@ class TaskRepository @Inject constructor(
     }
 
     // -------------------------------------------------------------------
+    // Cache wipe (multi-foyer switch)
+    // -------------------------------------------------------------------
+
+    /**
+     * Vide l'ensemble du cache Room local. Utilise quand l'user switche de
+     * foyer — les donnees du foyer precedent ne doivent pas rester visibles.
+     *
+     * Ne touche PAS aux pending_operations (on garde les ecritures offline
+     * en attente d'etre sync, elles seront rattachees au bon foyer via leur
+     * JWT au prochain sync).
+     */
+    suspend fun wipeLocalCache() {
+        taskDao.replaceAll(emptyList())
+        categoryDao.replaceAll(emptyList())
+        completionDao.replaceAll(emptyList())
+        // task_history via DAO (clearForTask n'existe que per-task, donc on
+        // passe par deleteAll). Les autres caches (users, rooms) sont aussi wipes.
+        roomDao.replaceAll(emptyList())
+        userDao.replaceAll(emptyList())
+    }
+
+    // -------------------------------------------------------------------
     // Rooms (pieces)
     // -------------------------------------------------------------------
 
@@ -188,6 +210,7 @@ class TaskRepository @Inject constructor(
             id = rowId,
             title = request.title,
             description = request.description,
+            roomId = request.roomId,
             categoryId = request.categoryId,
             assignedToIds = request.assignedToIds,
             recurrenceRule = request.recurrenceRule,
@@ -204,6 +227,7 @@ class TaskRepository @Inject constructor(
         val payload = mapOf(
             "title" to request.title,
             "description" to request.description,
+            "room_id" to request.roomId,
             "category_id" to request.categoryId,
             "assigned_to_ids" to request.assignedToIds,
             "recurrence_rule" to request.recurrenceRule,
@@ -222,6 +246,7 @@ class TaskRepository @Inject constructor(
         val updated = existing?.copy(
             title = request.title ?: existing.title,
             description = request.description ?: existing.description,
+            roomId = request.roomId ?: existing.roomId,
             categoryId = request.categoryId ?: existing.categoryId,
             assignedToIds = request.assignedToIds ?: existing.assignedToIds,
             recurrenceRule = request.recurrenceRule ?: existing.recurrenceRule,
@@ -238,6 +263,7 @@ class TaskRepository @Inject constructor(
         val payload = mutableMapOf<String, Any?>()
         request.title?.let { payload["title"] = it }
         request.description?.let { payload["description"] = it }
+        request.roomId?.let { payload["room_id"] = it }
         request.categoryId?.let { payload["category_id"] = it }
         request.assignedToIds?.let { payload["assigned_to_ids"] = it }
         request.recurrenceRule?.let { payload["recurrence_rule"] = it }

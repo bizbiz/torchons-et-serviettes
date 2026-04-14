@@ -69,6 +69,7 @@ fun SettingsScreen(
     onLogout: () -> Unit,
     onManageCategories: () -> Unit = {},
     onManageRooms: () -> Unit = {},
+    onManageFoyers: () -> Unit = {},
     onOpenChangelog: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -179,6 +180,41 @@ fun SettingsScreen(
                     )
                     Text(
                         text = "Ajouter, modifier, supprimer, WiFi maison",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // Foyers (multi-tenant)
+        Card(
+            onClick = onManageFoyers,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Home,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Mes foyers",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Voir, creer, basculer entre les foyers",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

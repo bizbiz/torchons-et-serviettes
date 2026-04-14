@@ -23,6 +23,7 @@ from app.models.task_frequency_vote import TaskFrequencyVote
 from app.models.task_in_progress import TaskInProgress
 from app.services.recurrence import compute_freshness
 from app.utils.changelog import record_change
+from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api", tags=["gamification"])
 
@@ -156,6 +157,7 @@ async def set_affinity(
 
     await record_change(
         session, "task_affinities", task_id, "VOTE", current["user_id"],
+        foyer_id=current["foyer_id"],
         new_data={
             "score": body.score,
             "consensus_before": consensus_before,
@@ -227,10 +229,11 @@ async def oldest_rating(
         TaskAssignment.user_id == user_id
     ).scalar_subquery()
 
-    # Trouver toutes les taches assignees actives
+    # Trouver toutes les taches assignees actives (scope foyer)
     tasks_result = await session.execute(
         select(Task).where(
             Task.id.in_(assigned),
+            Task.foyer_id == current_foyer_uuid(current),
             Task.deleted_at.is_(None),
             Task.is_active.is_(True),
         )
@@ -313,6 +316,7 @@ async def set_effort(
 
     await record_change(
         session, "task_efforts", task_id, "VOTE", current["user_id"],
+        foyer_id=current["foyer_id"],
         new_data={
             "points": body.points,
             "consensus_before": consensus_before,
@@ -387,12 +391,14 @@ async def set_frequency(
     # Log du changement de la tache (cote sync) — sera dedoublonne en GET /history.
     await record_change(
         session, "tasks", task_id, "UPDATE", current["user_id"],
+        foyer_id=current["foyer_id"],
         old_data={"recurrence_rule": old_rule},
         new_data={"recurrence_rule": task.recurrence_rule},
     )
     # Log du vote individuel (alimente l'historique UI).
     await record_change(
         session, "task_frequency_votes", task_id, "VOTE", current["user_id"],
+        foyer_id=current["foyer_id"],
         new_data={
             "every_n_days": body.every_n_days,
             "consensus_before": consensus_before,
@@ -457,9 +463,11 @@ async def pending_affinity(
     ).scalar_subquery()
 
     # Condition commune : taches sans affinite recente OU sans effort recent
+    # (scope foyer)
     from sqlalchemy import or_
     pending_condition = [
         Task.id.in_(assigned),
+        Task.foyer_id == current_foyer_uuid(current),
         or_(Task.id.notin_(rated_affinity), Task.id.notin_(rated_effort)),
         Task.deleted_at.is_(None),
         Task.is_active.is_(True),
@@ -645,9 +653,9 @@ async def get_suggestions(
         select(Task).where(
             Task.id.in_(assigned),
             Task.id.notin_(in_progress_ids),
+            Task.foyer_id == current_foyer_uuid(current),
             Task.deleted_at.is_(None),
             Task.is_active.is_(True),
-            Task.recurrence_rule.isnot(None),  # Exclure les ponctuelles
         )
     )
     tasks = result.scalars().all()

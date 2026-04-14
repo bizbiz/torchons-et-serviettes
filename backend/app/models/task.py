@@ -13,6 +13,12 @@ from app.models.enums import TaskTolerance
 class Task(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "tasks"
 
+    # Foyer auquel la tache appartient. CASCADE : supprimer le foyer
+    # supprime ses taches. Scoping obligatoire dans toutes les queries.
+    foyer_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("foyers.id", ondelete="CASCADE"), nullable=False
+    )
+
     title: Mapped[str] = mapped_column(String(300), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category_id: Mapped[uuid.UUID | None] = mapped_column(

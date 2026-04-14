@@ -13,6 +13,9 @@ from app.models.base import Base, UUIDMixin
 class Streak(Base, UUIDMixin):
     __tablename__ = "streaks"
 
+    foyer_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("foyers.id", ondelete="CASCADE"), nullable=False
+    )
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True  # NULL = couple streak
     )

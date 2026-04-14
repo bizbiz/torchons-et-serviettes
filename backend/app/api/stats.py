@@ -115,6 +115,7 @@ async def update_completion(
 
     await record_change(
         session, "task_completions", comp.id, "UPDATE", current["user_id"],
+        foyer_id=current["foyer_id"],
         old_data=old_data,
         new_data={k: str(v) for k, v in updates.items()},
     )

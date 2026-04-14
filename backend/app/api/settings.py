@@ -98,6 +98,7 @@ async def update_settings(
 
     await record_change(
         session, "user_settings", settings.user_id, "UPDATE", current["user_id"],
+        foyer_id=current["foyer_id"],
         new_data=body.model_dump(mode="json", exclude_unset=True),
     )
     await session.commit()

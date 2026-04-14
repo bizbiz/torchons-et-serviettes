@@ -20,6 +20,7 @@ from app.models.task_in_progress import TaskInProgress
 from app.schemas.completion import CompletionCreate, CompletionResponse
 from app.services.recurrence import min_completion_gap_seconds
 from app.utils.changelog import record_change
+from app.utils.scoping import current_foyer_uuid, scoped
 
 router = APIRouter(tags=["completions"])
 
@@ -41,9 +42,9 @@ async def complete_task(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Marque une tache comme completee."""
+    """Marque une tache comme completee (scope foyer)."""
     result = await session.execute(
-        select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
+        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -121,7 +122,10 @@ async def complete_task(
         task.is_active = False
         task.version += 1
 
-    await record_change(session, "task_completions", completion.id, "INSERT", current["user_id"])
+    await record_change(
+        session, "task_completions", completion.id, "INSERT", current["user_id"],
+        foyer_id=current["foyer_id"],
+    )
     await session.commit()
     await session.refresh(completion)
 
@@ -139,19 +143,26 @@ async def undo_completion(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Annule une completion (soft delete)."""
+    """Annule une completion (soft delete). Scope foyer via JOIN tasks."""
+    # Verifie que la completion existe ET appartient au foyer courant via Task
     result = await session.execute(
-        select(TaskCompletion).where(
+        select(TaskCompletion)
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
             TaskCompletion.id == completion_id,
             TaskCompletion.task_id == task_id,
             TaskCompletion.deleted_at.is_(None),
+            Task.foyer_id == current_foyer_uuid(current),
         )
     )
     comp = result.scalar_one_or_none()
     if not comp:
         raise HTTPException(status_code=404, detail="Completion introuvable")
     comp.deleted_at = datetime.now(timezone.utc)
-    await record_change(session, "task_completions", comp.id, "DELETE", current["user_id"])
+    await record_change(
+        session, "task_completions", comp.id, "DELETE", current["user_id"],
+        foyer_id=current["foyer_id"],
+    )
     await session.commit()
     return {"ok": True}
 
@@ -162,10 +173,17 @@ async def list_completions(
     task_id: UUID | None = None,
     limit: int = 50,
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
-    """Liste les completions recentes avec filtres optionnels."""
-    q = select(TaskCompletion).where(TaskCompletion.deleted_at.is_(None))
+    """Liste les completions recentes avec filtres optionnels. Scope foyer via JOIN tasks."""
+    q = (
+        select(TaskCompletion)
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
+            TaskCompletion.deleted_at.is_(None),
+            Task.foyer_id == current_foyer_uuid(current),
+        )
+    )
     if user_id:
         q = q.where(TaskCompletion.completed_by == user_id)
     if task_id:

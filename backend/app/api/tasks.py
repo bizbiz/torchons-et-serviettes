@@ -17,6 +17,7 @@ from app.models.task_assignment import TaskAssignment
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 from app.utils.changelog import record_change
+from app.utils.scoping import current_foyer_uuid, scoped
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -56,7 +57,7 @@ async def list_tasks(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Liste des taches visibles par l'utilisateur courant."""
+    """Liste des taches visibles par l'utilisateur courant, scopees par foyer."""
     user_id = UUID(current["user_id"])
 
     # Sous-requete : taches assignees a l'utilisateur courant
@@ -64,7 +65,8 @@ async def list_tasks(
         TaskAssignment.user_id == user_id
     ).scalar_subquery()
 
-    q = select(Task).where(
+    # scoped() applique deja WHERE Task.foyer_id = current foyer
+    q = scoped(Task, current).where(
         Task.deleted_at.is_(None),
         Task.id.in_(assigned_task_ids),
     )
@@ -84,10 +86,10 @@ async def list_tasks(
 async def get_task(
     task_id: UUID,
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
     result = await session.execute(
-        select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
+        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -102,6 +104,7 @@ async def create_task(
     current: dict = Depends(get_current_user),
 ):
     task = Task(
+        foyer_id=current_foyer_uuid(current),
         title=body.title,
         description=body.description,
         category_id=body.category_id,
@@ -120,6 +123,7 @@ async def create_task(
 
     await record_change(
         session, "tasks", task.id, "INSERT", current["user_id"],
+        foyer_id=current["foyer_id"],
         new_data=body.model_dump(mode="json"),
     )
     await session.commit()
@@ -135,7 +139,7 @@ async def update_task(
     current: dict = Depends(get_current_user),
 ):
     result = await session.execute(
-        select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
+        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -175,6 +179,7 @@ async def update_task(
 
     await record_change(
         session, "tasks", task.id, "UPDATE", current["user_id"],
+        foyer_id=current["foyer_id"],
         old_data=old_data,
         new_data=body.model_dump(mode="json", exclude_unset=True),
     )
@@ -215,13 +220,19 @@ async def get_task_history(
     task_id: UUID,
     limit: int = 100,
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
     """Retourne l'historique unifie d'une tache : votes + modifs directes.
-    Lit change_log filtre par (table_name, row_id=task_id), jointe avec users
-    pour le nom de l'auteur. Dedoublonne les lignes tasks/UPDATE emises en
-    meme temps qu'un vote de frequence (le vote genere les deux entrees).
+    Lit change_log filtre par (foyer_id, table_name, row_id=task_id).
     """
+    # Verifier d'abord que la tache appartient au foyer courant
+    ownership_check = await session.execute(
+        scoped(Task, current).where(Task.id == task_id)
+    )
+    if ownership_check.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Tache introuvable")
+
+    foyer_uuid = current_foyer_uuid(current)
     result = await session.execute(
         select(
             ChangeLog.id,
@@ -235,6 +246,7 @@ async def get_task_history(
         )
         .outerjoin(User, User.id == ChangeLog.changed_by)
         .where(
+            ChangeLog.foyer_id == foyer_uuid,
             ChangeLog.row_id == task_id,
             ChangeLog.table_name.in_(_HISTORY_TABLES),
         )
@@ -318,13 +330,16 @@ async def delete_task(
 ):
     """Soft delete."""
     result = await session.execute(
-        select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
+        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Tache introuvable")
     task.deleted_at = datetime.now(timezone.utc)
     task.version += 1
-    await record_change(session, "tasks", task.id, "DELETE", current["user_id"])
+    await record_change(
+        session, "tasks", task.id, "DELETE", current["user_id"],
+        foyer_id=current["foyer_id"],
+    )
     await session.commit()
     return {"ok": True}

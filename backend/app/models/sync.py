@@ -15,6 +15,11 @@ class ChangeLog(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     server_version: Mapped[int] = mapped_column(BigInteger, unique=True, autoincrement=True)
+    # Foyer auquel l'evenement de sync appartient. ON DELETE RESTRICT cote DB
+    # (l'historique ne doit pas disparaitre en erreur).
+    foyer_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("foyers.id", ondelete="RESTRICT"), nullable=False
+    )
     table_name: Mapped[str] = mapped_column(String(50), nullable=False)
     row_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     operation: Mapped[str] = mapped_column(String(10), nullable=False)  # INSERT, UPDATE, DELETE

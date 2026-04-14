@@ -44,8 +44,9 @@ async def sync(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Synchronise les operations offline du client et retourne les changements serveur."""
+    """Synchronise les operations offline du client et retourne les changements serveur (scope foyer)."""
     user_id = current["user_id"]
+    foyer_id = current["foyer_id"]
     applied: list[SyncAppliedOp] = []
     conflicts: list[SyncConflict] = []
 
@@ -66,7 +67,7 @@ async def sync(
             continue
 
         try:
-            result = await _apply_op(session, op, user_id, body.device_id)
+            result = await _apply_op(session, op, user_id, foyer_id, body.device_id)
             applied.append(result)
         except StaleUpdateError as e:
             conflicts.append(SyncConflict(
@@ -88,15 +89,18 @@ async def sync(
     await session.commit()
 
     # Pull : changements serveur depuis last_server_version,
-    # en excluant les ops originant de ce device
+    # en excluant les ops originant de ce device. SCOPE FOYER : un client ne
+    # recoit que les changements de son foyer actuel.
     own_op_ids = select(ProcessedOp.client_op_id).where(
         ProcessedOp.device_id == body.device_id
     ).scalar_subquery()
 
+    foyer_uuid = uuid.UUID(foyer_id) if isinstance(foyer_id, str) else foyer_id
     server_rows = (
         await session.execute(
             select(ChangeLog)
             .where(ChangeLog.server_version > body.last_server_version)
+            .where(ChangeLog.foyer_id == foyer_uuid)
             .where(
                 (ChangeLog.client_op_id.is_(None))
                 | (~ChangeLog.client_op_id.in_(own_op_ids))
@@ -135,9 +139,10 @@ async def _apply_op(
     session: AsyncSession,
     op: SyncOperation,
     user_id: str,
+    foyer_id: str,
     device_id: uuid.UUID,
 ) -> SyncAppliedOp:
-    """Dispatch et execute une operation sync."""
+    """Dispatch et execute une operation sync (scope foyer)."""
     handlers = {
         "tasks": _handle_task,
         "categories": _handle_category,
@@ -148,7 +153,7 @@ async def _apply_op(
     if handler is None:
         raise HTTPException(status_code=400, detail=f"Table inconnue: {op.table}")
 
-    server_row_id = await handler(session, op, user_id)
+    server_row_id = await handler(session, op, user_id, foyer_id)
 
     # Enregistrer dans processed_ops
     session.add(ProcessedOp(
@@ -158,9 +163,10 @@ async def _apply_op(
         device_id=device_id,
     ))
 
-    # Enregistrer dans change_log
+    # Enregistrer dans change_log (avec foyer_id)
     await record_change(
         session, op.table, server_row_id, op.operation, user_id,
+        foyer_id=foyer_id,
         new_data=op.data,
         client_op_id=op.client_op_id,
     )
@@ -188,16 +194,20 @@ async def _handle_task(
     session: AsyncSession,
     op: SyncOperation,
     user_id: str,
+    foyer_id: str,
 ) -> uuid.UUID:
     """Traite INSERT / UPDATE / DELETE sur tasks."""
     data = op.data or {}
+    foyer_uuid = uuid.UUID(foyer_id) if isinstance(foyer_id, str) else foyer_id
 
     if op.operation == "INSERT":
         task = Task(
             id=op.row_id,
+            foyer_id=foyer_uuid,
             title=data.get("title", "Sans titre"),
             description=data.get("description"),
             category_id=uuid.UUID(data["category_id"]) if data.get("category_id") else None,
+            room_id=uuid.UUID(data["room_id"]) if data.get("room_id") else None,
             recurrence_rule=data.get("recurrence_rule"),
             weight=data.get("weight", 1),
             tolerance=data.get("tolerance", "NORMAL"),
@@ -211,7 +221,11 @@ async def _handle_task(
     if op.operation == "UPDATE":
         row = (
             await session.execute(
-                select(Task).where(Task.id == op.row_id, Task.deleted_at.is_(None))
+                select(Task).where(
+                    Task.id == op.row_id,
+                    Task.foyer_id == foyer_uuid,
+                    Task.deleted_at.is_(None),
+                )
             )
         ).scalar_one_or_none()
         if not row:
@@ -233,7 +247,11 @@ async def _handle_task(
     if op.operation == "DELETE":
         row = (
             await session.execute(
-                select(Task).where(Task.id == op.row_id, Task.deleted_at.is_(None))
+                select(Task).where(
+                    Task.id == op.row_id,
+                    Task.foyer_id == foyer_uuid,
+                    Task.deleted_at.is_(None),
+                )
             )
         ).scalar_one_or_none()
         if row:
@@ -248,13 +266,16 @@ async def _handle_category(
     session: AsyncSession,
     op: SyncOperation,
     user_id: str,
+    foyer_id: str,
 ) -> uuid.UUID:
     """Traite INSERT / UPDATE / DELETE sur categories."""
     data = op.data or {}
+    foyer_uuid = uuid.UUID(foyer_id) if isinstance(foyer_id, str) else foyer_id
 
     if op.operation == "INSERT":
         cat = Category(
             id=op.row_id,
+            foyer_id=foyer_uuid,
             name=data.get("name", "Sans nom"),
             color=data.get("color", "#6B7280"),
             icon=data.get("icon"),
@@ -267,7 +288,11 @@ async def _handle_category(
     if op.operation == "UPDATE":
         row = (
             await session.execute(
-                select(Category).where(Category.id == op.row_id, Category.deleted_at.is_(None))
+                select(Category).where(
+                    Category.id == op.row_id,
+                    Category.foyer_id == foyer_uuid,
+                    Category.deleted_at.is_(None),
+                )
             )
         ).scalar_one_or_none()
         if not row:
@@ -283,7 +308,11 @@ async def _handle_category(
     if op.operation == "DELETE":
         row = (
             await session.execute(
-                select(Category).where(Category.id == op.row_id, Category.deleted_at.is_(None))
+                select(Category).where(
+                    Category.id == op.row_id,
+                    Category.foyer_id == foyer_uuid,
+                    Category.deleted_at.is_(None),
+                )
             )
         ).scalar_one_or_none()
         if row:
@@ -298,6 +327,7 @@ async def _handle_completion(
     session: AsyncSession,
     op: SyncOperation,
     user_id: str,
+    foyer_id: str,
 ) -> uuid.UUID:
     """Traite INSERT / DELETE sur task_completions."""
     data = op.data or {}
@@ -336,6 +366,7 @@ async def _handle_settings(
     session: AsyncSession,
     op: SyncOperation,
     user_id: str,
+    foyer_id: str,
 ) -> uuid.UUID:
     """Traite UPDATE sur user_settings."""
     data = op.data or {}

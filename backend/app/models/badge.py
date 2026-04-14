@@ -11,11 +11,14 @@ from app.models.base import Base, UUIDMixin
 
 
 class Badge(Base, UUIDMixin):
-    """Badge gagne par un utilisateur.
-    badge_type identifie le type de badge (ex: 'first_task', 'streak_7', 'tasks_100').
+    """Badge gagne par un utilisateur dans un foyer specifique.
+    Un user peut avoir le meme badge dans 2 foyers differents.
     """
     __tablename__ = "badges"
 
+    foyer_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("foyers.id", ondelete="CASCADE"), nullable=False
+    )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
