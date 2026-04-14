@@ -2,8 +2,9 @@
 
 ## v0.7.1 — 2026-04-14
 
-### Maintenance
-- Correctifs techniques pour completer v0.7.0. Aucune nouvelle fonctionnalite visible : les corrections annoncees dans v0.7.0 (taches ponctuelles visibles, piece sauvegardee, popup de notation moins intrusive) sont effectivement actives a partir de cette version.
+### Multi-foyer : stats isolees par foyer
+- Les statistiques (points, taches completees, leaderboard, streaks, badges, historique) ne melangent plus les donnees de tous tes foyers : chaque ecran stats affiche uniquement les chiffres du foyer actif.
+- Les badges gagnes sont specifiques a chaque foyer (un meme badge peut etre gagne dans plusieurs foyers separement).
 
 ## v0.7.0 — 2026-04-14
 

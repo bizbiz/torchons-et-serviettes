@@ -220,10 +220,11 @@ async def get_stats(
 async def get_leaderboard(
     period: str = "week",
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
-    """Leaderboard par periode : week, month, all."""
+    """Leaderboard par periode : week, month, all. Scope foyer via JOIN tasks."""
     now = datetime.now(timezone.utc)
+    foyer_uuid = current_foyer_uuid(current)
     if period == "week":
         cutoff = now - timedelta(days=7)
     elif period == "month":
@@ -236,21 +237,26 @@ async def get_leaderboard(
             TaskCompletion.completed_by,
             func.coalesce(func.sum(TaskCompletion.points_earned), 0).label("points"),
             func.count(TaskCompletion.id).label("tasks_count"),
-        ).where(
+        )
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
             TaskCompletion.deleted_at.is_(None),
             TaskCompletion.completed_at >= cutoff,
+            Task.foyer_id == foyer_uuid,
         ).group_by(TaskCompletion.completed_by).order_by(
             func.sum(TaskCompletion.points_earned).desc()
         )
     )
     rows = result.all()
 
-    # Charger les noms et fair-share ratios
+    # Charger les noms et fair-share ratios (fair-share scope foyer)
     users_result = await session.execute(select(User))
     user_names = {u.id: u.display_name for u in users_result.scalars().all()}
 
     from app.models.fair_share import FairShareConfig
-    fs_result = await session.execute(select(FairShareConfig))
+    fs_result = await session.execute(
+        select(FairShareConfig).where(FairShareConfig.foyer_id == foyer_uuid)
+    )
     fs_ratios = {r.user_id: r.target_ratio for r in fs_result.scalars().all()}
 
     # Construire les entries avec score normalise
@@ -293,20 +299,24 @@ async def get_leaderboard(
 @router.get("/streaks", response_model=list[StreakInfo])
 async def get_streaks(
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
-    """Calcule les streaks (jours consecutifs avec au moins 1 tache) pour chaque user."""
+    """Calcule les streaks (jours consecutifs avec au moins 1 tache) pour chaque user. Scope foyer."""
+    foyer_uuid = current_foyer_uuid(current)
     users_result = await session.execute(select(User).order_by(User.username))
     users = users_result.scalars().all()
 
     streaks = []
     for user in users:
-        # Recuperer les dates distinctes de completion
+        # Recuperer les dates distinctes de completion (scope foyer)
         day_col = func.date_trunc('day', TaskCompletion.completed_at).label('d')
         result = await session.execute(
-            select(day_col).where(
+            select(day_col)
+            .join(Task, Task.id == TaskCompletion.task_id)
+            .where(
                 TaskCompletion.completed_by == user.id,
                 TaskCompletion.deleted_at.is_(None),
+                Task.foyer_id == foyer_uuid,
             ).group_by(day_col).order_by(day_col.desc())
         )
         days = [row[0].date() if hasattr(row[0], 'date') else row[0] for row in result.all()]
@@ -354,20 +364,27 @@ async def get_badges(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Liste tous les badges avec statut (gagne ou pas) pour l'user courant."""
+    """Liste tous les badges avec statut (gagne ou pas) pour l'user courant dans le foyer actif."""
     user_id = UUID(current["user_id"])
+    foyer_uuid = current_foyer_uuid(current)
 
-    # Badges gagnes
+    # Badges gagnes (scope foyer)
     result = await session.execute(
-        select(Badge).where(Badge.user_id == user_id)
+        select(Badge).where(
+            Badge.user_id == user_id,
+            Badge.foyer_id == foyer_uuid,
+        )
     )
     earned = {b.badge_type: b.earned_at for b in result.scalars().all()}
 
-    # Verifier et attribuer automatiquement les badges non encore gagnes
+    # Verifier et attribuer automatiquement les badges non encore gagnes (scope foyer)
     total_result = await session.execute(
-        select(func.count(TaskCompletion.id)).where(
+        select(func.count(TaskCompletion.id))
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
             TaskCompletion.completed_by == user_id,
             TaskCompletion.deleted_at.is_(None),
+            Task.foyer_id == foyer_uuid,
         )
     )
     total_tasks = total_result.scalar() or 0
@@ -376,16 +393,19 @@ async def get_badges(
     task_thresholds = {"first_task": 1, "tasks_10": 10, "tasks_50": 50, "tasks_100": 100, "tasks_500": 500}
     for badge_type, threshold in task_thresholds.items():
         if badge_type not in earned and total_tasks >= threshold:
-            badge = Badge(user_id=user_id, badge_type=badge_type)
+            badge = Badge(user_id=user_id, foyer_id=foyer_uuid, badge_type=badge_type)
             session.add(badge)
             earned[badge_type] = datetime.now(timezone.utc)
 
-    # Streaks
+    # Streaks (scope foyer)
     day_col = func.date_trunc('day', TaskCompletion.completed_at).label('d')
     streaks_result = await session.execute(
-        select(day_col).where(
+        select(day_col)
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
             TaskCompletion.completed_by == user_id,
             TaskCompletion.deleted_at.is_(None),
+            Task.foyer_id == foyer_uuid,
         ).group_by(day_col).order_by(day_col.desc())
     )
     days = [row[0].date() if hasattr(row[0], 'date') else row[0] for row in streaks_result.all()]
@@ -403,7 +423,7 @@ async def get_badges(
     streak_thresholds = {"streak_3": 3, "streak_7": 7, "streak_14": 14, "streak_30": 30}
     for badge_type, threshold in streak_thresholds.items():
         if badge_type not in earned and best_streak >= threshold:
-            badge = Badge(user_id=user_id, badge_type=badge_type)
+            badge = Badge(user_id=user_id, foyer_id=foyer_uuid, badge_type=badge_type)
             session.add(badge)
             earned[badge_type] = datetime.now(timezone.utc)
 
@@ -429,14 +449,16 @@ async def get_badges(
 async def completion_history(
     completion_id: UUID,
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
-    """Historique des modifications d'une completion."""
+    """Historique des modifications d'une completion. Scope foyer."""
     from app.models.sync import ChangeLog
+    foyer_uuid = current_foyer_uuid(current)
     result = await session.execute(
         select(ChangeLog).where(
             ChangeLog.table_name == "task_completions",
             ChangeLog.row_id == completion_id,
+            ChangeLog.foyer_id == foyer_uuid,
         ).order_by(ChangeLog.changed_at.desc())
     )
     logs = result.scalars().all()
@@ -495,16 +517,20 @@ def _format_minutes(points: int) -> str:
 
 async def _build_history(
     session: AsyncSession,
+    foyer_uuid: UUID,
     limit: int,
     before: datetime | None,
     actor_id: UUID | None = None,
 ) -> list[dict]:
-    """Construit le feed d'historique, filtrable par actor.
+    """Construit le feed d'historique, filtrable par actor. Scope foyer.
 
     - Deduplique les completions consecutives (meme task + meme user dans la
       fenetre derivee de la recurrence), pour masquer les doubles validations.
     - Filtre les UPDATE tasks qui ne touchent que des champs techniques.
     - Si `actor_id` est fourni, ne retourne que les events de cet utilisateur.
+    - Toutes les sources (completions, affinities, efforts, change_log) sont
+      filtrees par foyer : soit directement (change_log.foyer_id), soit via
+      un JOIN sur tasks (completions, affinities, efforts, task history).
     """
     from app.models.sync import ChangeLog
     from app.models.task_affinity import TaskAffinity
@@ -528,7 +554,10 @@ async def _build_history(
     # --- 1. Completions (avec recurrence pour dedup) ---
     comp_query = select(TaskCompletion, Task.title, Task.recurrence_rule).join(
         Task, Task.id == TaskCompletion.task_id
-    ).where(TaskCompletion.deleted_at.is_(None))
+    ).where(
+        TaskCompletion.deleted_at.is_(None),
+        Task.foyer_id == foyer_uuid,
+    )
     if before is not None:
         comp_query = comp_query.where(TaskCompletion.completed_at < before)
     if actor_id is not None:
@@ -565,7 +594,10 @@ async def _build_history(
     # --- 2. Affinites (seulement celles qui ont reellement change : created_at != updated_at) ---
     aff_query = select(TaskAffinity, Task.title).join(
         Task, Task.id == TaskAffinity.task_id
-    ).where(TaskAffinity.updated_at > TaskAffinity.created_at)
+    ).where(
+        TaskAffinity.updated_at > TaskAffinity.created_at,
+        Task.foyer_id == foyer_uuid,
+    )
     if before is not None:
         aff_query = aff_query.where(TaskAffinity.updated_at < before)
     if actor_id is not None:
@@ -588,7 +620,10 @@ async def _build_history(
     # --- 3. Efforts (idem : filtre created_at != updated_at) ---
     eff_query = select(TaskEffort, Task.title).join(
         Task, Task.id == TaskEffort.task_id
-    ).where(TaskEffort.updated_at > TaskEffort.created_at)
+    ).where(
+        TaskEffort.updated_at > TaskEffort.created_at,
+        Task.foyer_id == foyer_uuid,
+    )
     if before is not None:
         eff_query = eff_query.where(TaskEffort.updated_at < before)
     if actor_id is not None:
@@ -608,10 +643,11 @@ async def _build_history(
             "meta": {"points": eff.points, "minutes": eff.points * 5},
         })
 
-    # --- 4. Modifications via change_log ---
+    # --- 4. Modifications via change_log (scope foyer direct) ---
     log_query = select(ChangeLog).where(
         ChangeLog.table_name.in_(["tasks", "task_completions", "categories"]),
         ChangeLog.operation.in_(["INSERT", "UPDATE", "DELETE"]),
+        ChangeLog.foyer_id == foyer_uuid,
     )
     if before is not None:
         log_query = log_query.where(ChangeLog.changed_at < before)
@@ -733,15 +769,21 @@ async def global_history(
     limit: int = 50,
     before: datetime | None = None,
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
-    """Historique global : completions, modifications taches/categories, affinites, efforts.
+    """Historique global du foyer actif : completions, modifications taches/categories, affinites, efforts.
 
     - `limit` : nombre max d'evenements a retourner (defaut 50).
     - `before` : curseur de pagination. Si fourni, ne retourne que les events
       strictement anterieurs a cette date (utile pour scroller le passe).
     """
-    return await _build_history(session, limit=limit, before=before, actor_id=None)
+    return await _build_history(
+        session,
+        foyer_uuid=current_foyer_uuid(current),
+        limit=limit,
+        before=before,
+        actor_id=None,
+    )
 
 
 @router.get("/users/{user_id}/history")
@@ -750,7 +792,13 @@ async def user_history(
     limit: int = 50,
     before: datetime | None = None,
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
-    """Historique personnel d'un utilisateur : meme format que /history filtre par acteur."""
-    return await _build_history(session, limit=limit, before=before, actor_id=user_id)
+    """Historique personnel d'un utilisateur dans le foyer actif."""
+    return await _build_history(
+        session,
+        foyer_uuid=current_foyer_uuid(current),
+        limit=limit,
+        before=before,
+        actor_id=user_id,
+    )
