@@ -28,6 +28,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import com.torchons.app.ui.catalog.CatalogScreen
 import com.torchons.app.ui.changelog.ChangelogScreen
 import com.torchons.app.ui.home.HomeScreen
 import com.torchons.app.ui.login.LoginScreen
@@ -58,6 +59,7 @@ object Routes {
     const val ROOMS = "rooms"
     const val FOYERS = "foyers"
     const val CHANGELOG = "changelog"
+    const val CATALOG = "catalog"
 
     fun taskDetail(taskId: String) = "task_detail/$taskId"
     fun taskEdit(taskId: String) = "task_edit/$taskId"
@@ -126,6 +128,9 @@ fun NavGraph(
                 onNavigateToChangelog = {
                     navController.navigate(Routes.CHANGELOG)
                 },
+                onNavigateToCatalog = {
+                    navController.navigate(Routes.CATALOG)
+                },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.MAIN) { inclusive = true }
@@ -137,6 +142,18 @@ fun NavGraph(
         // Notes de version + Roadmap
         composable(Routes.CHANGELOG) {
             ChangelogScreen(onBack = { navController.popBackStack() })
+        }
+
+        // Catalogue de templates (v0.9.0 Feature 4)
+        composable(Routes.CATALOG) {
+            val ep = dagger.hilt.android.EntryPointAccessors.fromApplication(
+                navController.context.applicationContext,
+                ApiServiceEntryPoint::class.java,
+            )
+            CatalogScreen(
+                apiService = ep.apiService(),
+                onBack = { navController.popBackStack() },
+            )
         }
 
         // Gestion des categories
@@ -237,6 +254,7 @@ fun MainScreen(
     onNavigateToRooms: () -> Unit,
     onNavigateToFoyers: () -> Unit,
     onNavigateToChangelog: () -> Unit,
+    onNavigateToCatalog: () -> Unit,
     onLogout: () -> Unit
 ) {
     val innerNavController = androidx.navigation.compose.rememberNavController()
@@ -288,6 +306,7 @@ fun MainScreen(
                     TaskListScreen(
                         onTaskClick = onNavigateToTaskDetail,
                         onCreateTask = onNavigateToCreateTask,
+                        onOpenCatalog = onNavigateToCatalog,
                         onLogout = onLogout
                     )
                 }

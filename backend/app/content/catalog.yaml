@@ -1,0 +1,344 @@
+# Catalogue de templates pour Torchons & Serviettes (v0.9.0 Feature 4).
+#
+# Ce fichier est la source de verite curatee pour les suggestions de
+# pieces / categories / taches. Les users peuvent importer des items de
+# ce catalogue en 1 clic via l'ecran CatalogScreen pour peupler leur foyer
+# plus vite qu'en creant tout a la main.
+#
+# Identifiants stables : chaque item a un `key` slug unique, independant
+# du display name (permet la traduction future + le tracking de popularite
+# via tasks.template_key / rooms.template_key / categories.template_key).
+#
+# Multi-locale : les champs title/name/description sont des dicts
+# {locale: string}. Pour v0.9.0 on ne remplit que 'fr'. Le backend
+# choisira la locale de l'user plus tard (aujourd'hui fallback fr).
+
+rooms:
+  - key: cuisine
+    name:
+      fr: "Cuisine"
+    emoji: "🍳"
+
+  - key: salon
+    name:
+      fr: "Salon"
+    emoji: "🛋"
+
+  - key: chambre
+    name:
+      fr: "Chambre"
+    emoji: "🛏"
+
+  - key: salle_de_bain
+    name:
+      fr: "Salle de bain"
+    emoji: "🚿"
+
+  - key: toilettes
+    name:
+      fr: "Toilettes"
+    emoji: "🚽"
+
+  - key: entree
+    name:
+      fr: "Entree"
+    emoji: "🚪"
+
+  - key: couloir
+    name:
+      fr: "Couloir"
+    emoji: "🏠"
+
+  - key: balcon
+    name:
+      fr: "Balcon"
+    emoji: "🌿"
+
+  - key: buanderie
+    name:
+      fr: "Buanderie"
+    emoji: "🧺"
+
+  - key: bureau
+    name:
+      fr: "Bureau"
+    emoji: "💼"
+
+categories:
+  - key: menage
+    name:
+      fr: "Menage"
+    color: "#10B981"
+    requires_home: true
+
+  - key: cuisine_cat
+    name:
+      fr: "Cuisine"
+    color: "#F59E0B"
+    requires_home: true
+
+  - key: linge
+    name:
+      fr: "Linge"
+    color: "#6366F1"
+    requires_home: true
+
+  - key: courses
+    name:
+      fr: "Courses"
+    color: "#EC4899"
+    requires_home: false
+
+  - key: administratif
+    name:
+      fr: "Administratif"
+    color: "#8B5CF6"
+    requires_home: false
+
+  - key: jardinage
+    name:
+      fr: "Jardinage"
+    color: "#22C55E"
+    requires_home: true
+
+  - key: entretien
+    name:
+      fr: "Entretien"
+    color: "#F97316"
+    requires_home: true
+
+tasks:
+  # --- Cuisine ---
+
+  - key: vaisselle
+    title:
+      fr: "Faire la vaisselle"
+    description:
+      fr: "Remplir et vider le lave-vaisselle"
+    default_category_key: cuisine_cat
+    default_room_key: cuisine
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 1
+    default_tolerance: NORMAL
+
+  - key: nettoyer_plan_de_travail
+    title:
+      fr: "Nettoyer le plan de travail"
+    default_category_key: cuisine_cat
+    default_room_key: cuisine
+    default_weight: 1
+    default_recurrence:
+      type: interval
+      every_n_days: 1
+    default_tolerance: NORMAL
+
+  - key: sortir_poubelles
+    title:
+      fr: "Sortir les poubelles"
+    default_category_key: menage
+    default_room_key: cuisine
+    default_weight: 1
+    default_recurrence:
+      type: interval
+      every_n_days: 3
+    default_tolerance: STRICT
+
+  - key: nettoyer_frigo
+    title:
+      fr: "Nettoyer le frigo"
+    description:
+      fr: "Vider, jeter les perimes, passer un coup d'eponge"
+    default_category_key: cuisine_cat
+    default_room_key: cuisine
+    default_weight: 4
+    default_recurrence:
+      type: interval
+      every_n_days: 21
+    default_tolerance: SOUPLE
+
+  - key: detartrer_bouilloire
+    title:
+      fr: "Detartrer la bouilloire"
+    default_category_key: cuisine_cat
+    default_room_key: cuisine
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 60
+    default_tolerance: SOUPLE
+
+  # --- Salle de bain / Toilettes ---
+
+  - key: nettoyer_sdb
+    title:
+      fr: "Nettoyer la salle de bain"
+    description:
+      fr: "Lavabo, douche, sol, miroir"
+    default_category_key: menage
+    default_room_key: salle_de_bain
+    default_weight: 4
+    default_recurrence:
+      type: interval
+      every_n_days: 7
+    default_tolerance: NORMAL
+
+  - key: changer_serviettes
+    title:
+      fr: "Changer les serviettes de bain"
+    default_category_key: linge
+    default_room_key: salle_de_bain
+    default_weight: 1
+    default_recurrence:
+      type: interval
+      every_n_days: 7
+    default_tolerance: NORMAL
+
+  - key: nettoyer_toilettes
+    title:
+      fr: "Nettoyer les toilettes"
+    default_category_key: menage
+    default_room_key: toilettes
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 7
+    default_tolerance: STRICT
+
+  # --- Linge ---
+
+  - key: lancer_machine_linge
+    title:
+      fr: "Lancer une machine a laver"
+    default_category_key: linge
+    default_room_key: buanderie
+    default_weight: 1
+    default_recurrence:
+      type: interval
+      every_n_days: 4
+    default_tolerance: NORMAL
+
+  - key: etendre_linge
+    title:
+      fr: "Etendre le linge"
+    default_category_key: linge
+    default_room_key: buanderie
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 4
+    default_tolerance: STRICT
+
+  - key: plier_linge
+    title:
+      fr: "Plier et ranger le linge"
+    default_category_key: linge
+    default_room_key: chambre
+    default_weight: 3
+    default_recurrence:
+      type: interval
+      every_n_days: 7
+    default_tolerance: NORMAL
+
+  - key: changer_draps
+    title:
+      fr: "Changer les draps du lit"
+    default_category_key: linge
+    default_room_key: chambre
+    default_weight: 3
+    default_recurrence:
+      type: interval
+      every_n_days: 14
+    default_tolerance: NORMAL
+
+  # --- Menage general ---
+
+  - key: aspirateur
+    title:
+      fr: "Passer l'aspirateur"
+    default_category_key: menage
+    default_room_key: salon
+    default_weight: 4
+    default_recurrence:
+      type: interval
+      every_n_days: 7
+    default_tolerance: NORMAL
+
+  - key: serpillere
+    title:
+      fr: "Passer la serpillere"
+    default_category_key: menage
+    default_room_key: cuisine
+    default_weight: 4
+    default_recurrence:
+      type: interval
+      every_n_days: 14
+    default_tolerance: NORMAL
+
+  - key: depoussiere
+    title:
+      fr: "Depoussierer les meubles"
+    default_category_key: menage
+    default_room_key: salon
+    default_weight: 3
+    default_recurrence:
+      type: interval
+      every_n_days: 14
+    default_tolerance: SOUPLE
+
+  - key: nettoyer_vitres
+    title:
+      fr: "Nettoyer les vitres"
+    default_category_key: menage
+    default_room_key: salon
+    default_weight: 4
+    default_recurrence:
+      type: interval
+      every_n_days: 60
+    default_tolerance: SOUPLE
+
+  - key: aerer_maison
+    title:
+      fr: "Aerer la maison"
+    default_category_key: menage
+    default_weight: 1
+    default_recurrence:
+      type: interval
+      every_n_days: 1
+    default_tolerance: NORMAL
+
+  # --- Courses / Admin ---
+
+  - key: faire_courses
+    title:
+      fr: "Faire les courses"
+    default_category_key: courses
+    default_weight: 6
+    default_recurrence:
+      type: interval
+      every_n_days: 7
+    default_tolerance: NORMAL
+
+  - key: verifier_factures
+    title:
+      fr: "Verifier les factures du mois"
+    default_category_key: administratif
+    default_weight: 4
+    default_recurrence:
+      type: monthly
+      day_of_month: 1
+    default_tolerance: SOUPLE
+
+  # --- Jardin / Plantes ---
+
+  - key: arroser_plantes
+    title:
+      fr: "Arroser les plantes"
+    default_category_key: jardinage
+    default_room_key: salon
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 4
+    default_tolerance: STRICT

@@ -45,3 +45,7 @@ class Task(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    # Si cette tache a ete importee depuis le catalogue (v0.9.0 Feature 4),
+    # on stocke la `key` stable du template d'origine ici pour le tracking
+    # d'usage (tri par popularite futur, analyse).
+    template_key: Mapped[str | None] = mapped_column(String(50), nullable=True)

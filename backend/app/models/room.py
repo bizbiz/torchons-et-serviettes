@@ -27,6 +27,8 @@ class Room(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     color: Mapped[str] = mapped_column(String(7), default="#6B7280")
     icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
     emoji: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # Si cette piece a ete importee depuis le catalogue (v0.9.0 Feature 4).
+    template_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     __table_args__ = (
         UniqueConstraint('name', 'foyer_id', name='uq_rooms_name_foyer'),

@@ -24,6 +24,8 @@ class Category(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     requires_home: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Si cette categorie a ete importee depuis le catalogue (v0.9.0 Feature 4).
+    template_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     __table_args__ = (
         UniqueConstraint('name', 'foyer_id', name='uq_categories_name_foyer'),

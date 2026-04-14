@@ -1,5 +1,12 @@
 # Notes de version
 
+## v0.9.0 — 2026-04-14
+
+### Catalogue de templates
+- Nouvel ecran "Catalogue" accessible via un petit bouton magique a cote du "+" dans l'ecran des taches. Il propose une bibliotheque de taches, de pieces et de categories pretes a l'emploi (vaisselle, aspirateur, nettoyer la sdb, cuisine, salon, menage, linge, ...) en trois onglets.
+- Selection multiple (tu coches ce que tu veux) et bouton "Importer N" en bas. Quand les taches que tu importes referencent des pieces ou des categories, une popup de rattachement propose soit de les creer, soit de les mapper sur des elements existants de ton foyer (avec detection automatique des noms similaires — "Cuisine" vs "cuisine" vs "La cuisine" sont detectes comme la meme chose).
+- Pratique pour peupler un foyer vide en quelques clics, ou pour t'inspirer et ajouter des taches auxquelles tu n'aurais pas pense.
+
 ## v0.8.1 — 2026-04-14
 
 ### Proposition d'objectifs en mode foyer

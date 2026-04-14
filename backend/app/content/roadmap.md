@@ -6,6 +6,8 @@
 
 ## Prochainement
 
+- **Onboarding guide a la creation d'un foyer** : quand on cree un nouveau foyer, un ecran propose directement de cocher des pieces (cuisine, salon, chambre, sdb, ...) puis des tachees (faire la vaisselle, passer l'aspirateur, ...) tirees du catalogue pour passer de foyer vide a utilisable en 30 secondes, sans avoir a tout creer a la main.
+- **Catalogue triable par popularite** : en plus du tri alphabetique par defaut, une option de tri remonte en tete les taches / pieces / categories les plus utilisees par les autres foyers. La popularite est calculee silencieusement cote backend (pas de badge "N foyers l'utilisent" sur chaque item, c'est trop intrusif), juste le resultat du tri.
 - **Filtres** sur le feed d'historique (par type, par periode).
 - **Statistiques hebdomadaires** : resume de fin de semaine par utilisateur.
 - **Stats globales du couple** dans le modal profil utilisateur, en plus des stats personnelles : combien le foyer a fait au total, repartition Quentin / ***REMOVED*** sur la semaine, etc.

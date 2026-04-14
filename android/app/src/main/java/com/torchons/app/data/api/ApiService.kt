@@ -394,6 +394,24 @@ interface ApiService {
         @Path("id") propositionId: String,
     ): Response<Map<String, Any>>
 
+    // --- Catalogue de templates (v0.9.0 Feature 4) ---
+
+    /** Recupere le catalogue complet (rooms + categories + tasks). */
+    @GET("catalog")
+    suspend fun getCatalog(): Response<com.torchons.app.data.model.CatalogResponse>
+
+    /** Resolve l'import : propose mapping rooms/categories aux existants. */
+    @POST("catalog/import/resolve")
+    suspend fun resolveCatalogImport(
+        @Body body: com.torchons.app.data.model.ImportResolveRequest,
+    ): Response<com.torchons.app.data.model.ImportResolveResponse>
+
+    /** Applique l'import apres validation du mapping. */
+    @POST("catalog/import/apply")
+    suspend fun applyCatalogImport(
+        @Body body: com.torchons.app.data.model.ImportApplyRequest,
+    ): Response<com.torchons.app.data.model.ImportApplyResponse>
+
     // --- Sync offline ---
 
     @POST("sync")

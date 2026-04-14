@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.DatePicker
@@ -29,6 +30,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -69,6 +71,7 @@ import com.torchons.app.util.FreshnessCalculator
 fun TaskListScreen(
     onTaskClick: (String) -> Unit,
     onCreateTask: () -> Unit,
+    onOpenCatalog: () -> Unit = {},
     onLogout: () -> Unit,
     viewModel: TaskListViewModel = hiltViewModel()
 ) {
@@ -161,15 +164,28 @@ fun TaskListScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onCreateTask,
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Ajouter une tache",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // FAB secondaire "Inspirations" : ouvre le catalogue de templates (v0.9.0)
+                SmallFloatingActionButton(
+                    onClick = onOpenCatalog,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = "Catalogue de templates",
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+                FloatingActionButton(
+                    onClick = onCreateTask,
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Ajouter une tache",
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
             }
         },
         // contentWindowInsets = 0 : le Scaffold parent dans NavGraph.MainScreen

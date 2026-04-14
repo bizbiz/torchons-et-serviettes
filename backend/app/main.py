@@ -45,6 +45,7 @@ from app.api.foyers import router as foyers_router
 from app.api.presence import router as presence_router
 from app.api.projection import router as projection_router
 from app.api.propositions import router as propositions_router
+from app.api.catalog import router as catalog_router
 from app.api.completions import router as completions_router
 from app.api.gamification import router as gamification_router
 from app.api.stats import router as stats_router
@@ -61,6 +62,7 @@ app.include_router(foyers_router)
 app.include_router(presence_router)
 app.include_router(projection_router)
 app.include_router(propositions_router)
+app.include_router(catalog_router)
 app.include_router(completions_router)
 app.include_router(gamification_router)
 app.include_router(stats_router)
