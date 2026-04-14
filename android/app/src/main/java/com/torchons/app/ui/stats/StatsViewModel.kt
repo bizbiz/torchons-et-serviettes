@@ -3,14 +3,18 @@ package com.torchons.app.ui.stats
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.BadgeInfo
+import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.LeaderboardEntry
 import com.torchons.app.data.model.StreakInfo
 import com.torchons.app.data.model.UserStats
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -23,14 +27,19 @@ data class StatsUiState(
     val streaks: List<StreakInfo> = emptyList(),
     val badges: List<BadgeInfo> = emptyList(),
     val history: List<Map<String, Any>> = emptyList(),
+    val fairShare: List<FairShareStatus> = emptyList(),
     val selectedTab: Int = 0,
     val error: String? = null
 )
 
 @HiltViewModel
 class StatsViewModel @Inject constructor(
-    private val apiService: ApiService
+    private val apiService: ApiService,
+    tokenManager: TokenManager,
 ) : ViewModel() {
+
+    val userId: StateFlow<String?> = tokenManager.userIdFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     private val _uiState = MutableStateFlow(StatsUiState(isLoading = true))
     val uiState: StateFlow<StatsUiState> = _uiState.asStateFlow()
@@ -52,6 +61,7 @@ class StatsViewModel @Inject constructor(
                 val streaksResp = apiService.getStreaks()
                 val badgesResp = apiService.getBadges()
                 val historyResp = apiService.getHistory()
+                val fairShareResp = apiService.getFairShareStatus()
 
                 _uiState.value = StatsUiState(
                     isLoading = false,
@@ -62,6 +72,7 @@ class StatsViewModel @Inject constructor(
                     streaks = if (streaksResp.isSuccessful) streaksResp.body() ?: emptyList() else emptyList(),
                     badges = if (badgesResp.isSuccessful) badgesResp.body() ?: emptyList() else emptyList(),
                     history = if (historyResp.isSuccessful) historyResp.body() ?: emptyList() else emptyList(),
+                    fairShare = if (fairShareResp.isSuccessful) fairShareResp.body() ?: emptyList() else emptyList(),
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)

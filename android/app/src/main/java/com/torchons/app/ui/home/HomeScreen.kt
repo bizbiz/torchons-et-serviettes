@@ -166,6 +166,22 @@ fun HomeScreen(
         return
     }
 
+    // Popup simulation projection (v0.8.0 magic buttons)
+    var showProjectionDialog by remember { mutableStateOf(false) }
+    if (showProjectionDialog) {
+        ProjectionSimulationDialog(
+            pace = uiState.pace,
+            retard = uiState.retard,
+            maintenance = uiState.maintenance,
+            currentUserId = userId,
+            onDismiss = { showProjectionDialog = false },
+            onSave = { minutes, unit ->
+                viewModel.saveObjective(minutes, unit)
+                showProjectionDialog = false
+            },
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
@@ -193,36 +209,15 @@ fun HomeScreen(
                 )
             }
         }
-        // Fair-share message
-        val myFairShare = uiState.fairShare.find { it.userId == userId }
-        val otherFairShare = uiState.fairShare.find { it.userId != userId }
-        if (myFairShare != null && myFairShare.aboveTarget && otherFairShare != null) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = FreshnessCalculator.VERT.copy(alpha = 0.1f)
-                )
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = null,
-                        tint = FreshnessCalculator.VERT,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Tu as fait plus que ta part ces 30 derniers jours ! C'est a ${otherFairShare.displayName} de faire des taches. Mais tu peux quand meme continuer !",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = FreshnessCalculator.VERT
-                    )
-                }
-            }
-        }
+
+        // 2 cards projection (v0.8.0 magic buttons)
+        ProjectionCardsRow(
+            pace = uiState.pace,
+            retard = uiState.retard,
+            maintenance = uiState.maintenance,
+            currentUserId = userId,
+            onCardClick = { showProjectionDialog = true },
+        )
 
         // Taches en cours
         if (uiState.inProgress.isNotEmpty()) {
@@ -247,13 +242,8 @@ fun HomeScreen(
             }
         }
 
-        // Suggestions
+        // Suggestions (titre retire v0.8.0 — evident que c'est des suggestions)
         if (uiState.suggestions.isNotEmpty()) {
-            Text(
-                text = "Suggestions",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
             uiState.suggestions.forEach { suggestion ->
                 val task = tasksById[suggestion.taskId]
                 val room = task?.roomId?.let { roomsById[it] }
@@ -365,11 +355,8 @@ private fun SuggestionCard(
     onEdit: () -> Unit,
     users: List<Pair<String, String>> = emptyList()
 ) {
-    val freshnessColor = FreshnessCalculator.getFreshnessColor(suggestion.freshness)
     val reasonLabel = if (suggestion.reason == "urgent") "La plus urgente" else "Tu aimes bien"
     val reasonIcon = if (suggestion.reason == "urgent") Icons.Default.Warning else Icons.Default.Favorite
-    // Liseret rouge si la tache est en zone "rouge" (freshness < 25 = en retard).
-    val isLate = suggestion.freshness < 25.0
     // Pickee une seule fois pour cette celebration (key suggestion.taskId).
     val celebration = remember(suggestion.taskId, isCelebrating) {
         if (isCelebrating) randomCelebration() else null
@@ -421,7 +408,6 @@ private fun SuggestionCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = if (isLate && !isCelebrating) androidx.compose.foundation.BorderStroke(2.dp, FreshnessCalculator.ROUGE) else null,
     ) {
         // Mode celebration : on remplace tout le contenu par les emoji de
         // felicitations. Le confetti est gere au niveau du Box parent.
@@ -466,28 +452,6 @@ private fun SuggestionCard(
 
             // Piece + categorie (ligne discrete sous le titre)
             TaskMetaRow(room = room, category = category)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Barre de fraicheur
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                LinearProgressIndicator(
-                    progress = { (suggestion.freshness / 100.0).toFloat().coerceIn(0f, 1f) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    color = freshnessColor,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "${suggestion.freshness.toInt()}%",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = freshnessColor,
-                    fontWeight = FontWeight.Bold
-                )
-            }
 
             Spacer(modifier = Modifier.height(12.dp))
 

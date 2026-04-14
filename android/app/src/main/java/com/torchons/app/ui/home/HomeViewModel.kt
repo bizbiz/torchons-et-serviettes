@@ -7,13 +7,18 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.AffinityRequest
 import com.torchons.app.data.model.FairShareStatus
+import com.torchons.app.data.model.MaintenanceRateResponse
+import com.torchons.app.data.model.ObjectiveUpdate
+import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.PresenceRequest
+import com.torchons.app.data.model.RetardResponse
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.TaskInProgress
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Task
+import com.torchons.app.data.model.UserPace
 import com.torchons.app.data.model.WelcomeBack
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.HomeRepository
@@ -64,6 +69,13 @@ data class HomeUiState(
      * occupe apres une absence > 24h (v0.7.4 home freeze). null = pas de retour.
      */
     val welcomeBack: WelcomeBack? = null,
+    /**
+     * Donnees des 2 cards projection (v0.8.0 magic buttons). Tout null tant
+     * que le premier fetch n'a pas abouti.
+     */
+    val retard: RetardResponse? = null,
+    val pace: PaceResponse? = null,
+    val maintenance: MaintenanceRateResponse? = null,
 )
 
 @HiltViewModel
@@ -181,6 +193,11 @@ class HomeViewModel @Inject constructor(
                 async { taskRepository.refreshTasks() },
             ).awaitAll()
 
+            // v0.8.0 : projection (retard, pace, maintenance) en parallele.
+            // Non critique — si ca echoue les cards affichent un etat de loading
+            // ou des valeurs par defaut.
+            refreshProjection()
+
             val allOk = settingsOk && results.all { it }
 
             // Afficher la popup affinite UNE SEULE FOIS apres le refresh
@@ -234,6 +251,40 @@ class HomeViewModel @Inject constructor(
 
     fun dismissWelcomeBack() {
         _uiState.value = _uiState.value.copy(welcomeBack = null)
+    }
+
+    /**
+     * Recupere les 3 endpoints projection (v0.8.0) en parallele.
+     * Non bloquant sur le cache Home — si ca echoue on garde les valeurs
+     * precedentes (ou null au premier boot).
+     */
+    private suspend fun refreshProjection() {
+        val retardDeferred = viewModelScope.async { runCatching { apiService.getRetard() }.getOrNull() }
+        val paceDeferred = viewModelScope.async { runCatching { apiService.getPace() }.getOrNull() }
+        val maintDeferred = viewModelScope.async { runCatching { apiService.getMaintenanceRate() }.getOrNull() }
+        val retardResp = retardDeferred.await()
+        val paceResp = paceDeferred.await()
+        val maintResp = maintDeferred.await()
+        _uiState.value = _uiState.value.copy(
+            retard = if (retardResp?.isSuccessful == true) retardResp.body() else _uiState.value.retard,
+            pace = if (paceResp?.isSuccessful == true) paceResp.body() else _uiState.value.pace,
+            maintenance = if (maintResp?.isSuccessful == true) maintResp.body() else _uiState.value.maintenance,
+        )
+    }
+
+    /**
+     * Save l'objectif perso de l'user courant (appele depuis le popup
+     * simulation mode "Juste pour moi"). Refresh la card apres.
+     */
+    fun saveObjective(minutes: Int?, unit: String?) {
+        viewModelScope.launch {
+            try {
+                apiService.updateObjective(ObjectiveUpdate(dailyObjectiveMinutes = minutes, displayUnit = unit))
+                refreshProjection()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
     }
 
     private suspend fun saveRatingData(

@@ -339,6 +339,30 @@ interface ApiService {
     @GET("roadmap")
     suspend fun getRoadmap(): Response<Map<String, Any>>
 
+    // --- Projection (v0.8.0 magic buttons) ---
+
+    /** Retard actuel du foyer (minutes + liste des taches overdue). */
+    @GET("retard")
+    suspend fun getRetard(): Response<com.torchons.app.data.model.RetardResponse>
+
+    /** Rythme 14j par user du foyer + done today + objectif perso. */
+    @GET("pace")
+    suspend fun getPace(): Response<com.torchons.app.data.model.PaceResponse>
+
+    /** Min/j combine pour maintenir zero retard en regime permanent. */
+    @GET("maintenance-rate")
+    suspend fun getMaintenanceRate(): Response<com.torchons.app.data.model.MaintenanceRateResponse>
+
+    /** Recupere l'objectif perso + unite d'affichage de l'user courant. */
+    @GET("objective")
+    suspend fun getObjective(): Response<com.torchons.app.data.model.ObjectiveResponse>
+
+    /** Set l'objectif perso et/ou l'unite d'affichage de l'user courant. */
+    @PUT("objective")
+    suspend fun updateObjective(
+        @Body body: com.torchons.app.data.model.ObjectiveUpdate
+    ): Response<com.torchons.app.data.model.ObjectiveResponse>
+
     // --- Sync offline ---
 
     @POST("sync")

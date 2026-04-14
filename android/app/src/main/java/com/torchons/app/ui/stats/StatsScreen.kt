@@ -50,7 +50,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.material.icons.filled.Favorite
 import com.torchons.app.data.model.BadgeInfo
+import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.LeaderboardEntry
 import com.torchons.app.data.model.StreakInfo
 import com.torchons.app.data.model.UserStats
@@ -100,9 +102,16 @@ fun StatsScreen(
             }
 
             val onUserClick: (UserProfileRequest) -> Unit = { req -> userProfileRequest = req }
+            val currentUserId by viewModel.userId.collectAsState()
 
             when (uiState.selectedTab) {
-                0 -> ResumeTab(uiState.stats, uiState.streaks, onUserClick)
+                0 -> ResumeTab(
+                    uiState.stats,
+                    uiState.streaks,
+                    uiState.fairShare,
+                    currentUserId,
+                    onUserClick,
+                )
                 1 -> LeaderboardTab(
                     week = uiState.leaderboardWeek,
                     month = uiState.leaderboardMonth,
@@ -135,14 +144,51 @@ fun StatsScreen(
 private fun ResumeTab(
     stats: List<UserStats>,
     streaks: List<StreakInfo>,
+    fairShare: List<FairShareStatus>,
+    currentUserId: String?,
     onUserClick: (UserProfileRequest) -> Unit,
 ) {
+    val myFairShare = fairShare.find { it.userId == currentUserId }
+    val otherFairShare = fairShare.find { it.userId != currentUserId }
+    val showOverPerformingCard = myFairShare != null && myFairShare.aboveTarget && otherFairShare != null
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Message fair-share sur-performance (deplace depuis HomeScreen v0.8.0)
+        if (showOverPerformingCard) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = FreshnessCalculator.VERT.copy(alpha = 0.1f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Favorite,
+                            contentDescription = null,
+                            tint = FreshnessCalculator.VERT,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Tu as fait plus que ta part ces 30 derniers jours ! C'est a ${otherFairShare!!.displayName} de faire des taches. Mais tu peux quand meme continuer !",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = FreshnessCalculator.VERT
+                        )
+                    }
+                }
+            }
+        }
+
         // Stats par user
         items(stats) { userStat ->
             Card(

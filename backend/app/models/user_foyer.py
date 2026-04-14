@@ -8,7 +8,7 @@ users.last_active_foyer_id (source de verite au login).
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,3 +34,14 @@ class UserFoyer(Base):
     # parce qu'un user dans 2 foyers a potentiellement 2 lieux physiques
     # differents avec 2 WiFi differents.
     home_ssids: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # Objectif perso min/j que l'user s'est fixe via le popup de simulation
+    # (Feature 3 magic buttons v0.8.0). Null = pas d'objectif defini, on
+    # retombe sur le rythme moyen 14j pour l'affichage.
+    daily_objective_minutes: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    # Preference d'affichage du slider et des cards : 'min' ou 'tasks'. Certains
+    # users preferent raisonner en nombre de taches/jour plutot qu'en minutes.
+    objective_display_unit: Mapped[str] = mapped_column(
+        String(10), default="min", server_default="min", nullable=False
+    )

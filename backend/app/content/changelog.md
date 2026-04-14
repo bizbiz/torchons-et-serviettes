@@ -1,5 +1,17 @@
 # Notes de version
 
+## v0.8.0 — 2026-04-14
+
+### Prevision de rattrapage du retard
+- Deux nouvelles cartes en haut de l'accueil : "Moi" (minutes faites aujourd'hui, barre de progression vers l'objectif du jour, nombre de jours de rattrapage estime) et "Foyer" (retard courant du foyer, nombre de jours pour etre a zero, rythme de maintien une fois resorbe).
+- Popup de simulation : tap sur une carte ouvre un slider pour fixer ton rythme cible en minutes ou en taches par jour, avec feedback live sur le nombre de jours de rattrapage. Le bouton "Definir comme objectif" sauve ton engagement personnel.
+- L'unite d'affichage (minutes ou taches) est choisissable dans le popup et sauvee par foyer.
+
+### Accueil plus compact
+- Suppression du liseret rouge et de la barre de progression sur les suggestions de taches : la pastille rouge suffisait deja a signaler l'urgence.
+- Suppression du titre "Suggestions" (evident vu le contexte).
+- Deplacement du message "Tu as fait plus que ta part..." depuis l'accueil vers l'onglet "Resume" des Stats — pour que les cartes de taches et les cartes de prevision tiennent en un seul ecran.
+
 ## v0.7.4 — 2026-04-14
 
 ### Mise en pause des taches "a la maison" en cas d'absence
