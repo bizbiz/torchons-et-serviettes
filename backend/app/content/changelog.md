@@ -1,5 +1,11 @@
 # Notes de version
 
+## v0.7.3 — 2026-04-14
+
+### Multi-foyer : isolation users + wifi maison
+- Les listes d'utilisateurs dans les pickers (assignation de tache, "qui a fait ?", fair-share, stats, leaderboard) n'affichent plus que les membres du foyer actif. Avant, tous les users de la base apparaissaient meme dans un foyer ou ils n'etaient pas.
+- Les SSIDs WiFi maison sont maintenant stockes par foyer : dans ta maison tu configures tes SSIDs, dans la colloc d'un ami tu en configures d'autres, sans melanger. Quand tu basculais de foyer, les SSIDs de l'autre foyer apparaissaient — corrige.
+
 ## v0.7.2 — 2026-04-14
 
 ### Multi-foyer : stats isolees par foyer

@@ -172,13 +172,19 @@ async def set_affinity(
 async def get_task_ratings(
     task_id: UUID,
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
-    """Retourne les affinites et efforts de tous les users pour une tache."""
+    """Retourne les affinites et efforts des users du foyer actif pour une tache."""
     from app.models.user import User
+    from app.models.user_foyer import UserFoyer
 
-    # Charger tous les users
-    users_result = await session.execute(select(User).order_by(User.username))
+    # Charger les users du foyer actif (via UserFoyer join)
+    users_result = await session.execute(
+        select(User)
+        .join(UserFoyer, UserFoyer.user_id == User.id)
+        .where(UserFoyer.foyer_id == current_foyer_uuid(current))
+        .order_by(User.username)
+    )
     users = users_result.scalars().all()
 
     # Charger affinites
@@ -748,29 +754,31 @@ async def get_suggestions(
 @router.get("/fair-share/status", response_model=list[FairShareStatus])
 async def fair_share_status(
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
     """Retourne le statut fair-share : ratio cible vs reel sur les 30 derniers jours.
-
-    Le booleen `above_target` integre la tolerance perso de chaque user
-    (`fair_share_tolerance_percent` dans user_settings) ET un seuil
-    minimum de complétions cumulees, pour eviter d'afficher le message
-    de felicitation quand les donnees sont trop maigres.
+    Scope foyer : uniquement les users du foyer actif, sur les completions
+    du foyer actif, avec la config fair_share scopee par foyer.
     """
     from app.models.user import User
+    from app.models.user_foyer import UserFoyer
     from app.models.user_settings import UserSettings
 
+    foyer_uuid = current_foyer_uuid(current)
     cutoff = datetime.now(timezone.utc) - timedelta(days=30)
 
-    # Compte total et points par user sur 30 jours.
+    # Compte total et points par user sur 30 jours (scope foyer via JOIN tasks).
     completions_result = await session.execute(
         select(
             TaskCompletion.completed_by,
             func.sum(TaskCompletion.points_earned),
             func.count(TaskCompletion.id),
-        ).where(
+        )
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
             TaskCompletion.completed_at >= cutoff,
             TaskCompletion.deleted_at.is_(None),
+            Task.foyer_id == foyer_uuid,
         ).group_by(TaskCompletion.completed_by)
     )
     user_points: dict[UUID, int] = {}
@@ -781,24 +789,29 @@ async def fair_share_status(
     total_points = sum(user_points.values()) or 1
     total_completions = sum(user_counts.values())
 
-    # Seuil minimum de complétions cumulees pour qu'on ose afficher le
-    # message "tu as fait plus que ta part". En dessous, le ratio est
-    # statistiquement bruite, on se tait.
+    # Seuil minimum de complétions cumulees (idem).
     min_completions = 10
     has_enough_data = total_completions >= min_completions
 
-    # Configs fair-share (target ratio par user).
-    fs_result = await session.execute(select(FairShareConfig))
+    # Configs fair-share scope foyer.
+    fs_result = await session.execute(
+        select(FairShareConfig).where(FairShareConfig.foyer_id == foyer_uuid)
+    )
     fs_configs = {row.user_id: row.target_ratio for row in fs_result.scalars().all()}
 
-    # Tolerances perso (chaque user a sa propre sensibilite).
+    # Tolerances perso (reste per-user global, pas per-foyer — c'est un
+    # parametre d'affichage personnel indep du foyer).
     tol_result = await session.execute(
         select(UserSettings.user_id, UserSettings.fair_share_tolerance_percent)
     )
     tolerances = {row[0]: row[1] for row in tol_result.all()}
 
-    # Users
-    users_result = await session.execute(select(User))
+    # Users du foyer actif uniquement.
+    users_result = await session.execute(
+        select(User)
+        .join(UserFoyer, UserFoyer.user_id == User.id)
+        .where(UserFoyer.foyer_id == foyer_uuid)
+    )
     users = users_result.scalars().all()
 
     statuses = []

@@ -8,7 +8,7 @@ users.last_active_foyer_id (source de verite au login).
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -30,3 +30,7 @@ class UserFoyer(Base):
     joined_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # SSIDs WiFi maison pour ce foyer (liste separee par "|"). Per-foyer
+    # parce qu'un user dans 2 foyers a potentiellement 2 lieux physiques
+    # differents avec 2 WiFi differents.
+    home_ssids: Mapped[str] = mapped_column(Text, default="", nullable=False)

@@ -14,6 +14,8 @@ from app.auth import create_token, get_current_user
 from app.config import settings
 from app.database import get_session
 from app.models.user import User
+from app.models.user_foyer import UserFoyer
+from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -133,9 +135,20 @@ async def me(
 @router.get("/users")
 async def list_users(
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
-    """Liste tous les utilisateurs du foyer."""
-    result = await session.execute(select(User).order_by(User.username))
+    """Liste uniquement les utilisateurs du foyer actif (scope v0.7.x).
+
+    Avant v0.7.2, cet endpoint retournait tous les users de la base, ce qui
+    polluait les pickers (assignation de tache, "qui a fait ?") quand on
+    creait des taches dans un nouveau foyer avec un seul membre.
+    """
+    foyer_uuid = current_foyer_uuid(current)
+    result = await session.execute(
+        select(User)
+        .join(UserFoyer, UserFoyer.user_id == User.id)
+        .where(UserFoyer.foyer_id == foyer_uuid)
+        .order_by(User.username)
+    )
     users = result.scalars().all()
     return [{"id": str(u.id), "username": u.username, "display_name": u.display_name} for u in users]

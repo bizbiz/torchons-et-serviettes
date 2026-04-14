@@ -143,12 +143,20 @@ async def get_stats(
     current: dict = Depends(get_current_user),
 ):
     """Statistiques par utilisateur : points et taches (semaine/mois/total). Scope foyer via JOIN tasks."""
+    from app.models.user_foyer import UserFoyer
+
     now = datetime.now(timezone.utc)
     week_ago = now - timedelta(days=7)
     month_ago = now - timedelta(days=30)
     foyer_uuid = current_foyer_uuid(current)
 
-    users_result = await session.execute(select(User).order_by(User.username))
+    # Users du foyer actif uniquement (via UserFoyer join)
+    users_result = await session.execute(
+        select(User)
+        .join(UserFoyer, UserFoyer.user_id == User.id)
+        .where(UserFoyer.foyer_id == foyer_uuid)
+        .order_by(User.username)
+    )
     users = users_result.scalars().all()
 
     stats = []
@@ -249,8 +257,13 @@ async def get_leaderboard(
     )
     rows = result.all()
 
-    # Charger les noms et fair-share ratios (fair-share scope foyer)
-    users_result = await session.execute(select(User))
+    # Charger les noms et fair-share ratios (users et fair-share scope foyer)
+    from app.models.user_foyer import UserFoyer
+    users_result = await session.execute(
+        select(User)
+        .join(UserFoyer, UserFoyer.user_id == User.id)
+        .where(UserFoyer.foyer_id == foyer_uuid)
+    )
     user_names = {u.id: u.display_name for u in users_result.scalars().all()}
 
     from app.models.fair_share import FairShareConfig
@@ -301,9 +314,16 @@ async def get_streaks(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Calcule les streaks (jours consecutifs avec au moins 1 tache) pour chaque user. Scope foyer."""
+    """Calcule les streaks (jours consecutifs avec au moins 1 tache) pour chaque user du foyer."""
+    from app.models.user_foyer import UserFoyer
+
     foyer_uuid = current_foyer_uuid(current)
-    users_result = await session.execute(select(User).order_by(User.username))
+    users_result = await session.execute(
+        select(User)
+        .join(UserFoyer, UserFoyer.user_id == User.id)
+        .where(UserFoyer.foyer_id == foyer_uuid)
+        .order_by(User.username)
+    )
     users = users_result.scalars().all()
 
     streaks = []
@@ -540,8 +560,13 @@ async def _build_history(
     # pour eviter de perdre des events quand une source domine.
     fetch_limit = limit * 2
 
-    # Charger tous les users en une passe (il y en a 2, pas un souci).
-    users_result = await session.execute(select(User))
+    # Charger les users du foyer actif uniquement.
+    from app.models.user_foyer import UserFoyer
+    users_result = await session.execute(
+        select(User)
+        .join(UserFoyer, UserFoyer.user_id == User.id)
+        .where(UserFoyer.foyer_id == foyer_uuid)
+    )
     user_names = {u.id: u.display_name for u in users_result.scalars().all()}
 
     def _actor(user_id: UUID | None) -> dict | None:
