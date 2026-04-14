@@ -16,6 +16,7 @@ import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.HomeRepository
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.ui.common.RatingRecurrence
+import com.torchons.app.util.PopupSessionGate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -62,6 +63,7 @@ class HomeViewModel @Inject constructor(
     private val homeRepository: HomeRepository,
     private val authRepository: AuthRepository,
     private val taskRepository: TaskRepository,
+    private val popupSessionGate: PopupSessionGate,
     @Suppress("unused") private val tokenManager: TokenManager,
 ) : ViewModel() {
 
@@ -92,7 +94,6 @@ class HomeViewModel @Inject constructor(
     val affinityPopupEnabled: StateFlow<Boolean> = _affinityPopupEnabled.asStateFlow()
 
     private var cachedThreshold = 10.0
-    private var affinityDismissedThisSession = false
 
     init {
         observeCache()
@@ -181,7 +182,7 @@ class HomeViewModel @Inject constructor(
                 isRefreshing = false,
                 lastRefreshFailed = !allOk,
                 showAffinityPopup = pending != null
-                    && !affinityDismissedThisSession
+                    && popupSessionGate.armed.value
                     && popupEnabled,
             )
         }
@@ -209,7 +210,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 saveRatingData(taskId, affinity, effortPoints, recurrence)
-                affinityDismissedThisSession = true
+                popupSessionGate.disarm()
                 _uiState.value = _uiState.value.copy(showAffinityPopup = false)
                 refresh()
             } catch (e: Exception) {
@@ -251,7 +252,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun dismissAffinityPopup() {
-        affinityDismissedThisSession = true
+        popupSessionGate.disarm()
         _uiState.value = _uiState.value.copy(showAffinityPopup = false)
     }
 
@@ -261,7 +262,7 @@ class HomeViewModel @Inject constructor(
                 val resp = apiService.getOldestRating()
                 val task = if (resp.isSuccessful) resp.body()?.firstOrNull() else null
                 if (task != null) {
-                    affinityDismissedThisSession = false
+                    popupSessionGate.arm()
                     _uiState.value = _uiState.value.copy(
                         pendingAffinity = task,
                         showAffinityPopup = true,

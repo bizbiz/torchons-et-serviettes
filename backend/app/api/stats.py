@@ -19,6 +19,7 @@ from app.models.task import Task
 from app.models.user import User
 from app.services.recurrence import min_completion_gap_seconds
 from app.utils.changelog import record_change
+from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api", tags=["stats"])
 
@@ -92,11 +93,14 @@ async def update_completion(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Modifie une completion (completed_by et/ou completed_at)."""
+    """Modifie une completion (completed_by et/ou completed_at). Scope foyer via JOIN tasks."""
     result = await session.execute(
-        select(TaskCompletion).where(
+        select(TaskCompletion)
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
             TaskCompletion.id == completion_id,
             TaskCompletion.deleted_at.is_(None),
+            Task.foyer_id == current_foyer_uuid(current),
         )
     )
     comp = result.scalar_one_or_none()
@@ -136,57 +140,62 @@ async def update_completion(
 @router.get("/stats", response_model=list[UserStats])
 async def get_stats(
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
-    """Statistiques par utilisateur : points et taches (semaine/mois/total)."""
+    """Statistiques par utilisateur : points et taches (semaine/mois/total). Scope foyer via JOIN tasks."""
     now = datetime.now(timezone.utc)
     week_ago = now - timedelta(days=7)
     month_ago = now - timedelta(days=30)
+    foyer_uuid = current_foyer_uuid(current)
 
     users_result = await session.execute(select(User).order_by(User.username))
     users = users_result.scalars().all()
 
     stats = []
     for user in users:
-        base_q = select(TaskCompletion).where(
-            TaskCompletion.completed_by == user.id,
-            TaskCompletion.deleted_at.is_(None),
-        )
-
-        # Total
+        # Total (scope foyer)
         total_result = await session.execute(
             select(
                 func.count(TaskCompletion.id),
                 func.coalesce(func.sum(TaskCompletion.points_earned), 0)
-            ).where(
+            )
+            .join(Task, Task.id == TaskCompletion.task_id)
+            .where(
                 TaskCompletion.completed_by == user.id,
                 TaskCompletion.deleted_at.is_(None),
+                Task.foyer_id == foyer_uuid,
             )
         )
         total_row = total_result.one()
 
-        # Semaine
+        # Semaine (scope foyer)
         week_result = await session.execute(
             select(
                 func.count(TaskCompletion.id),
                 func.coalesce(func.sum(TaskCompletion.points_earned), 0)
-            ).where(
+            )
+            .join(Task, Task.id == TaskCompletion.task_id)
+            .where(
                 TaskCompletion.completed_by == user.id,
                 TaskCompletion.deleted_at.is_(None),
                 TaskCompletion.completed_at >= week_ago,
+                Task.foyer_id == foyer_uuid,
             )
         )
         week_row = week_result.one()
 
-        # Mois
+        # Mois (scope foyer)
         month_result = await session.execute(
             select(
                 func.count(TaskCompletion.id),
                 func.coalesce(func.sum(TaskCompletion.points_earned), 0)
-            ).where(
+            )
+            .join(Task, Task.id == TaskCompletion.task_id)
+            .where(
                 TaskCompletion.completed_by == user.id,
                 TaskCompletion.deleted_at.is_(None),
                 TaskCompletion.completed_at >= month_ago,
+                Task.foyer_id == foyer_uuid,
             )
         )
         month_row = month_result.one()

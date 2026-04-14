@@ -182,10 +182,11 @@ def compute_freshness(
     """
     base = interval_hours(rule)
     if base == float("inf") or base <= 0:
-        return 100.0
+        # Ponctuelle : 0% tant que non faite, 100% une fois faite.
+        return 0.0 if last_completed is None else 100.0
     half_life = base * _TOLERANCE_MULTIPLIER[tolerance]
     if half_life <= 0:
-        return 100.0
+        return 0.0 if last_completed is None else 100.0
 
     now = datetime.now(timezone.utc)
 

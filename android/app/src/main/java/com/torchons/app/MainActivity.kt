@@ -12,11 +12,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.compose.rememberNavController
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.ui.navigation.NavGraph
 import com.torchons.app.ui.navigation.Routes
 import com.torchons.app.ui.theme.TorchonsServiettesTheme
+import com.torchons.app.util.PopupSessionGate
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -33,9 +36,22 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var tokenManager: TokenManager
 
+    @Inject
+    lateinit var popupSessionGate: PopupSessionGate
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Rearmer la popup d'accueil a chaque ON_RESUME de l'activite :
+        // cold start + retour depuis le background. La navigation Compose
+        // inter-ecrans ne passe pas par ON_RESUME, donc la popup ne se
+        // reaffiche pas a chaque visite de Home.
+        lifecycle.addObserver(LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                popupSessionGate.arm()
+            }
+        })
 
         // Lire le token de maniere synchrone au demarrage
         // pour eviter un flash de l'ecran de login

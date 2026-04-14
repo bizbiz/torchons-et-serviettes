@@ -75,9 +75,14 @@ object FreshnessCalculator {
         tolerance: String,
     ): Double {
         val base = intervalHours(rule)
-        if (!base.isFinite() || base <= 0.0) return 100.0
+        if (!base.isFinite() || base <= 0.0) {
+            // Ponctuelle (sans recurrence) : 0% tant que pas faite, 100% une fois faite.
+            return if (lastCompletedAt == null) 0.0 else 100.0
+        }
         val halfLife = base * (TOLERANCE_MULTIPLIER[tolerance] ?: 1.0)
-        if (halfLife <= 0.0) return 100.0
+        if (halfLife <= 0.0) {
+            return if (lastCompletedAt == null) 0.0 else 100.0
+        }
 
         if (lastCompletedAt == null) return 0.0
 

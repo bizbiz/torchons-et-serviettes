@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.7.1 — 2026-04-14
+
+### Maintenance
+- Correctifs techniques pour completer v0.7.0. Aucune nouvelle fonctionnalite visible : les corrections annoncees dans v0.7.0 (taches ponctuelles visibles, piece sauvegardee, popup de notation moins intrusive) sont effectivement actives a partir de cette version.
+
 ## v0.7.0 — 2026-04-14
 
 ### Multi-foyer (refonte invisible mais fondamentale)
