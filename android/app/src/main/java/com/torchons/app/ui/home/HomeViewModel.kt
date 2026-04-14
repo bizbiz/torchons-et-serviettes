@@ -1,22 +1,26 @@
 package com.torchons.app.ui.home
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.AffinityRequest
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.PendingAffinity
+import com.torchons.app.data.model.PresenceRequest
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.TaskInProgress
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Task
+import com.torchons.app.data.model.WelcomeBack
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.HomeRepository
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.ui.common.RatingRecurrence
 import com.torchons.app.util.PopupSessionGate
+import com.torchons.app.util.WifiHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -55,17 +59,23 @@ data class HomeUiState(
     val celebratingTaskId: String? = null,
     /** Compteur incremente a chaque celebration pour relancer l'animation konfetti. */
     val celebrationTrigger: Int = 0,
+    /**
+     * Message "bon retour" rempli par le backend quand le foyer est de nouveau
+     * occupe apres une absence > 24h (v0.7.4 home freeze). null = pas de retour.
+     */
+    val welcomeBack: WelcomeBack? = null,
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    application: Application,
     private val apiService: ApiService,
     private val homeRepository: HomeRepository,
     private val authRepository: AuthRepository,
     private val taskRepository: TaskRepository,
     private val popupSessionGate: PopupSessionGate,
-    @Suppress("unused") private val tokenManager: TokenManager,
-) : ViewModel() {
+    private val tokenManager: TokenManager,
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -190,6 +200,41 @@ class HomeViewModel @Inject constructor(
 
     /** Alias historique conserve pour la compat avec HomeScreen. */
     fun loadData() = refresh()
+
+    /**
+     * Reporte la presence WiFi au backend (v0.7.4 home freeze). Lit le SSID
+     * actuel via WifiHelper, le compare aux home_ssids configures, et POST le
+     * resultat. Si le backend repond avec un welcome_back (foyer de nouveau
+     * occupe apres > 24h d'absence), on l'expose dans uiState pour declencher
+     * la popup "bon retour" sur HomeScreen.
+     *
+     * Echec silencieux : pas de home_ssids, pas de WiFi, ou backend KO -> on
+     * ne fait rien et on ne montre rien.
+     */
+    fun reportPresenceNow() {
+        viewModelScope.launch {
+            try {
+                val homeSsids = tokenManager.homeSsidsFlow.first()
+                if (homeSsids.isEmpty()) return@launch
+                val ctx = getApplication<Application>().applicationContext
+                val current = WifiHelper.getCurrentSsid(ctx)
+                val isAtHome = current != null && homeSsids.any { it.equals(current, ignoreCase = true) }
+                val resp = apiService.postPresence(PresenceRequest(isAtHome = isAtHome))
+                if (resp.isSuccessful) {
+                    val body = resp.body()
+                    if (body?.welcomeBack != null) {
+                        _uiState.value = _uiState.value.copy(welcomeBack = body.welcomeBack)
+                    }
+                }
+            } catch (_: Exception) {
+                // best effort
+            }
+        }
+    }
+
+    fun dismissWelcomeBack() {
+        _uiState.value = _uiState.value.copy(welcomeBack = null)
+    }
 
     private suspend fun saveRatingData(
         taskId: String,

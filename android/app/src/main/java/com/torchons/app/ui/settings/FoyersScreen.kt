@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -29,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -71,6 +73,7 @@ fun FoyersScreen(
     var foyers by remember { mutableStateOf<List<Foyer>>(emptyList()) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var switchingTo by remember { mutableStateOf<Foyer?>(null) }
+    var editingFoyer by remember { mutableStateOf<Foyer?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
@@ -118,6 +121,68 @@ fun FoyersScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showCreateDialog = false }) { Text("Annuler") }
+            },
+        )
+    }
+
+    // Edition d'un foyer (admin uniquement) : nom + toggle home freeze
+    editingFoyer?.let { target ->
+        var name by remember(target.id) { mutableStateOf(target.name) }
+        var freezeEnabled by remember(target.id) { mutableStateOf(target.homeFreezeEnabled) }
+        AlertDialog(
+            onDismissRequest = { editingFoyer = null },
+            title = { Text("Modifier ${target.name}", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Nom") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Mise en pause si tout le monde est absent",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                "Quand aucun membre du foyer n'est detecte au WiFi maison " +
+                                    "depuis plus de 24h, les taches \"a la maison\" arretent " +
+                                    "de vieillir. Elles reprennent au retour.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = freezeEnabled,
+                            onCheckedChange = { freezeEnabled = it },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val trimmed = name.trim()
+                    if (trimmed.isNotEmpty()) {
+                        editingFoyer = null
+                        CoroutineScope(Dispatchers.IO).launch {
+                            apiService.updateFoyer(
+                                target.id,
+                                mapOf(
+                                    "name" to trimmed,
+                                    "home_freeze_enabled" to freezeEnabled,
+                                ),
+                            )
+                            reload()
+                        }
+                    }
+                }) { Text("Enregistrer") }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingFoyer = null }) { Text("Annuler") }
             },
         )
     }
@@ -235,6 +300,16 @@ fun FoyersScreen(
                                 contentDescription = "Foyer actif",
                                 tint = MaterialTheme.colorScheme.primary,
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        if (foyer.role == "admin") {
+                            IconButton(onClick = { editingFoyer = foyer }) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Modifier",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
                     }
                 }

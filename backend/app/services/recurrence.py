@@ -174,11 +174,21 @@ def compute_freshness(
     last_completed: datetime | None,
     created_at: datetime | None = None,
     tolerance: TaskTolerance = TaskTolerance.NORMAL,
+    *,
+    foyer_occupied: bool = True,
+    foyer_last_occupied_at: datetime | None = None,
+    task_requires_home: bool = False,
+    home_freeze_enabled: bool = False,
 ) -> float:
     """Calcule le score de freshness (0-100). Decroissance exponentielle.
 
     La demi-vie est derivee de l'intervalle nominal de la recurrence,
     multipliee par le facteur de tolerance (STRICT x0.5, NORMAL x1, SOUPLE x2).
+
+    Home freeze (v0.7.4) : si `task_requires_home=True` ET `home_freeze_enabled=True`
+    ET le foyer est non-occupe ET l'absence depasse 24h, on cap le "now"
+    effectif a `last_occupied_at + 24h`. Consequence : les premieres 24h
+    d'absence comptent normalement, au-dela le compteur est fige.
     """
     base = interval_hours(rule)
     if base == float("inf") or base <= 0:
@@ -190,6 +200,23 @@ def compute_freshness(
 
     now = datetime.now(timezone.utc)
 
+    # Home freeze : decale "now" a un "effective_now" si conditions remplies.
+    effective_now = now
+    if (
+        task_requires_home
+        and home_freeze_enabled
+        and not foyer_occupied
+        and foyer_last_occupied_at is not None
+    ):
+        last_occupied = foyer_last_occupied_at
+        if last_occupied.tzinfo is None:
+            last_occupied = last_occupied.replace(tzinfo=timezone.utc)
+        # Grace period 24h : les premieres 24h d'absence comptent normalement,
+        # au-dela on fige a (last_occupied + 24h).
+        frozen_at = last_occupied + timedelta(hours=24)
+        if now > frozen_at:
+            effective_now = frozen_at
+
     # Jamais completee = fraicheur 0% (a faire)
     if last_completed is None:
         return 0.0
@@ -198,7 +225,7 @@ def compute_freshness(
     if reference.tzinfo is None:
         reference = reference.replace(tzinfo=timezone.utc)
 
-    hours_since = (now - reference).total_seconds() / 3600.0
+    hours_since = (effective_now - reference).total_seconds() / 3600.0
     if hours_since <= 0:
         return 100.0
 

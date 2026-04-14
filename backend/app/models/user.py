@@ -1,8 +1,9 @@
 """Modele utilisateur. Multi-foyer via la table user_foyers."""
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,4 +25,17 @@ class User(Base, UUIDMixin, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("foyers.id", ondelete="SET NULL"),
         nullable=True,
+    )
+
+    # --- Presence (v0.7.4 home freeze feature) ---
+    # wifi_optin : l'user a donne son accord pour que l'app lise son WiFi
+    # et l'utilise pour detecter sa presence. Default false.
+    wifi_optin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # is_currently_at_home : dernier etat reporte par le client. Mis a jour
+    # par POST /api/presence.
+    is_currently_at_home: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # last_seen_at_home_at : derniere fois ou le client a reporte is_at_home=true.
+    # Null = jamais vu a la maison.
+    last_seen_at_home_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )

@@ -1,5 +1,18 @@
 # Notes de version
 
+## v0.7.4 — 2026-04-14
+
+### Mise en pause des taches "a la maison" en cas d'absence
+- Quand personne n'est detecte au WiFi maison pendant plus de 24h, les taches des categories marquees "a la maison" arretent de vieillir jusqu'au retour. Au-dela des 24h de tolerance, le compteur est fige — plus de retard accumule pendant les vacances.
+- Popup "Bon retour a la maison !" au retour, avec le nombre de jours d'absence et un rappel que les taches concernees ont ete mises en pause.
+- Detection automatique de la presence WiFi en arriere-plan toutes les 6h et au lancement de l'app.
+
+### Reglage du foyer
+- Bouton "modifier" sur chaque foyer (admins uniquement) dans Reglages > Mes foyers : permet de renommer le foyer et d'activer/desactiver la mise en pause des taches "a la maison" en cas d'absence.
+
+### Tooltip adaptatif "a la maison"
+- Le tooltip d'info a cote de "A la maison uniquement" (edition de categorie) explique maintenant l'etat reel du freeze : si la mise en pause est desactivee, si tu n'as pas configure ton WiFi maison, si on attend ta premiere connexion, ou si d'autres membres du foyer bloquent encore la detection.
+
 ## v0.7.3 — 2026-04-14
 
 ### Multi-foyer : isolation users + wifi maison

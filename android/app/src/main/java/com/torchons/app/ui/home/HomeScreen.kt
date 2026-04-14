@@ -106,10 +106,35 @@ fun HomeScreen(
         }
     }
 
-    // Recharger au retour sur cet ecran
+    // Recharger au retour sur cet ecran + report de presence WiFi pour le
+    // home freeze (v0.7.4). Le report sert aussi a recevoir un welcome_back
+    // si on revient apres > 24h d'absence.
     LifecycleResumeEffect(Unit) {
         viewModel.loadData()
+        viewModel.reportPresenceNow()
         onPauseOrDispose { }
+    }
+
+    // Popup "bon retour" apres une absence > 24h (home freeze v0.7.4)
+    uiState.welcomeBack?.let { wb ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissWelcomeBack() },
+            title = {
+                Text("Bon retour a la maison !", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(
+                    "Tu as ete absent ${wb.absenceDays} jour${if (wb.absenceDays > 1) "s" else ""}. " +
+                        "Pendant ton absence, les taches \"a la maison\" ont ete mises en pause " +
+                        "(au-dela de 24h). Elles n'ont donc pas pris de retard !"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissWelcomeBack() }) {
+                    Text("Super !")
+                }
+            },
+        )
     }
 
     // Popup affinite + effort (si active dans les reglages)

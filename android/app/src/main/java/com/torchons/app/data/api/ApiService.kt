@@ -173,6 +173,25 @@ interface ApiService {
         @Path("id") foyerId: String
     ): Response<com.torchons.app.data.model.SwitchFoyerResponse>
 
+    /** Update un foyer (nom, home_freeze_enabled). Admin uniquement. */
+    @PUT("foyers/{id}")
+    suspend fun updateFoyer(
+        @Path("id") foyerId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any?>,
+    ): Response<com.torchons.app.data.model.Foyer>
+
+    /** Statut home freeze pour le foyer actif (tooltip adaptatif). */
+    @GET("foyers/home-freeze-status")
+    suspend fun getHomeFreezeStatus(): Response<com.torchons.app.data.model.HomeFreezeStatus>
+
+    // --- Presence (v0.7.4 home freeze) ---
+
+    /** Report de presence — declenche par PresenceWorker ou LifecycleResume. */
+    @POST("presence")
+    suspend fun postPresence(
+        @Body body: com.torchons.app.data.model.PresenceRequest,
+    ): Response<com.torchons.app.data.model.PresenceResponse>
+
     // --- Completions ---
 
     /** Liste des completions avec filtres optionnels. */

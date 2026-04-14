@@ -42,6 +42,7 @@ from app.api.tasks import router as tasks_router
 from app.api.categories import router as categories_router
 from app.api.rooms import router as rooms_router
 from app.api.foyers import router as foyers_router
+from app.api.presence import router as presence_router
 from app.api.completions import router as completions_router
 from app.api.gamification import router as gamification_router
 from app.api.stats import router as stats_router
@@ -55,6 +56,7 @@ app.include_router(tasks_router)
 app.include_router(categories_router)
 app.include_router(rooms_router)
 app.include_router(foyers_router)
+app.include_router(presence_router)
 app.include_router(completions_router)
 app.include_router(gamification_router)
 app.include_router(stats_router)

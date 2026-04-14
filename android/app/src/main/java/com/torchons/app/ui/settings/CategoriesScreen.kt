@@ -55,6 +55,7 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.CategoryCreateRequest
 import com.torchons.app.data.model.CategoryUpdateRequest
+import com.torchons.app.data.model.HomeFreezeStatus
 import com.torchons.app.ui.common.InfoTooltip
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,11 +71,16 @@ fun CategoriesScreen(
     var showCreateDialog by remember { mutableStateOf(false) }
     var editCategory by remember { mutableStateOf<Category?>(null) }
     var deleteCategory by remember { mutableStateOf<Category?>(null) }
+    var freezeStatus by remember { mutableStateOf<HomeFreezeStatus?>(null) }
 
-    // Charger les categories
+    // Charger les categories + le statut home freeze (pour le tooltip adaptatif)
     LaunchedEffect(Unit) {
         val resp = apiService.getCategories()
         if (resp.isSuccessful) categories = resp.body() ?: emptyList()
+        runCatching {
+            val sresp = apiService.getHomeFreezeStatus()
+            if (sresp.isSuccessful) freezeStatus = sresp.body()
+        }
     }
 
     fun reload() {
@@ -91,6 +97,7 @@ fun CategoriesScreen(
             initialName = "",
             initialColor = "#6366F1",
             initialRequiresHome = false,
+            freezeStatus = freezeStatus,
             onSave = { name, color, reqHome ->
                 showCreateDialog = false
                 CoroutineScope(Dispatchers.IO).launch {
@@ -110,6 +117,7 @@ fun CategoriesScreen(
             initialName = cat.name,
             initialColor = cat.color,
             initialRequiresHome = cat.requiresHome,
+            freezeStatus = freezeStatus,
             onSave = { name, color, reqHome ->
                 editCategory = null
                 CoroutineScope(Dispatchers.IO).launch {
@@ -229,12 +237,43 @@ fun CategoriesScreen(
     }
 }
 
+/**
+ * Construit le texte du tooltip "a la maison" en fonction du statut du
+ * home freeze pour le foyer + l'user courants. 5 cas distincts decides
+ * dans la grille v0.7.4 :
+ * 1. Statut inconnu (pas encore charge) -> texte basique
+ * 2. Foyer freeze desactive -> "active-le dans Mes foyers"
+ * 3. Freeze ON mais user pas opted-in WiFi -> "configure ton WiFi maison"
+ * 4. Freeze ON, opted-in mais jamais vu a la maison -> "on attend ta 1ere connexion"
+ * 5. Freeze ON, user OK mais missing_users -> "X et Y bloquent le freeze"
+ * 6. Freeze ON, tout le monde est pret -> "le freeze est actif"
+ */
+private fun homeFreezeTooltipText(status: HomeFreezeStatus?): String {
+    val base = "Si active, les taches de cette categorie ne seront suggerees et visibles que lorsque tu es connecte au WiFi de ta maison."
+    if (status == null) return base
+    if (!status.foyerFreezeEnabled) {
+        return base + "\n\nAstuce : tu peux activer la \"mise en pause si tout le monde est absent\" depuis Reglages > Mes foyers. Quand personne n'est detecte au WiFi pendant > 24h, ces taches arretent de vieillir."
+    }
+    if (!status.myWifiOptin) {
+        return base + "\n\nLe foyer a active la mise en pause des taches \"a la maison\" mais tu n'as pas encore configure tes SSID WiFi maison. Va dans Reglages > WiFi maison."
+    }
+    if (!status.mySeenAtHome) {
+        return base + "\n\nLe foyer a active la mise en pause mais tu n'as jamais ete detecte au WiFi maison. Connecte-toi une fois pour activer la detection."
+    }
+    if (status.missingUsers.isNotEmpty()) {
+        val names = status.missingUsers.joinToString(", ")
+        return base + "\n\nLa mise en pause est activee mais $names n'ont pas encore ete detectes au WiFi maison. Tant qu'ils ne le sont pas, le freeze ne peut pas etre fiable."
+    }
+    return base + "\n\nLa mise en pause est active. Quand personne n'est detecte au WiFi maison pendant > 24h, ces taches arretent de vieillir."
+}
+
 @Composable
 private fun CategoryEditDialog(
     title: String,
     initialName: String,
     initialColor: String,
     initialRequiresHome: Boolean,
+    freezeStatus: HomeFreezeStatus?,
     onSave: (String, String, Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -306,7 +345,7 @@ private fun CategoryEditDialog(
                             Spacer(modifier = Modifier.width(4.dp))
                             InfoTooltip(
                                 title = "A la maison",
-                                description = "Si active, les taches de cette categorie ne seront suggerees et visibles que lorsque tu es connecte au WiFi de ta maison."
+                                description = homeFreezeTooltipText(freezeStatus),
                             )
                         }
                     }

@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.compose.rememberNavController
+import com.torchons.app.core.presence.PresenceTrigger
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.ui.navigation.NavGraph
 import com.torchons.app.ui.navigation.Routes
@@ -39,9 +40,17 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var popupSessionGate: PopupSessionGate
 
+    @Inject
+    lateinit var presenceTrigger: PresenceTrigger
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Demarre le check de presence WiFi periodique (6h). Permet au backend
+        // de detecter l'absence du foyer pour figer la freshness des taches
+        // requires_home (v0.7.4 home freeze).
+        presenceTrigger.schedulePeriodic()
 
         // Rearmer la popup d'accueil a chaque ON_RESUME de l'activite :
         // cold start + retour depuis le background. La navigation Compose
