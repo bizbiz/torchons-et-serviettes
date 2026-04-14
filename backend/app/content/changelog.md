@@ -1,5 +1,13 @@
 # Notes de version
 
+## v0.8.1 — 2026-04-14
+
+### Proposition d'objectifs en mode foyer
+- Le popup de simulation (tap sur les cartes "Moi" ou "Foyer") contient maintenant un slider par membre du foyer : tu peux simuler un plan complet en ajustant les rythmes de chacun et voir en direct en combien de jours le retard serait rattrape. Le bouton "Juste pour moi" reste dispo pour sauver uniquement ton objectif.
+- Nouveau bouton "Proposer au foyer" (actif des que tu bouges au moins un slider des autres membres) : il envoie ta proposition en live au reste du foyer. Les autres recoivent un modal bloquant avec ta proposition, ils ont 3 minutes pour accepter ou refuser. Pendant ce temps, tu vois un ecran d'attente qui liste en direct qui a valide, avec un bouton "Annuler la proposition" si tu changes d'avis.
+- Quand tout le monde accepte, les objectifs sont sauves pour chacun et une popup de celebration apparait sur les apps de tous les membres ("Vous etes sur la bonne voie vers un foyer propre !") avec un easter egg a decouvrir en cliquant sur le lien en bas.
+- Si quelqu'un refuse ou si le delai expire, la proposition est annulee, aucun objectif n'est sauve, et tout le monde est notifie.
+
 ## v0.8.0 — 2026-04-14
 
 ### Prevision de rattrapage du retard

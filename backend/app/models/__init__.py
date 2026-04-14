@@ -17,10 +17,12 @@ from app.models.sync import ChangeLog
 from app.models.notification import NotificationToken
 from app.models.badge import Badge
 from app.models.user_settings import UserSettings
+from app.models.objective_proposition import ObjectiveProposition, ObjectivePropositionResponse
 
 __all__ = [
     "Base", "User", "Foyer", "UserFoyer", "Category", "Room", "Task",
     "TaskAssignment", "TaskAffinity", "TaskEffort", "TaskFrequencyVote",
     "TaskInProgress", "TaskCompletion", "FairShareConfig", "Streak",
     "ChangeLog", "NotificationToken", "Badge", "UserSettings",
+    "ObjectiveProposition", "ObjectivePropositionResponse",
 ]

@@ -108,10 +108,12 @@ fun HomeScreen(
 
     // Recharger au retour sur cet ecran + report de presence WiFi pour le
     // home freeze (v0.7.4). Le report sert aussi a recevoir un welcome_back
-    // si on revient apres > 24h d'absence.
+    // si on revient apres > 24h d'absence. Refresh aussi les propositions
+    // actives en poll de fallback si le FCM push etait rate.
     LifecycleResumeEffect(Unit) {
         viewModel.loadData()
         viewModel.reportPresenceNow()
+        viewModel.refreshPendingProposition()
         onPauseOrDispose { }
     }
 
@@ -166,19 +168,63 @@ fun HomeScreen(
         return
     }
 
-    // Popup simulation projection (v0.8.0 magic buttons)
+    // Popup simulation projection (v0.8.0 magic buttons, multi-slider v0.8.1)
     var showProjectionDialog by remember { mutableStateOf(false) }
-    if (showProjectionDialog) {
+    val currentProposition by viewModel.currentProposition.collectAsState()
+    val propositionCelebration by viewModel.propositionCelebration.collectAsState()
+    val propositionError by viewModel.propositionError.collectAsState()
+
+    // Toast pour les erreurs propositions (expiration, decline, ...)
+    LaunchedEffect(propositionError) {
+        propositionError?.let {
+            Toast.makeText(toastContext, it, Toast.LENGTH_SHORT).show()
+            viewModel.dismissPropositionError()
+        }
+    }
+
+    // Simulation dialog : ouvert par tap sur les cards projection. Hidden tant
+    // qu'une proposition est active (le flow live prend le pas).
+    if (showProjectionDialog && currentProposition == null && propositionCelebration == null) {
         ProjectionSimulationDialog(
             pace = uiState.pace,
             retard = uiState.retard,
             maintenance = uiState.maintenance,
             currentUserId = userId,
             onDismiss = { showProjectionDialog = false },
-            onSave = { minutes, unit ->
+            onSaveSelf = { minutes, unit ->
                 viewModel.saveObjective(minutes, unit)
                 showProjectionDialog = false
             },
+            onProposeToFoyer = { sliderValues, unit ->
+                viewModel.proposeToFoyer(sliderValues, unit)
+                showProjectionDialog = false
+            },
+        )
+    }
+
+    // Flow live propositions (v0.8.1) : afficher proposer-waiting ou
+    // receiver-modal selon qui est l'user courant.
+    currentProposition?.let { prop ->
+        if (prop.proposerId == userId) {
+            PropositionProposerWaitingDialog(
+                proposition = prop,
+                onCancel = { viewModel.cancelProposition(prop.id) },
+            )
+        } else {
+            PropositionReceiverDialog(
+                proposition = prop,
+                currentUserId = userId,
+                onAccept = { viewModel.respondToProposition(prop.id, true) },
+                onDecline = { viewModel.respondToProposition(prop.id, false) },
+            )
+        }
+    }
+
+    propositionCelebration?.let { prop ->
+        PropositionCelebrationDialog(
+            proposition = prop,
+            currentUserId = userId,
+            onDismiss = { viewModel.dismissPropositionCelebration() },
         )
     }
 

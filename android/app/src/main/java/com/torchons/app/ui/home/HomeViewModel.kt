@@ -3,6 +3,7 @@ package com.torchons.app.ui.home
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.torchons.app.core.proposition.PropositionStateHolder
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.AffinityRequest
@@ -12,6 +13,8 @@ import com.torchons.app.data.model.ObjectiveUpdate
 import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.PresenceRequest
+import com.torchons.app.data.model.PropositionCreate
+import com.torchons.app.data.model.PropositionView
 import com.torchons.app.data.model.RetardResponse
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.TaskInProgress
@@ -87,7 +90,13 @@ class HomeViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val popupSessionGate: PopupSessionGate,
     private val tokenManager: TokenManager,
+    private val propositionStateHolder: PropositionStateHolder,
 ) : AndroidViewModel(application) {
+
+    /** Proposition active (v0.8.1) — forwarded depuis PropositionStateHolder */
+    val currentProposition: StateFlow<PropositionView?> = propositionStateHolder.currentProposition
+    val propositionCelebration: StateFlow<PropositionView?> = propositionStateHolder.celebration
+    val propositionError: StateFlow<String?> = propositionStateHolder.error
 
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -284,6 +293,55 @@ class HomeViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
+        }
+    }
+
+    /**
+     * Proposer un objectif multi-user au foyer (v0.8.1). Declenche le flow
+     * live FCM — le proposer rentre en ecran d'attente bloquant, les
+     * receveurs recoivent un modal accept/decline.
+     */
+    fun proposeToFoyer(sliderValues: Map<String, Int>, unit: String) {
+        viewModelScope.launch {
+            try {
+                // Sauve d'abord la preference d'unite perso
+                apiService.updateObjective(ObjectiveUpdate(displayUnit = unit))
+                val resp = apiService.createProposition(PropositionCreate(sliderValues))
+                if (resp.isSuccessful) {
+                    val body = resp.body()
+                    if (body != null) {
+                        propositionStateHolder.setCurrent(body)
+                    }
+                } else {
+                    _uiState.value = _uiState.value.copy(error = "Erreur proposition (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+
+    fun respondToProposition(propositionId: String, accepted: Boolean) {
+        propositionStateHolder.respond(propositionId, accepted)
+    }
+
+    fun cancelProposition(propositionId: String) {
+        propositionStateHolder.cancel(propositionId)
+    }
+
+    fun dismissPropositionCelebration() {
+        propositionStateHolder.dismissCelebration()
+        viewModelScope.launch { refreshProjection() }
+    }
+
+    fun dismissPropositionError() {
+        propositionStateHolder.dismissError()
+    }
+
+    /** Poll fallback : refresh la proposition pending au LifecycleResume. */
+    fun refreshPendingProposition() {
+        viewModelScope.launch {
+            propositionStateHolder.refreshFromPending()
         }
     }
 

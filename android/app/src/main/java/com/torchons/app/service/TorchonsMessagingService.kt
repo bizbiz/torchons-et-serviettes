@@ -14,10 +14,22 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.torchons.app.MainActivity
 import com.torchons.app.R
+import com.torchons.app.core.proposition.PropositionStateHolder
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface TorchonsMessagingEntryPoint {
+    fun propositionStateHolder(): PropositionStateHolder
+}
 
 /**
  * Service Firebase Cloud Messaging.
- * Recoit les notifications push et les affiche.
+ * Recoit les notifications push et les affiche, ou dispatche les data
+ * messages vers le PropositionStateHolder (v0.8.1 Feature 3).
  */
 class TorchonsMessagingService : FirebaseMessagingService() {
 
@@ -39,6 +51,19 @@ class TorchonsMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
+
+        // Data-only message : dispatch vers PropositionStateHolder (v0.8.1)
+        val dataType = message.data["type"]
+        if (dataType != null && dataType.startsWith("objective_proposition_")) {
+            val ep = EntryPointAccessors.fromApplication(
+                applicationContext, TorchonsMessagingEntryPoint::class.java
+            )
+            ep.propositionStateHolder().handleFcmEvent(
+                type = dataType,
+                propositionId = message.data["proposition_id"],
+            )
+            return
+        }
 
         // Verifier si l'utilisateur veut recevoir les notifs de taches completees
         val prefs = getSharedPreferences("fcm", Context.MODE_PRIVATE)

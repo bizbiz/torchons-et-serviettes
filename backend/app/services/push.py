@@ -76,3 +76,38 @@ async def send_task_completed_notification(
         messaging.send_each_for_multicast(message)
     except Exception:
         pass  # Silencieux — pas critique
+
+
+async def send_data_message_to_users(
+    session: AsyncSession,
+    user_ids: list[UUID],
+    data: dict[str, str],
+) -> None:
+    """Envoie un FCM data-only message aux users donnes (pas de notification visible).
+
+    Utilise pour les events in-app live : propositions d'objectifs v0.8.1,
+    etc. Les clients reçoivent le message via le handler onMessage et
+    reagissent directement dans l'UI (popup, refresh, etc.).
+
+    `data` doit contenir uniquement des strings (FCM data payload constraint).
+    """
+    if not firebase_admin._apps or not user_ids:
+        return
+
+    tokens_result = await session.execute(
+        select(NotificationToken.fcm_token).where(
+            NotificationToken.user_id.in_(user_ids)
+        )
+    )
+    tokens = [row[0] for row in tokens_result.all()]
+    if not tokens:
+        return
+
+    message = messaging.MulticastMessage(
+        data=data,
+        tokens=tokens,
+    )
+    try:
+        messaging.send_each_for_multicast(message)
+    except Exception:
+        pass  # Silencieux — non critique, le polling fallback prendra le relai

@@ -6,19 +6,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,18 +35,17 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * Popup de simulation "Juste pour moi" (v0.8.0 Feature 3 magic buttons).
+ * Popup multi-slider de simulation (v0.8.1 Feature 3 magic buttons).
  *
- * Version v0.8.0 limitee : un seul slider (celui de l'user courant), pas de
- * multi-slider ni de flow "proposer au foyer". Ces features arrivent en v0.8.1.
+ * Contient un slider par user du foyer. Le user courant (me) a toujours son
+ * slider, les autres sont editables pour simuler "si on proposait ce plan-la".
  *
- * Contenu :
- * - Toggle unite min/jour vs taches/jour (sauve dans user_foyers.objective_display_unit)
- * - Slider perso, borne 0 a max(60, 2 x moyenne 14j), step 5 min
- * - Live feedback : "A ce rythme, rattrapage en X jours" ou "rythme insuffisant,
- *   minimum X min/j pour rattraper"
- * - Maintien post-rattrapage
- * - Boutons "Annuler" / "Definir comme objectif"
+ * Boutons :
+ * - "Juste pour moi" : sauve uniquement le slider perso, ignore les autres.
+ *   Toujours enabled.
+ * - "Proposer au foyer" : declenche le flow live proposition. Enabled
+ *   uniquement si au moins un slider d'un autre user a ete modifie (sinon
+ *   proposer ne sert a rien, juste pour moi suffit).
  */
 @Composable
 fun ProjectionSimulationDialog(
@@ -54,32 +54,57 @@ fun ProjectionSimulationDialog(
     maintenance: MaintenanceRateResponse?,
     currentUserId: String?,
     onDismiss: () -> Unit,
-    onSave: (minutes: Int?, unit: String) -> Unit,
+    onSaveSelf: (minutes: Int, unit: String) -> Unit,
+    onProposeToFoyer: (sliderValues: Map<String, Int>, unit: String) -> Unit,
 ) {
-    val me = pace?.users?.find { it.userId == currentUserId }
-    val initialUnit = me?.objectiveDisplayUnit ?: "min"
-    val currentAvg = (me?.minutesPerDayAvg ?: 0.0).coerceAtLeast(0.0)
-    val initialMinutes = me?.dailyObjectiveMinutes?.toFloat() ?: currentAvg.toFloat()
-
-    // Bornes auto-adaptees : max = max(60, 2 * moyenne 14j), arrondi au 5 min
-    val maxMinutes = remember(currentAvg) {
-        val computed = max(60.0, currentAvg * 2.0)
-        (ceil(computed / 5.0) * 5.0).toFloat().coerceAtMost(240f)
+    val users = pace?.users ?: emptyList()
+    if (users.isEmpty() || currentUserId == null) {
+        // Pas de donnees encore : dismiss
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Chargement...") },
+            text = { Text("Les donnees ne sont pas encore pretes, ferme et reessaie.") },
+            confirmButton = {
+                TextButton(onClick = onDismiss) { Text("OK") }
+            },
+        )
+        return
     }
 
+    val me = users.find { it.userId == currentUserId }
+    val initialUnit = me?.objectiveDisplayUnit ?: "min"
     var unit by remember { mutableStateOf(initialUnit) }
-    var sliderMinutes by remember { mutableFloatStateOf(initialMinutes.coerceIn(0f, maxMinutes)) }
+
+    // Un slider par user du foyer. Initialise a (objectif actuel ?: moyenne 14j).
+    // Stocke les valeurs en min/j (unite de reference).
+    val sliderValues = remember {
+        mutableStateMapOf<String, Float>().apply {
+            users.forEach { u ->
+                val initial = u.dailyObjectiveMinutes?.toFloat()
+                    ?: u.minutesPerDayAvg.toFloat().coerceAtLeast(0f)
+                put(u.userId, initial)
+            }
+        }
+    }
+
+    // Track quels sliders des autres users ont ete modifies (pour activer
+    // le bouton "Proposer au foyer")
+    val otherModified = remember { mutableStateMapOf<String, Boolean>() }
+
+    // Bornes max par user : max(60, 2 x moyenne14j) arrondi au 5 min,
+    // cap a 240 (4h). Cache par user.
+    val maxByUser = remember {
+        users.associate { u ->
+            val computed = max(60.0, u.minutesPerDayAvg * 2.0)
+            u.userId to (ceil(computed / 5.0) * 5.0).toFloat().coerceAtMost(240f)
+        }
+    }
 
     val retardMin = retard?.totalMinutes ?: 0
     val maintPerDay = maintenance?.minutesPerDay ?: 0.0
 
-    // Rate de foyer a cette simulation : autres users a leur moyenne 14j
-    // actuelle, moi au slider. Pas de multi-slider v0.8.0.
-    val otherRateTotal = pace?.users
-        ?.filter { it.userId != currentUserId }
-        ?.sumOf { it.minutesPerDayAvg }
-        ?: 0.0
-    val foyerRate = otherRateTotal + sliderMinutes.toDouble()
+    // Calcul live : rythme total foyer = somme des sliders. Rate net = total - maintenance.
+    val foyerRate = sliderValues.values.sumOf { it.toDouble() }
     val netRate = foyerRate - maintPerDay
     val daysToCatchUp = when {
         retardMin <= 0 -> 0
@@ -87,19 +112,20 @@ fun ProjectionSimulationDialog(
         else -> ceil(retardMin / netRate).toInt()
     }
 
-    val sliderTasks = (sliderMinutes / 5f).roundToInt().coerceAtLeast(0)
-    val maxTasks = (maxMinutes / 5f).roundToInt().coerceAtLeast(1)
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = if (retardMin > 0) "Simulation rattrapage" else "Ton rythme cible",
+                text = if (retardMin > 0) "Simulation rattrapage" else "Rythme cible du foyer",
                 fontWeight = FontWeight.Bold,
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 // Toggle unite
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FilterChip(
@@ -116,58 +142,67 @@ fun ProjectionSimulationDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
-
                 // Etat actuel
                 if (retardMin > 0) {
                     Text(
-                        text = "Retard actuel : ${formatMinutesLong(retardMin)} (${retard?.taskCount ?: 0} taches)",
+                        text = "Retard : ${formatMinutesLong(retardMin)} (${retard?.taskCount ?: 0} taches)",
                         style = MaterialTheme.typography.bodyMedium,
                         color = FreshnessCalculator.ROUGE,
                     )
                 } else {
                     Text(
-                        text = "Zero retard ! Fixe ton rythme cible de maintien.",
+                        text = "Zero retard ! Fixe le rythme cible de maintien.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = FreshnessCalculator.VERT,
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Slider perso
-                Text(
-                    text = if (unit == "tasks") {
-                        "Ton engagement : $sliderTasks taches/jour"
+                // Un slider par user
+                users.forEach { u ->
+                    val value = sliderValues[u.userId] ?: 0f
+                    val maxVal = maxByUser[u.userId] ?: 60f
+                    val isMe = u.userId == currentUserId
+                    val label = u.displayName + if (isMe) " (toi)" else ""
+                    val displayed = if (unit == "tasks") {
+                        "${(value / 5f).roundToInt()} taches/j"
                     } else {
-                        "Ton engagement : ${sliderMinutes.roundToInt()} min/jour"
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Slider(
-                    value = sliderMinutes,
-                    onValueChange = { sliderMinutes = it },
-                    valueRange = 0f..maxMinutes,
-                    steps = if (unit == "tasks") {
-                        (maxTasks - 1).coerceAtLeast(0)
-                    } else {
-                        ((maxMinutes / 5f).toInt() - 1).coerceAtLeast(0)
-                    },
-                )
-                Text(
-                    text = "Ton rythme moyen sur 14 jours : ${currentAvg.roundToInt()} min/j",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
+                        "${value.roundToInt()} min/j"
+                    }
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isMe) FontWeight.SemiBold else FontWeight.Normal,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            text = displayed,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                    Slider(
+                        value = value,
+                        onValueChange = { newVal ->
+                            sliderValues[u.userId] = newVal
+                            if (!isMe) otherModified[u.userId] = true
+                        },
+                        valueRange = 0f..maxVal,
+                        steps = ((maxVal / 5f).toInt() - 1).coerceAtLeast(0),
+                    )
+                    Text(
+                        text = "Moyenne 14j : ${u.minutesPerDayAvg.roundToInt()} min/j",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
 
                 // Feedback live
                 if (retardMin > 0) {
                     when {
                         daysToCatchUp == null -> Text(
-                            text = "Rythme insuffisant pour rattraper. Minimum foyer : ${(maintPerDay + 1).toInt()} min/j.",
+                            text = "Rythme insuffisant pour rattraper. Il faut > ${maintPerDay.toInt()} min/j combines.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = FreshnessCalculator.ROUGE,
                             fontWeight = FontWeight.SemiBold,
@@ -178,20 +213,18 @@ fun ProjectionSimulationDialog(
                             color = FreshnessCalculator.VERT,
                         )
                         else -> Text(
-                            text = "A ce rythme : rattrapage en $daysToCatchUp jour${if (daysToCatchUp > 1) "s" else ""}",
+                            text = "A ces rythmes : rattrapage en $daysToCatchUp jour${if (daysToCatchUp > 1) "s" else ""}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
                     }
                 }
-
                 if (maintPerDay > 0) {
-                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = if (retardMin > 0) {
-                            "Puis pour maintenir : ${maintPerDay.toInt()} min/j combines pour le foyer"
+                            "Puis pour maintenir : ${maintPerDay.toInt()} min/j combines"
                         } else {
-                            "Pour maintenir zero retard : ${maintPerDay.toInt()} min/j combines pour le foyer"
+                            "Maintien : ${maintPerDay.toInt()} min/j combines"
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -200,13 +233,24 @@ fun ProjectionSimulationDialog(
             }
         },
         confirmButton = {
-            Button(onClick = {
-                val minutes = sliderMinutes.roundToInt()
-                onSave(minutes, unit)
-            }) { Text("Definir comme objectif") }
+            val otherTouched = otherModified.values.any { it }
+            Button(
+                onClick = {
+                    // Proposer au foyer uniquement si un autre slider a bouge
+                    val map = sliderValues.mapValues { it.value.roundToInt() }
+                    onProposeToFoyer(map, unit)
+                },
+                enabled = otherTouched,
+            ) { Text("Proposer au foyer") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onDismiss) { Text("Annuler") }
+                OutlinedButton(onClick = {
+                    val mineValue = sliderValues[currentUserId]?.roundToInt() ?: 0
+                    onSaveSelf(mineValue, unit)
+                }) { Text("Juste pour moi") }
+            }
         },
     )
 }

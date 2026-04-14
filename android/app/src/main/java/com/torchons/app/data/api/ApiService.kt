@@ -363,6 +363,37 @@ interface ApiService {
         @Body body: com.torchons.app.data.model.ObjectiveUpdate
     ): Response<com.torchons.app.data.model.ObjectiveResponse>
 
+    // --- Propositions d'objectifs (v0.8.1 Feature 3) ---
+
+    /** Creer une proposition multi-user pour le foyer actif. */
+    @POST("objective-propositions")
+    suspend fun createProposition(
+        @Body body: com.torchons.app.data.model.PropositionCreate
+    ): Response<com.torchons.app.data.model.PropositionView>
+
+    /** Accepter ou refuser une proposition. */
+    @POST("objective-propositions/{id}/respond")
+    suspend fun respondToProposition(
+        @Path("id") propositionId: String,
+        @Body body: com.torchons.app.data.model.PropositionResponseBody
+    ): Response<com.torchons.app.data.model.PropositionView>
+
+    /** Proposition en cours adressee a l'user courant (poll de fallback). */
+    @GET("objective-propositions/pending")
+    suspend fun getPendingProposition(): Response<com.torchons.app.data.model.PropositionView>
+
+    /** Detail d'une proposition par id (poll proposer). */
+    @GET("objective-propositions/{id}")
+    suspend fun getProposition(
+        @Path("id") propositionId: String,
+    ): Response<com.torchons.app.data.model.PropositionView>
+
+    /** Annuler une proposition en cours (proposer uniquement). */
+    @DELETE("objective-propositions/{id}")
+    suspend fun cancelProposition(
+        @Path("id") propositionId: String,
+    ): Response<Map<String, Any>>
+
     // --- Sync offline ---
 
     @POST("sync")
