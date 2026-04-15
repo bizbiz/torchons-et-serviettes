@@ -18,10 +18,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
@@ -73,6 +75,8 @@ import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.TaskHistoryEventType
 import com.torchons.app.ui.common.CelebrationCardContent
 import com.torchons.app.ui.common.CelebrationOverlay
+import com.torchons.app.ui.common.CompletionDialog
+import com.torchons.app.ui.common.CompletionDialogMode
 import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.common.randomCelebration
 import com.torchons.app.ui.user.UserProfileDialog
@@ -106,6 +110,63 @@ fun TaskDetailScreen(
             onDismiss = { userProfileRequest = null },
             // Pas de nav depuis ici : on est deja sur une TaskDetail.
         )
+    }
+
+    // Dialog unifie "Deja fait" / "Fait ensemble" (v0.11).
+    // Utilise userNames comme source de verite pour les membres du foyer
+    // (alimente par taskRepository.observeUsers() cote ViewModel).
+    var completionDialogMode by remember { mutableStateOf<CompletionDialogMode?>(null) }
+    var showTwoPersonFaitEnsembleDate by remember { mutableStateOf(false) }
+
+    completionDialogMode?.let { mode ->
+        val task = uiState.task
+        val allMembers = uiState.userNames.entries.map { it.key to it.value }
+        val assignedIds = task?.assignedToIds.orEmpty().toSet()
+        CompletionDialog(
+            taskTitle = task?.title.orEmpty(),
+            mode = mode,
+            allMembers = allMembers,
+            assignedMemberIds = assignedIds,
+            currentUserId = currentUserId.orEmpty(),
+            onDismiss = { completionDialogMode = null },
+            onConfirm = { participantIds, isoDate ->
+                if (mode == CompletionDialogMode.Single) {
+                    viewModel.completeTaskAtDate(isoDate, participantIds.firstOrNull())
+                } else {
+                    viewModel.completeTaskCollective(participantIds, isoDate)
+                }
+                completionDialogMode = null
+            },
+            onSwitchToMulti = if (mode == CompletionDialogMode.Single) {
+                { completionDialogMode = CompletionDialogMode.Multi }
+            } else null,
+        )
+    }
+
+    // Foyer 2-pers : DatePickerDialog direct pour "Fait ensemble" (split auto).
+    if (showTwoPersonFaitEnsembleDate) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+        androidx.compose.material3.DatePickerDialog(
+            onDismissRequest = { showTwoPersonFaitEnsembleDate = false },
+            confirmButton = {
+                Button(onClick = {
+                    val millis = datePickerState.selectedDateMillis
+                    if (millis != null) {
+                        val date = java.time.Instant.ofEpochMilli(millis)
+                            .atZone(java.time.ZoneOffset.UTC)
+                            .toLocalDate()
+                        val bothIds = uiState.userNames.keys.toList()
+                        viewModel.completeTaskCollective(bothIds, "${date}T12:00:00Z")
+                    }
+                    showTwoPersonFaitEnsembleDate = false
+                }) { Text("Valider") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showTwoPersonFaitEnsembleDate = false }) {
+                    Text("Annuler")
+                }
+            },
+        ) { DatePicker(state = datePickerState) }
     }
 
     LifecycleResumeEffect(Unit) {
@@ -522,7 +583,9 @@ fun TaskDetailScreen(
                     }
 
                     // Bouton completer (ou celebration si la tache vient
-                    // d'etre validee — confetti gere au niveau du Box parent)
+                    // d'etre validee — confetti gere au niveau du Box parent).
+                    // 3 actions en colonne : Fait (principal) + Deja fait +
+                    // Fait ensemble (secondaires).
                     item {
                         if (uiState.isCelebrating) {
                             val celebration = remember(uiState.celebrationTrigger) {
@@ -541,27 +604,62 @@ fun TaskDetailScreen(
                                 )
                             }
                         } else {
-                            Button(
-                                onClick = { viewModel.completeTask() },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = TaskUrgencyCalculator.VERT
-                                )
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Marquer comme fait",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = { viewModel.completeTask() },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = TaskUrgencyCalculator.VERT
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Marquer comme fait",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                                // Secondaires "Deja fait" + "Fait ensemble" cote a cote
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(
+                                        onClick = { completionDialogMode = CompletionDialogMode.Single },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CalendarMonth,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Deja fait")
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            if (uiState.userNames.size == 2) {
+                                                showTwoPersonFaitEnsembleDate = true
+                                            } else {
+                                                completionDialogMode = CompletionDialogMode.Multi
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Groups,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Ensemble")
+                                    }
+                                }
                             }
                         }
                     }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledIconButton
@@ -56,6 +57,7 @@ fun TaskCard(
     onClick: (String) -> Unit,
     onComplete: (String) -> Unit,
     onHistorical: (String) -> Unit,
+    onFaitEnsemble: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val task = taskWithUrgency.task
@@ -136,10 +138,12 @@ fun TaskCard(
                 }
             }
 
-            // Boutons d'action (taille v0.5.3)
+            // Boutons d'action — 3 boutons : deja fait (calendar), fait
+            // ensemble (groups), fait (check). Taille reduite 40dp pour tenir
+            // dans 72dp de hauteur avec 3 actions.
             FilledIconButton(
                 onClick = { onHistorical(taskId) },
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(40.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -148,13 +152,28 @@ fun TaskCard(
                 Icon(
                     imageVector = Icons.Default.CalendarMonth,
                     contentDescription = "Deja fait",
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            FilledIconButton(
+                onClick = { onFaitEnsemble(taskId) },
+                modifier = Modifier.size(40.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Groups,
+                    contentDescription = "Fait ensemble",
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(6.dp))
             FilledIconButton(
                 onClick = { onComplete(taskId) },
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(40.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = TaskUrgencyCalculator.VERT,
                     contentColor = Color.White,
@@ -163,7 +182,7 @@ fun TaskCard(
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = "Fait",
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
             Spacer(modifier = Modifier.width(12.dp))

@@ -14,6 +14,8 @@ import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.toDomain
 import com.torchons.app.data.local.entities.toEntity
 import com.torchons.app.data.model.Category
+import com.torchons.app.data.model.CollectiveCompleteRequest
+import com.torchons.app.data.model.CollectiveCompletionResponse
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.CreateTaskRequest
 import com.torchons.app.data.model.FrequencyRequest
@@ -316,6 +318,51 @@ class TaskRepository @Inject constructor(
 
         return Result.success(optimistic)
     }
+
+    /**
+     * Completion "fait ensemble" : cree N lignes cote serveur via l'endpoint
+     * dedie (calcul des points + anti-doublon atomique cote backend). En cas
+     * d'erreur reseau ou de conflit 409, retourne Result.failure et n'ecrit
+     * rien localement. Online-first, pas d'offline queue v1.
+     */
+    suspend fun completeTaskCollective(
+        taskId: String,
+        participantUserIds: List<String>,
+        completedAt: String? = null,
+        notes: String? = null,
+    ): Result<CollectiveCompletionResponse> {
+        if (participantUserIds.isEmpty()) {
+            return Result.failure(IllegalArgumentException("Aucun participant"))
+        }
+        return try {
+            val resp = apiService.completeTaskCollective(
+                taskId = taskId,
+                request = CollectiveCompleteRequest(
+                    participantUserIds = participantUserIds,
+                    completedAt = completedAt,
+                    notes = notes,
+                ),
+            )
+            if (resp.isSuccessful) {
+                val body = resp.body()
+                    ?: return Result.failure(IllegalStateException("Reponse vide"))
+                // Insere les N rows en local pour affichage immediat.
+                completionDao.upsertAll(body.completions.map { it.toEntity() })
+                Result.success(body)
+            } else {
+                val code = resp.code()
+                val errorBody = resp.errorBody()?.string().orEmpty()
+                Result.failure(CollectiveCompletionException(code, errorBody))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    class CollectiveCompletionException(
+        val httpCode: Int,
+        val errorBody: String,
+    ) : Exception("HTTP $httpCode: $errorBody")
 
     // -------------------------------------------------------------------
     // Historique de modification — observe / refresh / vote frequence

@@ -286,6 +286,38 @@ class TaskListViewModel @Inject constructor(
         }
     }
 
+    /** Completion collective ("fait ensemble"). Online-first, split ceil. */
+    fun completeTaskCollective(
+        taskId: String,
+        participantUserIds: List<String>,
+        isoDate: String? = null,
+    ) {
+        celebrateThen(taskId) {
+            val result = taskRepository.completeTaskCollective(
+                taskId = taskId,
+                participantUserIds = participantUserIds,
+                completedAt = isoDate,
+            )
+            result.fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        completionMessage = "Tache completee a ${participantUserIds.size} !",
+                    )
+                },
+                onFailure = { err ->
+                    val msg = when (err) {
+                        is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
+                            409 -> "Impossible : tache deja completee recemment par un participant"
+                            else -> "Erreur ${err.httpCode}"
+                        }
+                        else -> err.message ?: "Erreur reseau"
+                    }
+                    _uiState.value = _uiState.value.copy(error = msg)
+                },
+            )
+        }
+    }
+
     /**
      * Affiche la celebration (emoji + confetti) pendant ~2s avant d'executer
      * le bloc de completion. La tache reste visible dans la liste pendant

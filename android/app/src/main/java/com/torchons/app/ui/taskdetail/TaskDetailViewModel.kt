@@ -197,19 +197,8 @@ class TaskDetailViewModel @Inject constructor(
     }
 
     fun completeTask() {
-        viewModelScope.launch {
-            // Celebration : le bouton "Marquer comme fait" est remplace par
-            // une grosse carte felicitations + confetti pendant ~2s, puis on
-            // execute la completion reelle (et on revient en mode normal).
-            _uiState.value = _uiState.value.copy(
-                isCelebrating = true,
-                celebrationTrigger = _uiState.value.celebrationTrigger + 1,
-            )
-            kotlinx.coroutines.delay(2000L)
-            _uiState.value = _uiState.value.copy(isCelebrating = false)
-
-            val result = taskRepository.completeTask(taskId)
-            result.fold(
+        celebrateThen {
+            taskRepository.completeTask(taskId).fold(
                 onSuccess = {
                     _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
                 },
@@ -219,6 +208,64 @@ class TaskDetailViewModel @Inject constructor(
                     )
                 }
             )
+        }
+    }
+
+    /** Deja fait : completion solo a une date passee (optionnellement pour un autre user). */
+    fun completeTaskAtDate(isoDate: String, completedBy: String? = null) {
+        celebrateThen {
+            taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(error = error.message)
+                },
+            )
+        }
+    }
+
+    /** Fait ensemble : completion collective (N participants, split ceil). */
+    fun completeTaskCollective(participantUserIds: List<String>, isoDate: String? = null) {
+        celebrateThen {
+            taskRepository.completeTaskCollective(
+                taskId = taskId,
+                participantUserIds = participantUserIds,
+                completedAt = isoDate,
+            ).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        completionMessage = "Tache completee a ${participantUserIds.size} !",
+                    )
+                },
+                onFailure = { err ->
+                    val msg = when (err) {
+                        is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
+                            409 -> "Impossible : tache deja completee recemment par un participant"
+                            else -> "Erreur ${err.httpCode}"
+                        }
+                        else -> err.message ?: "Erreur reseau"
+                    }
+                    _uiState.value = _uiState.value.copy(error = msg)
+                },
+            )
+        }
+    }
+
+    /**
+     * Celebration visuelle (card + confetti) pendant 2s, puis execution
+     * du bloc de completion reel. Partage entre completeTask, completeTaskAtDate
+     * et completeTaskCollective.
+     */
+    private fun celebrateThen(block: suspend () -> Unit) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isCelebrating = true,
+                celebrationTrigger = _uiState.value.celebrationTrigger + 1,
+            )
+            kotlinx.coroutines.delay(2000L)
+            _uiState.value = _uiState.value.copy(isCelebrating = false)
+            block()
         }
     }
 

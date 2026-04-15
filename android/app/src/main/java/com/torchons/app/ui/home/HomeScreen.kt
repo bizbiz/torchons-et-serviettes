@@ -17,12 +17,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -66,17 +65,14 @@ import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Suggestion
-import com.torchons.app.data.model.TaskInProgress
 import com.torchons.app.ui.common.CelebrationCardContent
 import com.torchons.app.ui.common.CelebrationOverlay
+import com.torchons.app.ui.common.CompletionDialog
+import com.torchons.app.ui.common.CompletionDialogMode
 import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.common.RatingRecurrence
 import com.torchons.app.ui.common.randomCelebration
 import com.torchons.app.util.TaskUrgencyCalculator
-import java.time.Instant
-import java.time.ZoneId
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun HomeScreen(
@@ -228,6 +224,61 @@ fun HomeScreen(
         )
     }
 
+    // Dialog partage "Deja fait" / "Fait ensemble" (v0.11 refonte completion).
+    // Instancie une seule fois au niveau du HomeScreen, partage entre toutes
+    // les SuggestionCards via l'etat dialogState releve ici.
+    var dialogState by remember { mutableStateOf<CompletionDialogState?>(null) }
+    var twoPersonFaitEnsembleTaskId by remember { mutableStateOf<String?>(null) }
+
+    dialogState?.let { ds ->
+        CompletionDialog(
+            taskTitle = ds.taskTitle,
+            mode = ds.mode,
+            allMembers = uiState.fairShare.map { it.userId to it.displayName },
+            assignedMemberIds = ds.assignedIds,
+            currentUserId = userId.orEmpty(),
+            onDismiss = { dialogState = null },
+            onConfirm = { participantIds, isoDate ->
+                if (ds.mode == CompletionDialogMode.Single) {
+                    viewModel.completeTaskAtDate(
+                        taskId = ds.taskId,
+                        isoDate = isoDate,
+                        completedBy = participantIds.firstOrNull(),
+                    )
+                } else {
+                    viewModel.completeTaskCollective(
+                        taskId = ds.taskId,
+                        participantUserIds = participantIds,
+                        isoDate = isoDate,
+                    )
+                }
+                dialogState = null
+            },
+            onSwitchToMulti = if (ds.mode == CompletionDialogMode.Single) {
+                {
+                    dialogState = ds.copy(mode = CompletionDialogMode.Multi)
+                }
+            } else null,
+        )
+    }
+
+    // DatePicker direct pour le cas foyer 2-pers Multi (pas de picker
+    // participants : split auto entre les 2 membres).
+    twoPersonFaitEnsembleTaskId?.let { tid ->
+        DatePickerDialog(
+            onDateSelected = { isoDate ->
+                val bothIds = uiState.fairShare.map { it.userId }
+                viewModel.completeTaskCollective(
+                    taskId = tid,
+                    participantUserIds = bothIds,
+                    isoDate = isoDate,
+                )
+                twoPersonFaitEnsembleTaskId = null
+            },
+            onDismiss = { twoPersonFaitEnsembleTaskId = null },
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
@@ -265,29 +316,6 @@ fun HomeScreen(
             onCardClick = { showProjectionDialog = true },
         )
 
-        // Taches en cours
-        if (uiState.inProgress.isNotEmpty()) {
-            Text(
-                text = "En cours",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            uiState.inProgress.forEach { tip ->
-                val task = tasksById[tip.taskId]
-                val room = task?.roomId?.let { roomsById[it] }
-                val category = task?.categoryId?.let { categoriesById[it] }
-                InProgressCard(
-                    tip = tip,
-                    room = room,
-                    category = category,
-                    isCelebrating = uiState.celebratingTaskId == tip.taskId,
-                    onClick = { onTaskClick(tip.taskId) },
-                    onComplete = { viewModel.completeTask(tip.taskId) },
-                    onCancel = { viewModel.cancelInProgress(tip.taskId) }
-                )
-            }
-        }
-
         // Suggestions (titre retire v0.8.0 — evident que c'est des suggestions)
         if (uiState.suggestions.isNotEmpty()) {
             uiState.suggestions.forEach { suggestion ->
@@ -300,16 +328,37 @@ fun HomeScreen(
                     category = category,
                     isCelebrating = uiState.celebratingTaskId == suggestion.taskId,
                     onClick = { onTaskClick(suggestion.taskId) },
-                    onStart = { viewModel.startTask(suggestion.taskId) },
                     onComplete = { viewModel.completeTask(suggestion.taskId) },
-                    onCompleteAtDate = { date, userId -> viewModel.completeTaskAtDate(suggestion.taskId, date, userId) },
+                    onDejaFait = {
+                        val assignedIds = tasksById[suggestion.taskId]?.assignedToIds.orEmpty().toSet()
+                        dialogState = CompletionDialogState(
+                            mode = CompletionDialogMode.Single,
+                            taskId = suggestion.taskId,
+                            taskTitle = suggestion.title,
+                            assignedIds = assignedIds,
+                        )
+                    },
+                    onFaitEnsemble = {
+                        val assignedIds = tasksById[suggestion.taskId]?.assignedToIds.orEmpty().toSet()
+                        if (uiState.fairShare.size == 2) {
+                            // Foyer 2-pers : DatePickerDialog direct, split auto entre
+                            // les deux membres (pas de picker de participants).
+                            twoPersonFaitEnsembleTaskId = suggestion.taskId
+                        } else {
+                            dialogState = CompletionDialogState(
+                                mode = CompletionDialogMode.Multi,
+                                taskId = suggestion.taskId,
+                                taskTitle = suggestion.title,
+                                assignedIds = assignedIds,
+                            )
+                        }
+                    },
                     onEdit = { onEditTask(suggestion.taskId) },
-                    users = uiState.fairShare.map { it.userId to it.displayName }
                 )
             }
         }
 
-        if (uiState.suggestions.isEmpty() && uiState.inProgress.isEmpty()) {
+        if (uiState.suggestions.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -395,58 +444,16 @@ private fun SuggestionCard(
     category: Category?,
     isCelebrating: Boolean,
     onClick: () -> Unit,
-    onStart: () -> Unit,
     onComplete: () -> Unit,
-    onCompleteAtDate: (String, String?) -> Unit,
+    onDejaFait: () -> Unit,
+    onFaitEnsemble: () -> Unit,
     onEdit: () -> Unit,
-    users: List<Pair<String, String>> = emptyList()
 ) {
     val reasonLabel = if (suggestion.reason == "urgent") "La plus urgente" else "Tu aimes bien"
     val reasonIcon = if (suggestion.reason == "urgent") Icons.Default.Warning else Icons.Default.Favorite
     // Pickee une seule fois pour cette celebration (key suggestion.taskId).
     val celebration = remember(suggestion.taskId, isCelebrating) {
         if (isCelebrating) randomCelebration() else null
-    }
-    var showUserPicker by remember { mutableStateOf(false) }
-    var showDatePicker by remember { mutableStateOf(false) }
-    var selectedUserId by remember { mutableStateOf<String?>(null) }
-
-    // User picker dialog (qui a fait ?)
-    if (showUserPicker) {
-        AlertDialog(
-            onDismissRequest = { showUserPicker = false },
-            title = { Text("Qui a fait ?", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    users.forEach { (uid, name) ->
-                        Button(
-                            onClick = {
-                                selectedUserId = uid
-                                showUserPicker = false
-                                showDatePicker = true
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(name) }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showUserPicker = false }) { Text("Annuler") }
-            }
-        )
-    }
-
-    // Date picker dialog
-    if (showDatePicker) {
-        DatePickerDialog(
-            onDateSelected = { isoDate ->
-                showDatePicker = false
-                onCompleteAtDate(isoDate, selectedUserId)
-                selectedUserId = null
-            },
-            onDismiss = { showDatePicker = false; selectedUserId = null }
-        )
     }
 
     Card(
@@ -513,39 +520,49 @@ private fun SuggestionCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Boutons - ligne 1
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = onStart,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("En cours")
-                }
-                Button(
-                    onClick = onComplete,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = TaskUrgencyCalculator.VERT)
-                ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Fait !")
-                }
+            // Bouton principal "Fait !" pleine largeur
+            Button(
+                onClick = onComplete,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = TaskUrgencyCalculator.VERT),
+            ) {
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Fait !")
             }
 
-            // Bouton "Deja fait"
-            OutlinedButton(
-                onClick = { showUserPicker = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Deja fait (choisir la date)")
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Boutons secondaires "Deja fait" + "Fait ensemble"
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onDejaFait,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Deja fait")
+                }
+                OutlinedButton(
+                    onClick = onFaitEnsemble,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Default.Groups, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Ensemble")
+                }
             }
         }
     }
 }
+
+/** Etat du dialog partage "Deja fait" / "Fait ensemble" sur la home. */
+private data class CompletionDialogState(
+    val mode: CompletionDialogMode,
+    val taskId: String,
+    val taskTitle: String,
+    val assignedIds: Set<String>,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -582,90 +599,12 @@ private fun DatePickerDialog(
     }
 }
 
-@Composable
-private fun InProgressCard(
-    tip: TaskInProgress,
-    room: Room?,
-    category: Category?,
-    isCelebrating: Boolean,
-    onClick: () -> Unit,
-    onComplete: () -> Unit,
-    onCancel: () -> Unit
-) {
-    val celebration = remember(tip.taskId, isCelebrating) {
-        if (isCelebrating) randomCelebration() else null
-    }
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        if (celebration != null) {
-            CelebrationCardContent(emoji = celebration.first, text = celebration.second)
-            return@Card
-        }
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = tip.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // Piece + categorie sous le titre
-            TaskMetaRow(room = room, category = category)
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Commence le ${formatDateTime(tip.startedAt)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = onCancel,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Pas fait")
-                }
-                Button(
-                    onClick = onComplete,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = TaskUrgencyCalculator.VERT)
-                ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Fait !")
-                }
-            }
-        }
-    }
-}
-
 /**
  * Ligne de meta sous un titre de tache : emoji+nom de la piece + nom de
  * la categorie en pastille discrete. Affiche rien si les deux sont null.
  *
- * Pattern utilise par SuggestionCard et InProgressCard pour rappeler le
- * contexte (ou est la tache, dans quel "univers" elle vit).
+ * Pattern utilise par SuggestionCard pour rappeler le contexte (ou est
+ * la tache, dans quel "univers" elle vit).
  */
 @Composable
 private fun TaskMetaRow(room: Room?, category: Category?) {
@@ -704,17 +643,3 @@ private fun TaskMetaRow(room: Room?, category: Category?) {
     }
 }
 
-private fun formatDateTime(isoDateTime: String): String {
-    return try {
-        val instant = try {
-            Instant.parse(isoDateTime)
-        } catch (e: Exception) {
-            Instant.parse("${isoDateTime}Z")
-        }
-        val localDateTime = instant.atZone(ZoneId.systemDefault())
-        val formatter = DateTimeFormatter.ofPattern("dd/MM 'a' HH:mm")
-        localDateTime.format(formatter)
-    } catch (e: Exception) {
-        isoDateTime
-    }
-}

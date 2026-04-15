@@ -1,5 +1,23 @@
 # Notes de version
 
+## v0.11.0 — 2026-04-15
+
+### "Fait ensemble" — partager les taches et les points
+- Nouveau bouton **Fait ensemble** (icone groupe) sur chaque tache, present sur l'accueil, la liste des taches et la vue detail. Il permet de dire "on ne l'a pas fait tout seul" : les points sont partages equitablement entre les participants et chacun progresse dans son compteur.
+- Dans un foyer a 2 personnes : cliquer ouvre directement un selecteur de date, les deux membres sont automatiquement inclus (pas besoin de cocher).
+- Dans un foyer a 3 personnes ou plus : une popup apparait avec les membres assignes pre-coches, un bouton "Ajouter un membre" pour inclure quelqu'un d'autre du foyer, et un selecteur de date. Minimum 1 participant coche pour valider.
+- Si quelqu'un a deja valide la tache dans la fenetre anti-doublon, la validation collective est refusee en bloc (aucune ligne creee) et un message l'explique.
+
+### "Deja fait" sur la vue detail d'une tache
+- Le bouton **Deja fait** (icone calendrier) est maintenant aussi present sur l'ecran detail d'une tache, en plus de l'accueil et de la liste. Jusqu'ici il manquait a cet endroit.
+- Dans la popup "Deja fait", un nouveau bouton "A plusieurs..." permet de basculer vers le flow "Fait ensemble" sans repartir de zero.
+
+### Popup de completion unifiee
+- Les deux anciennes popups separees (choisir qui puis choisir quand) sont remplacees par une seule popup claire avec la date et la liste des participants au meme endroit. Plus rapide a valider.
+
+### Nettoyage de l'accueil
+- La section "En cours" de l'accueil (qui affichait les taches demarrees mais pas encore validees) est supprimee. Elle etait quasi jamais utilisee et parasitait l'ecran.
+
 ## v0.10.2 — 2026-04-15
 
 ### Fin des crashs apres mise a jour

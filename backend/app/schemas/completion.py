@@ -16,6 +16,20 @@ class CompletionCreate(BaseModel):
     client_op_id: UUID | None = None
 
 
+class CollectiveCompletionCreate(BaseModel):
+    """Payload pour le endpoint 'fait ensemble' (N participants).
+
+    Min 1 participant. Pour N >= 2, les points de la tache sont divises
+    (ceil integer) entre les participants, une ligne task_completions est
+    creee par participant avec le meme collective_id UUID.
+    """
+
+    participant_user_ids: list[UUID]
+    completed_at: datetime | None = None  # NULL = maintenant
+    notes: str | None = None
+    client_op_id: UUID | None = None
+
+
 class CompletionResponse(BaseModel):
     id: UUID
     task_id: UUID
@@ -23,5 +37,13 @@ class CompletionResponse(BaseModel):
     completed_at: datetime
     points_earned: int
     notes: str | None
+    collective_id: UUID | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class CollectiveCompletionResponse(BaseModel):
+    collective_id: UUID
+    completions: list[CompletionResponse]
 
     model_config = {"from_attributes": True}

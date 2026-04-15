@@ -8,6 +8,8 @@ import com.torchons.app.data.model.TaskHistoryDto
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.CategoryCreateRequest
 import com.torchons.app.data.model.CategoryUpdateRequest
+import com.torchons.app.data.model.CollectiveCompleteRequest
+import com.torchons.app.data.model.CollectiveCompletionResponse
 import com.torchons.app.data.model.CompleteTaskRequest
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.CreateTaskRequest
@@ -96,6 +98,13 @@ interface ApiService {
         @Path("id") taskId: String,
         @Body request: CompleteTaskRequest = CompleteTaskRequest()
     ): Response<Completion>
+
+    /** Marquer une tache comme completee par N participants ("fait ensemble"). */
+    @POST("tasks/{id}/complete-collective")
+    suspend fun completeTaskCollective(
+        @Path("id") taskId: String,
+        @Body request: CollectiveCompleteRequest,
+    ): Response<CollectiveCompletionResponse>
 
     /** Modifier une completion (qui, quand). */
     @PUT("completions/{completionId}")

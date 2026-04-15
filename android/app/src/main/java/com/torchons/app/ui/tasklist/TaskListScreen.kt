@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -56,6 +57,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.ui.common.CelebrationOverlay
+import com.torchons.app.ui.common.CompletionDialog
+import com.torchons.app.ui.common.CompletionDialogMode
 
 /**
  * Ecran principal affichant la liste des taches.
@@ -76,65 +79,70 @@ fun TaskListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var historicalTaskId by remember { mutableStateOf<String?>(null) }
-    var historicalUserId by remember { mutableStateOf<String?>(null) }
-    var showUserPicker by remember { mutableStateOf(false) }
-    var showDatePicker by remember { mutableStateOf(false) }
     val users by viewModel.allUsers.collectAsState()
+    val currentUserId by viewModel.userId.collectAsState()
 
-    // 1. User picker pour "deja fait" : qui a fait ?
-    if (showUserPicker && historicalTaskId != null) {
-        // Filtrer les users assignes a cette tache
-        val task = uiState.tasks.find { it.task.id == historicalTaskId }?.task
-        val assignedIds = task?.assignedToIds ?: emptyList()
-        val eligibleUsers = users.filter { it.id in assignedIds }
+    // Dialog unifie "Deja fait" (Single) / "Fait ensemble" (Multi).
+    // Releve au niveau TaskListScreen pour etre partage entre toutes les cards.
+    var dialogState by remember { mutableStateOf<TaskListCompletionDialogState?>(null) }
+    var twoPersonFaitEnsembleTaskId by remember { mutableStateOf<String?>(null) }
 
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showUserPicker = false; historicalTaskId = null },
-            title = { Text("Qui a fait cette tache ?", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    eligibleUsers.forEach { user ->
-                        androidx.compose.material3.Button(
-                            onClick = {
-                                historicalUserId = user.id
-                                showUserPicker = false
-                                showDatePicker = true
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(user.displayName) }
-                    }
+    dialogState?.let { ds ->
+        CompletionDialog(
+            taskTitle = ds.taskTitle,
+            mode = ds.mode,
+            allMembers = users.map { it.id to it.displayName },
+            assignedMemberIds = ds.assignedIds,
+            currentUserId = currentUserId.orEmpty(),
+            onDismiss = { dialogState = null },
+            onConfirm = { participantIds, isoDate ->
+                if (ds.mode == CompletionDialogMode.Single) {
+                    viewModel.completeTaskAtDate(
+                        taskId = ds.taskId,
+                        isoDate = isoDate,
+                        completedBy = participantIds.firstOrNull(),
+                    )
+                } else {
+                    viewModel.completeTaskCollective(
+                        taskId = ds.taskId,
+                        participantUserIds = participantIds,
+                        isoDate = isoDate,
+                    )
                 }
+                dialogState = null
             },
-            confirmButton = {},
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showUserPicker = false; historicalTaskId = null }) { Text("Annuler") }
-            }
+            onSwitchToMulti = if (ds.mode == CompletionDialogMode.Single) {
+                { dialogState = ds.copy(mode = CompletionDialogMode.Multi) }
+            } else null,
         )
     }
 
-    // 2. Date picker pour "deja fait" : quand ?
-    if (showDatePicker && historicalTaskId != null && historicalUserId != null) {
+    // Cas foyer 2-pers + Fait ensemble : DatePickerDialog direct, pas de
+    // picker participants (split auto entre les deux membres).
+    twoPersonFaitEnsembleTaskId?.let { tid ->
         val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
-        androidx.compose.material3.DatePickerDialog(
-            onDismissRequest = { showDatePicker = false; historicalTaskId = null; historicalUserId = null },
+        DatePickerDialog(
+            onDismissRequest = { twoPersonFaitEnsembleTaskId = null },
             confirmButton = {
                 androidx.compose.material3.Button(onClick = {
                     val millis = datePickerState.selectedDateMillis
-                    val tId = historicalTaskId
-                    val uId = historicalUserId
-                    if (millis != null && tId != null && uId != null) {
-                        val date = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-                        viewModel.completeTaskAtDate(tId, "${date}T12:00:00Z", uId)
+                    if (millis != null) {
+                        val date = java.time.Instant.ofEpochMilli(millis)
+                            .atZone(java.time.ZoneOffset.UTC)
+                            .toLocalDate()
+                        val bothIds = users.map { it.id }
+                        viewModel.completeTaskCollective(
+                            taskId = tid,
+                            participantUserIds = bothIds,
+                            isoDate = "${date}T12:00:00Z",
+                        )
                     }
-                    showDatePicker = false
-                    historicalTaskId = null
-                    historicalUserId = null
+                    twoPersonFaitEnsembleTaskId = null
                 }) { Text("Valider") }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showDatePicker = false; historicalTaskId = null; historicalUserId = null }) { Text("Annuler") }
-            }
+                androidx.compose.material3.TextButton(onClick = { twoPersonFaitEnsembleTaskId = null }) { Text("Annuler") }
+            },
         ) { DatePicker(state = datePickerState) }
     }
 
@@ -447,9 +455,10 @@ fun TaskListScreen(
                     // sur les donnees) pour qu'elles ne changent jamais. Sinon
                     // chaque emission du combine du ViewModel = nouvelles lambdas
                     // = tous les items recomposent (~50 cards) = scroll qui rame.
-                    // rememberUpdatedState permet a la lambda historical de lire
-                    // la valeur courante de tasks sans s'invalider.
+                    // rememberUpdatedState permet aux lambdas historical/ensemble
+                    // de lire la valeur courante sans s'invalider.
                     val tasksState = androidx.compose.runtime.rememberUpdatedState(uiState.tasks)
+                    val usersState = androidx.compose.runtime.rememberUpdatedState(users)
                     val onCardClick: (String) -> Unit = remember {
                         { id -> onTaskClick(id) }
                     }
@@ -459,12 +468,27 @@ fun TaskListScreen(
                     val onCardHistorical: (String) -> Unit = remember {
                         { id ->
                             val task = tasksState.value.firstOrNull { it.task.id == id }?.task
-                            historicalTaskId = id
-                            if (task != null && task.assignedToIds.size == 1) {
-                                historicalUserId = task.assignedToIds.first()
-                                showDatePicker = true
+                            dialogState = TaskListCompletionDialogState(
+                                mode = CompletionDialogMode.Single,
+                                taskId = id,
+                                taskTitle = task?.title.orEmpty(),
+                                assignedIds = task?.assignedToIds?.toSet() ?: emptySet(),
+                            )
+                        }
+                    }
+                    val onCardFaitEnsemble: (String) -> Unit = remember {
+                        { id ->
+                            val task = tasksState.value.firstOrNull { it.task.id == id }?.task
+                            if (usersState.value.size == 2) {
+                                // Foyer 2-pers : skip le picker, split auto.
+                                twoPersonFaitEnsembleTaskId = id
                             } else {
-                                showUserPicker = true
+                                dialogState = TaskListCompletionDialogState(
+                                    mode = CompletionDialogMode.Multi,
+                                    taskId = id,
+                                    taskTitle = task?.title.orEmpty(),
+                                    assignedIds = task?.assignedToIds?.toSet() ?: emptySet(),
+                                )
                             }
                         }
                     }
@@ -496,6 +520,7 @@ fun TaskListScreen(
                                     onClick = onCardClick,
                                     onComplete = onCardComplete,
                                     onHistorical = onCardHistorical,
+                                    onFaitEnsemble = onCardFaitEnsemble,
                                 )
                             }
 
@@ -514,6 +539,14 @@ fun TaskListScreen(
     }
     } // fin du Box outer (celebration overlay layer)
 }
+
+/** Etat du dialog partage "Deja fait" / "Fait ensemble" sur la tasklist. */
+private data class TaskListCompletionDialogState(
+    val mode: CompletionDialogMode,
+    val taskId: String,
+    val taskTitle: String,
+    val assignedIds: Set<String>,
+)
 
 /** Chip icone pour filtre tri-state (off / high rouge / low vert). */
 @Composable

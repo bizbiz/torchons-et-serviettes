@@ -15,6 +15,7 @@ data class CompletionEntity(
     val completedAt: String,
     val pointsEarned: Int,
     val notes: String?,
+    val collectiveId: String? = null,
 )
 
 fun Completion.toEntity(): CompletionEntity = CompletionEntity(
@@ -24,6 +25,7 @@ fun Completion.toEntity(): CompletionEntity = CompletionEntity(
     completedAt = completedAt,
     pointsEarned = pointsEarned,
     notes = notes,
+    collectiveId = collectiveId,
 )
 
 fun CompletionEntity.toDomain(): Completion = Completion(
@@ -33,4 +35,5 @@ fun CompletionEntity.toDomain(): Completion = Completion(
     completedAt = completedAt,
     pointsEarned = pointsEarned,
     notes = notes,
+    collectiveId = collectiveId,
 )

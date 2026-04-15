@@ -80,6 +80,14 @@ private val migration3to4 = object : Migration(3, 4) {
     }
 }
 
+private val migration4to5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Feature "fait ensemble" : collectiveId groupe les N rows d'une
+        // meme completion collective (null = completion solo).
+        db.execSQL("ALTER TABLE completions ADD COLUMN collectiveId TEXT DEFAULT NULL")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -92,7 +100,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2, migration2to3, migration3to4)
+            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5)
             .build()
     }
 

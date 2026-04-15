@@ -17,7 +17,6 @@ import com.torchons.app.data.model.PropositionCreate
 import com.torchons.app.data.model.PropositionView
 import com.torchons.app.data.model.RetardResponse
 import com.torchons.app.data.model.Suggestion
-import com.torchons.app.data.model.TaskInProgress
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Task
@@ -56,7 +55,6 @@ data class HomeUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val suggestions: List<Suggestion> = emptyList(),
-    val inProgress: List<TaskInProgress> = emptyList(),
     val fairShare: List<FairShareStatus> = emptyList(),
     val pendingAffinity: PendingAffinity? = null,
     val showAffinityPopup: Boolean = false,
@@ -138,22 +136,20 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 homeRepository.observeSuggestions(),
-                homeRepository.observeInProgress(),
                 homeRepository.observeFairShare(),
                 homeRepository.observePendingAffinity(),
                 homeRepository.observeUserSettings(),
-            ) { suggestions, inProgress, fairShare, pending, settings ->
-                CachedHome(suggestions, inProgress, fairShare, pending, settings)
+            ) { suggestions, fairShare, pending, settings ->
+                CachedHome(suggestions, fairShare, pending, settings)
             }.collect { cached ->
                 val popupEnabled = (cached.settings?.get("affinity_popup_enabled") as? Boolean) ?: true
                 _affinityPopupEnabled.value = popupEnabled
 
                 val firstPending = cached.pending?.firstOrNull()
-                val hasCache = cached.suggestions != null || cached.inProgress != null
+                val hasCache = cached.suggestions != null
 
                 _uiState.value = _uiState.value.copy(
                     suggestions = cached.suggestions ?: emptyList(),
-                    inProgress = cached.inProgress ?: emptyList(),
                     fairShare = cached.fairShare ?: emptyList(),
                     pendingAffinity = firstPending,
                     // Ne PAS toggler showAffinityPopup ici — le combine emet
@@ -421,17 +417,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun startTask(taskId: String) {
-        viewModelScope.launch {
-            try {
-                apiService.startTask(taskId)
-                refresh()
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
-        }
-    }
-
     fun completeTask(taskId: String) {
         celebrateThen(taskId) {
             taskRepository.completeTask(taskId).fold(
@@ -446,6 +431,33 @@ class HomeViewModel @Inject constructor(
             taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
                 onSuccess = { refresh() },
                 onFailure = { _uiState.value = _uiState.value.copy(error = it.message) },
+            )
+        }
+    }
+
+    /** Completion collective ("fait ensemble"). Online-first via endpoint dedie. */
+    fun completeTaskCollective(
+        taskId: String,
+        participantUserIds: List<String>,
+        isoDate: String? = null,
+    ) {
+        celebrateThen(taskId) {
+            taskRepository.completeTaskCollective(
+                taskId = taskId,
+                participantUserIds = participantUserIds,
+                completedAt = isoDate,
+            ).fold(
+                onSuccess = { refresh() },
+                onFailure = { err ->
+                    val msg = when (err) {
+                        is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
+                            409 -> "Impossible de valider : tache deja completee recemment par un participant"
+                            else -> "Erreur ${err.httpCode}"
+                        }
+                        else -> err.message ?: "Erreur reseau"
+                    }
+                    _uiState.value = _uiState.value.copy(error = msg)
+                },
             )
         }
     }
@@ -468,26 +480,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun cancelInProgress(taskId: String) {
-        viewModelScope.launch {
-            try {
-                apiService.cancelTaskInProgress(taskId)
-                refresh()
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
-        }
-    }
-
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
 }
 
-/** Conteneur interne pour le combine des 5 flows snapshot. */
+/** Conteneur interne pour le combine des flows snapshot. */
 private data class CachedHome(
     val suggestions: List<Suggestion>?,
-    val inProgress: List<TaskInProgress>?,
     val fairShare: List<FairShareStatus>?,
     val pending: List<PendingAffinity>?,
     val settings: Map<String, Any>?,

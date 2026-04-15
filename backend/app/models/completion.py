@@ -25,6 +25,10 @@ class TaskCompletion(Base, UUIDMixin, SoftDeleteMixin):
     points_earned: Mapped[int] = mapped_column(Integer, default=1)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     client_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # Groupe les lignes d'une meme completion "fait ensemble" (NULL = solo)
+    collective_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

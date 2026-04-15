@@ -15,6 +15,8 @@
 
 ## Plus tard
 
+- **Undo 1-clic d'une completion "Fait ensemble"** : aujourd'hui pour annuler une validation collective il faut supprimer les lignes une par une dans l'historique. Un bouton "Annuler" unique, qui supprime d'un coup toutes les lignes du meme evenement (groupees par `collective_id`), serait plus pratique.
+- **Nettoyage du code mort "En cours"** : apres suppression de la section sur l'accueil en v0.11.0, les endpoints backend `start task` / `cancel in-progress` et le modele `TaskInProgress` ne sont plus appeles. A retirer lors d'une iteration de maintenance pour ne pas trainer du code mort.
 - **Planning partage** : vue calendrier avec les taches prevues de la semaine.
 - **Export** des donnees (CSV / ICS).
 - **Tablette / Borne** : vue mural always-on pour l'appartement.
