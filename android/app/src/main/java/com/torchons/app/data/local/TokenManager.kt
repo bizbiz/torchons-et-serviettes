@@ -49,6 +49,9 @@ class TokenManager @Inject constructor(
         // Sync offline
         private val DEVICE_ID_KEY = stringPreferencesKey("device_id")
         private val SYNC_CURSOR_KEY = longPreferencesKey("last_server_version")
+        // versionCode vu au dernier lancement de l'app — sert a detecter une
+        // mise a jour et invalider le cache view_snapshots (v0.10.2+).
+        private val LAST_SEEN_VERSION_CODE_KEY = intPreferencesKey("last_seen_version_code")
     }
 
     /** Flow du token JWT. Emet null si aucun token stocke. */
@@ -177,5 +180,16 @@ class TokenManager @Inject constructor(
 
     suspend fun setSyncCursor(version: Long) {
         context.dataStore.edit { it[SYNC_CURSOR_KEY] = version }
+    }
+
+    // --- Cache invalidation ---
+
+    /** Retourne le versionCode vu au dernier lancement, ou 0 si jamais stocke. */
+    suspend fun getLastSeenVersionCode(): Int {
+        return context.dataStore.data.first()[LAST_SEEN_VERSION_CODE_KEY] ?: 0
+    }
+
+    suspend fun setLastSeenVersionCode(code: Int) {
+        context.dataStore.edit { it[LAST_SEEN_VERSION_CODE_KEY] = code }
     }
 }

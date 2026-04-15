@@ -25,4 +25,15 @@ interface ViewSnapshotDao {
 
     @Query("SELECT MIN(updatedAt) FROM view_snapshots WHERE key IN (:keys)")
     suspend fun getOldestUpdatedAt(keys: List<String>): Long?
+
+    /**
+     * Wipe complet de la table. Appele au demarrage quand le versionCode de
+     * l'app a change depuis le dernier lancement (cf TorchonsApp.onCreate) :
+     * les snapshots JSON caches peuvent etre serialises avec un ancien
+     * schema de data class et Gson met silencieusement null sur les champs
+     * absents, faisant crasher l'UI en NPE. Purger a chaque montee de
+     * version est plus simple que de versionner chaque schema.
+     */
+    @Query("DELETE FROM view_snapshots")
+    suspend fun clearAll()
 }

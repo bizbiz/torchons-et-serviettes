@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.10.2 — 2026-04-15
+
+### Fin des crashs apres mise a jour
+- L'app purge maintenant automatiquement son cache local d'ecran d'accueil a chaque nouvelle version installee. Ca evite les crashs comme celui de la v0.10.0 : quand le format des donnees change d'une version a l'autre, l'ancien contenu en cache pouvait faire planter l'app au premier lancement. Maintenant, la premiere ouverture apres une mise a jour repart d'un cache vide et se re-remplit au premier refresh reseau.
+
 ## v0.10.1 — 2026-04-15
 
 ### Fix crash au demarrage
