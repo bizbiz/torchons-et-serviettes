@@ -46,7 +46,7 @@ fun CelebrationOverlay(
             damping = 0.9f,
             spread = 360,
             colors = listOf(
-                0xFF10B981.toInt(), // Vert (FreshnessCalculator.VERT)
+                0xFF10B981.toInt(), // Vert (TaskUrgencyCalculator.VERT)
                 0xFFF59E0B.toInt(), // Jaune
                 0xFF6366F1.toInt(), // Primary indigo
                 0xFFEC4899.toInt(), // Rose

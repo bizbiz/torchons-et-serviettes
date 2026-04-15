@@ -13,8 +13,9 @@ import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.ui.common.RatingRecurrence
-import com.torchons.app.util.FreshnessCalculator
+import com.torchons.app.util.TaskUrgencyCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +42,9 @@ data class TaskDetailUiState(
     val ratings: List<TaskRating> = emptyList(),
     val avgEffortTimeMin: Int? = null,
     val scorePoints: Int? = null,
-    val freshness: Double = 0.0,
+    val urgencyState: TaskUrgencyCalculator.State = TaskUrgencyCalculator.State.GREEN,
+    val daysUntilDue: Int = 0,
+    val countdownLabel: String = "",
     val history: List<TaskHistoryEvent> = emptyList(),
     /** Piece de la tache (resolue depuis task.roomId via le cache rooms). */
     val room: Room? = null,
@@ -109,11 +112,16 @@ class TaskDetailViewModel @Inject constructor(
 
                 val sortedCompletions = cached.completions.sortedByDescending { it.completedAt }
                 val lastCompletion = sortedCompletions.firstOrNull()
-                val freshness = FreshnessCalculator.calculateFreshness(
+                val today = LocalDate.now()
+                val nominal = TaskUrgencyCalculator.nominalIntervalDays(cached.task?.recurrenceRule)
+                val dueDate = TaskUrgencyCalculator.computeDueDate(
                     lastCompletedAt = lastCompletion?.completedAt,
                     rule = cached.task?.recurrenceRule,
-                    tolerance = cached.task?.tolerance ?: "NORMAL",
+                    createdAt = cached.task?.createdAt,
                 )
+                val state = TaskUrgencyCalculator.computeState(dueDate, today, nominal)
+                val daysUntilDue = TaskUrgencyCalculator.daysUntilDue(dueDate, today)
+                val countdownLabel = TaskUrgencyCalculator.countdownLabel(dueDate, today)
 
                 // Resolve la piece de la tache (si elle a un roomId).
                 val room = cached.task?.roomId?.let { rid ->
@@ -124,7 +132,9 @@ class TaskDetailViewModel @Inject constructor(
                     task = cached.task,
                     completions = sortedCompletions,
                     userNames = userNames,
-                    freshness = freshness,
+                    urgencyState = state,
+                    daysUntilDue = daysUntilDue,
+                    countdownLabel = countdownLabel,
                     history = cached.history,
                     room = room,
                     hasCachedData = hasCache,

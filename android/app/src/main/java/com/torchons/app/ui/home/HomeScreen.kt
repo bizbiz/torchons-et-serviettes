@@ -72,7 +72,7 @@ import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.common.RatingRecurrence
 import com.torchons.app.ui.common.randomCelebration
-import com.torchons.app.util.FreshnessCalculator
+import com.torchons.app.util.TaskUrgencyCalculator
 import java.time.Instant
 import java.time.ZoneId
 import java.time.LocalDate
@@ -345,7 +345,7 @@ fun HomeScreen(
                             imageVector = Icons.Default.Check,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
-                            tint = FreshnessCalculator.VERT
+                            tint = TaskUrgencyCalculator.VERT
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
@@ -467,14 +467,14 @@ private fun SuggestionCard(
                 Icon(
                     imageVector = reasonIcon,
                     contentDescription = null,
-                    tint = if (suggestion.reason == "urgent") FreshnessCalculator.ROUGE else FreshnessCalculator.VERT,
+                    tint = if (suggestion.reason == "urgent") TaskUrgencyCalculator.ROUGE else TaskUrgencyCalculator.VERT,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = reasonLabel,
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (suggestion.reason == "urgent") FreshnessCalculator.ROUGE else FreshnessCalculator.VERT,
+                    color = if (suggestion.reason == "urgent") TaskUrgencyCalculator.ROUGE else TaskUrgencyCalculator.VERT,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
@@ -496,6 +496,18 @@ private fun SuggestionCard(
                 fontWeight = FontWeight.Bold
             )
 
+            // Countdown text (dans Nj / aujourd'hui / en retard de Nj). Couleur
+            // selon l'etat (vert/orange/rouge) renvoye par /api/suggestions.
+            val countdownLabel = TaskUrgencyCalculator.countdownLabelFromDays(suggestion.daysUntilDue)
+            if (countdownLabel.isNotEmpty()) {
+                Text(
+                    text = countdownLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TaskUrgencyCalculator.stateColor(suggestion.state),
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+
             // Piece + categorie (ligne discrete sous le titre)
             TaskMetaRow(room = room, category = category)
 
@@ -514,7 +526,7 @@ private fun SuggestionCard(
                 Button(
                     onClick = onComplete,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = FreshnessCalculator.VERT)
+                    colors = ButtonDefaults.buttonColors(containerColor = TaskUrgencyCalculator.VERT)
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
@@ -637,7 +649,7 @@ private fun InProgressCard(
                 Button(
                     onClick = onComplete,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = FreshnessCalculator.VERT)
+                    colors = ButtonDefaults.buttonColors(containerColor = TaskUrgencyCalculator.VERT)
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))

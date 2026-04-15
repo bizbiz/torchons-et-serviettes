@@ -424,8 +424,8 @@ fun TaskEditScreen(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     InfoTooltip(
-                        title = "Tolerance au retard",
-                        description = "Strict : la tache devient rouge avant l'echeance. Normal : la tache est jaune a l'echeance. Souple : la tache reste verte meme apres l'echeance."
+                        title = "A quoi sert la tolerance ?",
+                        description = com.torchons.app.ui.common.TOLERANCE_INFO_TEXT,
                     )
                 }
                 val tolerances = listOf(

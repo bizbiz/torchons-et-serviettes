@@ -70,7 +70,7 @@ class TaskWidget : GlanceAppWidget() {
             val authMap = Gson().fromJson(authJson, Map::class.java) as Map<*, *>
             val token = authMap["token"] as? String ?: return@withContext emptyList()
 
-            val conn = (URL("${com.torchons.app.BuildConfig.API_BASE_URL}/suggestions?freshness_threshold=10").openConnection() as HttpURLConnection).apply {
+            val conn = (URL("${com.torchons.app.BuildConfig.API_BASE_URL}/suggestions").openConnection() as HttpURLConnection).apply {
                 connectTimeout = 3000
                 readTimeout = 3000
                 setRequestProperty("Authorization", "Bearer $token")
@@ -135,12 +135,12 @@ private fun WidgetContent(suggestions: List<Suggestion>) {
 
 @Composable
 private fun WidgetTaskRow(suggestion: Suggestion) {
-    val freshnessColor = when {
-        suggestion.freshness >= 80 -> Color(0xFF10B981)
-        suggestion.freshness >= 50 -> Color(0xFFF59E0B)
-        suggestion.freshness >= 25 -> Color(0xFFF97316)
-        else -> Color(0xFFEF4444)
+    val stateColor = when (suggestion.state) {
+        "RED" -> Color(0xFFEF4444)
+        "ORANGE" -> Color(0xFFF97316)
+        else -> Color(0xFF10B981)
     }
+    val countdownLabel = com.torchons.app.util.TaskUrgencyCalculator.countdownLabelFromDays(suggestion.daysUntilDue)
 
     Row(
         modifier = GlanceModifier
@@ -148,18 +148,18 @@ private fun WidgetTaskRow(suggestion: Suggestion) {
             .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Indicateur couleur fraicheur
+        // Indicateur couleur etat d'urgence
         Column(
             modifier = GlanceModifier
                 .width(4.dp)
                 .height(32.dp)
                 .cornerRadius(2.dp)
-                .background(freshnessColor)
+                .background(stateColor)
         ) {}
 
         Spacer(modifier = GlanceModifier.width(8.dp))
 
-        // Titre + meta
+        // Titre + countdown
         Column(modifier = GlanceModifier.defaultWeight()) {
             Text(
                 text = suggestion.title,
@@ -171,7 +171,7 @@ private fun WidgetTaskRow(suggestion: Suggestion) {
                 maxLines = 1
             )
             Text(
-                text = "${suggestion.freshness.toInt()}%",
+                text = countdownLabel,
                 style = TextStyle(fontSize = 10.sp, color = ColorProvider(Color(0xFF6B7280)))
             )
         }

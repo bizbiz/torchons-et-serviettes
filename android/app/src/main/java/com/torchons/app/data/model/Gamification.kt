@@ -8,7 +8,10 @@ data class Suggestion(
     @SerializedName("title") val title: String,
     @SerializedName("category_id") val categoryId: String? = null,
     @SerializedName("weight") val weight: Int = 1,
-    @SerializedName("freshness") val freshness: Double = 100.0,
+    /** Etat d'urgence : "GREEN" / "ORANGE" / "RED". */
+    @SerializedName("state") val state: String = "GREEN",
+    /** Jours d'ici l'echeance ; negatif si en retard, 0 si aujourd'hui. */
+    @SerializedName("days_until_due") val daysUntilDue: Int = 0,
     @SerializedName("affinity_score") val affinityScore: Int = 5,
     @SerializedName("reason") val reason: String = "urgent"
 )

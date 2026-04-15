@@ -26,8 +26,6 @@ class UserSettings(Base):
     # Affinite
     affinity_popup_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     affinity_expiry_months: Mapped[int] = mapped_column(Integer, default=6)
-    # Suggestions
-    freshness_threshold: Mapped[int] = mapped_column(Integer, default=10)
     # Tolerance fair-share : message "tu as fait plus que ta part" affiche
     # quand actual > target * (1 + tolerance/100). Defaut 30 = +30%.
     fair_share_tolerance_percent: Mapped[int] = mapped_column(Integer, default=30)

@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.torchons.app.data.model.MaintenanceRateResponse
 import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.RetardResponse
-import com.torchons.app.util.FreshnessCalculator
+import com.torchons.app.util.TaskUrgencyCalculator
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -147,13 +147,13 @@ fun ProjectionSimulationDialog(
                     Text(
                         text = "Retard : ${formatMinutesLong(retardMin)} (${retard?.taskCount ?: 0} taches)",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = FreshnessCalculator.ROUGE,
+                        color = TaskUrgencyCalculator.ROUGE,
                     )
                 } else {
                     Text(
                         text = "Zero retard ! Fixe le rythme cible de maintien.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = FreshnessCalculator.VERT,
+                        color = TaskUrgencyCalculator.VERT,
                     )
                 }
 
@@ -204,13 +204,13 @@ fun ProjectionSimulationDialog(
                         daysToCatchUp == null -> Text(
                             text = "Rythme insuffisant pour rattraper. Il faut > ${maintPerDay.toInt()} min/j combines.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = FreshnessCalculator.ROUGE,
+                            color = TaskUrgencyCalculator.ROUGE,
                             fontWeight = FontWeight.SemiBold,
                         )
                         daysToCatchUp == 0 -> Text(
                             text = "Deja rattrape !",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = FreshnessCalculator.VERT,
+                            color = TaskUrgencyCalculator.VERT,
                         )
                         else -> Text(
                             text = "A ces rythmes : rattrapage en $daysToCatchUp jour${if (daysToCatchUp > 1) "s" else ""}",

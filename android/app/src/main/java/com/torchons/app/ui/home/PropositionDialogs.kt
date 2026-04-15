@@ -38,7 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.torchons.app.data.model.PropositionView
-import com.torchons.app.util.FreshnessCalculator
+import com.torchons.app.util.TaskUrgencyCalculator
 import kotlinx.coroutines.delay
 
 /**
@@ -99,7 +99,7 @@ fun PropositionReceiverDialog(
         confirmButton = {
             Button(
                 onClick = onAccept,
-                colors = ButtonDefaults.buttonColors(containerColor = FreshnessCalculator.VERT),
+                colors = ButtonDefaults.buttonColors(containerColor = TaskUrgencyCalculator.VERT),
             ) {
                 Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(4.dp))
@@ -109,7 +109,7 @@ fun PropositionReceiverDialog(
         dismissButton = {
             Button(
                 onClick = onDecline,
-                colors = ButtonDefaults.buttonColors(containerColor = FreshnessCalculator.ROUGE),
+                colors = ButtonDefaults.buttonColors(containerColor = TaskUrgencyCalculator.ROUGE),
             ) {
                 Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(4.dp))
@@ -159,8 +159,8 @@ fun PropositionProposerWaitingDialog(
                 proposition.responses.forEach { r ->
                     val mins = proposition.sliderValues[r.userId] ?: 0
                     val (icon, color) = when (r.status) {
-                        "accepted" -> Icons.Default.Check to FreshnessCalculator.VERT
-                        "declined" -> Icons.Default.Close to FreshnessCalculator.ROUGE
+                        "accepted" -> Icons.Default.Check to TaskUrgencyCalculator.VERT
+                        "declined" -> Icons.Default.Close to TaskUrgencyCalculator.ROUGE
                         else -> Icons.Default.Schedule to MaterialTheme.colorScheme.onSurfaceVariant
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -225,7 +225,7 @@ fun PropositionCelebrationDialog(
             Text(
                 text = "Objectifs valides !",
                 fontWeight = FontWeight.Bold,
-                color = FreshnessCalculator.VERT,
+                color = TaskUrgencyCalculator.VERT,
             )
         },
         text = {
@@ -252,7 +252,7 @@ fun PropositionCelebrationDialog(
                     text = "Vous etes sur la bonne voie vers un foyer propre !",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = FreshnessCalculator.VERT,
+                    color = TaskUrgencyCalculator.VERT,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 TextButton(onClick = { showEasterEgg = !showEasterEgg }) {

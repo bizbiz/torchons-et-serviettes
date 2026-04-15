@@ -35,8 +35,9 @@ class Task(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # Gamification (P2)
     weight: Mapped[int] = mapped_column(Integer, default=1)
-    # Tolerance au retard (multiplicateur applique a l'intervalle nominal
-    # pour obtenir la demi-vie de la freshness). Voir TaskTolerance.
+    # Tier de priorite pour le selecteur "la plus urgente" sur la home page.
+    # Aucun impact sur l'etat visuel d'une tache ni sur le fait qu'elle soit
+    # en retard (cf v0.10.0, refonte freshness -> due_date). Voir TaskTolerance.
     tolerance: Mapped[TaskTolerance] = mapped_column(
         SAEnum(TaskTolerance, name="task_tolerance"),
         nullable=False,

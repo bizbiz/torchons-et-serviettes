@@ -42,9 +42,9 @@ class HomeRepository @Inject constructor(
             entity?.let { decode<List<Suggestion>>(it.jsonContent) }
         }
 
-    suspend fun refreshSuggestions(freshnessThreshold: Double): Boolean {
+    suspend fun refreshSuggestions(): Boolean {
         return try {
-            val response = apiService.getSuggestions(freshnessThreshold)
+            val response = apiService.getSuggestions()
             if (response.isSuccessful) {
                 val data = response.body() ?: emptyList()
                 snapshotDao.upsert(

@@ -204,11 +204,9 @@ interface ApiService {
 
     // --- Gamification ---
 
-    /** Suggestions de taches. */
+    /** Suggestions de taches (la plus urgente + meilleure affinite). */
     @GET("suggestions")
-    suspend fun getSuggestions(
-        @Query("freshness_threshold") freshnessThreshold: Double = 80.0
-    ): Response<List<Suggestion>>
+    suspend fun getSuggestions(): Response<List<Suggestion>>
 
     /** Recuperer les affinites du user courant pour toutes les taches. */
     @GET("my-affinities")

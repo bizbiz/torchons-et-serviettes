@@ -229,10 +229,6 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; h
         <h3 style="cursor:pointer" onclick="document.getElementById('advanced-content').style.display=document.getElementById('advanced-content').style.display==='none'?'block':'none'">⚙️ Options avancees ▾</h3>
         <div id="advanced-content" style="display:none;margin-top:12px">
           <div class="setting-row">
-            <div><div class="setting-label">Seuil de suggestion : <span id="s-threshold-label">10</span>%</div><div class="setting-desc">Les taches sont suggerees quand leur fraicheur passe sous ce seuil</div></div>
-            <input type="range" id="s-threshold" min="5" max="95" value="10" style="width:180px" oninput="document.getElementById('s-threshold-label').textContent=this.value" onchange="saveSetting('freshness_threshold',parseInt(this.value))">
-          </div>
-          <div class="setting-row">
             <div><div class="setting-label">Renouvellement : <span id="s-expiry-label">6</span> mois</div><div class="setting-desc">Apres cette duree, l'app redemandera affinite et effort pour chaque tache</div></div>
             <input type="range" id="s-expiry" min="1" max="12" value="6" style="width:180px" oninput="document.getElementById('s-expiry-label').textContent=this.value" onchange="saveSetting('affinity_expiry_months',parseInt(this.value))">
           </div>
@@ -363,12 +359,19 @@ document.querySelectorAll('.sidebar nav a').forEach(link => {
   });
 });
 
-function fc(f) { return f >= 80 ? 'var(--green)' : f >= 50 ? 'var(--yellow)' : f >= 25 ? 'var(--orange)' : 'var(--red)'; }
+function stateColor(state) { return state === 'RED' ? 'var(--red)' : state === 'ORANGE' ? 'var(--orange)' : 'var(--green)'; }
+function countdownFromDays(d) {
+  if (d > 1) return `dans ${d} j`;
+  if (d === 1) return 'demain';
+  if (d === 0) return "a faire aujourd'hui";
+  if (d === -1) return "en retard d'1 j";
+  return `en retard de ${-d} j`;
+}
 
 // === ACCUEIL ===
 async function loadHome() {
   const [suggestions, inProgress, fairShare] = await Promise.all([
-    api('/suggestions?freshness_threshold=10'), api('/in-progress'), api('/fair-share/status'),
+    api('/suggestions'), api('/in-progress'), api('/fair-share/status'),
   ]);
   const el = document.getElementById('home-content');
   let html = '';
@@ -395,11 +398,11 @@ async function loadHome() {
     suggestions.forEach(s => {
       const cls = s.reason === 'urgent' ? 'urgent' : 'affinity';
       const label = s.reason === 'urgent' ? '⚠️ La plus urgente' : '❤️ Tu aimes bien';
+      const sc = stateColor(s.state);
       html += `<div class="card suggestion ${cls}">
         <div class="reason" style="color:${s.reason==='urgent'?'var(--red)':'var(--green)'}">${label}</div>
         <h3>${s.title}</h3>
-        <div class="freshness-bar"><div class="freshness-fill" style="width:${s.freshness}%;background:${fc(s.freshness)}"></div></div>
-        <span style="font-size:12px;color:${fc(s.freshness)};font-weight:600">${Math.round(s.freshness)}%</span>
+        <div style="font-size:13px;color:${sc};font-weight:600;margin:4px 0 8px">${countdownFromDays(s.days_until_due)}</div>
         <div class="btn-row"><button class="btn btn-outline" onclick="startT('${s.task_id}')">En cours</button><button class="btn btn-green" onclick="complete('${s.task_id}')">Fait !</button></div></div>`;
     });
     html += '</div>';
@@ -425,31 +428,60 @@ function renderChips() {
   document.getElementById('categories-chips').innerHTML = h;
 }
 function fCat(id) { selCat=id; renderChips(); renderTasks(); }
-function intervalHours(rule){
-  if(!rule) return Infinity;
-  if(rule.type==='interval') return (rule.every_n_days||1)*24;
-  if(rule.type==='weekdays'){const n=(rule.days||[]).length; return n?(7/n)*24:Infinity;}
-  if(rule.type==='monthly') return 30.44*24;
-  if(rule.type==='custom') return (rule.every_n_weeks||1)*7*24;
-  if(rule.type==='monthly_variable'){const n=(rule.days_per_month||{})[String(new Date().getMonth()+1)]; return n?n*24:30.44*24;}
-  return Infinity;
+function nominalIntervalDays(rule){
+  if(!rule) return 0;
+  if(rule.type==='interval') return Math.max(1, rule.every_n_days||1);
+  if(rule.type==='weekdays'){const n=(rule.days||[]).length; return n?Math.max(1, Math.round(7/n)):0;}
+  if(rule.type==='monthly') return 30;
+  if(rule.type==='custom') return Math.max(1, (rule.every_n_weeks||1)*7);
+  if(rule.type==='monthly_variable'){const v=Object.values(rule.days_per_month||{}).filter(x=>x>0); return v.length?Math.max(1,Math.round(v.reduce((a,b)=>a+b,0)/v.length)):30;}
+  return 0;
 }
-const TOL_MULT={STRICT:0.5,NORMAL:1.0,SOUPLE:2.0};
+function dueDateFromTask(t, lastCompleted){
+  if(!lastCompleted) return new Date(t.created_at);
+  if(!t.recurrence_rule) return null;
+  const last = new Date(lastCompleted);
+  const r = t.recurrence_rule;
+  if(r.type==='interval') return new Date(last.getTime()+(r.every_n_days||1)*86400000);
+  // Pour les autres types, approximation : last + nominal_interval (cote web on simplifie).
+  const n = nominalIntervalDays(r);
+  return n>0 ? new Date(last.getTime()+n*86400000) : null;
+}
+function urgencyState(due, today, nominal){
+  if(!due) return 'GREEN';
+  const dueDay = new Date(due.getFullYear(),due.getMonth(),due.getDate());
+  const todayDay = new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  if(todayDay > dueDay) return 'RED';
+  const window = Math.max(0, Math.floor(nominal*0.10));
+  const orangeStart = new Date(dueDay.getTime() - window*86400000);
+  return todayDay >= orangeStart ? 'ORANGE' : 'GREEN';
+}
+function urgencyOrder(state){ return state==='RED'?0:state==='ORANGE'?1:2; }
+function daysBetween(due, today){
+  if(!due) return 0;
+  const dueDay = new Date(due.getFullYear(),due.getMonth(),due.getDate()).getTime();
+  const todayDay = new Date(today.getFullYear(),today.getMonth(),today.getDate()).getTime();
+  return Math.round((dueDay-todayDay)/86400000);
+}
 function renderTasks() {
   let tasks = selCat ? allTasks.filter(t=>t.category_id===selCat) : allTasks;
+  const today = new Date();
   tasks = tasks.map(t => {
     const cs = allComps.filter(c=>c.task_id===t.id);
     const last = cs.length?cs.reduce((a,b)=>a.completed_at>b.completed_at?a:b):null;
-    let f=0;if(last){const base=intervalHours(t.recurrence_rule);const hl=base*(TOL_MULT[t.tolerance]||1);if(isFinite(hl)&&hl>0){const h=(Date.now()-new Date(last.completed_at).getTime())/3600000;f=Math.max(0,Math.min(100,100*Math.exp(-0.693*h/hl)));}else{f=100;}}
+    const due = dueDateFromTask(t, last?.completed_at);
+    const nominal = nominalIntervalDays(t.recurrence_rule);
+    const state = urgencyState(due, today, nominal);
+    const days = daysBetween(due, today);
     const cat=allCats.find(c=>c.id===t.category_id);
-    return {...t,freshness:f,catName:cat?.name,catColor:cat?.color};
-  }).sort((a,b)=>a.freshness-b.freshness);
+    return {...t,state,days,catName:cat?.name,catColor:cat?.color};
+  }).sort((a,b)=>{const o=urgencyOrder(a.state)-urgencyOrder(b.state);return o!==0?o:a.days-b.days;});
 
   if(!tasks.length){document.getElementById('tasks-container').innerHTML='<div class="empty">Aucune tache</div>';return;}
   document.getElementById('tasks-container').innerHTML = tasks.map(t=>`<div class="task-row" onclick="complete('${t.id}')">
-    <div class="freshness-dot" style="background:${fc(t.freshness)}"></div>
+    <div class="freshness-dot" style="background:${stateColor(t.state)}"></div>
     <div class="task-info"><div class="task-title">${t.title}</div>
-    <div class="task-meta">${t.catName?`<span class="badge" style="background:${t.catColor}20;color:${t.catColor}">${t.catName}</span>`:''}<span>${Math.round(t.freshness)}%</span></div></div>
+    <div class="task-meta">${t.catName?`<span class="badge" style="background:${t.catColor}20;color:${t.catColor}">${t.catName}</span>`:''}<span>${countdownFromDays(t.days)}</span></div></div>
   </div>`).join('');
 }
 
@@ -572,8 +604,6 @@ async function loadSettings() {
     document.getElementById('s-notif-hour').value = settings.notif_hour;
     document.getElementById('s-notif-hour-label').textContent = settings.notif_hour + 'h00';
     document.getElementById('s-affinity-popup').checked = settings.affinity_popup_enabled;
-    document.getElementById('s-threshold').value = settings.freshness_threshold;
-    document.getElementById('s-threshold-label').textContent = settings.freshness_threshold;
     document.getElementById('s-expiry').value = settings.affinity_expiry_months;
     document.getElementById('s-expiry-label').textContent = settings.affinity_expiry_months;
 

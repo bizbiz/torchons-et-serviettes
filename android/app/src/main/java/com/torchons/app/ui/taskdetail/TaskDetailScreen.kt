@@ -77,7 +77,7 @@ import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.common.randomCelebration
 import com.torchons.app.ui.user.UserProfileDialog
 import com.torchons.app.ui.user.UserProfileRequest
-import com.torchons.app.util.FreshnessCalculator
+import com.torchons.app.util.TaskUrgencyCalculator
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -316,7 +316,12 @@ fun TaskDetailScreen(
 
             else -> {
                 val task = uiState.task!!
-                val freshnessColor = FreshnessCalculator.getFreshnessColor(uiState.freshness)
+                val stateColor = TaskUrgencyCalculator.stateColor(uiState.urgencyState)
+                val stateLabel = when (uiState.urgencyState) {
+                    TaskUrgencyCalculator.State.GREEN -> "A jour"
+                    TaskUrgencyCalculator.State.ORANGE -> "A faire bientot"
+                    TaskUrgencyCalculator.State.RED -> "En retard"
+                }
 
                 LazyColumn(
                     modifier = Modifier
@@ -325,7 +330,7 @@ fun TaskDetailScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Section fraicheur
+                    // Section etat d'urgence (couleur + countdown)
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -343,35 +348,24 @@ fun TaskDetailScreen(
                                         modifier = Modifier
                                             .size(16.dp)
                                             .clip(CircleShape)
-                                            .background(freshnessColor)
+                                            .background(stateColor)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Fraicheur : ${FreshnessCalculator.getFreshnessLabel(uiState.freshness)}",
+                                        text = stateLabel,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = freshnessColor
-                                    )
-                                    Spacer(modifier = Modifier.weight(1f))
-                                    Text(
-                                        text = "${uiState.freshness.toInt()}%",
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = freshnessColor
+                                        color = stateColor
                                     )
                                 }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                LinearProgressIndicator(
-                                    progress = { (uiState.freshness / 100.0).toFloat().coerceIn(0f, 1f) },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(8.dp)
-                                        .clip(RoundedCornerShape(4.dp)),
-                                    color = freshnessColor,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                )
+                                if (uiState.countdownLabel.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = uiState.countdownLabel,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                     }
@@ -506,11 +500,18 @@ fun TaskDetailScreen(
                                 }
 
                                 // Tolerance au retard
-                                Text(
-                                    text = "Tolerance au retard",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Tolerance au retard",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    com.torchons.app.ui.common.InfoTooltip(
+                                        title = "A quoi sert la tolerance ?",
+                                        description = com.torchons.app.ui.common.TOLERANCE_INFO_TEXT,
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = formatTolerance(task.tolerance),
@@ -531,7 +532,7 @@ fun TaskDetailScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(16.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = FreshnessCalculator.VERT.copy(alpha = 0.15f)
+                                    containerColor = TaskUrgencyCalculator.VERT.copy(alpha = 0.15f)
                                 ),
                             ) {
                                 CelebrationCardContent(
@@ -547,7 +548,7 @@ fun TaskDetailScreen(
                                     .height(56.dp),
                                 shape = RoundedCornerShape(16.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = FreshnessCalculator.VERT
+                                    containerColor = TaskUrgencyCalculator.VERT
                                 )
                             ) {
                                 Icon(
@@ -853,14 +854,14 @@ private fun CompletionCard(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(FreshnessCalculator.VERT.copy(alpha = 0.15f)),
+                    .background(TaskUrgencyCalculator.VERT.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = FreshnessCalculator.VERT
+                    tint = TaskUrgencyCalculator.VERT
                 )
             }
 

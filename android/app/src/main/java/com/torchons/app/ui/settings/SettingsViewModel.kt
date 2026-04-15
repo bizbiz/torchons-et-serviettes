@@ -24,7 +24,6 @@ data class UserSettingsState(
     val notifHour: Int = 9,
     val affinityPopup: Boolean = true,
     val affinityExpiry: Int = 6,
-    val freshnessThreshold: Int = 10,
     val fairShareTolerance: Int = 30,
     val homeSsids: List<String> = emptyList(),
     val isLoaded: Boolean = false
@@ -85,7 +84,6 @@ class SettingsViewModel @Inject constructor(
                         notifHour = (data["notif_hour"] as? Double)?.toInt() ?: 9,
                         affinityPopup = data["affinity_popup_enabled"] as? Boolean ?: true,
                         affinityExpiry = (data["affinity_expiry_months"] as? Double)?.toInt() ?: 6,
-                        freshnessThreshold = (data["freshness_threshold"] as? Double)?.toInt() ?: 10,
                         fairShareTolerance = (data["fair_share_tolerance_percent"] as? Double)?.toInt() ?: 30,
                         homeSsids = (data["home_ssids"] as? List<*>)?.map { it.toString() } ?: emptyList(),
                         isLoaded = true,
@@ -142,7 +140,6 @@ class SettingsViewModel @Inject constructor(
         tokenManager.setNotifCompleted(s.notifCompleted)
         tokenManager.setNotifHour(s.notifHour)
         tokenManager.setAffinityPopup(s.affinityPopup)
-        tokenManager.setFreshnessThreshold(s.freshnessThreshold)
         tokenManager.setAffinityExpiry(s.affinityExpiry)
         // home_ssids : remplacer entierement (clear + re-add)
         tokenManager.setHomeSsids(s.homeSsids)
@@ -154,7 +151,6 @@ class SettingsViewModel @Inject constructor(
     fun setNotifHour(v: Int) { _settings.value = _settings.value.copy(notifHour = v); updateSetting("notif_hour", v) }
     fun setAffinityPopup(v: Boolean) { _settings.value = _settings.value.copy(affinityPopup = v); updateSetting("affinity_popup_enabled", v) }
     fun setAffinityExpiry(v: Int) { _settings.value = _settings.value.copy(affinityExpiry = v); updateSetting("affinity_expiry_months", v) }
-    fun setFreshnessThreshold(v: Int) { _settings.value = _settings.value.copy(freshnessThreshold = v); updateSetting("freshness_threshold", v) }
     fun setFairShareTolerance(v: Int) { _settings.value = _settings.value.copy(fairShareTolerance = v); updateSetting("fair_share_tolerance_percent", v) }
 
     fun addHomeSsid(ssid: String) {

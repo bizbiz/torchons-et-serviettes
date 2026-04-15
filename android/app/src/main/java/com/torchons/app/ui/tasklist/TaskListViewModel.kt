@@ -13,8 +13,9 @@ import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
-import com.torchons.app.util.FreshnessCalculator
+import com.torchons.app.util.TaskUrgencyCalculator
 import com.torchons.app.util.WifiHelper
+import java.time.LocalDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -32,9 +33,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Donnees d'une tache avec sa fraicheur calculee + infos d'affichage
- * pre-resolues (categorie, piece). Pre-calcule dans applyFilters pour
- * eviter au TaskCard de faire des lookups dans des maps a chaque recompose.
+ * Donnees d'une tache avec son etat d'urgence calcule (modele due_date) +
+ * infos d'affichage pre-resolues (categorie, piece). Pre-calcule dans
+ * applyFilters pour eviter au TaskCard de faire des lookups dans des maps
+ * a chaque recompose.
  *
  * @Immutable : permet a Compose de smart-skip les items LazyColumn dont la
  * valeur n'a pas change (meme contenu = pas de recompose). Sans cette
@@ -42,9 +44,11 @@ import javax.inject.Inject
  * instable et chaque emission de la liste recompose tous les items visibles.
  */
 @Immutable
-data class TaskWithFreshness(
+data class TaskWithUrgency(
     val task: Task,
-    val freshness: Double,
+    val state: TaskUrgencyCalculator.State,
+    val daysUntilDue: Int,
+    val countdownLabel: String,
     val categoryName: String?,
     val categoryColor: String?,
     val roomName: String?,
@@ -58,7 +62,7 @@ enum class FilterState { OFF, HIGH, LOW }
 data class TaskListUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
-    val tasks: List<TaskWithFreshness> = emptyList(),
+    val tasks: List<TaskWithUrgency> = emptyList(),
     val categories: List<Category> = emptyList(),
     val selectedCategoryIds: Set<String> = emptySet(),
     val isAtHome: Boolean = true,
@@ -86,9 +90,9 @@ data class TaskListUiState(
  * combine automatiquement a chaque changement de filtre.
  *
  * Note : filterTodo est ON par defaut. Au demarrage, on n'affiche que les
- * taches urgentes (freshness < freshnessThreshold), ce qui reduit
- * drastiquement le nombre d'items rendu et donne un scroll fluide d'emblee.
- * L'utilisateur peut desactiver le filtre via la chip pour voir tout.
+ * taches en etat ORANGE ou RED (du / en retard), ce qui reduit drastiquement
+ * le nombre d'items rendu et donne un scroll fluide d'emblee. L'utilisateur
+ * peut desactiver le filtre via la chip pour voir tout.
  */
 private data class TaskListFilters(
     val filterTodo: Boolean = true,
@@ -100,7 +104,6 @@ private data class TaskListFilters(
     val selectedCategoryIds: Set<String> = emptySet(),
     val showAllTasks: Boolean = false,
     val myAffinities: Map<String, Int> = emptyMap(),
-    val freshnessThreshold: Int = 10,
 )
 
 /** Conteneur interne pour le combine des 5 flows. */
@@ -123,7 +126,7 @@ private data class ProcessedTaskList(
 
 /** Resultat du filtrage pur. */
 private data class FilteredResult(
-    val tasks: List<TaskWithFreshness>,
+    val tasks: List<TaskWithUrgency>,
     val rooms: List<Room>,
     val isAtHome: Boolean,
     val homeTasksHidden: Int,
@@ -238,14 +241,6 @@ class TaskListViewModel @Inject constructor(
                         (it["task_id"] as? String ?: "") to ((it["score"] as? Double)?.toInt() ?: 5)
                     }
                     filtersFlow.value = filtersFlow.value.copy(myAffinities = affinities)
-                }
-            } catch (_: Exception) {}
-
-            try {
-                val sResp = apiService.getSettings()
-                if (sResp.isSuccessful) {
-                    val threshold = (sResp.body()?.get("freshness_threshold") as? Double)?.toInt() ?: 10
-                    filtersFlow.value = filtersFlow.value.copy(freshnessThreshold = threshold)
                 }
             } catch (_: Exception) {}
 
@@ -425,20 +420,27 @@ class TaskListViewModel @Inject constructor(
             }
         }
         val categoriesById = categories.associateBy { it.id }
+        val today = LocalDate.now()
 
-        var tasksWithFreshness = filteredTasks.map { task ->
+        var tasksWithUrgency = filteredTasks.map { task ->
             val lastCompletion = lastCompletionByTaskId[task.id]
-            val freshness = FreshnessCalculator.calculateFreshness(
+            val nominal = TaskUrgencyCalculator.nominalIntervalDays(task.recurrenceRule)
+            val dueDate = TaskUrgencyCalculator.computeDueDate(
                 lastCompletedAt = lastCompletion?.completedAt,
                 rule = task.recurrenceRule,
-                tolerance = task.tolerance,
+                createdAt = task.createdAt,
             )
+            val state = TaskUrgencyCalculator.computeState(dueDate, today, nominal)
+            val daysUntilDue = TaskUrgencyCalculator.daysUntilDue(dueDate, today)
+            val countdownLabel = TaskUrgencyCalculator.countdownLabel(dueDate, today)
             val category = task.categoryId?.let { categoriesById[it] }
             val room = task.roomId?.let { roomsById[it] }
 
-            TaskWithFreshness(
+            TaskWithUrgency(
                 task = task,
-                freshness = freshness,
+                state = state,
+                daysUntilDue = daysUntilDue,
+                countdownLabel = countdownLabel,
                 categoryName = category?.name,
                 categoryColor = category?.color,
                 roomName = room?.name,
@@ -447,36 +449,40 @@ class TaskListViewModel @Inject constructor(
         }
 
         if (filters.filterTodo) {
-            tasksWithFreshness = tasksWithFreshness.filter {
-                it.freshness < filters.freshnessThreshold.toDouble()
+            tasksWithUrgency = tasksWithUrgency.filter {
+                it.state != TaskUrgencyCalculator.State.GREEN
             }
         }
 
         when (filters.filterRecurrence) {
-            FilterState.HIGH -> tasksWithFreshness = tasksWithFreshness.filter { it.task.recurrenceRule != null }
-            FilterState.LOW -> tasksWithFreshness = tasksWithFreshness.filter { it.task.recurrenceRule == null }
+            FilterState.HIGH -> tasksWithUrgency = tasksWithUrgency.filter { it.task.recurrenceRule != null }
+            FilterState.LOW -> tasksWithUrgency = tasksWithUrgency.filter { it.task.recurrenceRule == null }
             FilterState.OFF -> {}
         }
 
         when (filters.filterEffort) {
-            FilterState.HIGH -> tasksWithFreshness = tasksWithFreshness.filter { it.task.weight >= 7 }
-            FilterState.LOW -> tasksWithFreshness = tasksWithFreshness.filter { it.task.weight <= 3 }
+            FilterState.HIGH -> tasksWithUrgency = tasksWithUrgency.filter { it.task.weight >= 7 }
+            FilterState.LOW -> tasksWithUrgency = tasksWithUrgency.filter { it.task.weight <= 3 }
             FilterState.OFF -> {}
         }
 
         if (filters.filterAffinity != FilterState.OFF) {
-            tasksWithFreshness = tasksWithFreshness.map {
+            tasksWithUrgency = tasksWithUrgency.map {
                 it.copy(myAffinity = filters.myAffinities[it.task.id])
             }
-            tasksWithFreshness = when (filters.filterAffinity) {
-                FilterState.HIGH -> tasksWithFreshness.filter { (it.myAffinity ?: 5) >= 7 }
-                FilterState.LOW -> tasksWithFreshness.filter { (it.myAffinity ?: 5) <= 4 }
-                else -> tasksWithFreshness
+            tasksWithUrgency = when (filters.filterAffinity) {
+                FilterState.HIGH -> tasksWithUrgency.filter { (it.myAffinity ?: 5) >= 7 }
+                FilterState.LOW -> tasksWithUrgency.filter { (it.myAffinity ?: 5) <= 4 }
+                else -> tasksWithUrgency
             }
         }
 
-        tasksWithFreshness = tasksWithFreshness.sortedBy { FreshnessCalculator.getUrgencyOrder(it.freshness) }
+        // Tri : etat le plus urgent en premier (RED > ORANGE > GREEN), tiebreak
+        // par days_until_due asc (les plus en retard / les plus proches d'abord).
+        tasksWithUrgency = tasksWithUrgency.sortedWith(
+            compareBy({ TaskUrgencyCalculator.urgencyOrder(it.state) }, { it.daysUntilDue })
+        )
 
-        return FilteredResult(tasksWithFreshness, availableRooms, isAtHome, homeTasksHidden)
+        return FilteredResult(tasksWithUrgency, availableRooms, isAtHome, homeTasksHidden)
     }
 }

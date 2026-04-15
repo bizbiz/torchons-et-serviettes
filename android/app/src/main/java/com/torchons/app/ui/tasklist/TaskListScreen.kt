@@ -56,7 +56,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.ui.common.CelebrationOverlay
-import com.torchons.app.util.FreshnessCalculator
 
 /**
  * Ecran principal affichant la liste des taches.
@@ -490,10 +489,10 @@ fun TaskListScreen(
                                 items = uiState.tasks,
                                 key = { it.task.id },
                                 contentType = { "task_card" },
-                            ) { taskWithFreshness ->
+                            ) { taskWithUrgency ->
                                 TaskCard(
-                                    taskWithFreshness = taskWithFreshness,
-                                    isCelebrating = uiState.celebratingTaskId == taskWithFreshness.task.id,
+                                    taskWithUrgency = taskWithUrgency,
+                                    isCelebrating = uiState.celebratingTaskId == taskWithUrgency.task.id,
                                     onClick = onCardClick,
                                     onComplete = onCardComplete,
                                     onHistorical = onCardHistorical,

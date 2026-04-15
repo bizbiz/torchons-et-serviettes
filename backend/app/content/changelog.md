@@ -1,5 +1,26 @@
 # Notes de version
 
+## v0.10.0 — 2026-04-15
+
+### Refonte du modele de fraicheur — fini la demi-vie, place a l'echeance
+- Avant : chaque tache avait un score de "fraicheur" qui decroissait de facon exponentielle (demi-vie). Probleme : pas intuitif. Une tache "litiere tous les 2 jours" faite il y a 4 jours n'etait toujours qu'en orange, alors que mentalement elle est "en retard de 2 jours".
+- Maintenant : chaque tache a une **echeance** (`due_date = derniere_completion + intervalle`) et l'etat est calcule en jours :
+  - **Vert** : pas encore due (loin de l'echeance)
+  - **Orange** : du aujourd'hui ou bientot (fenetre de `floor(intervalle * 0.10)` jours avant l'echeance — pour 7j elle est de 0 jour, pour 30j de 3 jours, pour 60j de 6 jours)
+  - **Rouge** : en retard (apres l'echeance)
+- Sur les cartes : couleur + texte countdown ("dans 3j", "a faire aujourd'hui", "en retard de 2 j") affiches systematiquement.
+- Au passage, le scenario d'origine est corrige : litiere 2j faite le 11/04 -> rouge "en retard de 2 j" le 15/04 (avant : encore orange, ce qui n'avait aucun sens).
+
+### Tolerance repurposee — uniquement pour le selecteur "la plus urgente"
+- La tolerance (STRICT / NORMAL / SOUPLE) ne change plus rien a l'etat affiche d'une tache ni au moment ou elle passe en retard.
+- Son seul role : prioriser le selecteur de la "tache la plus urgente" sur la home page :
+  - STRICT en retard passe avant NORMAL en retard, qui passe avant SOUPLE en retard. Au sein d'un tier, on prend celle avec le plus gros ratio (jours de retard / intervalle).
+  - Si aucune tache n'est en retard, fallback sur les Oranges (toutes tolerances confondues, plus proche de l'echeance d'abord).
+- Une bulle ℹ a cote du selecteur de tolerance (dans le detail/edition/creation d'une tache) explique tout ca.
+
+### Nettoyage
+- Suppression du knob "Seuil de suggestion" dans les reglages avances (le modele est maintenant deterministe, plus besoin de le configurer).
+
 ## v0.9.0 — 2026-04-14
 
 ### Catalogue de templates

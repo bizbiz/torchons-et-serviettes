@@ -34,7 +34,7 @@ import com.torchons.app.data.model.MaintenanceRateResponse
 import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.RetardResponse
 import com.torchons.app.data.model.UserPace
-import com.torchons.app.util.FreshnessCalculator
+import com.torchons.app.util.TaskUrgencyCalculator
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -136,7 +136,7 @@ private fun CardMoi(
                         modifier = Modifier
                             .size(20.dp)
                             .clip(CircleShape)
-                            .background(FreshnessCalculator.VERT),
+                            .background(TaskUrgencyCalculator.VERT),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -161,7 +161,7 @@ private fun CardMoi(
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp)),
-                color = if (quotaReached) FreshnessCalculator.VERT else MaterialTheme.colorScheme.primary,
+                color = if (quotaReached) TaskUrgencyCalculator.VERT else MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
             Spacer(modifier = Modifier.height(6.dp))
@@ -230,7 +230,7 @@ private fun CardFoyer(
                     Icon(
                         Icons.Default.Check,
                         contentDescription = null,
-                        tint = FreshnessCalculator.VERT,
+                        tint = TaskUrgencyCalculator.VERT,
                         modifier = Modifier.size(16.dp),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -238,7 +238,7 @@ private fun CardFoyer(
                         text = "Zero retard",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        color = FreshnessCalculator.VERT,
+                        color = TaskUrgencyCalculator.VERT,
                     )
                 }
                 if (maintPerDay > 0) {
@@ -254,7 +254,7 @@ private fun CardFoyer(
                     text = formatMinutes(retardMin),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = FreshnessCalculator.ROUGE,
+                    color = TaskUrgencyCalculator.ROUGE,
                 )
                 Text(
                     text = "$retardTasks t. en retard",
@@ -266,7 +266,7 @@ private fun CardFoyer(
                     Text(
                         text = "Rythme insuffisant",
                         style = MaterialTheme.typography.labelSmall,
-                        color = FreshnessCalculator.ROUGE,
+                        color = TaskUrgencyCalculator.ROUGE,
                     )
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {

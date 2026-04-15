@@ -124,8 +124,6 @@ class HomeViewModel @Inject constructor(
     private val _affinityPopupEnabled = MutableStateFlow(true)
     val affinityPopupEnabled: StateFlow<Boolean> = _affinityPopupEnabled.asStateFlow()
 
-    private var cachedThreshold = 10.0
-
     init {
         observeCache()
         refresh()
@@ -149,7 +147,6 @@ class HomeViewModel @Inject constructor(
             }.collect { cached ->
                 val popupEnabled = (cached.settings?.get("affinity_popup_enabled") as? Boolean) ?: true
                 _affinityPopupEnabled.value = popupEnabled
-                cachedThreshold = (cached.settings?.get("freshness_threshold") as? Double) ?: cachedThreshold
 
                 val firstPending = cached.pending?.firstOrNull()
                 val hasCache = cached.suggestions != null || cached.inProgress != null
@@ -178,22 +175,15 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isRefreshing = true)
 
-            // Settings en premier pour avoir le freshness_threshold a jour.
+            // Settings en premier pour avoir affinity_popup_enabled a jour.
             val settingsOk = homeRepository.refreshUserSettings()
-            val settings = try {
-                homeRepository.observeUserSettings().first()
-            } catch (_: Exception) {
-                null
-            }
-            val threshold = (settings?.get("freshness_threshold") as? Double) ?: cachedThreshold
-            cachedThreshold = threshold
 
             // Sub-fetches en parallele. On rafraichit aussi rooms/categories/tasks
             // pour que les SuggestionCard puissent resoudre leur piece+categorie
             // au premier affichage Home (sinon il faut visiter TaskListScreen
             // d'abord pour que ces caches se remplissent).
             val results = listOf(
-                async { homeRepository.refreshSuggestions(threshold) },
+                async { homeRepository.refreshSuggestions() },
                 async { homeRepository.refreshInProgress() },
                 async { homeRepository.refreshFairShare() },
                 async { homeRepository.refreshPendingAffinity(6) },

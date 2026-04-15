@@ -30,7 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.torchons.app.data.model.PendingAffinity
-import com.torchons.app.util.FreshnessCalculator
+import com.torchons.app.util.TaskUrgencyCalculator
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -142,7 +142,7 @@ fun RatingDialog(
                 )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Pas du tout", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-                    Text("A fond !", style = MaterialTheme.typography.labelSmall, color = FreshnessCalculator.VERT)
+                    Text("A fond !", style = MaterialTheme.typography.labelSmall, color = TaskUrgencyCalculator.VERT)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

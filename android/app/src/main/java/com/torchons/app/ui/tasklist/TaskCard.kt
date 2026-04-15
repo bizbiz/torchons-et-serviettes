@@ -32,7 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.torchons.app.ui.common.CelebrationCardContent
 import com.torchons.app.ui.common.randomCelebration
-import com.torchons.app.util.FreshnessCalculator
+import com.torchons.app.util.TaskUrgencyCalculator
 
 /**
  * Carte tache simplifiee — version v0.5.5/v0.5.6.
@@ -51,27 +51,27 @@ import com.torchons.app.util.FreshnessCalculator
  */
 @Composable
 fun TaskCard(
-    taskWithFreshness: TaskWithFreshness,
+    taskWithUrgency: TaskWithUrgency,
     isCelebrating: Boolean,
     onClick: (String) -> Unit,
     onComplete: (String) -> Unit,
     onHistorical: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val task = taskWithFreshness.task
+    val task = taskWithUrgency.task
     val taskId = task.id
-    val freshnessColor = FreshnessCalculator.getFreshnessColor(taskWithFreshness.freshness)
+    val stateColor = TaskUrgencyCalculator.stateColor(taskWithUrgency.state)
     val celebration = remember(taskId, isCelebrating) {
         if (isCelebrating) randomCelebration() else null
     }
 
     // Depuis v0.6.0 : le titre est propre (sans suffixe " — Piece"), la piece
-    // vient directement de TaskWithFreshness.roomName / roomEmoji (pre-resolus
+    // vient directement de TaskWithUrgency.roomName / roomEmoji (pre-resolus
     // dans applyFilters via task.roomId).
     val displayTitle = task.title
-    val roomLabel = taskWithFreshness.roomName?.let { name ->
-        if (!taskWithFreshness.roomEmoji.isNullOrBlank()) {
-            "${taskWithFreshness.roomEmoji} $name"
+    val roomLabel = taskWithUrgency.roomName?.let { name ->
+        if (!taskWithUrgency.roomEmoji.isNullOrBlank()) {
+            "${taskWithUrgency.roomEmoji} $name"
         } else {
             name
         }
@@ -97,16 +97,16 @@ fun TaskCard(
                 .height(72.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Bordure verticale gauche colorée (couleur freshness) — donne
-            // l'info "en retard ou pas" en un coup d'oeil.
+            // Bordure verticale gauche coloree (etat d'urgence) — info
+            // "en retard ou pas" en un coup d'oeil.
             Box(
                 modifier = Modifier
                     .width(4.dp)
                     .fillMaxHeight()
-                    .background(freshnessColor),
+                    .background(stateColor),
             )
 
-            // Contenu principal : titre + piece
+            // Contenu principal : titre + piece + countdown
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -124,6 +124,14 @@ fun TaskCard(
                         text = roomLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (taskWithUrgency.countdownLabel.isNotEmpty()) {
+                    Text(
+                        text = taskWithUrgency.countdownLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = stateColor,
+                        fontWeight = FontWeight.Medium,
                     )
                 }
             }
@@ -148,7 +156,7 @@ fun TaskCard(
                 onClick = { onComplete(taskId) },
                 modifier = Modifier.size(48.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = FreshnessCalculator.VERT,
+                    containerColor = TaskUrgencyCalculator.VERT,
                     contentColor = Color.White,
                 ),
             ) {

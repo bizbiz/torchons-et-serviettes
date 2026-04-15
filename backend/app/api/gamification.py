@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -14,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.database import get_session
 from app.models.completion import TaskCompletion
+from app.models.enums import TaskTolerance, UrgencyState
 from app.models.fair_share import FairShareConfig
 from app.models.task import Task
 from app.models.task_affinity import TaskAffinity
@@ -21,7 +21,12 @@ from app.models.task_assignment import TaskAssignment
 from app.models.task_effort import TaskEffort
 from app.models.task_frequency_vote import TaskFrequencyVote
 from app.models.task_in_progress import TaskInProgress
-from app.services.recurrence import compute_freshness
+from app.services.recurrence import (
+    compute_days_until_due,
+    compute_due_date,
+    compute_nominal_interval_days,
+    compute_urgency_state,
+)
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
 
@@ -55,7 +60,8 @@ class SuggestionResponse(BaseModel):
     title: str
     category_id: UUID | None
     weight: int
-    freshness: float
+    state: str  # "GREEN" / "ORANGE" / "RED" — etat d'urgence au sens du modele echeance
+    days_until_due: int  # positif = dans le futur, 0 = aujourd'hui, negatif = en retard
     affinity_score: int
     reason: str  # "urgent" ou "affinity"
 
@@ -636,13 +642,39 @@ async def list_in_progress(
 
 # --- Suggestions ---
 
+def _build_suggestion(scored: dict, reason: str) -> SuggestionResponse:
+    """Construit un SuggestionResponse a partir d'un dict scored_tasks."""
+    return SuggestionResponse(
+        task_id=scored["task"].id,
+        title=scored["task"].title,
+        category_id=scored["task"].category_id,
+        weight=scored["task"].weight,
+        state=scored["state"].value,
+        days_until_due=scored["days_until_due"],
+        affinity_score=scored["affinity_score"],
+        reason=reason,
+    )
+
+
 @router.get("/suggestions", response_model=list[SuggestionResponse])
 async def get_suggestions(
-    freshness_threshold: float = 80.0,
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Retourne les suggestions de taches : la plus urgente et celle avec la meilleure affinite."""
+    """Retourne les suggestions de taches — la plus urgente + meilleure affinite.
+
+    Cascade "la plus urgente" (tier-based tolerance) :
+      1. Rouges STRICT  -> pick max ratio (days_overdue / nominal_interval)
+      2. sinon Rouges NORMAL -> idem
+      3. sinon Rouges SOUPLE -> idem
+      4. sinon Oranges (flat, toutes tolerances) -> pick min (due_date - today)
+      5. sinon pas de suggestion "urgent"
+
+    Cascade "tu aimes bien" (2e carte affinite) :
+      1. Rouges (toutes tolerances, excluant la plus urgente) -> max affinite normalisee
+      2. sinon Oranges (excluant la plus urgente) -> max affinite
+      3. sinon pas de 2e carte
+    """
     user_id = UUID(current["user_id"])
 
     # Taches assignees a l'user, actives, non supprimees
@@ -668,7 +700,7 @@ async def get_suggestions(
     if not tasks:
         return []
 
-    # Charger completions recentes
+    # Charger derniere completion par tache
     task_ids = [t.id for t in tasks]
     comp_result = await session.execute(
         select(TaskCompletion.task_id, func.max(TaskCompletion.completed_at)).where(
@@ -687,64 +719,84 @@ async def get_suggestions(
     )
     affinities = {row[0]: row[1] for row in aff_result.all()}
 
-    # Calculer affinites normalisees
+    # Affinites normalisees (pour le classement affinite cross-taches)
     aff_scores = [affinities.get(t.id, 5) for t in tasks]
     mean_aff = sum(aff_scores) / len(aff_scores) if aff_scores else 5.0
     std_aff = (sum((s - mean_aff) ** 2 for s in aff_scores) / len(aff_scores)) ** 0.5 if aff_scores else 1.0
     if std_aff == 0:
         std_aff = 1.0
 
-    # Calculer freshness et scores pour chaque tache
+    # Scoring par tache : due_date, state, ratio retard, affinite
+    today = datetime.now(timezone.utc).date()
     scored_tasks = []
     for task in tasks:
         last_comp = last_completions.get(task.id)
-        freshness = compute_freshness(
-            task.recurrence_rule, last_comp,
-            task.created_at, task.tolerance,
-        )
+        due_date = compute_due_date(task.recurrence_rule, last_comp, task.created_at)
+        nominal = compute_nominal_interval_days(task.recurrence_rule)
+        state = compute_urgency_state(due_date, today, nominal)
+        days_until = compute_days_until_due(due_date, today)
+        if days_until is None:
+            # Ponctuelle deja faite — n'apparait pas dans les suggestions.
+            continue
+        # Ratio de retard : (jours en retard) / intervalle nominal. Normalise
+        # l'urgence relative a l'intervalle (une quotidienne en retard de 3j
+        # bat une mensuelle en retard de 5j).
+        if state == UrgencyState.RED and nominal > 0:
+            ratio = (-days_until) / float(nominal)
+        else:
+            ratio = 0.0
+
         raw_aff = affinities.get(task.id, 5)
-        norm_aff = (raw_aff - mean_aff) / std_aff  # Positif = aime, negatif = deteste
+        norm_aff = (raw_aff - mean_aff) / std_aff
 
         scored_tasks.append({
             "task": task,
-            "freshness": freshness,
+            "due_date": due_date,
+            "state": state,
+            "days_until_due": days_until,
+            "overdue_ratio": ratio,
             "affinity_score": raw_aff,
             "norm_affinity": norm_aff,
-            "urgency_score": 100.0 - freshness,  # Plus c'est bas en freshness, plus c'est urgent
         })
 
-    suggestions = []
+    # Buckets par tier pour la cascade "la plus urgente"
+    red_strict = [t for t in scored_tasks if t["state"] == UrgencyState.RED and t["task"].tolerance == TaskTolerance.STRICT]
+    red_normal = [t for t in scored_tasks if t["state"] == UrgencyState.RED and t["task"].tolerance == TaskTolerance.NORMAL]
+    red_souple = [t for t in scored_tasks if t["state"] == UrgencyState.RED and t["task"].tolerance == TaskTolerance.SOUPLE]
+    oranges = [t for t in scored_tasks if t["state"] == UrgencyState.ORANGE]
 
-    # Ne suggerer que les taches a faire (freshness < seuil)
-    tasks_to_do = [t for t in scored_tasks if t["freshness"] < freshness_threshold]
-    if not tasks_to_do:
-        return []
+    most_urgent: dict | None = None
+    for tier in (red_strict, red_normal, red_souple):
+        if tier:
+            # Tri : ratio retard desc, tiebreak days_until_due asc (plus negatif
+            # = plus de jours de retard absolu).
+            most_urgent = max(
+                tier,
+                key=lambda t: (t["overdue_ratio"], -t["days_until_due"]),
+            )
+            break
+    if most_urgent is None and oranges:
+        # Cascade orange flat : plus proche de l'echeance (days_until_due asc, ponderee par nominal)
+        most_urgent = min(oranges, key=lambda t: t["days_until_due"])
 
-    # 1. Tache la plus urgente (freshness la plus basse)
-    most_urgent = min(tasks_to_do, key=lambda x: x["freshness"])
-    suggestions.append(SuggestionResponse(
-        task_id=most_urgent["task"].id,
-        title=most_urgent["task"].title,
-        category_id=most_urgent["task"].category_id,
-        weight=most_urgent["task"].weight,
-        freshness=most_urgent["freshness"],
-        affinity_score=most_urgent["affinity_score"],
-        reason="urgent",
-    ))
+    suggestions: list[SuggestionResponse] = []
+    if most_urgent is not None:
+        suggestions.append(_build_suggestion(most_urgent, "urgent"))
 
-    # 2. Tache avec la meilleure affinite parmi celles a faire (differente de la 1ere)
-    remaining = [t for t in tasks_to_do if t["task"].id != most_urgent["task"].id]
-    if remaining:
-        best_affinity = max(remaining, key=lambda x: x["norm_affinity"])
-        suggestions.append(SuggestionResponse(
-            task_id=best_affinity["task"].id,
-            title=best_affinity["task"].title,
-            category_id=best_affinity["task"].category_id,
-            weight=best_affinity["task"].weight,
-            freshness=best_affinity["freshness"],
-            affinity_score=best_affinity["affinity_score"],
-            reason="affinity",
-        ))
+    # Cascade affinite : rouges d'abord (toutes tolerances), sinon oranges.
+    reds_all = red_strict + red_normal + red_souple
+    exclude_id = most_urgent["task"].id if most_urgent else None
+    red_pool = [t for t in reds_all if t["task"].id != exclude_id]
+    orange_pool = [t for t in oranges if t["task"].id != exclude_id]
+
+    best_affinity: dict | None = None
+    if red_pool:
+        best_affinity = max(red_pool, key=lambda t: t["norm_affinity"])
+    elif orange_pool:
+        best_affinity = max(orange_pool, key=lambda t: t["norm_affinity"])
+
+    if best_affinity is not None:
+        suggestions.append(_build_suggestion(best_affinity, "affinity"))
 
     return suggestions
 

@@ -58,7 +58,7 @@ import com.torchons.app.data.model.StreakInfo
 import com.torchons.app.data.model.UserStats
 import com.torchons.app.ui.user.UserProfileDialog
 import com.torchons.app.ui.user.UserProfileRequest
-import com.torchons.app.util.FreshnessCalculator
+import com.torchons.app.util.TaskUrgencyCalculator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -165,7 +165,7 @@ private fun ResumeTab(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = FreshnessCalculator.VERT.copy(alpha = 0.1f)
+                        containerColor = TaskUrgencyCalculator.VERT.copy(alpha = 0.1f)
                     )
                 ) {
                     Row(
@@ -175,14 +175,14 @@ private fun ResumeTab(
                         Icon(
                             imageVector = Icons.Default.Favorite,
                             contentDescription = null,
-                            tint = FreshnessCalculator.VERT,
+                            tint = TaskUrgencyCalculator.VERT,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "Tu as fait plus que ta part ces 30 derniers jours ! C'est a ${otherFairShare!!.displayName} de faire des taches. Mais tu peux quand meme continuer !",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = FreshnessCalculator.VERT
+                            color = TaskUrgencyCalculator.VERT
                         )
                     }
                 }
@@ -249,7 +249,7 @@ private fun ResumeTab(
                             imageVector = Icons.Default.LocalFireDepartment,
                             contentDescription = null,
                             tint = if (streak.currentStreak > 0)
-                                FreshnessCalculator.ORANGE else MaterialTheme.colorScheme.onSurfaceVariant,
+                                TaskUrgencyCalculator.ORANGE else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(32.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))

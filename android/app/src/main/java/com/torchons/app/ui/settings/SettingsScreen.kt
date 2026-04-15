@@ -81,7 +81,6 @@ fun SettingsScreen(
     val notifCompleted = s.notifCompleted
     val notifHour = s.notifHour
     val affinityPopup = s.affinityPopup
-    val freshnessThreshold = s.freshnessThreshold
     val affinityExpiry = s.affinityExpiry
     val fairShareTolerance = s.fairShareTolerance
     val homeSsids = s.homeSsids
@@ -568,28 +567,6 @@ fun SettingsScreen(
                 if (showAdvanced) {
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Seuil de suggestion
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Seuil de suggestion : ${freshnessThreshold}%",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        InfoTooltip(
-                            title = "Seuil de suggestion",
-                            description = "Les taches sont suggerees sur l'accueil quand leur fraicheur passe sous ce seuil. Plus le seuil est bas, moins il y a de suggestions."
-                        )
-                    }
-                    Slider(
-                        value = freshnessThreshold.toFloat(),
-                        onValueChange = { viewModel.setFreshnessThreshold(it.toInt()) },
-                        valueRange = 5f..95f,
-                        steps = 17,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
                     // Duree de persistance affinites/efforts
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -669,13 +646,13 @@ fun SettingsScreen(
                             modifier = Modifier
                                 .size(10.dp)
                                 .clip(androidx.compose.foundation.shape.CircleShape)
-                                .background(if (backendConnected) com.torchons.app.util.FreshnessCalculator.VERT else com.torchons.app.util.FreshnessCalculator.ROUGE)
+                                .background(if (backendConnected) com.torchons.app.util.TaskUrgencyCalculator.VERT else com.torchons.app.util.TaskUrgencyCalculator.ROUGE)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (backendConnected) "Connecte" else "Hors ligne",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (backendConnected) com.torchons.app.util.FreshnessCalculator.VERT else com.torchons.app.util.FreshnessCalculator.ROUGE
+                            color = if (backendConnected) com.torchons.app.util.TaskUrgencyCalculator.VERT else com.torchons.app.util.TaskUrgencyCalculator.ROUGE
                         )
                     }
                 }

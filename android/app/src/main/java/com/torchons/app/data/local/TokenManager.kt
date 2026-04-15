@@ -42,8 +42,6 @@ class TokenManager @Inject constructor(
         private val NOTIF_HOUR_KEY = intPreferencesKey("notif_hour")
         // Reglages affinite
         private val AFFINITY_POPUP_KEY = booleanPreferencesKey("affinity_popup_enabled")
-        // Seuil de fraicheur pour suggestions (en %)
-        private val FRESHNESS_THRESHOLD_KEY = intPreferencesKey("freshness_threshold")
         // SSIDs WiFi maison (separes par |)
         private val HOME_SSIDS_KEY = stringPreferencesKey("home_ssids")
         // Duree de persistance affinites/efforts en mois
@@ -96,8 +94,6 @@ class TokenManager @Inject constructor(
     }
     suspend fun setNotifHour(hour: Int) { context.dataStore.edit { it[NOTIF_HOUR_KEY] = hour } }
     suspend fun setAffinityPopup(enabled: Boolean) { context.dataStore.edit { it[AFFINITY_POPUP_KEY] = enabled } }
-    val freshnessThresholdFlow: Flow<Int> = context.dataStore.data.map { it[FRESHNESS_THRESHOLD_KEY] ?: 10 }
-    suspend fun setFreshnessThreshold(value: Int) { context.dataStore.edit { it[FRESHNESS_THRESHOLD_KEY] = value } }
 
     val homeSsidsFlow: Flow<Set<String>> = context.dataStore.data.map { prefs ->
         prefs[HOME_SSIDS_KEY]?.split("|")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
