@@ -317,8 +317,23 @@ fun HomeScreen(
         )
 
         // Suggestions (titre retire v0.8.0 — evident que c'est des suggestions)
-        if (uiState.suggestions.isNotEmpty()) {
-            uiState.suggestions.forEach { suggestion ->
+        // Filtrage + tampon : on filtre les suggestions recemment completees
+        // cote client (justCompletedIds) pour eviter de re-afficher la meme
+        // carte pendant le gap "sync en vol". On garde visible la carte en
+        // cours de celebration (pour l'animation) meme si deja dans le set.
+        // Le backend envoie maintenant jusqu'a 5+5 suggestions (v0.11.1) ce
+        // qui garantit qu'il y a quasi toujours du stock a afficher.
+        val visibleSuggestions = uiState.suggestions.filter { s ->
+            s.taskId == uiState.celebratingTaskId || s.taskId !in uiState.justCompletedIds
+        }
+        // Top 1 par tier : on affiche la 1ere urgente et la 1ere affinite du
+        // tampon filtre (max 2 cards sur l'ecran, comme avant).
+        val displayUrgent = visibleSuggestions.firstOrNull { it.reason == "urgent" }
+        val displayAffinity = visibleSuggestions.firstOrNull { it.reason == "affinity" }
+        val displayedSuggestions = listOfNotNull(displayUrgent, displayAffinity)
+
+        if (displayedSuggestions.isNotEmpty()) {
+            displayedSuggestions.forEach { suggestion ->
                 val task = tasksById[suggestion.taskId]
                 val room = task?.roomId?.let { roomsById[it] }
                 val category = task?.categoryId?.let { categoriesById[it] }
@@ -358,7 +373,38 @@ fun HomeScreen(
             }
         }
 
-        if (uiState.suggestions.isEmpty()) {
+        // Loading placeholder : uniquement si le tampon filtre est vide MAIS
+        // qu'on a recemment complete quelque chose (donc le serveur va bientot
+        // nous renvoyer de nouvelles suggestions). Evite le flash "Tout est
+        // frais" entre 2 refresh pendant un burst de completions.
+        if (displayedSuggestions.isEmpty() && uiState.justCompletedIds.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Prochaine suggestion en route...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        if (displayedSuggestions.isEmpty() && uiState.justCompletedIds.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -658,22 +658,30 @@ def _build_suggestion(scored: dict, reason: str) -> SuggestionResponse:
 
 @router.get("/suggestions", response_model=list[SuggestionResponse])
 async def get_suggestions(
+    limit: int = Query(5, ge=1, le=20),
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Retourne les suggestions de taches — la plus urgente + meilleure affinite.
+    """Retourne les suggestions de taches — N urgentes + N affinites (default N=5).
 
-    Cascade "la plus urgente" (tier-based tolerance) :
-      1. Rouges STRICT  -> pick max ratio (days_overdue / nominal_interval)
-      2. sinon Rouges NORMAL -> idem
-      3. sinon Rouges SOUPLE -> idem
-      4. sinon Oranges (flat, toutes tolerances) -> pick min (due_date - today)
-      5. sinon pas de suggestion "urgent"
+    Le client Android utilise un tampon local de plusieurs suggestions pour
+    pouvoir afficher instantanement la suivante apres une completion, sans
+    attendre que SyncWorker ait pousse la completion au backend (v0.11.1).
+    L'ordre est celui de la cascade ci-dessous ; la premiere entree de
+    chaque tier reste "la plus urgente" / "celle que tu aimes le plus".
 
-    Cascade "tu aimes bien" (2e carte affinite) :
-      1. Rouges (toutes tolerances, excluant la plus urgente) -> max affinite normalisee
-      2. sinon Oranges (excluant la plus urgente) -> max affinite
-      3. sinon pas de 2e carte
+    Cascade "la plus urgente" (remplit jusqu'a `limit` dans l'ordre) :
+      1. Rouges STRICT  tries par ratio (days_overdue / nominal_interval) desc
+      2. puis Rouges NORMAL (meme tri)
+      3. puis Rouges SOUPLE (meme tri)
+      4. puis Oranges flat tries par (due_date - today) asc
+      5. stop des qu'on a `limit` urgentes collectees
+
+    Cascade "tu aimes bien" (remplit jusqu'a `limit` affinites) :
+      1. Rouges (toutes tolerances, excluant les urgentes deja picked) tries par
+         affinite normalisee desc
+      2. puis Oranges (idem exclusion) tries par affinite normalisee desc
+      3. stop des qu'on a `limit` affinites collectees
     """
     user_id = UUID(current["user_id"])
 
@@ -765,38 +773,47 @@ async def get_suggestions(
     red_souple = [t for t in scored_tasks if t["state"] == UrgencyState.RED and t["task"].tolerance == TaskTolerance.SOUPLE]
     oranges = [t for t in scored_tasks if t["state"] == UrgencyState.ORANGE]
 
-    most_urgent: dict | None = None
-    for tier in (red_strict, red_normal, red_souple):
-        if tier:
-            # Tri : ratio retard desc, tiebreak days_until_due asc (plus negatif
-            # = plus de jours de retard absolu).
-            most_urgent = max(
-                tier,
-                key=lambda t: (t["overdue_ratio"], -t["days_until_due"]),
-            )
+    # Cascade "urgent" : remplit jusqu'a `limit` en parcourant les tiers dans
+    # l'ordre rouge_strict -> rouge_normal -> rouge_souple -> oranges.
+    # Tri intra-tier : rouges par ratio retard desc, oranges par days_until_due asc.
+    urgent_picks: list[dict] = []
+
+    def _fill(tier: list[dict], sort_key) -> None:
+        if len(urgent_picks) >= limit:
+            return
+        for t in sorted(tier, key=sort_key):
+            if len(urgent_picks) >= limit:
+                break
+            urgent_picks.append(t)
+
+    _fill(red_strict, lambda t: (-t["overdue_ratio"], t["days_until_due"]))
+    _fill(red_normal, lambda t: (-t["overdue_ratio"], t["days_until_due"]))
+    _fill(red_souple, lambda t: (-t["overdue_ratio"], t["days_until_due"]))
+    _fill(oranges, lambda t: t["days_until_due"])
+
+    # Cascade "affinite" : exclut les urgents deja picked, tri par affinite
+    # normalisee desc sur rouges d'abord, puis oranges.
+    urgent_ids = {p["task"].id for p in urgent_picks}
+    reds_all = red_strict + red_normal + red_souple
+    red_pool = [t for t in reds_all if t["task"].id not in urgent_ids]
+    orange_pool = [t for t in oranges if t["task"].id not in urgent_ids]
+
+    affinity_picks: list[dict] = []
+    for t in sorted(red_pool, key=lambda t: -t["norm_affinity"]):
+        if len(affinity_picks) >= limit:
             break
-    if most_urgent is None and oranges:
-        # Cascade orange flat : plus proche de l'echeance (days_until_due asc, ponderee par nominal)
-        most_urgent = min(oranges, key=lambda t: t["days_until_due"])
+        affinity_picks.append(t)
+    if len(affinity_picks) < limit:
+        for t in sorted(orange_pool, key=lambda t: -t["norm_affinity"]):
+            if len(affinity_picks) >= limit:
+                break
+            affinity_picks.append(t)
 
     suggestions: list[SuggestionResponse] = []
-    if most_urgent is not None:
-        suggestions.append(_build_suggestion(most_urgent, "urgent"))
-
-    # Cascade affinite : rouges d'abord (toutes tolerances), sinon oranges.
-    reds_all = red_strict + red_normal + red_souple
-    exclude_id = most_urgent["task"].id if most_urgent else None
-    red_pool = [t for t in reds_all if t["task"].id != exclude_id]
-    orange_pool = [t for t in oranges if t["task"].id != exclude_id]
-
-    best_affinity: dict | None = None
-    if red_pool:
-        best_affinity = max(red_pool, key=lambda t: t["norm_affinity"])
-    elif orange_pool:
-        best_affinity = max(orange_pool, key=lambda t: t["norm_affinity"])
-
-    if best_affinity is not None:
-        suggestions.append(_build_suggestion(best_affinity, "affinity"))
+    for pick in urgent_picks:
+        suggestions.append(_build_suggestion(pick, "urgent"))
+    for pick in affinity_picks:
+        suggestions.append(_build_suggestion(pick, "affinity"))
 
     return suggestions
 

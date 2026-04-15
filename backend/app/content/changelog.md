@@ -1,5 +1,12 @@
 # Notes de version
 
+## v0.11.1 — 2026-04-15
+
+### Fin du "flash" apres une completion sur l'accueil
+- Avant : apres avoir valide une tache sur l'accueil, l'animation de celebration se jouait, puis la meme tache reapparaissait brievement pendant 1-2 secondes avant d'etre remplacee par une autre. C'etait lie au fait que le serveur n'avait pas encore vu la validation (synchro en cours) et renvoyait donc la meme suggestion.
+- Maintenant : l'accueil charge en arriere-plan un tampon de plusieurs suggestions d'avance (5 urgentes + 5 affinites). Quand tu valides une tache, la suivante apparait instantanement apres l'animation, sans attendre le serveur. La tache que tu viens de valider est automatiquement masquee cote client jusqu'a ce que la synchro rattrape.
+- En cas de burst de completions (5 d'affilee sans que la synchro suive), une petite carte "Prochaine suggestion en route..." s'affiche le temps que le backend rattrape, plutot que de te montrer du vide ou une fausse tache.
+
 ## v0.11.0 — 2026-04-15
 
 ### "Fait ensemble" — partager les taches et les points

@@ -66,6 +66,15 @@ data class HomeUiState(
     /** Compteur incremente a chaque celebration pour relancer l'animation konfetti. */
     val celebrationTrigger: Int = 0,
     /**
+     * Set des task_ids recemment completes cote client pour lesquels le
+     * backend n'a pas encore integre la completion (SyncWorker pas encore
+     * passe). Le HomeScreen les filtre pour afficher la suggestion suivante
+     * du tampon au lieu de montrer la meme tache une seconde fois. Les ids
+     * sont automatiquement nettoyes de ce set des que le backend ne les
+     * renvoie plus dans /suggestions (= il a rattrape le retard de sync).
+     */
+    val justCompletedIds: Set<String> = emptySet(),
+    /**
      * Message "bon retour" rempli par le backend quand le foyer est de nouveau
      * occupe apres une absence > 24h (v0.7.4 home freeze). null = pas de retour.
      */
@@ -148,8 +157,19 @@ class HomeViewModel @Inject constructor(
                 val firstPending = cached.pending?.firstOrNull()
                 val hasCache = cached.suggestions != null
 
+                // Nettoyage des justCompletedIds : on garde uniquement les ids
+                // que le serveur renvoie encore dans les suggestions (= sync
+                // pas encore poussee, il faut continuer a les masquer). Des
+                // qu'un id sort des suggestions serveur, le backend a rattrape
+                // et on le retire du set.
+                val rawSuggestions = cached.suggestions ?: emptyList()
+                val serverSuggestedIds = rawSuggestions.map { it.taskId }.toSet()
+                val cleanedJustCompleted =
+                    _uiState.value.justCompletedIds.filter { it in serverSuggestedIds }.toSet()
+
                 _uiState.value = _uiState.value.copy(
-                    suggestions = cached.suggestions ?: emptyList(),
+                    suggestions = rawSuggestions,
+                    justCompletedIds = cleanedJustCompleted,
                     fairShare = cached.fairShare ?: emptyList(),
                     pendingAffinity = firstPending,
                     // Ne PAS toggler showAffinityPopup ici — le combine emet
@@ -464,9 +484,10 @@ class HomeViewModel @Inject constructor(
 
     /**
      * Affiche la celebration (emoji + confetti) pendant ~2s, puis execute
-     * le bloc de completion qui est diff(ere d'autant. La card reste visible
-     * pendant la celebration parce que la completion n'a pas encore touche
-     * Room — le flow ne re-emet donc pas et ne fait pas disparaitre l'item.
+     * le bloc de completion. A la fin de la celebration, ajoute le taskId
+     * a justCompletedIds pour que le HomeScreen affiche instantanement la
+     * suggestion suivante du tampon (au lieu de re-flasher la meme carte
+     * pendant que le serveur rattrape le retard de sync).
      */
     private fun celebrateThen(taskId: String, block: suspend () -> Unit) {
         viewModelScope.launch {
@@ -475,7 +496,10 @@ class HomeViewModel @Inject constructor(
                 celebrationTrigger = _uiState.value.celebrationTrigger + 1,
             )
             kotlinx.coroutines.delay(2000L)
-            _uiState.value = _uiState.value.copy(celebratingTaskId = null)
+            _uiState.value = _uiState.value.copy(
+                celebratingTaskId = null,
+                justCompletedIds = _uiState.value.justCompletedIds + taskId,
+            )
             block()
         }
     }
