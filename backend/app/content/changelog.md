@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.10.1 — 2026-04-15
+
+### Fix crash au demarrage
+- Corrige un crash de l'app au demarrage apres la mise a jour v0.10.0 (ecran qui se ferme immediatement quand on ouvre l'app). Cause : les anciennes suggestions encore en cache local n'avaient pas le nouveau champ d'etat ; l'app tentait de les afficher avant le refresh et plantait. Maintenant le rendu est tolerant a ce cas et affiche neutre le temps que le refresh arrive.
+
 ## v0.10.0 — 2026-04-15
 
 ### Refonte du modele de fraicheur — fini la demi-vie, place a l'echeance

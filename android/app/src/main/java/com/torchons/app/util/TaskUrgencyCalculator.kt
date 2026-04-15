@@ -175,8 +175,14 @@ object TaskUrgencyCalculator {
         else -> "en retard de ${-daysUntilDue} j"
     }
 
-    /** Couleur correspondant a un nom d'etat sous forme String ("GREEN"/"ORANGE"/"RED"). */
-    fun stateColor(stateName: String): Color = when (stateName) {
+    /**
+     * Couleur correspondant a un nom d'etat sous forme String ("GREEN"/"ORANGE"/"RED").
+     *
+     * Tolerant au null pour absorber les snapshots Suggestion caches par
+     * une version precedente sans le champ state : Gson met null dans ce
+     * cas malgre le default Kotlin, d'ou le crash si on n'accepte pas null.
+     */
+    fun stateColor(stateName: String?): Color = when (stateName) {
         "RED" -> ROUGE
         "ORANGE" -> ORANGE
         else -> VERT
