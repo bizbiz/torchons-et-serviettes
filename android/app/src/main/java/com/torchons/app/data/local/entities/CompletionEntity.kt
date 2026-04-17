@@ -14,6 +14,8 @@ data class CompletionEntity(
     val completedBy: String,
     val completedAt: String,
     val pointsEarned: Int,
+    val multiplier: Float = 1.0f,
+    val reason: String = "NEUTRAL",
     val notes: String?,
     val collectiveId: String? = null,
 )
@@ -24,6 +26,8 @@ fun Completion.toEntity(): CompletionEntity = CompletionEntity(
     completedBy = completedBy,
     completedAt = completedAt,
     pointsEarned = pointsEarned,
+    multiplier = multiplier,
+    reason = reason,
     notes = notes,
     collectiveId = collectiveId,
 )
@@ -34,6 +38,8 @@ fun CompletionEntity.toDomain(): Completion = Completion(
     completedBy = completedBy,
     completedAt = completedAt,
     pointsEarned = pointsEarned,
+    multiplier = multiplier,
+    reason = reason,
     notes = notes,
     collectiveId = collectiveId,
 )

@@ -344,6 +344,20 @@ class TaskListViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null)
     }
 
+    /** Preview bonus/malus pour le dialog de completion. null = offline/erreur. */
+    suspend fun fetchCompletionPreview(
+        taskId: String,
+        isoDate: String,
+        numParticipants: Int,
+    ): com.torchons.app.data.model.CompletionPreview? {
+        return try {
+            val resp = apiService.getCompletionPreview(taskId, isoDate, numParticipants)
+            if (resp.isSuccessful) resp.body() else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     fun toggleFilterTodo() {
         filtersFlow.value = filtersFlow.value.copy(filterTodo = !filtersFlow.value.filterTodo)
     }

@@ -13,7 +13,11 @@ data class Suggestion(
     /** Jours d'ici l'echeance ; negatif si en retard, 0 si aujourd'hui. */
     @SerializedName("days_until_due") val daysUntilDue: Int = 0,
     @SerializedName("affinity_score") val affinityScore: Int = 5,
-    @SerializedName("reason") val reason: String = "urgent"
+    @SerializedName("reason") val reason: String = "urgent",
+    /** True si la prochaine completion de cette tache touchera le bonus retard. */
+    @SerializedName("bonus_eligible") val bonusEligible: Boolean = false,
+    /** Pct de bonus (ex 0.5 = +50%). */
+    @SerializedName("bonus_pct") val bonusPct: Float = 0.0f,
 )
 
 /** Tache en cours. */

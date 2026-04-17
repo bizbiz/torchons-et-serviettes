@@ -95,7 +95,7 @@ fun TaskListScreen(
             assignedMemberIds = ds.assignedIds,
             currentUserId = currentUserId.orEmpty(),
             onDismiss = { dialogState = null },
-            onConfirm = { participantIds, isoDate ->
+            onConfirm = { participantIds, isoDate, preview ->
                 if (ds.mode == CompletionDialogMode.Single) {
                     viewModel.completeTaskAtDate(
                         taskId = ds.taskId,
@@ -114,6 +114,9 @@ fun TaskListScreen(
             onSwitchToMulti = if (ds.mode == CompletionDialogMode.Single) {
                 { dialogState = ds.copy(mode = CompletionDialogMode.Multi) }
             } else null,
+            previewProvider = { isoDate, numParticipants ->
+                viewModel.fetchCompletionPreview(ds.taskId, isoDate, numParticipants)
+            },
         )
     }
 

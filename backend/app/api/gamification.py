@@ -64,6 +64,11 @@ class SuggestionResponse(BaseModel):
     days_until_due: int  # positif = dans le futur, 0 = aujourd'hui, negatif = en retard
     affinity_score: int
     reason: str  # "urgent" ou "affinity"
+    # v1.1 bonus/malus : true si cette tache franchira le seuil_bonus a la
+    # prochaine completion (en retard suffisant + deja faite >= 1 fois).
+    # Alimente la pastille +X% sur la SuggestionCard.
+    bonus_eligible: bool = False
+    bonus_pct: float = 0.0  # pct de bonus (ex 0.5 pour +50%)
 
 
 class InProgressResponse(BaseModel):
@@ -653,6 +658,8 @@ def _build_suggestion(scored: dict, reason: str) -> SuggestionResponse:
         days_until_due=scored["days_until_due"],
         affinity_score=scored["affinity_score"],
         reason=reason,
+        bonus_eligible=scored.get("bonus_eligible", False),
+        bonus_pct=scored.get("bonus_pct", 0.0),
     )
 
 
@@ -708,7 +715,7 @@ async def get_suggestions(
     if not tasks:
         return []
 
-    # Charger derniere completion par tache
+    # Charger derniere completion par tache + count pour bonus_eligible
     task_ids = [t.id for t in tasks]
     comp_result = await session.execute(
         select(TaskCompletion.task_id, func.max(TaskCompletion.completed_at)).where(
@@ -717,6 +724,23 @@ async def get_suggestions(
         ).group_by(TaskCompletion.task_id)
     )
     last_completions = {row[0]: row[1] for row in comp_result.all()}
+
+    count_result = await session.execute(
+        select(TaskCompletion.task_id, func.count(TaskCompletion.id)).where(
+            TaskCompletion.task_id.in_(task_ids),
+            TaskCompletion.deleted_at.is_(None),
+        ).group_by(TaskCompletion.task_id)
+    )
+    completion_counts = {row[0]: row[1] for row in count_result.all()}
+
+    # Config bonus/malus du foyer (une seule fetch).
+    from app.services.bonus_malus import load_or_create_bonus_config
+    bonus_config = await load_or_create_bonus_config(session, current_foyer_uuid(current))
+    _seuil_bonus_map = {
+        TaskTolerance.STRICT: bonus_config.seuil_bonus_strict,
+        TaskTolerance.NORMAL: bonus_config.seuil_bonus_normal,
+        TaskTolerance.SOUPLE: bonus_config.seuil_bonus_souple,
+    }
 
     # Charger affinites de l'user
     aff_result = await session.execute(
@@ -757,6 +781,15 @@ async def get_suggestions(
         raw_aff = affinities.get(task.id, 5)
         norm_aff = (raw_aff - mean_aff) / std_aff
 
+        # Bonus eligible : en retard + au-dela du seuil + au moins une completion
+        # passee (bypass first-completion).
+        bonus_eligible = False
+        if state == UrgencyState.RED and nominal > 0:
+            seuil = _seuil_bonus_map.get(task.tolerance, bonus_config.seuil_bonus_normal)
+            pct_retard = (-days_until) / float(nominal)
+            if pct_retard >= seuil and completion_counts.get(task.id, 0) >= 1:
+                bonus_eligible = True
+
         scored_tasks.append({
             "task": task,
             "due_date": due_date,
@@ -765,6 +798,8 @@ async def get_suggestions(
             "overdue_ratio": ratio,
             "affinity_score": raw_aff,
             "norm_affinity": norm_aff,
+            "bonus_eligible": bonus_eligible,
+            "bonus_pct": bonus_config.bonus_pct if bonus_eligible else 0.0,
         })
 
     # Buckets par tier pour la cascade "la plus urgente"

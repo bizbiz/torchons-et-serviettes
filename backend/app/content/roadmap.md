@@ -15,6 +15,8 @@
 
 ## Plus tard
 
+- **Grace period differenciee accept/refus pour le bump penibilite** : quand l'app propose de bumper l'effort d'une tache souvent en retard, appliquer un cooldown court (50% de la fenetre d'analyse) si le user accepte le bump (pour laisser l'ajustement produire son effet), et un cooldown long (100%) si le user refuse (pour respecter le "non"). Pour l'instant un seul cooldown de 70% est applique dans les deux cas.
+- **Audit edition frequence vs votes** : quand des votes de frequence individuels existent pour une tache (via le dialog de notation), l'edition directe du champ recurrence dans la fiche tache ne devrait plus etre possible car le dernier a editer ecrase les votes de tout le monde. A la place, forcer a passer par le flow de re-vote pour que chaque avis compte.
 - **Undo 1-clic d'une completion "Fait ensemble"** : aujourd'hui pour annuler une validation collective il faut supprimer les lignes une par une dans l'historique. Un bouton "Annuler" unique, qui supprime d'un coup toutes les lignes du meme evenement (groupees par `collective_id`), serait plus pratique.
 - **Nettoyage du code mort "En cours"** : apres suppression de la section sur l'accueil en v0.11.0, les endpoints backend `start task` / `cancel in-progress` et le modele `TaskInProgress` ne sont plus appeles. A retirer lors d'une iteration de maintenance pour ne pas trainer du code mort.
 - **Planning partage** : vue calendrier avec les taches prevues de la semaine.

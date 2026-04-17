@@ -29,14 +29,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.data.model.CompletionPreview
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -76,8 +79,14 @@ fun CompletionDialog(
     assignedMemberIds: Set<String>,
     currentUserId: String,
     onDismiss: () -> Unit,
-    onConfirm: (participantIds: List<String>, isoDate: String) -> Unit,
+    onConfirm: (participantIds: List<String>, isoDate: String, preview: CompletionPreview?) -> Unit,
     onSwitchToMulti: (() -> Unit)? = null,
+    /**
+     * Fournisseur de preview des points (bonus/malus). null = offline ou preview
+     * indisponible — on affiche un fallback "≈ X pts". Appele a chaque changement
+     * de date ou de nombre de participants.
+     */
+    previewProvider: (suspend (isoDate: String, numParticipants: Int) -> CompletionPreview?)? = null,
 ) {
     // Date selectionnee (defaut = maintenant).
     var selectedDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -120,6 +129,30 @@ fun CompletionDialog(
     val canConfirm = when (mode) {
         CompletionDialogMode.Single -> singleSelectedId.isNotEmpty()
         CompletionDialogMode.Multi -> multiSelectedIds.isNotEmpty()
+    }
+
+    // Preview points (bonus/malus) : fetch a chaque changement de date /
+    // nombre de participants. Releve ici pour etre accessible dans onConfirm.
+    val numParticipants = when (mode) {
+        CompletionDialogMode.Single -> 1
+        CompletionDialogMode.Multi -> multiSelectedIds.size.coerceAtLeast(1)
+    }
+    val isoDateForPreview = remember(selectedDateMillis) {
+        millisToIsoNoonUtc(selectedDateMillis)
+    }
+    var preview by remember { mutableStateOf<CompletionPreview?>(null) }
+    var previewFailed by remember { mutableStateOf(false) }
+    if (previewProvider != null) {
+        LaunchedEffect(isoDateForPreview, numParticipants) {
+            previewFailed = false
+            preview = try {
+                previewProvider(isoDateForPreview, numParticipants)
+            } catch (_: Exception) {
+                previewFailed = true
+                null
+            }
+            if (preview == null) previewFailed = true
+        }
     }
 
     // Sub-modal DatePicker.
@@ -240,6 +273,12 @@ fun CompletionDialog(
                         Text("A plusieurs...")
                     }
                 }
+
+                // --- Preview points (bonus/malus) ---
+                if (previewProvider != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    PreviewPointsLine(preview = preview, failed = previewFailed)
+                }
             }
         },
         confirmButton = {
@@ -252,7 +291,11 @@ fun CompletionDialog(
                             CompletionDialogMode.Single -> listOf(singleSelectedId)
                             CompletionDialogMode.Multi -> multiSelectedIds.toList()
                         }
-                        onConfirm(participants, millisToIsoNoonUtc(selectedDateMillis))
+                        onConfirm(
+                            participants,
+                            millisToIsoNoonUtc(selectedDateMillis),
+                            preview,
+                        )
                     },
                 ) { Text("Valider") }
             }
@@ -281,4 +324,68 @@ private fun millisToIsoNoonUtc(millis: Long): String {
         .atOffset(ZoneOffset.UTC)
         .toLocalDate()
     return "${date}T12:00:00Z"
+}
+
+/**
+ * Ligne "Tu gagneras X pts" + raison (bonus/malus/neutre/1ere/perso).
+ * Affichee au bas du dialog de completion, dynamique selon date et N
+ * participants. Backend authoritative via /completion-preview.
+ */
+@Composable
+private fun PreviewPointsLine(
+    preview: CompletionPreview?,
+    failed: Boolean,
+) {
+    if (preview == null) {
+        // Loader / fallback.
+        Text(
+            text = if (failed) "Preview indisponible (offline ?)" else "Calcul...",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+
+    val (emoji, reasonLabel, reasonColor) = when (preview.reason) {
+        "BONUS_RETARD" -> Triple("🔥", "bonus tache en retard", Color(0xFF2E7D32))
+        "MALUS_AVANCE" -> Triple("⏱", "malus tache en avance", Color(0xFFEF6C00))
+        "FIRST_COMPLETION" -> Triple("✨", "premiere fois — points pleins", Color(0xFF1976D2))
+        "PERSO" -> Triple(null, null, MaterialTheme.colorScheme.onSurfaceVariant)
+        else -> Triple(null, null, MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "💰 Tu gagneras ",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = "${preview.finalPoints} pt${if (preview.finalPoints > 1) "s" else ""}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = reasonColor,
+            )
+        }
+        if (reasonLabel != null) {
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (emoji != null) {
+                    Text(text = emoji, style = MaterialTheme.typography.labelSmall)
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                val delta = preview.finalPoints - preview.basePoints
+                val deltaLabel = when {
+                    delta > 0 -> "+$delta pt${if (delta > 1) "s" else ""} · $reasonLabel"
+                    delta < 0 -> "$delta pt · $reasonLabel"
+                    else -> reasonLabel
+                }
+                Text(
+                    text = deltaLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = reasonColor,
+                )
+            }
+        }
+    }
 }

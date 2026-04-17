@@ -36,6 +36,8 @@ class CompletionResponse(BaseModel):
     completed_by: UUID
     completed_at: datetime
     points_earned: int
+    multiplier: float
+    reason: str  # CompletionReason enum value
     notes: str | None
     collective_id: UUID | None = None
 
@@ -47,3 +49,21 @@ class CollectiveCompletionResponse(BaseModel):
     completions: list[CompletionResponse]
 
     model_config = {"from_attributes": True}
+
+
+class CompletionPreview(BaseModel):
+    """Preview du calcul bonus/malus avant validation de la completion.
+
+    Appele par le dialog 'Deja fait' / 'Fait ensemble' pour afficher a l'user
+    combien de points il va gagner et pourquoi (bonus retard / malus avance /
+    neutre / 1ere completion).
+    """
+
+    base_points: int  # points de base avant multiplicateur (et avant split)
+    multiplier: float  # coefficient applique
+    final_points: int  # points finaux (apres multiplicateur, avant split collective)
+    reason: str  # CompletionReason enum value
+    # Metadonnees pour affichage (preview UI : libelles, etc.)
+    days_early: int
+    days_late: int
+    pct_cycle: float  # fraction du cycle (positif = retard, negatif = avance)

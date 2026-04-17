@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select, desc
+from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
@@ -16,15 +16,20 @@ from app.database import get_session
 from app.models.completion import TaskCompletion
 from app.models.fair_share import FairShareConfig
 from app.models.task import Task
-from app.models.task_assignment import TaskAssignment
-from app.models.task_effort import TaskEffort
 from app.models.task_in_progress import TaskInProgress
 from app.models.user_foyer import UserFoyer
 from app.schemas.completion import (
     CollectiveCompletionCreate,
     CollectiveCompletionResponse,
     CompletionCreate,
+    CompletionPreview,
     CompletionResponse,
+)
+from app.services.bonus_malus import (
+    apply_multiplier_to_points,
+    compute_base_points_for_task,
+    compute_bonus_malus_for_completion,
+    resolve_stored_reason_and_mult,
 )
 from app.services.recurrence import min_completion_gap_seconds
 from app.utils.changelog import record_change
@@ -41,6 +46,8 @@ def _safe_uuid(value: str | None) -> UUID | None:
         return UUID(value)
     except (ValueError, AttributeError):
         return None
+
+
 
 
 @router.post("/api/tasks/{task_id}/complete", response_model=CompletionResponse, status_code=201)
@@ -93,24 +100,24 @@ async def complete_task(
             },
         )
 
-    # Points : moyenne des efforts si disponible, sinon weight. 0 pour taches perso.
-    assign_result = await session.execute(
-        select(func.count(TaskAssignment.user_id)).where(TaskAssignment.task_id == task_id)
+    # Base points : moyenne des efforts ou weight, 0 pour tache perso.
+    base_points = await compute_base_points_for_task(session, task)
+
+    # Bonus/malus : multiplicateur selon l'etat de la tache a completed_at.
+    completed_at_effective = body.completed_at or datetime.now(timezone.utc)
+    mult_result = await compute_bonus_malus_for_completion(
+        session, task, current_foyer_uuid(current), completed_at_effective,
     )
-    num_assigned = assign_result.scalar() or 1
-    if num_assigned <= 1:
-        points = 0
-    else:
-        avg_result = await session.execute(
-            select(func.avg(TaskEffort.points)).where(TaskEffort.task_id == task_id)
-        )
-        avg_effort = avg_result.scalar()
-        points = round(avg_effort) if avg_effort else task.weight
+    # Tache perso (0 pt par design) : reason=PERSO, pas de bonus/malus.
+    final_reason, final_mult = resolve_stored_reason_and_mult(base_points, mult_result)
+    points = apply_multiplier_to_points(base_points, mult_result)
 
     completion = TaskCompletion(
         task_id=task_id,
         completed_by=completed_by,
         points_earned=points,
+        multiplier=final_mult,
+        reason=final_reason,
         notes=body.notes,
         client_id=_safe_uuid(current.get("device_id")),
     )
@@ -140,6 +147,14 @@ async def complete_task(
     # Envoyer notification push aux autres utilisateurs assignes
     from app.services.push import send_task_completed_notification
     await send_task_completed_notification(session, current["user_id"], str(task_id), task.title)
+
+    # Trigger analyse bump (fire-and-forget)
+    try:
+        from app.services.prompts import generate_bump_prompts
+        await generate_bump_prompts(session, task, current_foyer_uuid(current))
+        await session.commit()
+    except Exception:
+        pass  # ne jamais casser la completion
 
     return completion
 
@@ -227,33 +242,34 @@ async def complete_task_collective(
         )
 
     # 4. Base points : meme logique que le endpoint classique.
-    assign_result = await session.execute(
-        select(func.count(TaskAssignment.user_id)).where(TaskAssignment.task_id == task_id)
-    )
-    num_assigned = assign_result.scalar() or 1
-    if num_assigned <= 1:
-        base_points = 0
-    else:
-        avg_result = await session.execute(
-            select(func.avg(TaskEffort.points)).where(TaskEffort.task_id == task_id)
-        )
-        avg_effort = avg_result.scalar()
-        base_points = round(avg_effort) if avg_effort else task.weight
+    base_points = await compute_base_points_for_task(session, task)
 
-    # Split ceil integer entre les participants. Si N=1, reste a base_points.
-    points_per_user = math.ceil(base_points / len(participants)) if base_points else 0
-
-    # 5. Creation des N lignes avec un meme collective_id.
+    # 5. Bonus/malus : multiplicateur applique SUR base_points AVANT le split.
+    # Les N lignes partagent le meme multiplicateur et la meme reason (le
+    # multiplicateur est une propriete de l'evenement collectif, pas des
+    # participants individuels — cf grill-me).
     collective_id = uuid_lib.uuid4()
     completed_at = body.completed_at or datetime.now(timezone.utc)
     device_id = _safe_uuid(current.get("device_id"))
 
+    mult_result = await compute_bonus_malus_for_completion(
+        session, task, foyer_uuid, completed_at,
+    )
+    final_reason, final_mult = resolve_stored_reason_and_mult(base_points, mult_result)
+    effective_points = apply_multiplier_to_points(base_points, mult_result)
+
+    # Split ceil integer entre les participants. Si base=0 (perso), 0 chacun.
+    points_per_user = math.ceil(effective_points / len(participants)) if effective_points else 0
+
+    # 6. Creation des N lignes avec un meme collective_id.
     created: list[TaskCompletion] = []
     for user_id in participants:
         comp = TaskCompletion(
             task_id=task_id,
             completed_by=user_id,
             points_earned=points_per_user,
+            multiplier=final_mult,
+            reason=final_reason,
             notes=body.notes,
             client_id=device_id,
             collective_id=collective_id,
@@ -263,19 +279,19 @@ async def complete_task_collective(
         created.append(comp)
     await session.flush()
 
-    # 6. Supprimer la tache "en cours" si elle existe (meme si la UI "en cours"
+    # 7. Supprimer la tache "en cours" si elle existe (meme si la UI "en cours"
     # a ete retiree en v0.11, des entrees legacy peuvent subsister cote DB).
     from sqlalchemy import delete
     await session.execute(
         delete(TaskInProgress).where(TaskInProgress.task_id == task_id)
     )
 
-    # 7. Auto-desactiver les taches ponctuelles (une seule fois).
+    # 8. Auto-desactiver les taches ponctuelles (une seule fois).
     if task.recurrence_rule is None:
         task.is_active = False
         task.version += 1
 
-    # 8. Changelog : une entree par ligne pour que la sync offline rapatrie tout.
+    # 9. Changelog : une entree par ligne pour que la sync offline rapatrie tout.
     for comp in created:
         await record_change(
             session, "task_completions", comp.id, "INSERT", current["user_id"],
@@ -285,11 +301,19 @@ async def complete_task_collective(
     for comp in created:
         await session.refresh(comp)
 
-    # 9. Notification push (une seule pour l'evenement collectif).
+    # 10. Notification push (une seule pour l'evenement collectif).
     from app.services.push import send_task_completed_notification
     await send_task_completed_notification(
         session, current["user_id"], str(task_id), task.title
     )
+
+    # 11. Trigger analyse bump (fire-and-forget)
+    try:
+        from app.services.prompts import generate_bump_prompts
+        await generate_bump_prompts(session, task, foyer_uuid)
+        await session.commit()
+    except Exception:
+        pass
 
     return CollectiveCompletionResponse(
         collective_id=collective_id,
@@ -352,3 +376,59 @@ async def list_completions(
     q = q.order_by(desc(TaskCompletion.completed_at)).limit(limit)
     result = await session.execute(q)
     return result.scalars().all()
+
+
+@router.get(
+    "/api/tasks/{task_id}/completion-preview",
+    response_model=CompletionPreview,
+)
+async def completion_preview(
+    task_id: UUID,
+    completed_at: datetime | None = None,
+    num_participants: int = 1,
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Preview du calcul bonus/malus pour une completion a venir.
+
+    Appele par le dialog de completion cote Android pour afficher les points
+    gagnes + la raison avant validation. Parametres :
+
+    - `completed_at` (optionnel) : date de la completion. Defaut = maintenant.
+      Permet le preview d'un backdate.
+    - `num_participants` : 1 pour solo, N pour 'fait ensemble' (pour afficher
+      les points par user apres split).
+
+    Backend authoritative : meme formule qu'au POST /complete — pas de drift.
+    """
+    foyer_uuid = current_foyer_uuid(current)
+    result = await session.execute(
+        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
+    )
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Tache introuvable")
+
+    ca = completed_at or datetime.now(timezone.utc)
+    if ca.tzinfo is None:
+        ca = ca.replace(tzinfo=timezone.utc)
+
+    base_points = await compute_base_points_for_task(session, task)
+    mult_result = await compute_bonus_malus_for_completion(session, task, foyer_uuid, ca)
+
+    reason, multiplier = resolve_stored_reason_and_mult(base_points, mult_result)
+    effective = apply_multiplier_to_points(base_points, mult_result)
+    # Split preview pour collective (informatif seulement, le back le refait
+    # au POST). Cap num_participants >= 1 pour eviter div/0.
+    n = max(1, num_participants)
+    final_per_user = math.ceil(effective / n) if effective > 0 else 0
+
+    return CompletionPreview(
+        base_points=base_points,
+        multiplier=multiplier,
+        final_points=final_per_user,
+        reason=reason.value,
+        days_early=mult_result.days_early,
+        days_late=mult_result.days_late,
+        pct_cycle=round(mult_result.pct_cycle, 4),
+    )

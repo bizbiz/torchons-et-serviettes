@@ -52,6 +52,8 @@ class TokenManager @Inject constructor(
         // versionCode vu au dernier lancement de l'app — sert a detecter une
         // mise a jour et invalider le cache view_snapshots (v0.10.2+).
         private val LAST_SEEN_VERSION_CODE_KEY = intPreferencesKey("last_seen_version_code")
+        // Tolerance 2h : timestamp millis du dernier prompt affiche
+        private val LAST_PROMPT_SHOWN_AT_KEY = longPreferencesKey("last_prompt_shown_at")
     }
 
     /** Flow du token JWT. Emet null si aucun token stocke. */
@@ -109,6 +111,13 @@ class TokenManager @Inject constructor(
         }
     }
     val affinityExpiryFlow: Flow<Int> = context.dataStore.data.map { it[AFFINITY_EXPIRY_KEY] ?: 6 }
+
+    /** Timestamp millis du dernier prompt affiche (tolerance 2h). */
+    val lastPromptShownAtFlow: Flow<Long> = context.dataStore.data.map { it[LAST_PROMPT_SHOWN_AT_KEY] ?: 0L }
+
+    suspend fun setLastPromptShownAt(millis: Long) {
+        context.dataStore.edit { it[LAST_PROMPT_SHOWN_AT_KEY] = millis }
+    }
     suspend fun setAffinityExpiry(months: Int) { context.dataStore.edit { it[AFFINITY_EXPIRY_KEY] = months } }
 
     suspend fun setHomeSsids(ssids: List<String>) {

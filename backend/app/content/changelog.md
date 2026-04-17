@@ -1,5 +1,23 @@
 # Notes de version
 
+## v0.12.0 — 2026-04-17
+
+### Bonus et malus de points
+- Les taches en retard rapportent maintenant un bonus de points (+50% par defaut) quand elles depassent un seuil configurable. Une pastille "🔥 +50%" apparait sur les suggestions concernees.
+- A l'inverse, completer une tache tres en avance applique un malus progressif (jusqu'a -50% des points). Plus tu la fais tot dans le cycle, plus le malus est fort.
+- La premiere completion d'une tache donne toujours les points pleins (pas de bonus ni de malus).
+- Le dialog "Deja fait" / "Fait ensemble" affiche maintenant une ligne de preview des points avant validation : tu vois combien tu vas gagner et pourquoi (bonus retard, malus avance, premiere fois).
+- La celebration apres validation affiche les points gagnes (+X pts) avec la raison du bonus ou malus.
+- La fiche detail d'une tache affiche le bonus ou malus actuel a cote de l'etat d'urgence.
+
+### Detection des taches penibles
+- Quand une tache est systematiquement en retard (plus de 70% des completions en zone bonus sur une fenetre glissante), l'app propose automatiquement a chaque membre du foyer de bumper la penibilite de +1.
+- Le modal de bump affiche la liste des dernieres completions avec leur statut, et propose soit un bump rapide, soit d'aller modifier les notes (affinite/effort).
+- Un seul prompt s'affiche a l'ouverture de l'app (pas de spam). Apres un prompt, 2h de silence minimum.
+
+### Reglages avances
+- Nouveau panneau "Bonus / Malus de points" dans les Options avancees des Reglages, avec tous les seuils configurables par foyer (14 curseurs avec explications).
+
 ## v0.11.1 — 2026-04-15
 
 ### Fin du "flash" apres une completion sur l'accueil

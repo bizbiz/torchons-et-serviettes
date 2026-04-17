@@ -88,6 +88,17 @@ private val migration4to5 = object : Migration(4, 5) {
     }
 }
 
+private val migration5to6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Systeme bonus/malus points : tracabilite du multiplicateur et de la
+        // raison (bonus retard, malus avance, 1ere completion, etc.) pour
+        // chaque ligne de completion. Immuable (on ne reecrit pas le passe
+        // si les seuils changent).
+        db.execSQL("ALTER TABLE completions ADD COLUMN multiplier REAL NOT NULL DEFAULT 1.0")
+        db.execSQL("ALTER TABLE completions ADD COLUMN reason TEXT NOT NULL DEFAULT 'NEUTRAL'")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -100,7 +111,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5)
+            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6)
             .build()
     }
 

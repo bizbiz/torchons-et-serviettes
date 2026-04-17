@@ -13,8 +13,10 @@ import com.torchons.app.data.model.ObjectiveUpdate
 import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.PresenceRequest
+import com.torchons.app.data.model.PromptResolveRequest
 import com.torchons.app.data.model.PropositionCreate
 import com.torchons.app.data.model.PropositionView
+import com.torchons.app.data.model.UserPrompt
 import com.torchons.app.data.model.RetardResponse
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.Category
@@ -65,6 +67,10 @@ data class HomeUiState(
     val celebratingTaskId: String? = null,
     /** Compteur incremente a chaque celebration pour relancer l'animation konfetti. */
     val celebrationTrigger: Int = 0,
+    /** Points gagnes a afficher dans la celebration (preview ou response reelle). */
+    val celebrationPoints: Int? = null,
+    /** Raison du multiplicateur (BONUS_RETARD / MALUS_AVANCE / FIRST_COMPLETION / NEUTRAL / PERSO). */
+    val celebrationReason: String? = null,
     /**
      * Set des task_ids recemment completes cote client pour lesquels le
      * backend n'a pas encore integre la completion (SyncWorker pas encore
@@ -86,6 +92,10 @@ data class HomeUiState(
     val retard: RetardResponse? = null,
     val pace: PaceResponse? = null,
     val maintenance: MaintenanceRateResponse? = null,
+    /** Prompt de la queue unifiee (BUMP_EFFORT / VOTE_RATING). null = rien a afficher. */
+    val currentPrompt: UserPrompt? = null,
+    /** True quand le modal prompt est actif. */
+    val showPromptModal: Boolean = false,
 )
 
 @HiltViewModel
@@ -213,11 +223,16 @@ class HomeViewModel @Inject constructor(
             // ou des valeurs par defaut.
             refreshProjection()
 
+            // v1.1 : queue unifiee des prompts (remplace /pending-affinity).
+            fetchNextPrompt()
+
             val allOk = settingsOk && results.all { it }
 
             // Afficher la popup affinite UNE SEULE FOIS apres le refresh
+            // (legacy — garde le fallback tant que la queue n'est pas peuplee)
             val pending = _uiState.value.pendingAffinity
             val popupEnabled = _affinityPopupEnabled.value
+            val promptAlreadyShown = _uiState.value.showPromptModal
 
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
@@ -225,7 +240,8 @@ class HomeViewModel @Inject constructor(
                 lastRefreshFailed = !allOk,
                 showAffinityPopup = pending != null
                     && popupSessionGate.armed.value
-                    && popupEnabled,
+                    && popupEnabled
+                    && !promptAlreadyShown,  // le prompt unifie a priorite
             )
         }
     }
@@ -438,7 +454,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun completeTask(taskId: String) {
-        celebrateThen(taskId) {
+        celebrateThen(taskId, null, null) {
             taskRepository.completeTask(taskId).fold(
                 onSuccess = { refresh() },
                 onFailure = { _uiState.value = _uiState.value.copy(error = it.message) },
@@ -446,8 +462,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun completeTaskAtDate(taskId: String, isoDate: String, completedBy: String? = null) {
-        celebrateThen(taskId) {
+    fun completeTaskAtDate(
+        taskId: String,
+        isoDate: String,
+        completedBy: String? = null,
+        previewPoints: Int? = null,
+        previewReason: String? = null,
+    ) {
+        celebrateThen(taskId, previewPoints, previewReason) {
             taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
                 onSuccess = { refresh() },
                 onFailure = { _uiState.value = _uiState.value.copy(error = it.message) },
@@ -460,14 +482,29 @@ class HomeViewModel @Inject constructor(
         taskId: String,
         participantUserIds: List<String>,
         isoDate: String? = null,
+        previewPoints: Int? = null,
+        previewReason: String? = null,
     ) {
-        celebrateThen(taskId) {
+        celebrateThen(taskId, previewPoints, previewReason) {
             taskRepository.completeTaskCollective(
                 taskId = taskId,
                 participantUserIds = participantUserIds,
                 completedAt = isoDate,
             ).fold(
-                onSuccess = { refresh() },
+                onSuccess = { response ->
+                    // Si on n'avait pas de preview (ex: DatePickerDialog 2-pers),
+                    // on rafraichit la celebration avec la valeur reelle du serveur.
+                    if (previewPoints == null) {
+                        val first = response.completions.firstOrNull()
+                        if (first != null) {
+                            _uiState.value = _uiState.value.copy(
+                                celebrationPoints = first.pointsEarned,
+                                celebrationReason = first.reason,
+                            )
+                        }
+                    }
+                    refresh()
+                },
                 onFailure = { err ->
                     val msg = when (err) {
                         is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
@@ -489,15 +526,24 @@ class HomeViewModel @Inject constructor(
      * suggestion suivante du tampon (au lieu de re-flasher la meme carte
      * pendant que le serveur rattrape le retard de sync).
      */
-    private fun celebrateThen(taskId: String, block: suspend () -> Unit) {
+    private fun celebrateThen(
+        taskId: String,
+        points: Int?,
+        reason: String?,
+        block: suspend () -> Unit,
+    ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 celebratingTaskId = taskId,
                 celebrationTrigger = _uiState.value.celebrationTrigger + 1,
+                celebrationPoints = points,
+                celebrationReason = reason,
             )
             kotlinx.coroutines.delay(2000L)
             _uiState.value = _uiState.value.copy(
                 celebratingTaskId = null,
+                celebrationPoints = null,
+                celebrationReason = null,
                 justCompletedIds = _uiState.value.justCompletedIds + taskId,
             )
             block()
@@ -506,6 +552,73 @@ class HomeViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    // --- Queue unifiee des prompts (BUMP_EFFORT / VOTE_RATING) ---
+
+    /**
+     * Fetch le prochain prompt non-resolu. Respecte la tolerance 2h : si un
+     * prompt a ete affiche il y a moins de 2h, on ne fetch pas.
+     *
+     * Appele dans refresh() apres les projections.
+     */
+    private suspend fun fetchNextPrompt() {
+        try {
+            // Tolerance 2h
+            val lastShown = tokenManager.lastPromptShownAtFlow.first()
+            if (lastShown > 0 && System.currentTimeMillis() - lastShown < 2 * 3600 * 1000) {
+                return  // trop recent
+            }
+
+            val resp = apiService.getNextPrompt()
+            if (resp.isSuccessful && resp.body() != null) {
+                val prompt = resp.body()!!
+                // Mark shown
+                apiService.markPromptShown(prompt.id)
+                tokenManager.setLastPromptShownAt(System.currentTimeMillis())
+                _uiState.value = _uiState.value.copy(
+                    currentPrompt = prompt,
+                    showPromptModal = true,
+                )
+            }
+        } catch (_: Exception) {
+            // offline — pas de prompt
+        }
+    }
+
+    /** User repond au prompt (ANSWERED avec payload). */
+    fun resolveCurrentPrompt(resolution: String, payload: Map<String, Any?>? = null) {
+        val prompt = _uiState.value.currentPrompt ?: return
+        viewModelScope.launch {
+            try {
+                apiService.resolvePrompt(prompt.id, PromptResolveRequest(resolution, payload))
+            } catch (_: Exception) {}
+            _uiState.value = _uiState.value.copy(currentPrompt = null, showPromptModal = false)
+            refresh()
+        }
+    }
+
+    /** User ferme le prompt (DISMISSED). */
+    fun dismissCurrentPrompt() {
+        resolveCurrentPrompt("DISMISSED")
+    }
+
+    /**
+     * Preview des points pour une completion a venir (bonus/malus). Appelle
+     * l'endpoint /completion-preview. Retourne null si offline ou erreur —
+     * l'UI affiche alors un fallback.
+     */
+    suspend fun fetchCompletionPreview(
+        taskId: String,
+        isoDate: String,
+        numParticipants: Int,
+    ): com.torchons.app.data.model.CompletionPreview? {
+        return try {
+            val resp = apiService.getCompletionPreview(taskId, isoDate, numParticipants)
+            if (resp.isSuccessful) resp.body() else null
+        } catch (_: Exception) {
+            null
+        }
     }
 }
 

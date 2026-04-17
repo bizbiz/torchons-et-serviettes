@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -68,7 +69,8 @@ fun CelebrationOverlay(
  *
  * Utilise dans SuggestionCard, InProgressCard, TaskCard. Les emoji et le
  * texte changent legerement selon le contexte (peut etre customise via
- * les parametres `emoji` et `text`).
+ * les parametres `emoji` et `text`). Si `points` est fourni, on affiche
+ * aussi le gain et eventuellement une sous-ligne raison (bonus/malus/first).
  *
  * La hauteur s'aligne par defaut sur celle d'une card normale via padding.
  */
@@ -77,7 +79,10 @@ fun CelebrationCardContent(
     modifier: Modifier = Modifier,
     emoji: String = "🎉",
     text: String = "Bravo !",
+    points: Int? = null,
+    reason: String? = null,  // NEUTRAL / BONUS_RETARD / MALUS_AVANCE / FIRST_COMPLETION / PERSO
 ) {
+    val (pointsColor, reasonEmoji, reasonLabel) = celebrationReasonStyle(reason)
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -98,7 +103,39 @@ fun CelebrationCardContent(
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
         )
+        if (points != null && points > 0) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "+$points pt${if (points > 1) "s" else ""}",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = pointsColor ?: MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center,
+            )
+            if (reasonLabel != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${reasonEmoji ?: ""} $reasonLabel".trim(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = pointsColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
     }
+}
+
+/**
+ * Determine la couleur + emoji + libelle de la sous-ligne de la celebration
+ * selon la `reason` persistee sur la completion.
+ */
+private fun celebrationReasonStyle(
+    reason: String?,
+): Triple<Color?, String?, String?> = when (reason) {
+    "BONUS_RETARD" -> Triple(Color(0xFF2E7D32), "🔥", "bonus tache en retard")
+    "MALUS_AVANCE" -> Triple(Color(0xFFEF6C00), "⏱", "malus tache en avance")
+    "FIRST_COMPLETION" -> Triple(Color(0xFF1976D2), "✨", "premiere fois")
+    else -> Triple(null, null, null)
 }
 
 /** Variantes d'emoji pour varier le ressenti. Pickee aleatoirement par celebration. */

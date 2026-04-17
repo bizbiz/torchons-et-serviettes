@@ -224,6 +224,24 @@ fun HomeScreen(
         )
     }
 
+    // Queue unifiee des prompts (v1.1 : BUMP_EFFORT / VOTE_RATING).
+    // Affiche 1 prompt a l'ouverture, avec tolerance 2h.
+    if (uiState.showPromptModal && uiState.currentPrompt != null) {
+        com.torchons.app.ui.common.PromptModal(
+            prompt = uiState.currentPrompt!!,
+            onDismiss = { viewModel.dismissCurrentPrompt() },
+            onBumpEffort = {
+                viewModel.resolveCurrentPrompt("ANSWERED", mapOf("action" to "bump_effort"))
+            },
+            onOpenRating = { taskId ->
+                // Resolve le prompt comme ANSWERED puis ouvre le rating existant
+                viewModel.resolveCurrentPrompt("ANSWERED")
+                // On pourrait ouvrir le rating automatiquement ici,
+                // mais pour V1 le user peut aller sur la fiche tache.
+            },
+        )
+    }
+
     // Dialog partage "Deja fait" / "Fait ensemble" (v0.11 refonte completion).
     // Instancie une seule fois au niveau du HomeScreen, partage entre toutes
     // les SuggestionCards via l'etat dialogState releve ici.
@@ -238,18 +256,22 @@ fun HomeScreen(
             assignedMemberIds = ds.assignedIds,
             currentUserId = userId.orEmpty(),
             onDismiss = { dialogState = null },
-            onConfirm = { participantIds, isoDate ->
+            onConfirm = { participantIds, isoDate, preview ->
                 if (ds.mode == CompletionDialogMode.Single) {
                     viewModel.completeTaskAtDate(
                         taskId = ds.taskId,
                         isoDate = isoDate,
                         completedBy = participantIds.firstOrNull(),
+                        previewPoints = preview?.finalPoints,
+                        previewReason = preview?.reason,
                     )
                 } else {
                     viewModel.completeTaskCollective(
                         taskId = ds.taskId,
                         participantUserIds = participantIds,
                         isoDate = isoDate,
+                        previewPoints = preview?.finalPoints,
+                        previewReason = preview?.reason,
                     )
                 }
                 dialogState = null
@@ -259,6 +281,9 @@ fun HomeScreen(
                     dialogState = ds.copy(mode = CompletionDialogMode.Multi)
                 }
             } else null,
+            previewProvider = { isoDate, numParticipants ->
+                viewModel.fetchCompletionPreview(ds.taskId, isoDate, numParticipants)
+            },
         )
     }
 
@@ -342,6 +367,8 @@ fun HomeScreen(
                     room = room,
                     category = category,
                     isCelebrating = uiState.celebratingTaskId == suggestion.taskId,
+                    celebrationPoints = if (uiState.celebratingTaskId == suggestion.taskId) uiState.celebrationPoints else null,
+                    celebrationReason = if (uiState.celebratingTaskId == suggestion.taskId) uiState.celebrationReason else null,
                     onClick = { onTaskClick(suggestion.taskId) },
                     onComplete = { viewModel.completeTask(suggestion.taskId) },
                     onDejaFait = {
@@ -489,6 +516,8 @@ private fun SuggestionCard(
     room: Room?,
     category: Category?,
     isCelebrating: Boolean,
+    celebrationPoints: Int? = null,
+    celebrationReason: String? = null,
     onClick: () -> Unit,
     onComplete: () -> Unit,
     onDejaFait: () -> Unit,
@@ -511,11 +540,16 @@ private fun SuggestionCard(
         // Mode celebration : on remplace tout le contenu par les emoji de
         // felicitations. Le confetti est gere au niveau du Box parent.
         if (celebration != null) {
-            CelebrationCardContent(emoji = celebration.first, text = celebration.second)
+            CelebrationCardContent(
+                emoji = celebration.first,
+                text = celebration.second,
+                points = celebrationPoints,
+                reason = celebrationReason,
+            )
             return@Card
         }
         Column(modifier = Modifier.padding(16.dp)) {
-            // Badge raison + bouton edit
+            // Badge raison + pastille bonus + bouton edit
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = reasonIcon,
@@ -531,6 +565,22 @@ private fun SuggestionCard(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
+                if (suggestion.bonusEligible && suggestion.bonusPct > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFFFFE8D6))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = "🔥 +${(suggestion.bonusPct * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFC2410C),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
                 IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
                     Icon(
                         imageVector = Icons.Default.Edit,

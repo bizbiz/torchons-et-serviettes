@@ -66,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -129,7 +130,7 @@ fun TaskDetailScreen(
             assignedMemberIds = assignedIds,
             currentUserId = currentUserId.orEmpty(),
             onDismiss = { completionDialogMode = null },
-            onConfirm = { participantIds, isoDate ->
+            onConfirm = { participantIds, isoDate, _ ->
                 if (mode == CompletionDialogMode.Single) {
                     viewModel.completeTaskAtDate(isoDate, participantIds.firstOrNull())
                 } else {
@@ -140,6 +141,11 @@ fun TaskDetailScreen(
             onSwitchToMulti = if (mode == CompletionDialogMode.Single) {
                 { completionDialogMode = CompletionDialogMode.Multi }
             } else null,
+            previewProvider = task?.let { t ->
+                { isoDate, numParticipants ->
+                    viewModel.fetchCompletionPreview(t.id, isoDate, numParticipants)
+                }
+            },
         )
     }
 
@@ -418,6 +424,31 @@ fun TaskDetailScreen(
                                         fontWeight = FontWeight.SemiBold,
                                         color = stateColor
                                     )
+                                }
+                                // Pastille bonus/malus a cote du label urgence
+                                uiState.bonusPreview?.let { preview ->
+                                    if (preview.reason == "BONUS_RETARD") {
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = "⭐ +${(preview.multiplier * 100 - 100).toInt()}% bonus",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = Color(0xFF2E7D32),
+                                                fontWeight = FontWeight.SemiBold,
+                                            )
+                                            // TODO : tooltip "i" avec explication seuils
+                                        }
+                                    } else if (preview.reason == "MALUS_AVANCE") {
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = "⏱ -${(100 - preview.multiplier * 100).toInt()}% malus",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = Color(0xFFEF6C00),
+                                                fontWeight = FontWeight.SemiBold,
+                                            )
+                                        }
+                                    }
                                 }
                                 if (uiState.countdownLabel.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(8.dp))

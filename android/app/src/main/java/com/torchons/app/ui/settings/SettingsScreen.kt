@@ -611,6 +611,91 @@ fun SettingsScreen(
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+                    // --- Bonus / Malus de points ---
+                    val bonusConfig by viewModel.bonusConfig.collectAsState()
+                    var showBonusMalus by remember { mutableStateOf(false) }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showBonusMalus = !showBonusMalus }
+                            .padding(vertical = 4.dp),
+                    ) {
+                        Text(
+                            text = "Bonus / Malus de points",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = if (showBonusMalus) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+
+                    if (showBonusMalus && bonusConfig != null) {
+                        val cfg = bonusConfig!!
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Bonus retard
+                        Text("Bonus retard", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        BonusSlider("Bonus %", "+${(cfg.bonusPct * 100).toInt()}%", cfg.bonusPct, 0f..2f, 19,
+                            "Multiplicateur applique quand une tache est en retard au-dela du seuil. +50% = touche 1.5x les points.",
+                        ) { viewModel.updateBonusConfig("bonus_pct", it) }
+                        BonusSlider("Seuil bonus (Strict)", "${(cfg.seuilBonusStrict * 100).toInt()}%", cfg.seuilBonusStrict, 0f..1f, 19,
+                            "% du cycle de retard pour declencher le bonus sur les taches Strict.",
+                        ) { viewModel.updateBonusConfig("seuil_bonus_strict", it) }
+                        BonusSlider("Seuil bonus (Normal)", "${(cfg.seuilBonusNormal * 100).toInt()}%", cfg.seuilBonusNormal, 0f..1f, 19,
+                            "% du cycle de retard pour declencher le bonus sur les taches Normal.",
+                        ) { viewModel.updateBonusConfig("seuil_bonus_normal", it) }
+                        BonusSlider("Seuil bonus (Souple)", "${(cfg.seuilBonusSouple * 100).toInt()}%", cfg.seuilBonusSouple, 0f..1f, 19,
+                            "% du cycle de retard pour declencher le bonus sur les taches Souple.",
+                        ) { viewModel.updateBonusConfig("seuil_bonus_souple", it) }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        // Malus avance
+                        Text("Malus avance", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        BonusSlider("Plancher malus", "${(cfg.plancherMalus * 100).toInt()}%", cfg.plancherMalus, 0.1f..1f, 17,
+                            "Multiplicateur minimum a 100% d'avance (debut du cycle). 50% = au pire la moitie des points.",
+                        ) { viewModel.updateBonusConfig("plancher_malus", it) }
+                        BonusSlider("Seuil malus (Strict)", "${(cfg.seuilMalusStrict * 100).toInt()}%", cfg.seuilMalusStrict, 0f..1f, 19,
+                            "% du cycle en avance pour entrer en zone malus sur les taches Strict.",
+                        ) { viewModel.updateBonusConfig("seuil_malus_strict", it) }
+                        BonusSlider("Seuil malus (Normal)", "${(cfg.seuilMalusNormal * 100).toInt()}%", cfg.seuilMalusNormal, 0f..1f, 19,
+                            "% du cycle en avance pour entrer en zone malus sur les taches Normal.",
+                        ) { viewModel.updateBonusConfig("seuil_malus_normal", it) }
+                        BonusSlider("Seuil malus (Souple)", "${(cfg.seuilMalusSouple * 100).toInt()}%", cfg.seuilMalusSouple, 0f..1f, 19,
+                            "% du cycle en avance pour entrer en zone malus sur les taches Souple.",
+                        ) { viewModel.updateBonusConfig("seuil_malus_souple", it) }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        // Analyse retard (bump)
+                        Text("Detection retards repetitifs", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        BonusSlider("Fenetre min", "${cfg.bumpYMinDays} j", cfg.bumpYMinDays.toFloat(), 30f..365f, 10,
+                            "Duree minimale de la fenetre d'analyse pour detecter un retard systematique.",
+                        ) { viewModel.updateBonusConfig("bump_y_min_days", it.toInt()) }
+                        BonusSlider("Fenetre max", "${cfg.bumpYMaxDays} j", cfg.bumpYMaxDays.toFloat(), 180f..3650f, 10,
+                            "Duree maximale de la fenetre d'analyse (les vieilles donnees pourrissent).",
+                        ) { viewModel.updateBonusConfig("bump_y_max_days", it.toInt()) }
+                        BonusSlider("Completions min", "${cfg.bumpZMin}", cfg.bumpZMin.toFloat(), 1f..10f, 8,
+                            "Nombre minimum de completions dans la fenetre pour tirer une conclusion.",
+                        ) { viewModel.updateBonusConfig("bump_z_min", it.toInt()) }
+                        BonusSlider("Ratio retard", "${(cfg.bumpXRatio * 100).toInt()}%", cfg.bumpXRatio, 0.3f..1f, 13,
+                            "Pourcentage de completions qui doivent etre en zone bonus pour qualifier 'systematiquement en retard'.",
+                        ) { viewModel.updateBonusConfig("bump_x_ratio", it) }
+                        BonusSlider("Grace period", "${(cfg.bumpGraceRatio * 100).toInt()}%", cfg.bumpGraceRatio, 0.1f..2f, 18,
+                            "Apres proposition de bump, on attend ce % de la fenetre avant de re-analyser.",
+                        ) { viewModel.updateBonusConfig("bump_grace_ratio", it) }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
                     // Infos app
                     Text(
                         text = "Infos",
@@ -722,4 +807,41 @@ private fun SettingSwitch(
         Spacer(modifier = Modifier.width(8.dp))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
+}
+
+/**
+ * Slider pour les parametres bonus/malus avec label + valeur + tooltip i.
+ * Envoie onValueChangeEnd (pas onValueChange) pour ne PAS spammer le backend
+ * a chaque pixel du drag.
+ */
+@Composable
+private fun BonusSlider(
+    label: String,
+    valueLabel: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    tooltipDescription: String,
+    onValueChangeEnd: (Float) -> Unit,
+) {
+    var sliderValue by remember(value) { mutableStateOf(value) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "$label : $valueLabel",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+        InfoTooltip(
+            title = label,
+            description = tooltipDescription,
+        )
+    }
+    Slider(
+        value = sliderValue,
+        onValueChange = { sliderValue = it },
+        onValueChangeFinished = { onValueChangeEnd(sliderValue) },
+        valueRange = range,
+        steps = steps,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }

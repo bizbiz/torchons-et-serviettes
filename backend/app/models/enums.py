@@ -35,3 +35,43 @@ class UrgencyState(str, enum.Enum):
     GREEN = "GREEN"
     ORANGE = "ORANGE"
     RED = "RED"
+
+
+class CompletionReason(str, enum.Enum):
+    """Raison du multiplicateur applique a une completion.
+
+    Stockee sur task_completions pour tracabilite historique (immuable).
+    Si les seuils changent plus tard dans foyer_bonus_config, les lignes
+    historiques gardent leur reason + multiplier figes.
+
+    - NEUTRAL : zone plateau (ni en avance ni en retard significatif), mult=1.0
+    - BONUS_RETARD : zone bonus (% retard >= seuil_bonus), mult=1+bonus_pct
+    - MALUS_AVANCE : zone malus (% avance > seuil_malus), mult<1.0 (rampe)
+    - FIRST_COMPLETION : 1ere completion de la tache, bypass systematique mult=1.0
+    - PERSO : tache perso (assignee a 0 ou 1 user), 0 point, mult N/A
+    """
+
+    NEUTRAL = "NEUTRAL"
+    BONUS_RETARD = "BONUS_RETARD"
+    MALUS_AVANCE = "MALUS_AVANCE"
+    FIRST_COMPLETION = "FIRST_COMPLETION"
+    PERSO = "PERSO"
+
+
+class PromptType(str, enum.Enum):
+    """Types de prompts dans la queue unifiee user_prompts.
+
+    BUMP_EFFORT : tache systematiquement en retard, proposer +1 effort.
+    VOTE_RATING : tache sans notation recente (affinite+effort), demander avis.
+    """
+
+    BUMP_EFFORT = "BUMP_EFFORT"
+    VOTE_RATING = "VOTE_RATING"
+
+
+class PromptResolution(str, enum.Enum):
+    """Resolution d'un prompt par l'utilisateur."""
+
+    DISMISSED = "DISMISSED"
+    ANSWERED = "ANSWERED"
+    EXPIRED = "EXPIRED"

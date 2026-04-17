@@ -59,6 +59,9 @@ data class TaskDetailUiState(
     val isCelebrating: Boolean = false,
     /** Compteur incremente a chaque celebration pour relancer konfetti. */
     val celebrationTrigger: Int = 0,
+    /** Preview bonus/malus pour affichage dans le header urgence de la fiche.
+     * null tant que le fetch n'a pas abouti ou si pas de recurrence. */
+    val bonusPreview: com.torchons.app.data.model.CompletionPreview? = null,
 )
 
 /**
@@ -184,6 +187,14 @@ class TaskDetailViewModel @Inject constructor(
                         avgEffortTimeMin = avgEffortTimeMin,
                         scorePoints = scorePoints,
                     )
+                }
+            } catch (_: Exception) {}
+
+            // Bonus/malus preview pour affichage dans le header (best-effort).
+            try {
+                val previewResp = apiService.getCompletionPreview(taskId)
+                if (previewResp.isSuccessful) {
+                    _uiState.value = _uiState.value.copy(bonusPreview = previewResp.body())
                 }
             } catch (_: Exception) {}
 
@@ -381,6 +392,20 @@ class TaskDetailViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    /** Preview bonus/malus pour le dialog de completion. null = offline/erreur. */
+    suspend fun fetchCompletionPreview(
+        taskId: String,
+        isoDate: String,
+        numParticipants: Int,
+    ): com.torchons.app.data.model.CompletionPreview? {
+        return try {
+            val resp = apiService.getCompletionPreview(taskId, isoDate, numParticipants)
+            if (resp.isSuccessful) resp.body() else null
+        } catch (_: Exception) {
+            null
+        }
     }
 }
 

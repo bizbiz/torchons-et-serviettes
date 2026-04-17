@@ -15,6 +15,7 @@ from app.auth import get_current_user
 from app.database import get_session
 from app.models.category import Category
 from app.models.completion import TaskCompletion
+from app.models.enums import CompletionReason
 from app.models.sync import ChangeLog, ProcessedOp
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
@@ -26,6 +27,12 @@ from app.schemas.sync import (
     SyncOperation,
     SyncRequest,
     SyncResponse,
+)
+from app.services.bonus_malus import (
+    apply_multiplier_to_points,
+    compute_base_points_for_task,
+    compute_bonus_malus_for_completion,
+    resolve_stored_reason_and_mult,
 )
 from app.utils.changelog import record_change
 
@@ -329,19 +336,55 @@ async def _handle_completion(
     user_id: str,
     foyer_id: str,
 ) -> uuid.UUID:
-    """Traite INSERT / DELETE sur task_completions."""
+    """Traite INSERT / DELETE sur task_completions.
+
+    Sur INSERT : applique le systeme bonus/malus (points_earned + multiplier
+    + reason) pour rester coherent avec le endpoint REST POST /complete. Le
+    payload client n'a que {task_id, completed_by, completed_at, notes} —
+    le back recalcule autoritairement.
+    """
     data = op.data or {}
 
     if op.operation == "INSERT":
+        # Charger la tache pour calculer le multiplicateur.
+        task_id = uuid.UUID(data["task_id"]) if data.get("task_id") else op.row_id
+        task_result = await session.execute(
+            select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
+        )
+        task = task_result.scalar_one_or_none()
+
+        # Date de completion effective (peut etre backdatee par le client).
+        if data.get("completed_at"):
+            completed_at_eff = datetime.fromisoformat(data["completed_at"])
+            if completed_at_eff.tzinfo is None:
+                completed_at_eff = completed_at_eff.replace(tzinfo=timezone.utc)
+        else:
+            completed_at_eff = datetime.now(timezone.utc)
+
+        # Defauts si tache introuvable (edge case: sync d'une completion sur
+        # une tache supprimee). On garde le comportement historique.
+        points = data.get("points_earned", 1)
+        multiplier = 1.0
+        reason = CompletionReason.NEUTRAL
+
+        if task is not None:
+            base_points = await compute_base_points_for_task(session, task)
+            mult_result = await compute_bonus_malus_for_completion(
+                session, task, uuid.UUID(foyer_id), completed_at_eff,
+            )
+            reason, multiplier = resolve_stored_reason_and_mult(base_points, mult_result)
+            points = apply_multiplier_to_points(base_points, mult_result)
+
         comp = TaskCompletion(
             id=op.row_id,
-            task_id=uuid.UUID(data["task_id"]) if data.get("task_id") else op.row_id,
+            task_id=task_id,
             completed_by=uuid.UUID(data.get("completed_by", user_id)),
-            points_earned=data.get("points_earned", 1),
+            points_earned=points,
+            multiplier=multiplier,
+            reason=reason,
             notes=data.get("notes"),
         )
-        if data.get("completed_at"):
-            comp.completed_at = datetime.fromisoformat(data["completed_at"])
+        comp.completed_at = completed_at_eff
         session.add(comp)
         await session.flush()
         return comp.id

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
+import com.torchons.app.data.model.BonusConfig
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
@@ -53,6 +54,9 @@ class SettingsViewModel @Inject constructor(
 
     private val _fairShareRatio = MutableStateFlow(60)
     val fairShareRatio: StateFlow<Int> = _fairShareRatio.asStateFlow()
+
+    private val _bonusConfig = MutableStateFlow<BonusConfig?>(null)
+    val bonusConfig: StateFlow<BonusConfig?> = _bonusConfig.asStateFlow()
 
     init {
         loadAll()
@@ -111,6 +115,14 @@ class SettingsViewModel @Inject constructor(
                         val fs = data.find { it.userId == firstUser.id }
                         _fairShareRatio.value = ((fs?.targetRatio ?: 0.5) * 100).toInt()
                     }
+                }
+            } catch (_: Exception) {}
+
+            // Config bonus/malus du foyer
+            try {
+                val bcResp = apiService.getBonusConfig()
+                if (bcResp.isSuccessful) {
+                    _bonusConfig.value = bcResp.body()
                 }
             } catch (_: Exception) {}
         }
@@ -175,6 +187,21 @@ class SettingsViewModel @Inject constructor(
                     mapOf("user_id" to users[0].id, "target_ratio" to ratio),
                     mapOf("user_id" to users[1].id, "target_ratio" to (1.0 - ratio))
                 ))
+            } catch (_: Exception) {}
+        }
+    }
+
+    /**
+     * Met a jour un parametre de la config bonus/malus du foyer.
+     * Mise a jour partielle — seul le champ specifie est modifie.
+     */
+    fun updateBonusConfig(key: String, value: Any) {
+        viewModelScope.launch {
+            try {
+                val resp = apiService.updateBonusConfig(mapOf(key to value))
+                if (resp.isSuccessful) {
+                    _bonusConfig.value = resp.body()
+                }
             } catch (_: Exception) {}
         }
     }

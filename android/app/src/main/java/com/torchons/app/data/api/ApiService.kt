@@ -106,6 +106,20 @@ interface ApiService {
         @Body request: CollectiveCompleteRequest,
     ): Response<CollectiveCompletionResponse>
 
+    /**
+     * Preview des points a gagner avant validation (bonus/malus applique).
+     * Backend authoritative : meme formule qu'au POST /complete.
+     *
+     * @param completedAt ISO 8601 date (optionnel, defaut = maintenant)
+     * @param numParticipants 1 pour solo, N pour 'fait ensemble' (pour preview du split)
+     */
+    @GET("tasks/{id}/completion-preview")
+    suspend fun getCompletionPreview(
+        @Path("id") taskId: String,
+        @retrofit2.http.Query("completed_at") completedAt: String? = null,
+        @retrofit2.http.Query("num_participants") numParticipants: Int = 1,
+    ): Response<com.torchons.app.data.model.CompletionPreview>
+
     /** Modifier une completion (qui, quand). */
     @PUT("completions/{completionId}")
     suspend fun updateCompletion(
@@ -329,6 +343,35 @@ interface ApiService {
     /** Mettre a jour les reglages utilisateur. */
     @PUT("settings")
     suspend fun updateSettings(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<Map<String, Any>>
+
+    // --- Config bonus/malus (Options avancees) ---
+
+    /** Recuperer la config bonus/malus du foyer. */
+    @GET("bonus-config")
+    suspend fun getBonusConfig(): Response<com.torchons.app.data.model.BonusConfig>
+
+    /** Mettre a jour la config bonus/malus du foyer (partiel). */
+    @PUT("bonus-config")
+    suspend fun updateBonusConfig(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+    ): Response<com.torchons.app.data.model.BonusConfig>
+
+    // --- Prompts (queue unifiee) ---
+
+    /** Prochain prompt non-resolu (204 si rien). */
+    @GET("prompts/next")
+    suspend fun getNextPrompt(): Response<com.torchons.app.data.model.UserPrompt>
+
+    /** Marque le prompt comme affiche. */
+    @POST("prompts/{id}/shown")
+    suspend fun markPromptShown(@Path("id") promptId: String): Response<Map<String, Any>>
+
+    /** Resout le prompt (DISMISSED / ANSWERED). */
+    @POST("prompts/{id}/resolve")
+    suspend fun resolvePrompt(
+        @Path("id") promptId: String,
+        @Body body: com.torchons.app.data.model.PromptResolveRequest,
+    ): Response<Map<String, Any>>
 
     // --- Notifications ---
 

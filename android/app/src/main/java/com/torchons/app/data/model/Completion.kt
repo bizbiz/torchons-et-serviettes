@@ -12,8 +12,27 @@ data class Completion(
     @SerializedName("completed_by") val completedBy: String,
     @SerializedName("completed_at") val completedAt: String,
     @SerializedName("points_earned") val pointsEarned: Int = 1,
+    @SerializedName("multiplier") val multiplier: Float = 1.0f,
+    @SerializedName("reason") val reason: String = "NEUTRAL",
     @SerializedName("notes") val notes: String? = null,
     @SerializedName("collective_id") val collectiveId: String? = null,
+)
+
+/**
+ * Preview des points a gagner pour une completion a venir. Alimente par
+ * GET /api/tasks/{id}/completion-preview. Affiche dans le dialog de
+ * completion avant validation (ligne "Tu gagneras X pts + raison").
+ *
+ * reason : NEUTRAL / BONUS_RETARD / MALUS_AVANCE / FIRST_COMPLETION / PERSO
+ */
+data class CompletionPreview(
+    @SerializedName("base_points") val basePoints: Int,
+    @SerializedName("multiplier") val multiplier: Float,
+    @SerializedName("final_points") val finalPoints: Int,
+    @SerializedName("reason") val reason: String,
+    @SerializedName("days_early") val daysEarly: Int,
+    @SerializedName("days_late") val daysLate: Int,
+    @SerializedName("pct_cycle") val pctCycle: Float,
 )
 
 /**
