@@ -204,6 +204,12 @@ class TaskListViewModel @Inject constructor(
                     filters = filters,
                 )
             }.flowOn(Dispatchers.Default).collect { processed ->
+                // Attention : on ne recopie PAS searchQuery / searchRespectFilters
+                // ici. Ces champs sont mis a jour synchroniquement dans
+                // updateSearchQuery / toggleSearchRespectFilters pour eviter que
+                // le pipeline async (qui fait applyFilters sur Dispatchers.Default)
+                // ne remette une version en retard dans le TextField. Sans ca,
+                // le curseur "revient en arriere" quand l'utilisateur tape vite.
                 _uiState.value = _uiState.value.copy(
                     tasks = processed.filtered.tasks,
                     categories = processed.categories,
@@ -218,8 +224,6 @@ class TaskListViewModel @Inject constructor(
                     filterRecurrence = processed.filters.filterRecurrence,
                     filterHome = processed.filters.filterHome,
                     selectedRoomId = processed.filters.selectedRoomId,
-                    searchQuery = processed.filters.searchQuery,
-                    searchRespectFilters = processed.filters.searchRespectFilters,
                     hasCachedData = processed.hasCache,
                     isLoading = if (processed.hasCache) false else _uiState.value.isLoading,
                 )
@@ -420,21 +424,31 @@ class TaskListViewModel @Inject constructor(
      * (query vide, filtres ignores).
      */
     fun closeSearchBar() {
-        _uiState.value = _uiState.value.copy(isSearchBarExpanded = false)
+        _uiState.value = _uiState.value.copy(
+            isSearchBarExpanded = false,
+            searchQuery = "",
+            searchRespectFilters = false,
+        )
         filtersFlow.value = filtersFlow.value.copy(
             searchQuery = "",
             searchRespectFilters = false,
         )
     }
 
+    /**
+     * Double-ecriture synchrone : _uiState (source de verite pour le TextField,
+     * mise a jour immediate pour que le curseur ne regresse pas) + filtersFlow
+     * (declenche le pipeline de filtrage async via observeCache).
+     */
     fun updateSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
         filtersFlow.value = filtersFlow.value.copy(searchQuery = query)
     }
 
     fun toggleSearchRespectFilters() {
-        filtersFlow.value = filtersFlow.value.copy(
-            searchRespectFilters = !filtersFlow.value.searchRespectFilters
-        )
+        val next = !filtersFlow.value.searchRespectFilters
+        _uiState.value = _uiState.value.copy(searchRespectFilters = next)
+        filtersFlow.value = filtersFlow.value.copy(searchRespectFilters = next)
     }
 
     suspend fun logout() {

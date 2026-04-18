@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.13.1 — 2026-04-18
+
+### Fix recherche
+- Le curseur du champ de recherche revenait en arriere quand on tapait vite : corrige. L'affichage du texte saisi est maintenant synchrone, independant du temps que prend le filtrage en arriere-plan.
+
 ## v0.13.0 — 2026-04-18
 
 ### Recherche dans les taches
