@@ -23,6 +23,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.FilterListOff
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -31,6 +35,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +46,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -248,157 +256,205 @@ fun TaskListScreen(
                 }
             }
 
-            // Chips de filtres avancés + label — premiere rangee colle au top
-            // (juste sous la barre de sync). Le Scaffold gere le status bar inset.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FilterIconChip(
-                    icon = "🔥",
-                    active = uiState.filterTodo,
-                    color = Color(0xFFEF4444),
-                    onClick = { viewModel.toggleFilterTodo() }
-                )
-                FilterIconChip(
-                    icon = "❤",
-                    state = uiState.filterAffinity,
-                    onClick = { viewModel.toggleFilterAffinity() }
-                )
-                FilterIconChip(
-                    icon = "⏱",
-                    state = uiState.filterEffort,
-                    onClick = { viewModel.toggleFilterEffort() }
-                )
-                FilterIconChip(
-                    icon = "🔁",
-                    state = uiState.filterRecurrence,
-                    onClick = { viewModel.toggleFilterRecurrence() }
-                )
-                FilterIconChip(
-                    icon = "🏠",
-                    state = uiState.filterHome,
-                    onClick = { viewModel.toggleFilterHome() }
-                )
-
-                // Label du filtre actif
-                val filterLabel = buildString {
-                    val parts = mutableListOf<String>()
-                    if (uiState.filterTodo) parts += "🔥 A faire"
-                    when (uiState.filterAffinity) {
-                        FilterState.HIGH -> parts += "❤ Aimees"
-                        FilterState.LOW -> parts += "❤ Detestees"
-                        else -> {}
-                    }
-                    when (uiState.filterEffort) {
-                        FilterState.HIGH -> parts += "⏱ Long"
-                        FilterState.LOW -> parts += "⏱ Court"
-                        else -> {}
-                    }
-                    when (uiState.filterRecurrence) {
-                        FilterState.HIGH -> parts += "🔁 Recurrentes"
-                        FilterState.LOW -> parts += "🔁 Ponctuelles"
-                        else -> {}
-                    }
-                    when (uiState.filterHome) {
-                        FilterState.HIGH -> parts += "🏠 Maison"
-                        FilterState.LOW -> parts += "🏠 Hors maison"
-                        else -> {}
-                    }
-                    append(parts.joinToString(" · "))
-                }
-                if (filterLabel.isNotEmpty()) {
-                    Text(
-                        text = filterLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
+            // Barre de recherche OU chips de filtres. Par defaut les chips
+            // sont affichees ; au clic sur la loupe, elles sont remplacees par
+            // un OutlinedTextField qui prend toute la largeur (et qui, par
+            // defaut, ignore les filtres UI — cf. applyFilters cote VM).
+            val searchFocusRequester = remember { FocusRequester() }
+            LaunchedEffect(uiState.isSearchBarExpanded) {
+                if (uiState.isSearchBarExpanded) {
+                    try { searchFocusRequester.requestFocus() } catch (_: Exception) {}
                 }
             }
 
-            // Chips de filtrage par categorie — espacement uniforme 6dp
-            if (uiState.categories.isNotEmpty()) {
+            if (uiState.isSearchBarExpanded) {
+                OutlinedTextField(
+                    value = uiState.searchQuery,
+                    onValueChange = viewModel::updateSearchQuery,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .focusRequester(searchFocusRequester),
+                    placeholder = { Text("Rechercher...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { viewModel.toggleSearchRespectFilters() }) {
+                                Icon(
+                                    imageVector = if (uiState.searchRespectFilters) Icons.Default.FilterList else Icons.Default.FilterListOff,
+                                    contentDescription = if (uiState.searchRespectFilters) "Filtres appliques" else "Filtres ignores",
+                                    tint = if (uiState.searchRespectFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            IconButton(onClick = { viewModel.closeSearchBar() }) {
+                                Icon(Icons.Default.Close, contentDescription = "Fermer la recherche")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                )
+            } else {
+                // Chips de filtres avancés + label + loupe a droite — premiere
+                // rangee colle au top (juste sous la barre de sync).
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Chip "Toutes" - clear le filtre
-                    FilterChip(
-                        selected = uiState.selectedCategoryIds.isEmpty(),
-                        onClick = { viewModel.clearCategoryFilter() },
-                        label = { Text("Toutes") },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                        )
+                    FilterIconChip(
+                        icon = "🔥",
+                        active = uiState.filterTodo,
+                        color = Color(0xFFEF4444),
+                        onClick = { viewModel.toggleFilterTodo() }
+                    )
+                    FilterIconChip(
+                        icon = "❤",
+                        state = uiState.filterAffinity,
+                        onClick = { viewModel.toggleFilterAffinity() }
+                    )
+                    FilterIconChip(
+                        icon = "⏱",
+                        state = uiState.filterEffort,
+                        onClick = { viewModel.toggleFilterEffort() }
+                    )
+                    FilterIconChip(
+                        icon = "🔁",
+                        state = uiState.filterRecurrence,
+                        onClick = { viewModel.toggleFilterRecurrence() }
+                    )
+                    FilterIconChip(
+                        icon = "🏠",
+                        state = uiState.filterHome,
+                        onClick = { viewModel.toggleFilterHome() }
                     )
 
-                    // Chips pour chaque categorie qui contient au moins une tache.
-                    // Memoise pour eviter le O(catégories × taches) a chaque
-                    // recompose (changement de filtre, scroll, etc.).
-                    val categoriesWithTasks = remember(
-                        uiState.categories,
-                        uiState.tasks,
-                        uiState.selectedCategoryIds,
-                    ) {
-                        val taskCategoryIds = uiState.tasks.mapNotNullTo(mutableSetOf()) { it.task.categoryId }
-                        uiState.categories.filter { cat ->
-                            cat.id in taskCategoryIds || cat.id in uiState.selectedCategoryIds
+                    // Label du filtre actif — prend la place restante pour
+                    // pousser la loupe tout a droite.
+                    val filterLabel = buildString {
+                        val parts = mutableListOf<String>()
+                        if (uiState.filterTodo) parts += "🔥 A faire"
+                        when (uiState.filterAffinity) {
+                            FilterState.HIGH -> parts += "❤ Aimees"
+                            FilterState.LOW -> parts += "❤ Detestees"
+                            else -> {}
                         }
+                        when (uiState.filterEffort) {
+                            FilterState.HIGH -> parts += "⏱ Long"
+                            FilterState.LOW -> parts += "⏱ Court"
+                            else -> {}
+                        }
+                        when (uiState.filterRecurrence) {
+                            FilterState.HIGH -> parts += "🔁 Recurrentes"
+                            FilterState.LOW -> parts += "🔁 Ponctuelles"
+                            else -> {}
+                        }
+                        when (uiState.filterHome) {
+                            FilterState.HIGH -> parts += "🏠 Maison"
+                            FilterState.LOW -> parts += "🏠 Hors maison"
+                            else -> {}
+                        }
+                        append(parts.joinToString(" · "))
                     }
-                    categoriesWithTasks.forEach { category ->
-                        val catColor = try {
-                            Color(android.graphics.Color.parseColor(category.color))
-                        } catch (e: Exception) {
-                            MaterialTheme.colorScheme.primary
-                        }
+                    if (filterLabel.isNotEmpty()) {
+                        Text(
+                            text = filterLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 4.dp)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
 
+                    IconButton(onClick = { viewModel.openSearchBar() }) {
+                        Icon(Icons.Default.Search, contentDescription = "Rechercher")
+                    }
+                }
+
+                // Chips de filtrage par categorie — espacement uniforme 6dp
+                if (uiState.categories.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Chip "Toutes" - clear le filtre
                         FilterChip(
-                            selected = category.id in uiState.selectedCategoryIds,
-                            onClick = { viewModel.toggleCategory(category.id) },
-                            label = { Text(category.name) },
+                            selected = uiState.selectedCategoryIds.isEmpty(),
+                            onClick = { viewModel.clearCategoryFilter() },
+                            label = { Text("Toutes") },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = catColor,
-                                selectedLabelColor = Color.White
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                             )
                         )
+
+                        // Chips pour chaque categorie qui contient au moins une tache.
+                        // Memoise pour eviter le O(catégories × taches) a chaque
+                        // recompose (changement de filtre, scroll, etc.).
+                        val categoriesWithTasks = remember(
+                            uiState.categories,
+                            uiState.tasks,
+                            uiState.selectedCategoryIds,
+                        ) {
+                            val taskCategoryIds = uiState.tasks.mapNotNullTo(mutableSetOf()) { it.task.categoryId }
+                            uiState.categories.filter { cat ->
+                                cat.id in taskCategoryIds || cat.id in uiState.selectedCategoryIds
+                            }
+                        }
+                        categoriesWithTasks.forEach { category ->
+                            val catColor = try {
+                                Color(android.graphics.Color.parseColor(category.color))
+                            } catch (e: Exception) {
+                                MaterialTheme.colorScheme.primary
+                            }
+
+                            FilterChip(
+                                selected = category.id in uiState.selectedCategoryIds,
+                                onClick = { viewModel.toggleCategory(category.id) },
+                                label = { Text(category.name) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = catColor,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+                        }
                     }
                 }
-            }
 
-            // Chips de filtrage par piece (depuis v0.6.0 : vraies entites Room
-            // avec emoji, plus du parsing string).
-            if (uiState.availableRooms.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = uiState.selectedRoomId == null,
-                        onClick = { viewModel.selectRoom(null) },
-                        label = { Text("Toutes pieces") }
-                    )
-                    uiState.availableRooms.forEach { room ->
-                        val label = if (!room.emoji.isNullOrBlank()) {
-                            "${room.emoji} ${room.name}"
-                        } else {
-                            room.name
-                        }
+                // Chips de filtrage par piece (depuis v0.6.0 : vraies entites Room
+                // avec emoji, plus du parsing string).
+                if (uiState.availableRooms.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         FilterChip(
-                            selected = uiState.selectedRoomId == room.id,
-                            onClick = { viewModel.selectRoom(room.id) },
-                            label = { Text(label) }
+                            selected = uiState.selectedRoomId == null,
+                            onClick = { viewModel.selectRoom(null) },
+                            label = { Text("Toutes pieces") }
                         )
+                        uiState.availableRooms.forEach { room ->
+                            val label = if (!room.emoji.isNullOrBlank()) {
+                                "${room.emoji} ${room.name}"
+                            } else {
+                                room.name
+                            }
+                            FilterChip(
+                                selected = uiState.selectedRoomId == room.id,
+                                onClick = { viewModel.selectRoom(room.id) },
+                                label = { Text(label) }
+                            )
+                        }
                     }
                 }
             }
@@ -407,6 +463,20 @@ fun TaskListScreen(
             // en haut qui signale le sync. Le pattern stale-while-revalidate
             // affiche le cache si dispo, sinon empty state ou message backend HS.
             when {
+                uiState.tasks.isEmpty() && !uiState.isRefreshing && uiState.searchQuery.isNotBlank() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Aucun resultat pour \"${uiState.searchQuery.trim()}\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+
                 uiState.tasks.isEmpty() && !uiState.isRefreshing -> {
                     val backendUnreachable = uiState.lastRefreshFailed && !uiState.hasCachedData
                     Box(

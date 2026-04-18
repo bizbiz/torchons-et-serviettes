@@ -8,9 +8,7 @@ Relation N:N avec users via la table user_foyers — un user peut appartenir
 a plusieurs foyers (ex: ma maison + la colloc d'amis).
 """
 
-from datetime import datetime
-
-from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy import Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, UUIDMixin, TimestampMixin, SoftDeleteMixin
@@ -28,10 +26,3 @@ class Foyer(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     # Toggle de la home presence freeze feature (v0.7.1).
     # False par defaut — le foyer doit explicitement l'activer.
     home_freeze_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
-
-    # Derniere fois ou au moins un user du foyer etait a la maison.
-    # Mis a jour par POST /api/presence. Utilise pour calculer l'absence
-    # et appliquer le freeze sur les taches requires_home.
-    last_occupied_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )

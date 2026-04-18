@@ -43,6 +43,8 @@ fun PromptModal(
     onDismiss: () -> Unit,
     onBumpEffort: () -> Unit,
     onOpenRating: (taskId: String) -> Unit,
+    onResolvePresence: (payload: Map<String, Any?>) -> Unit = {},
+    onNavigateToFreezeSettings: () -> Unit = {},
 ) {
     when (prompt.type) {
         "BUMP_EFFORT" -> BumpEffortDialog(
@@ -57,6 +59,12 @@ fun PromptModal(
             // de resolve le prompt une fois la notation soumise.
             onOpenRating(prompt.context["task_id"]?.toString().orEmpty())
         }
+        "RESOLVE_PRESENCE" -> ResolvePresenceDialog(
+            prompt = prompt,
+            onResolve = onResolvePresence,
+            onDismiss = onDismiss,
+            onNavigateToSettings = onNavigateToFreezeSettings,
+        )
         else -> onDismiss()  // type inconnu — fermer
     }
 }

@@ -13,7 +13,7 @@ from app.database import get_session
 from app.models.foyer import Foyer
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
-from app.schemas.foyer import FoyerCreate, FoyerResponse, FoyerUpdate, HomeFreezeStatus
+from app.schemas.foyer import FoyerCreate, FoyerResponse, FoyerUpdate
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
 
@@ -44,7 +44,6 @@ async def list_my_foyers(
             id=f.id,
             name=f.name,
             home_freeze_enabled=f.home_freeze_enabled,
-            last_occupied_at=f.last_occupied_at,
             created_at=f.created_at,
             role=role,
             is_current=(f.id == current_foyer_id),
@@ -79,7 +78,6 @@ async def create_foyer(
         id=foyer.id,
         name=foyer.name,
         home_freeze_enabled=foyer.home_freeze_enabled,
-        last_occupied_at=foyer.last_occupied_at,
         created_at=foyer.created_at,
         role="admin",
         is_current=False,  # pas encore switche dessus
@@ -127,63 +125,15 @@ async def update_foyer(
         id=foyer.id,
         name=foyer.name,
         home_freeze_enabled=foyer.home_freeze_enabled,
-        last_occupied_at=foyer.last_occupied_at,
         created_at=foyer.created_at,
         role=uf.role,
         is_current=(foyer_id == current_foyer_uuid(current)),
     )
 
 
-@router.get("/home-freeze-status", response_model=HomeFreezeStatus)
-async def home_freeze_status(
-    session: AsyncSession = Depends(get_session),
-    current: dict = Depends(get_current_user),
-):
-    """Statut du home freeze pour le foyer actif et l'user courant.
-
-    Utilise par le tooltip adaptatif sur le flag requires_home (5 cas
-    distincts selon le contexte user). Retourne :
-    - foyer_freeze_enabled : le toggle du foyer
-    - my_wifi_optin : l'user courant a-t-il accepte la detection WiFi
-    - my_seen_at_home : l'user courant a-t-il ete vu au moins une fois a la maison
-    - missing_users : liste des autres users du foyer qui bloquent le freeze
-      (pas opted-in OU jamais vus a la maison)
-    """
-    user_id = uuid.UUID(current["user_id"])
-    foyer_uuid = current_foyer_uuid(current)
-
-    foyer_result = await session.execute(select(Foyer).where(Foyer.id == foyer_uuid))
-    foyer = foyer_result.scalar_one_or_none()
-    if foyer is None:
-        raise HTTPException(status_code=404, detail="Foyer introuvable")
-
-    # Charge tous les users du foyer avec leur etat wifi
-    users_result = await session.execute(
-        select(User)
-        .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == foyer_uuid)
-    )
-    users = users_result.scalars().all()
-
-    me = next((u for u in users if u.id == user_id), None)
-    my_wifi_optin = me.wifi_optin if me else False
-    my_seen_at_home = me.last_seen_at_home_at is not None if me else False
-
-    # Les users "manquants" : ceux qui ne peuvent pas etre detectes
-    # (pas opted-in ou jamais vus).
-    missing_users = [
-        u.display_name
-        for u in users
-        if u.id != user_id
-        and (not u.wifi_optin or u.last_seen_at_home_at is None)
-    ]
-
-    return HomeFreezeStatus(
-        foyer_freeze_enabled=foyer.home_freeze_enabled,
-        my_wifi_optin=my_wifi_optin,
-        my_seen_at_home=my_seen_at_home,
-        missing_users=missing_users,
-    )
+# Endpoint GET /home-freeze-status supprime : le systeme de presence v2
+# n'utilise plus les champs wifi_optin / is_currently_at_home / last_seen_at_home_at.
+# Le toggle home_freeze_enabled est suffisant (dans FoyerResponse).
 
 
 @router.post("/{foyer_id}/switch")

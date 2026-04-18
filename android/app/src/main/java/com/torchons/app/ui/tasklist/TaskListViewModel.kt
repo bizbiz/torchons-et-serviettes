@@ -83,6 +83,12 @@ data class TaskListUiState(
     val celebratingTaskId: String? = null,
     /** Compteur incremente a chaque celebration pour relancer konfetti. */
     val celebrationTrigger: Int = 0,
+    /** Barre de recherche ouverte : masque les chips et affiche un champ texte. */
+    val isSearchBarExpanded: Boolean = false,
+    /** Texte saisi dans la barre de recherche. */
+    val searchQuery: String = "",
+    /** Toggle "garder filtres" : par defaut la recherche ignore tous les filtres UI. */
+    val searchRespectFilters: Boolean = false,
 )
 
 /**
@@ -104,6 +110,8 @@ private data class TaskListFilters(
     val selectedCategoryIds: Set<String> = emptySet(),
     val showAllTasks: Boolean = false,
     val myAffinities: Map<String, Int> = emptyMap(),
+    val searchQuery: String = "",
+    val searchRespectFilters: Boolean = false,
 )
 
 /** Conteneur interne pour le combine des 5 flows. */
@@ -210,6 +218,8 @@ class TaskListViewModel @Inject constructor(
                     filterRecurrence = processed.filters.filterRecurrence,
                     filterHome = processed.filters.filterHome,
                     selectedRoomId = processed.filters.selectedRoomId,
+                    searchQuery = processed.filters.searchQuery,
+                    searchRespectFilters = processed.filters.searchRespectFilters,
                     hasCachedData = processed.hasCache,
                     isLoading = if (processed.hasCache) false else _uiState.value.isLoading,
                 )
@@ -396,6 +406,37 @@ class TaskListViewModel @Inject constructor(
         filtersFlow.value = filtersFlow.value.copy(showAllTasks = !filtersFlow.value.showAllTasks)
     }
 
+    /**
+     * Ouvre la barre de recherche. N'affecte pas filtersFlow : l'expansion est
+     * purement UI et n'impacte pas le pipeline de filtrage.
+     */
+    fun openSearchBar() {
+        _uiState.value = _uiState.value.copy(isSearchBarExpanded = true)
+    }
+
+    /**
+     * Ferme la barre de recherche : vide la query et reset le toggle.
+     * La prochaine ouverture repart donc sur les valeurs par defaut
+     * (query vide, filtres ignores).
+     */
+    fun closeSearchBar() {
+        _uiState.value = _uiState.value.copy(isSearchBarExpanded = false)
+        filtersFlow.value = filtersFlow.value.copy(
+            searchQuery = "",
+            searchRespectFilters = false,
+        )
+    }
+
+    fun updateSearchQuery(query: String) {
+        filtersFlow.value = filtersFlow.value.copy(searchQuery = query)
+    }
+
+    fun toggleSearchRespectFilters() {
+        filtersFlow.value = filtersFlow.value.copy(
+            searchRespectFilters = !filtersFlow.value.searchRespectFilters
+        )
+    }
+
     suspend fun logout() {
         authRepository.logout()
     }
@@ -430,24 +471,38 @@ class TaskListViewModel @Inject constructor(
             .filter { it.id in roomIdsWithTasks }
             .sortedBy { it.name }
 
-        var filteredTasks = if (filters.selectedCategoryIds.isNotEmpty()) {
+        // Tokens de recherche normalises (NFD + strip diacritiques + lowercase).
+        // Multi-mots = AND sur tokens. Quand isSearching, on bypass tous les
+        // filtres UI sauf si searchRespectFilters est active.
+        val trimmedQuery = filters.searchQuery.trim()
+        val searchTokens = if (trimmedQuery.isNotEmpty()) {
+            normalize(trimmedQuery).split(Regex("\\s+")).filter { it.isNotEmpty() }
+        } else {
+            emptyList()
+        }
+        val isSearching = searchTokens.isNotEmpty()
+        val applyUiFilters = !isSearching || filters.searchRespectFilters
+
+        var filteredTasks = if (applyUiFilters && filters.selectedCategoryIds.isNotEmpty()) {
             tasks.filter { it.categoryId in filters.selectedCategoryIds }
         } else {
             tasks
         }
 
-        if (filters.selectedRoomId != null) {
+        if (applyUiFilters && filters.selectedRoomId != null) {
             filteredTasks = filteredTasks.filter { it.roomId == filters.selectedRoomId }
         }
 
-        when (filters.filterHome) {
-            FilterState.HIGH -> filteredTasks = filteredTasks.filter { it.categoryId in homeCategoryIds }
-            FilterState.LOW -> filteredTasks = filteredTasks.filter { it.categoryId !in homeCategoryIds }
-            FilterState.OFF -> {}
+        if (applyUiFilters) {
+            when (filters.filterHome) {
+                FilterState.HIGH -> filteredTasks = filteredTasks.filter { it.categoryId in homeCategoryIds }
+                FilterState.LOW -> filteredTasks = filteredTasks.filter { it.categoryId !in homeCategoryIds }
+                FilterState.OFF -> {}
+            }
         }
 
         var homeTasksHidden = 0
-        if (!isAtHome && !filters.showAllTasks && homeCategoryIds.isNotEmpty()) {
+        if (applyUiFilters && !isAtHome && !filters.showAllTasks && homeCategoryIds.isNotEmpty()) {
             val before = filteredTasks.size
             filteredTasks = filteredTasks.filter { it.categoryId !in homeCategoryIds }
             homeTasksHidden = before - filteredTasks.size
@@ -494,25 +549,29 @@ class TaskListViewModel @Inject constructor(
             )
         }
 
-        if (filters.filterTodo) {
+        if (applyUiFilters && filters.filterTodo) {
             tasksWithUrgency = tasksWithUrgency.filter {
                 it.state != TaskUrgencyCalculator.State.GREEN
             }
         }
 
-        when (filters.filterRecurrence) {
-            FilterState.HIGH -> tasksWithUrgency = tasksWithUrgency.filter { it.task.recurrenceRule != null }
-            FilterState.LOW -> tasksWithUrgency = tasksWithUrgency.filter { it.task.recurrenceRule == null }
-            FilterState.OFF -> {}
+        if (applyUiFilters) {
+            when (filters.filterRecurrence) {
+                FilterState.HIGH -> tasksWithUrgency = tasksWithUrgency.filter { it.task.recurrenceRule != null }
+                FilterState.LOW -> tasksWithUrgency = tasksWithUrgency.filter { it.task.recurrenceRule == null }
+                FilterState.OFF -> {}
+            }
         }
 
-        when (filters.filterEffort) {
-            FilterState.HIGH -> tasksWithUrgency = tasksWithUrgency.filter { it.task.weight >= 7 }
-            FilterState.LOW -> tasksWithUrgency = tasksWithUrgency.filter { it.task.weight <= 3 }
-            FilterState.OFF -> {}
+        if (applyUiFilters) {
+            when (filters.filterEffort) {
+                FilterState.HIGH -> tasksWithUrgency = tasksWithUrgency.filter { it.task.weight >= 7 }
+                FilterState.LOW -> tasksWithUrgency = tasksWithUrgency.filter { it.task.weight <= 3 }
+                FilterState.OFF -> {}
+            }
         }
 
-        if (filters.filterAffinity != FilterState.OFF) {
+        if (applyUiFilters && filters.filterAffinity != FilterState.OFF) {
             tasksWithUrgency = tasksWithUrgency.map {
                 it.copy(myAffinity = filters.myAffinities[it.task.id])
             }
@@ -520,6 +579,20 @@ class TaskListViewModel @Inject constructor(
                 FilterState.HIGH -> tasksWithUrgency.filter { (it.myAffinity ?: 5) >= 7 }
                 FilterState.LOW -> tasksWithUrgency.filter { (it.myAffinity ?: 5) <= 4 }
                 else -> tasksWithUrgency
+            }
+        }
+
+        // Matching de recherche : titre + description + nom categorie + nom piece,
+        // tous concatenes et normalises (case/accents insensibles). AND sur tokens.
+        if (isSearching) {
+            tasksWithUrgency = tasksWithUrgency.filter { t ->
+                val haystack = normalize(buildString {
+                    append(t.task.title); append(' ')
+                    append(t.task.description ?: ""); append(' ')
+                    append(t.categoryName ?: ""); append(' ')
+                    append(t.roomName ?: "")
+                })
+                searchTokens.all { it in haystack }
             }
         }
 
@@ -532,3 +605,12 @@ class TaskListViewModel @Inject constructor(
         return FilteredResult(tasksWithUrgency, availableRooms, isAtHome, homeTasksHidden)
     }
 }
+
+/**
+ * Normalise une chaine pour la recherche : NFD + strip diacritiques + lowercase.
+ * Permet a "ecole" de matcher "École" et "cafe" de matcher "café".
+ */
+private fun normalize(s: String): String =
+    java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+        .lowercase()

@@ -4,18 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.compose.rememberNavController
-import com.torchons.app.core.presence.PresenceTrigger
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.ui.navigation.NavGraph
 import com.torchons.app.ui.navigation.Routes
@@ -40,17 +32,14 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var popupSessionGate: PopupSessionGate
 
-    @Inject
-    lateinit var presenceTrigger: PresenceTrigger
+    // Note : le PresenceTrigger (worker periodique 6h) a ete supprime car
+    // les restrictions Android 12+ (Doze, background limits) empechaient
+    // son execution fiable. La detection de presence passe desormais par
+    // un simple checkin WiFi a l'ouverture de l'app (HomeViewModel).
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        // Demarre le check de presence WiFi periodique (6h). Permet au backend
-        // de detecter l'absence du foyer pour figer la freshness des taches
-        // requires_home (v0.7.4 home freeze).
-        presenceTrigger.schedulePeriodic()
 
         // Rearmer la popup d'accueil a chaque ON_RESUME de l'activite :
         // cold start + retour depuis le background. La navigation Compose

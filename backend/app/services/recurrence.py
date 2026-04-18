@@ -310,34 +310,27 @@ def compute_countdown_label(due_date: date | None, today: date) -> str:
     return f"en retard de {n} j"
 
 
-def compute_effective_now(
-    now: datetime,
+def compute_effective_today(
+    today: date,
     *,
     task_requires_home: bool = False,
     home_freeze_enabled: bool = False,
-    foyer_occupied: bool = True,
-    foyer_last_occupied_at: datetime | None = None,
-) -> datetime:
-    """Applique le home freeze (v0.7.4).
+    absent_days: int = 0,
+) -> date:
+    """Calcule la date effective en tenant compte du home freeze (v2).
 
-    Si la tache necessite d'etre a la maison ET que le freeze est active ET
-    que le foyer est non occupe depuis plus de 24h, on fige "now" a
-    last_occupied + 24h. Les premieres 24h d'absence comptent normalement,
-    au-dela le compteur est gele.
+    Si la tache necessite d'etre a la maison ET que le freeze est active,
+    on recule `today` du nombre de jours confirmes absents dans la table
+    presence_days depuis la derniere completion de la tache. Le temps ne
+    s'ecoule pas pendant les jours d'absence.
 
-    Utilise pour calculer un `effective_today` qui ne bouge pas tant que le
-    foyer est vide.
+    Exemple : today = 17 avril, 3 jours absents depuis derniere completion
+    -> effective_today = 14 avril. Si due_date = 16 avril, la tache n'est
+    pas encore en retard (14 < 16).
+
+    Le comptage des jours absents (absent_days) est fait par le caller via
+    count_absent_days_since() qui query la table presence_days.
     """
-    if (
-        task_requires_home
-        and home_freeze_enabled
-        and not foyer_occupied
-        and foyer_last_occupied_at is not None
-    ):
-        last_occupied = foyer_last_occupied_at
-        if last_occupied.tzinfo is None:
-            last_occupied = last_occupied.replace(tzinfo=timezone.utc)
-        frozen_at = last_occupied + timedelta(hours=24)
-        if now > frozen_at:
-            return frozen_at
-    return now
+    if task_requires_home and home_freeze_enabled and absent_days > 0:
+        return today - timedelta(days=absent_days)
+    return today

@@ -13,7 +13,6 @@ data class Foyer(
     @SerializedName("id") val id: String,
     @SerializedName("name") val name: String,
     @SerializedName("home_freeze_enabled") val homeFreezeEnabled: Boolean = false,
-    @SerializedName("last_occupied_at") val lastOccupiedAt: String? = null,
     @SerializedName("created_at") val createdAt: String = "",
     @SerializedName("role") val role: String = "member",
     @SerializedName("is_current") val isCurrent: Boolean = false,

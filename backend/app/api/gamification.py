@@ -12,18 +12,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
+from app.models.category import Category
 from app.models.completion import TaskCompletion
 from app.models.enums import TaskTolerance, UrgencyState
 from app.models.fair_share import FairShareConfig
+from app.models.foyer import Foyer
 from app.models.task import Task
 from app.models.task_affinity import TaskAffinity
 from app.models.task_assignment import TaskAssignment
 from app.models.task_effort import TaskEffort
 from app.models.task_frequency_vote import TaskFrequencyVote
 from app.models.task_in_progress import TaskInProgress
+from app.services.presence import get_absent_days_map
 from app.services.recurrence import (
     compute_days_until_due,
     compute_due_date,
+    compute_effective_today,
     compute_nominal_interval_days,
     compute_urgency_state,
 )
@@ -735,12 +739,40 @@ async def get_suggestions(
 
     # Config bonus/malus du foyer (une seule fetch).
     from app.services.bonus_malus import load_or_create_bonus_config
-    bonus_config = await load_or_create_bonus_config(session, current_foyer_uuid(current))
+    foyer_uuid = current_foyer_uuid(current)
+    bonus_config = await load_or_create_bonus_config(session, foyer_uuid)
     _seuil_bonus_map = {
         TaskTolerance.STRICT: bonus_config.seuil_bonus_strict,
         TaskTolerance.NORMAL: bonus_config.seuil_bonus_normal,
         TaskTolerance.SOUPLE: bonus_config.seuil_bonus_souple,
     }
+
+    # --- Home freeze v2 : charger foyer + categories requires_home ---
+    foyer_result = await session.execute(select(Foyer).where(Foyer.id == foyer_uuid))
+    foyer = foyer_result.scalar_one_or_none()
+    freeze_enabled = foyer.home_freeze_enabled if foyer else False
+
+    # Map category_id -> requires_home
+    cat_ids = {t.category_id for t in tasks if t.category_id}
+    requires_home_map: dict[UUID | None, bool] = {}
+    if cat_ids and freeze_enabled:
+        cat_result = await session.execute(
+            select(Category.id, Category.requires_home).where(Category.id.in_(cat_ids))
+        )
+        requires_home_map = {row[0]: row[1] for row in cat_result.all()}
+
+    # Compter les jours absents en batch pour les taches requires_home
+    absent_days_map: dict[UUID, int] = {}
+    if freeze_enabled:
+        # Construire la map {task_id: since_date} pour les taches requires_home
+        since_dates = {}
+        for t in tasks:
+            if requires_home_map.get(t.category_id, False):
+                lc = last_completions.get(t.id)
+                since = lc.date() if lc else (t.created_at.date() if t.created_at else today)
+                since_dates[t.id] = since
+        if since_dates:
+            absent_days_map = await get_absent_days_map(session, foyer_uuid, since_dates, today)
 
     # Charger affinites de l'user
     aff_result = await session.execute(
@@ -765,8 +797,19 @@ async def get_suggestions(
         last_comp = last_completions.get(task.id)
         due_date = compute_due_date(task.recurrence_rule, last_comp, task.created_at)
         nominal = compute_nominal_interval_days(task.recurrence_rule)
-        state = compute_urgency_state(due_date, today, nominal)
-        days_until = compute_days_until_due(due_date, today)
+
+        # Home freeze v2 : decaler effective_today pour les taches requires_home
+        task_requires_home = requires_home_map.get(task.category_id, False)
+        task_absent_days = absent_days_map.get(task.id, 0)
+        eff_today = compute_effective_today(
+            today,
+            task_requires_home=task_requires_home,
+            home_freeze_enabled=freeze_enabled,
+            absent_days=task_absent_days,
+        )
+
+        state = compute_urgency_state(due_date, eff_today, nominal)
+        days_until = compute_days_until_due(due_date, eff_today)
         if days_until is None:
             # Ponctuelle deja faite — n'apparait pas dans les suggestions.
             continue

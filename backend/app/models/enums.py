@@ -63,10 +63,12 @@ class PromptType(str, enum.Enum):
 
     BUMP_EFFORT : tache systematiquement en retard, proposer +1 effort.
     VOTE_RATING : tache sans notation recente (affinite+effort), demander avis.
+    RESOLVE_PRESENCE : jours incertains a resoudre (home freeze v2).
     """
 
     BUMP_EFFORT = "BUMP_EFFORT"
     VOTE_RATING = "VOTE_RATING"
+    RESOLVE_PRESENCE = "RESOLVE_PRESENCE"
 
 
 class PromptResolution(str, enum.Enum):

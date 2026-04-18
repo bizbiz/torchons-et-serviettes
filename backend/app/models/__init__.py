@@ -20,6 +20,7 @@ from app.models.user_settings import UserSettings
 from app.models.objective_proposition import ObjectiveProposition, ObjectivePropositionResponse
 from app.models.foyer_bonus_config import FoyerBonusConfig
 from app.models.user_prompt import UserPrompt
+from app.models.presence_day import PresenceDay
 
 __all__ = [
     "Base", "User", "Foyer", "UserFoyer", "Category", "Room", "Task",
@@ -28,5 +29,5 @@ __all__ = [
     "ChangeLog", "NotificationToken", "Badge", "UserSettings",
     "ObjectiveProposition", "ObjectivePropositionResponse",
     "FoyerBonusConfig",
-    "UserPrompt",
+    "UserPrompt", "PresenceDay",
 ]

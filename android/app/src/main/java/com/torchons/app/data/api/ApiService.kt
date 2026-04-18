@@ -203,17 +203,11 @@ interface ApiService {
         @Body body: Map<String, @JvmSuppressWildcards Any?>,
     ): Response<com.torchons.app.data.model.Foyer>
 
-    /** Statut home freeze pour le foyer actif (tooltip adaptatif). */
-    @GET("foyers/home-freeze-status")
-    suspend fun getHomeFreezeStatus(): Response<com.torchons.app.data.model.HomeFreezeStatus>
+    // --- Presence (v2 home freeze — checkin WiFi positif uniquement) ---
 
-    // --- Presence (v0.7.4 home freeze) ---
-
-    /** Report de presence — declenche par PresenceWorker ou LifecycleResume. */
-    @POST("presence")
-    suspend fun postPresence(
-        @Body body: com.torchons.app.data.model.PresenceRequest,
-    ): Response<com.torchons.app.data.model.PresenceResponse>
+    /** Checkin presence : signal positif "je suis a la maison". */
+    @POST("presence/checkin")
+    suspend fun presenceCheckin(): Response<Map<String, Boolean>>
 
     // --- Completions ---
 

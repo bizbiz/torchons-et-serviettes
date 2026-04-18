@@ -12,7 +12,6 @@ import com.torchons.app.data.model.MaintenanceRateResponse
 import com.torchons.app.data.model.ObjectiveUpdate
 import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.PendingAffinity
-import com.torchons.app.data.model.PresenceRequest
 import com.torchons.app.data.model.PromptResolveRequest
 import com.torchons.app.data.model.PropositionCreate
 import com.torchons.app.data.model.PropositionView
@@ -23,7 +22,6 @@ import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.UserPace
-import com.torchons.app.data.model.WelcomeBack
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.HomeRepository
 import com.torchons.app.data.repository.TaskRepository
@@ -81,10 +79,12 @@ data class HomeUiState(
      */
     val justCompletedIds: Set<String> = emptySet(),
     /**
-     * Message "bon retour" rempli par le backend quand le foyer est de nouveau
-     * occupe apres une absence > 24h (v0.7.4 home freeze). null = pas de retour.
+     * True quand il y a des jours incertains non resolus (home freeze v2).
+     * Le bandeau s'affiche en haut de la home.
      */
-    val welcomeBack: WelcomeBack? = null,
+    val hasUnresolvedPresenceDays: Boolean = false,
+    /** Nombre de jours incertains (pour le bandeau). */
+    val unresolvedPresenceDaysCount: Int = 0,
     /**
      * Donnees des 2 cards projection (v0.8.0 magic buttons). Tout null tant
      * que le premier fetch n'a pas abouti.
@@ -250,14 +250,13 @@ class HomeViewModel @Inject constructor(
     fun loadData() = refresh()
 
     /**
-     * Reporte la presence WiFi au backend (v0.7.4 home freeze). Lit le SSID
-     * actuel via WifiHelper, le compare aux home_ssids configures, et POST le
-     * resultat. Si le backend repond avec un welcome_back (foyer de nouveau
-     * occupe apres > 24h d'absence), on l'expose dans uiState pour declencher
-     * la popup "bon retour" sur HomeScreen.
+     * Checkin presence WiFi au backend (v2 home freeze). Lit le SSID actuel
+     * via WifiHelper et n'appelle POST /presence/checkin QUE si le WiFi maison
+     * est detecte (signal positif uniquement). Si pas de WiFi ou WiFi inconnu,
+     * on ne fait rien — l'absence de signal n'est pas un signal d'absence.
      *
-     * Echec silencieux : pas de home_ssids, pas de WiFi, ou backend KO -> on
-     * ne fait rien et on ne montre rien.
+     * Le backend insere un confirmed_present pour aujourd'hui et genere un
+     * prompt RESOLVE_PRESENCE s'il y a des jours incertains a resoudre.
      */
     fun reportPresenceNow() {
         viewModelScope.launch {
@@ -265,23 +264,15 @@ class HomeViewModel @Inject constructor(
                 val homeSsids = tokenManager.homeSsidsFlow.first()
                 if (homeSsids.isEmpty()) return@launch
                 val ctx = getApplication<Application>().applicationContext
-                val current = WifiHelper.getCurrentSsid(ctx)
-                val isAtHome = current != null && homeSsids.any { it.equals(current, ignoreCase = true) }
-                val resp = apiService.postPresence(PresenceRequest(isAtHome = isAtHome))
-                if (resp.isSuccessful) {
-                    val body = resp.body()
-                    if (body?.welcomeBack != null) {
-                        _uiState.value = _uiState.value.copy(welcomeBack = body.welcomeBack)
-                    }
-                }
+                val current = WifiHelper.getCurrentSsid(ctx) ?: return@launch
+                val isAtHome = homeSsids.any { it.equals(current, ignoreCase = true) }
+                if (!isAtHome) return@launch
+                // Signal positif : on est sur le WiFi maison -> checkin
+                apiService.presenceCheckin()
             } catch (_: Exception) {
                 // best effort
             }
         }
-    }
-
-    fun dismissWelcomeBack() {
-        _uiState.value = _uiState.value.copy(welcomeBack = null)
     }
 
     /**
@@ -564,21 +555,44 @@ class HomeViewModel @Inject constructor(
      */
     private suspend fun fetchNextPrompt() {
         try {
-            // Tolerance 2h
-            val lastShown = tokenManager.lastPromptShownAtFlow.first()
-            if (lastShown > 0 && System.currentTimeMillis() - lastShown < 2 * 3600 * 1000) {
-                return  // trop recent
-            }
-
             val resp = apiService.getNextPrompt()
             if (resp.isSuccessful && resp.body() != null) {
                 val prompt = resp.body()!!
+
+                // RESOLVE_PRESENCE (priority max) bypass la tolerance 2h —
+                // les jours incertains doivent etre resolus au plus vite.
+                val isPresencePrompt = prompt.type == "RESOLVE_PRESENCE"
+
+                if (!isPresencePrompt) {
+                    // Tolerance 2h pour les autres types de prompts
+                    val lastShown = tokenManager.lastPromptShownAtFlow.first()
+                    if (lastShown > 0 && System.currentTimeMillis() - lastShown < 2 * 3600 * 1000) {
+                        return  // trop recent
+                    }
+                }
+
                 // Mark shown
                 apiService.markPromptShown(prompt.id)
-                tokenManager.setLastPromptShownAt(System.currentTimeMillis())
+                if (!isPresencePrompt) {
+                    tokenManager.setLastPromptShownAt(System.currentTimeMillis())
+                }
                 _uiState.value = _uiState.value.copy(
                     currentPrompt = prompt,
                     showPromptModal = true,
+                    // Mettre a jour le bandeau si c'est un prompt RESOLVE_PRESENCE
+                    hasUnresolvedPresenceDays = isPresencePrompt,
+                    unresolvedPresenceDaysCount = if (isPresencePrompt) {
+                        @Suppress("UNCHECKED_CAST")
+                        val days = prompt.context["uncertain_days"] as? List<*>
+                        val count = prompt.context["uncertain_days_count"] as? Number
+                        days?.size ?: count?.toInt() ?: 0
+                    } else _uiState.value.unresolvedPresenceDaysCount,
+                )
+            } else {
+                // Pas de prompt pending -> pas de jours incertains
+                _uiState.value = _uiState.value.copy(
+                    hasUnresolvedPresenceDays = false,
+                    unresolvedPresenceDaysCount = 0,
                 )
             }
         } catch (_: Exception) {
@@ -589,11 +603,19 @@ class HomeViewModel @Inject constructor(
     /** User repond au prompt (ANSWERED avec payload). */
     fun resolveCurrentPrompt(resolution: String, payload: Map<String, Any?>? = null) {
         val prompt = _uiState.value.currentPrompt ?: return
+        val wasPresencePrompt = prompt.type == "RESOLVE_PRESENCE"
+        val wasDismissed = resolution == "DISMISSED"
         viewModelScope.launch {
             try {
                 apiService.resolvePrompt(prompt.id, PromptResolveRequest(resolution, payload))
             } catch (_: Exception) {}
-            _uiState.value = _uiState.value.copy(currentPrompt = null, showPromptModal = false)
+            _uiState.value = _uiState.value.copy(
+                currentPrompt = null,
+                showPromptModal = false,
+                // Si un RESOLVE_PRESENCE est DISMISSED ("Plus tard"), on garde
+                // le bandeau visible — les taches restent freezees.
+                hasUnresolvedPresenceDays = wasPresencePrompt && wasDismissed,
+            )
             refresh()
         }
     }
@@ -601,6 +623,25 @@ class HomeViewModel @Inject constructor(
     /** User ferme le prompt (DISMISSED). */
     fun dismissCurrentPrompt() {
         resolveCurrentPrompt("DISMISSED")
+    }
+
+    /** Reouvrir le prompt RESOLVE_PRESENCE depuis le bandeau. */
+    fun reopenPresencePrompt() {
+        viewModelScope.launch {
+            try {
+                val resp = apiService.getNextPrompt()
+                if (resp.isSuccessful && resp.body() != null) {
+                    val prompt = resp.body()!!
+                    if (prompt.type == "RESOLVE_PRESENCE") {
+                        apiService.markPromptShown(prompt.id)
+                        _uiState.value = _uiState.value.copy(
+                            currentPrompt = prompt,
+                            showPromptModal = true,
+                        )
+                    }
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     /**

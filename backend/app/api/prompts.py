@@ -8,17 +8,18 @@ POST /api/prompts/{id}/resolve : resout le prompt (DISMISSED / ANSWERED)
 from __future__ import annotations
 
 import uuid as uuid_lib
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
 from app.models.enums import PromptResolution, PromptType
+from app.models.presence_day import PresenceDay
 from app.models.task_effort import TaskEffort
 from app.models.user_prompt import UserPrompt
 from app.utils.scoping import current_foyer_uuid
@@ -156,6 +157,8 @@ async def resolve_prompt(
 
     # Actions specifiques
     payload = body.payload or {}
+    foyer_uuid = current_foyer_uuid(current)
+
     if prompt.type == PromptType.BUMP_EFFORT and resolution == "ANSWERED":
         action = payload.get("action", "")
         if action == "bump_effort":
@@ -180,5 +183,89 @@ async def resolve_prompt(
                     )
                     session.add(new_effort)
 
+    elif prompt.type == PromptType.RESOLVE_PRESENCE and resolution == "ANSWERED":
+        await _handle_resolve_presence(session, foyer_uuid, user_id, payload)
+
     await session.commit()
     return {"ok": True}
+
+
+async def _handle_resolve_presence(
+    session: AsyncSession,
+    foyer_id: UUID,
+    resolved_by: UUID,
+    payload: dict,
+) -> None:
+    """Traite la resolution d'un prompt RESOLVE_PRESENCE.
+
+    Deux formats de payload :
+    - Mode calendrier : {"days": {"2026-04-14": "present", "2026-04-15": "absent", ...}}
+    - Mode simplifie : {"absent_since": "2026-03-01"} (tout absent depuis cette date)
+
+    Insere les lignes dans presence_days et auto-resout les prompts
+    RESOLVE_PRESENCE des autres users du foyer.
+    """
+    if "days" in payload:
+        # Mode calendrier (<=30 jours)
+        days_map: dict[str, str] = payload["days"]
+        for day_str, status_str in days_map.items():
+            day = date.fromisoformat(day_str)
+            status = "confirmed_present" if status_str == "present" else "confirmed_absent"
+            await _upsert_presence_day(session, foyer_id, day, status, "manual")
+
+    elif "absent_since" in payload:
+        # Mode simplifie (>30 jours)
+        absent_since = date.fromisoformat(payload["absent_since"])
+        today = datetime.now(timezone.utc).date()
+        cursor = absent_since
+        while cursor < today:
+            await _upsert_presence_day(
+                session, foyer_id, cursor, "confirmed_absent", "manual"
+            )
+            cursor += timedelta(days=1)
+
+    await session.flush()
+
+    # Auto-resoudre les prompts RESOLVE_PRESENCE des autres users du foyer
+    other_prompts_result = await session.execute(
+        select(UserPrompt).where(
+            UserPrompt.foyer_id == foyer_id,
+            UserPrompt.type == PromptType.RESOLVE_PRESENCE,
+            UserPrompt.resolved_at.is_(None),
+            UserPrompt.user_id != resolved_by,
+        )
+    )
+    for other_prompt in other_prompts_result.scalars().all():
+        other_prompt.resolved_at = datetime.now(timezone.utc)
+        other_prompt.resolution = PromptResolution.ANSWERED
+
+
+async def _upsert_presence_day(
+    session: AsyncSession,
+    foyer_id: UUID,
+    day: date,
+    status: str,
+    source: str,
+) -> None:
+    """Insere ou met a jour une ligne presence_days."""
+    existing = await session.execute(
+        select(PresenceDay).where(
+            PresenceDay.foyer_id == foyer_id,
+            PresenceDay.date == day,
+        )
+    )
+    row = existing.scalar_one_or_none()
+    if row is None:
+        session.add(PresenceDay(
+            foyer_id=foyer_id,
+            date=day,
+            status=status,
+            source=source,
+        ))
+    else:
+        # Ne pas ecraser un confirmed_present auto_wifi par un manual absent
+        # (le signal WiFi positif est fiable)
+        if not (row.status == "confirmed_present" and row.source == "auto_wifi"
+                and status == "confirmed_absent"):
+            row.status = status
+            row.source = source

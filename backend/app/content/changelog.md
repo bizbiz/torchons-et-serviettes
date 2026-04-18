@@ -1,5 +1,20 @@
 # Notes de version
 
+## v0.13.0 — 2026-04-18
+
+### Recherche dans les taches
+- Nouvelle loupe dans l'ecran Taches, en haut a droite de la rangee de filtres. Cliquer la loupe remplace les chips de filtres par un champ de recherche qui prend toute la largeur.
+- Par defaut la recherche ignore tous les filtres actifs (y compris "A faire") et cherche dans toutes les taches.
+- Un petit bouton en forme d'entonnoir a cote du champ permet de reappliquer les filtres courants si besoin.
+- La recherche matche le titre, la description, le nom de la categorie et le nom de la piece. Insensible aux accents (taper "ecole" trouve "Ecole") et a la casse.
+- Recherche multi-mots : "cuisine linge" trouve les taches qui contiennent les deux.
+
+### Refonte de la detection de presence
+- La detection automatique en arriere-plan (qui necessitait que l'app tourne en permanence) est supprimee : Android la brimait trop pour qu'elle soit fiable.
+- Nouveau fonctionnement : l'app detecte ta presence au lancement quand elle voit le WiFi maison. Les jours ou personne n'a lance l'app sont marques "a confirmer".
+- Nouveau dialog de resolution : quand des jours sont incertains, l'app propose au lancement une grille-calendrier ou chaque jour peut etre marque present (vert) ou absent (gris). Pour les longues absences (>30 jours), un mode simplifie "j'etais absent depuis X" apparait a la place.
+- Les permissions de localisation en arriere-plan ne sont donc plus necessaires — tu peux les retirer dans les reglages Android si tu veux.
+
 ## v0.12.0 — 2026-04-17
 
 ### Bonus et malus de points

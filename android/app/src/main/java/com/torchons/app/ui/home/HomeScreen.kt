@@ -78,6 +78,7 @@ import com.torchons.app.util.TaskUrgencyCalculator
 fun HomeScreen(
     onTaskClick: (String) -> Unit = {},
     onEditTask: (String) -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -102,37 +103,14 @@ fun HomeScreen(
         }
     }
 
-    // Recharger au retour sur cet ecran + report de presence WiFi pour le
-    // home freeze (v0.7.4). Le report sert aussi a recevoir un welcome_back
-    // si on revient apres > 24h d'absence. Refresh aussi les propositions
-    // actives en poll de fallback si le FCM push etait rate.
+    // Recharger au retour sur cet ecran + checkin presence WiFi (v2 home
+    // freeze — signal positif uniquement, pas de report negatif).
+    // Refresh aussi les propositions actives en poll de fallback.
     LifecycleResumeEffect(Unit) {
         viewModel.loadData()
         viewModel.reportPresenceNow()
         viewModel.refreshPendingProposition()
         onPauseOrDispose { }
-    }
-
-    // Popup "bon retour" apres une absence > 24h (home freeze v0.7.4)
-    uiState.welcomeBack?.let { wb ->
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissWelcomeBack() },
-            title = {
-                Text("Bon retour a la maison !", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Text(
-                    "Tu as ete absent ${wb.absenceDays} jour${if (wb.absenceDays > 1) "s" else ""}. " +
-                        "Pendant ton absence, les taches \"a la maison\" ont ete mises en pause " +
-                        "(au-dela de 24h). Elles n'ont donc pas pris de retard !"
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { viewModel.dismissWelcomeBack() }) {
-                    Text("Super !")
-                }
-            },
-        )
     }
 
     // Popup affinite + effort (si active dans les reglages)
@@ -224,8 +202,8 @@ fun HomeScreen(
         )
     }
 
-    // Queue unifiee des prompts (v1.1 : BUMP_EFFORT / VOTE_RATING).
-    // Affiche 1 prompt a l'ouverture, avec tolerance 2h.
+    // Queue unifiee des prompts (BUMP_EFFORT / VOTE_RATING / RESOLVE_PRESENCE).
+    // RESOLVE_PRESENCE a priority=10 (max) et bypass la tolerance 2h.
     if (uiState.showPromptModal && uiState.currentPrompt != null) {
         com.torchons.app.ui.common.PromptModal(
             prompt = uiState.currentPrompt!!,
@@ -234,11 +212,12 @@ fun HomeScreen(
                 viewModel.resolveCurrentPrompt("ANSWERED", mapOf("action" to "bump_effort"))
             },
             onOpenRating = { taskId ->
-                // Resolve le prompt comme ANSWERED puis ouvre le rating existant
                 viewModel.resolveCurrentPrompt("ANSWERED")
-                // On pourrait ouvrir le rating automatiquement ici,
-                // mais pour V1 le user peut aller sur la fiche tache.
             },
+            onResolvePresence = { payload ->
+                viewModel.resolveCurrentPrompt("ANSWERED", payload)
+            },
+            onNavigateToFreezeSettings = onNavigateToSettings,
         )
     }
 
@@ -312,6 +291,49 @@ fun HomeScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Bandeau "jours non confirmes" (home freeze v2)
+        if (uiState.hasUnresolvedPresenceDays && uiState.unresolvedPresenceDaysCount > 0) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFFFF3CD),
+                ),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFD97706),
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "${uiState.unresolvedPresenceDaysCount} jour${if (uiState.unresolvedPresenceDaysCount > 1) "s" else ""} non confirme${if (uiState.unresolvedPresenceDaysCount > 1) "s" else ""}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF92400E),
+                        )
+                        Text(
+                            "Les taches maison sont gelees",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFB45309),
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.reopenPresencePrompt() },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF92400E)),
+                    ) {
+                        Text("Resoudre", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+
         // Salutation + bouton noter
         Row(
             verticalAlignment = Alignment.CenterVertically,
