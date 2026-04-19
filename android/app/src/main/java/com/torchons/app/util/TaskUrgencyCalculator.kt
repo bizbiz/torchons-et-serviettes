@@ -61,9 +61,14 @@ object TaskUrgencyCalculator {
                 val vals = rule.daysPerMonth?.values?.filter { it > 0 } ?: emptyList()
                 if (vals.isNotEmpty()) maxOf(1, vals.sum() / vals.size) else 30
             }
+            // uncertain : pas de fenetre orange (v0.14, Q2 etat toujours Vert)
+            "uncertain" -> 0
             else -> 0
         }
     }
+
+    /** True si la regle est de type 'uncertain' (cadence libre, v0.14). */
+    fun isUncertain(rule: RecurrenceRule?): Boolean = rule?.type == "uncertain"
 
     /**
      * Calcule la due_date deterministe d'une tache.
@@ -78,6 +83,9 @@ object TaskUrgencyCalculator {
         createdAt: String?,
         zone: ZoneId = ZoneId.systemDefault(),
     ): LocalDate? {
+        // uncertain : aucune echeance visible (v0.14, Q2). L'etat reste GREEN.
+        if (isUncertain(rule)) return null
+
         if (lastCompletedAt == null) {
             return parseDate(createdAt, zone)
         }
@@ -173,6 +181,30 @@ object TaskUrgencyCalculator {
         daysUntilDue == 0 -> "à faire aujourd'hui"
         daysUntilDue == -1 -> "en retard d'1 j"
         else -> "en retard de ${-daysUntilDue} j"
+    }
+
+    /**
+     * Libelle factuel FR pour une tache 'uncertain' (v0.14, Q9).
+     * Utilise pour les cartes de la 3e section "Sans cadence" du home.
+     *
+     * - null lastCompletedAt : "Pas encore faite"
+     * - delta <= 0 : "Fait aujourd'hui"
+     * - delta == 1 : "Fait hier"
+     * - sinon : "Fait il y a N j"
+     */
+    fun uncertainCountdownLabel(
+        lastCompletedAt: String?,
+        today: LocalDate,
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): String {
+        if (lastCompletedAt == null) return "Pas encore faite"
+        val lastDate = parseDate(lastCompletedAt, zone) ?: return "Pas encore faite"
+        val delta = (today.toEpochDay() - lastDate.toEpochDay()).toInt()
+        return when {
+            delta <= 0 -> "Fait aujourd'hui"
+            delta == 1 -> "Fait hier"
+            else -> "Fait il y a $delta j"
+        }
     }
 
     /** Couleur correspondant a un nom d'etat sous forme String ("GREEN"/"ORANGE"/"RED"). */

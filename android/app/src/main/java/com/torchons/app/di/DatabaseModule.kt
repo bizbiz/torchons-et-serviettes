@@ -99,6 +99,14 @@ private val migration5to6 = object : Migration(5, 6) {
     }
 }
 
+private val migration6to7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // v0.14 : cadence inferee pour les recurrences 'uncertain'.
+        // NULL par defaut (ni uncertain, ni recompute cote backend encore).
+        db.execSQL("ALTER TABLE tasks ADD COLUMN inferredIntervalDays REAL DEFAULT NULL")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -111,7 +119,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6)
+            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7)
             .build()
     }
 

@@ -21,6 +21,9 @@ data class Task(
     @SerializedName("room_id") val roomId: String? = null,
     @SerializedName("assigned_to_ids") val assignedToIds: List<String> = emptyList(),
     @SerializedName("recurrence_rule") val recurrenceRule: RecurrenceRule? = null,
+    // v0.14 : cadence inferee pour les recurrences de type "uncertain" (null tant
+    // qu'on a moins de 2 completions ou que le type n'est pas uncertain).
+    @SerializedName("inferred_interval_days") val inferredIntervalDays: Double? = null,
     @SerializedName("weight") val weight: Int = 1,
     @SerializedName("tolerance") val tolerance: String = "NORMAL",
     @SerializedName("is_active") val isActive: Boolean = true,
@@ -60,7 +63,8 @@ data class UpdateTaskRequest(
 
 /**
  * Regle de recurrence pour une tache.
- * Types supportes : interval, weekdays, monthly, custom.
+ * Types supportes : interval, weekdays, monthly, custom, monthly_variable,
+ * uncertain (v0.14 — cadence libre inferee cote backend).
  *
  * @Immutable pour les memes raisons que Task (champs List/Map).
  */

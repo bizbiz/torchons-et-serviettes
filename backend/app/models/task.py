@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import Boolean, Enum as SAEnum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Enum as SAEnum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,6 +32,12 @@ class Task(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # Recurrence — JSONB flexible (voir CLAUDE.md pour les formats)
     recurrence_rule: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Intervalle infere en jours pour le type "uncertain" (v0.14). NULL tant
+    # qu'on a moins de 2 completions. Mis a jour a chaque completion via
+    # compute_inferred_interval_days(). Utilise par /api/suggestions (ranking
+    # bucket "Sans cadence") et /api/maintenance-rate.
+    inferred_interval_days: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Gamification (P2)
     weight: Mapped[int] = mapped_column(Integer, default=1)

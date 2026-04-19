@@ -13,8 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
+from app.models.category import Category
 from app.models.completion import TaskCompletion
 from app.models.fair_share import FairShareConfig
+from app.models.foyer import Foyer
+from app.models.presence_day import PresenceDay
 from app.models.task import Task
 from app.models.task_in_progress import TaskInProgress
 from app.models.user_foyer import UserFoyer
@@ -31,7 +34,11 @@ from app.services.bonus_malus import (
     compute_bonus_malus_for_completion,
     resolve_stored_reason_and_mult,
 )
-from app.services.recurrence import min_completion_gap_seconds
+from app.services.recurrence import (
+    compute_inferred_interval_days,
+    is_uncertain,
+    min_completion_gap_seconds,
+)
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid, scoped
 
@@ -46,6 +53,90 @@ def _safe_uuid(value: str | None) -> UUID | None:
         return UUID(value)
     except (ValueError, AttributeError):
         return None
+
+
+async def _recompute_inferred_interval(
+    session: AsyncSession,
+    task: Task,
+    foyer_id: UUID,
+) -> None:
+    """Recalcule task.inferred_interval_days apres une completion (v0.14).
+
+    Ne fait rien si la tache n'est pas de type 'uncertain'. Sinon :
+    1. Charge toutes les completions de la tache (chronologique).
+    2. Si la tache est requires_home (via sa categorie) ET le foyer a
+       home_freeze_enabled : calcule les jours absents pour chaque paire
+       consecutive (Q6.2, batch via une seule query presence_days).
+    3. Appelle compute_inferred_interval_days et persiste le resultat.
+
+    Le caller doit avoir flush la nouvelle completion AVANT d'appeler cette
+    fonction pour qu'elle soit visible dans la query.
+    """
+    if not is_uncertain(task.recurrence_rule):
+        return
+
+    comp_result = await session.execute(
+        select(TaskCompletion.completed_at)
+        .where(
+            TaskCompletion.task_id == task.id,
+            TaskCompletion.deleted_at.is_(None),
+        )
+        .order_by(TaskCompletion.completed_at.asc())
+    )
+    times = [row[0] for row in comp_result.all()]
+
+    if len(times) < 2:
+        task.inferred_interval_days = None
+        task.version += 1
+        return
+
+    # Freeze check : soustrait les jours absents uniquement si la tache est
+    # requires_home (via categorie) ET freeze actif au niveau foyer (Q6.2).
+    absent_per_gap: list[int] | None = None
+    requires_home = False
+    if task.category_id is not None:
+        cat_result = await session.execute(
+            select(Category.requires_home).where(Category.id == task.category_id)
+        )
+        requires_home = bool(cat_result.scalar() or False)
+
+    freeze_enabled = False
+    if requires_home:
+        foyer_result = await session.execute(
+            select(Foyer.home_freeze_enabled).where(Foyer.id == foyer_id)
+        )
+        freeze_enabled = bool(foyer_result.scalar() or False)
+
+    if requires_home and freeze_enabled:
+        # Batch : charger tous les jours presents dans la plage globale
+        global_start = times[0].date() + timedelta(days=1)
+        global_end = times[-1].date()  # exclusive
+        absent_per_gap = []
+        if global_start < global_end:
+            present_result = await session.execute(
+                select(PresenceDay.date).where(
+                    PresenceDay.foyer_id == foyer_id,
+                    PresenceDay.date >= global_start,
+                    PresenceDay.date < global_end,
+                    PresenceDay.status == "confirmed_present",
+                )
+            )
+            present_dates = {row[0] for row in present_result.all()}
+            for i in range(1, len(times)):
+                gs = times[i - 1].date() + timedelta(days=1)
+                ge = times[i].date()
+                if gs >= ge:
+                    absent_per_gap.append(0)
+                    continue
+                total = (ge - gs).days
+                present = sum(1 for d in present_dates if gs <= d < ge)
+                absent_per_gap.append(total - present)
+        else:
+            absent_per_gap = [0] * (len(times) - 1)
+
+    inferred = compute_inferred_interval_days(times, absent_per_gap)
+    task.inferred_interval_days = inferred
+    task.version += 1
 
 
 
@@ -69,7 +160,7 @@ async def complete_task(
 
     # Anti-doublon : verifier qu'aucune completion active n'existe dans la fenetre
     # derivee de la recurrence (24h pour hebdo+, 1h sinon).
-    gap_seconds = min_completion_gap_seconds(task.recurrence_rule)
+    gap_seconds = min_completion_gap_seconds(task.recurrence_rule, task.inferred_interval_days)
     window_start = datetime.now(timezone.utc) - timedelta(seconds=gap_seconds)
     recent = await session.execute(
         select(TaskCompletion)
@@ -136,6 +227,10 @@ async def complete_task(
     if task.recurrence_rule is None:
         task.is_active = False
         task.version += 1
+
+    # Uncertain : recalculer inferred_interval_days a partir de l'historique
+    # complet (la completion qu'on vient de creer est deja flush).
+    await _recompute_inferred_interval(session, task, current_foyer_uuid(current))
 
     await record_change(
         session, "task_completions", completion.id, "INSERT", current["user_id"],
@@ -206,7 +301,7 @@ async def complete_task_collective(
 
     # 3. Anti-doublon atomique : pour chaque participant, verifier qu'aucune
     # completion active n'existe dans la fenetre derivee de la recurrence.
-    gap_seconds = min_completion_gap_seconds(task.recurrence_rule)
+    gap_seconds = min_completion_gap_seconds(task.recurrence_rule, task.inferred_interval_days)
     window_start = datetime.now(timezone.utc) - timedelta(seconds=gap_seconds)
     conflict_result = await session.execute(
         select(TaskCompletion)
@@ -290,6 +385,9 @@ async def complete_task_collective(
     if task.recurrence_rule is None:
         task.is_active = False
         task.version += 1
+
+    # 8bis. Uncertain : recalculer inferred_interval_days sur tout l'historique.
+    await _recompute_inferred_interval(session, task, foyer_uuid)
 
     # 9. Changelog : une entree par ligne pour que la sync offline rapatrie tout.
     for comp in created:

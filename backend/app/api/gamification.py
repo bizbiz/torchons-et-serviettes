@@ -25,11 +25,14 @@ from app.models.task_frequency_vote import TaskFrequencyVote
 from app.models.task_in_progress import TaskInProgress
 from app.services.presence import get_absent_days_map
 from app.services.recurrence import (
+    COLD_START_INTERVAL_DAYS,
+    UNCERTAIN_SCORE_CAP,
     compute_days_until_due,
     compute_due_date,
     compute_effective_today,
     compute_nominal_interval_days,
     compute_urgency_state,
+    is_uncertain,
 )
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
@@ -37,6 +40,31 @@ from app.utils.scoping import current_foyer_uuid
 router = APIRouter(prefix="/api", tags=["gamification"])
 
 TIMEOUT_HOURS = 6
+
+
+async def _ensure_user_assigned(
+    session: AsyncSession,
+    task_id: UUID,
+    user_id: UUID,
+) -> None:
+    """Refuse 403 si l'user courant n'est pas assigne a la tache.
+
+    Garde defense-en-profondeur pour les endpoints de notation (affinity,
+    effort, frequency). Coherent avec /pending-affinity qui ne propose ces
+    taches qu'aux users assignes : afficher ou accepter un vote de quelqu'un
+    hors-assignement serait trompeur et envoie un mauvais message.
+    """
+    existing = await session.execute(
+        select(TaskAssignment.user_id).where(
+            TaskAssignment.task_id == task_id,
+            TaskAssignment.user_id == user_id,
+        )
+    )
+    if existing.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Vous n'etes pas assigne a cette tache — vote non accepte.",
+        )
 
 
 # --- Schemas ---
@@ -138,6 +166,7 @@ async def set_affinity(
     row_id=task_id car PK composite).
     """
     user_id = UUID(current["user_id"])
+    await _ensure_user_assigned(session, task_id, user_id)
 
     # Consensus avant : moyenne arrondie des scores existants.
     cb_result = await session.execute(
@@ -189,15 +218,21 @@ async def get_task_ratings(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Retourne les affinites et efforts des users du foyer actif pour une tache."""
-    from app.models.user import User
-    from app.models.user_foyer import UserFoyer
+    """Retourne les affinites et efforts pour une tache — UNIQUEMENT pour les
+    users assignes a la tache (pas tout le foyer).
 
-    # Charger les users du foyer actif (via UserFoyer join)
+    Motivation : on ne demande pas l'affinite a un user qui n'est pas concerne
+    (cf /api/pending-affinity qui filtre par TaskAssignment). Afficher une ligne
+    vide "Affinite de ***REMOVED*** : -" pour une tache attribuee a Quentin seulement
+    est trompeur et suggere un oubli.
+    """
+    from app.models.user import User
+
+    # Charger uniquement les users ASSIGNES a cette tache dans le foyer actif.
     users_result = await session.execute(
         select(User)
-        .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == current_foyer_uuid(current))
+        .join(TaskAssignment, TaskAssignment.user_id == User.id)
+        .where(TaskAssignment.task_id == task_id)
         .order_by(User.username)
     )
     users = users_result.scalars().all()
@@ -307,6 +342,7 @@ async def set_effort(
     pour alimenter l'historique de modification.
     """
     user_id = UUID(current["user_id"])
+    await _ensure_user_assigned(session, task_id, user_id)
 
     # Consensus avant : task.weight actuel (deja = round(avg)).
     task_result = await session.execute(select(Task).where(Task.id == task_id))
@@ -364,6 +400,7 @@ async def set_frequency(
     Le GET /tasks/{id}/history dedoublonne ces deux entrees.
     """
     user_id = UUID(current["user_id"])
+    await _ensure_user_assigned(session, task_id, user_id)
 
     task_result = await session.execute(
         select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
@@ -667,6 +704,27 @@ def _build_suggestion(scored: dict, reason: str) -> SuggestionResponse:
     )
 
 
+def _build_uncertain_suggestion(scored: dict) -> SuggestionResponse:
+    """Construit un SuggestionResponse pour le bucket 'Sans cadence' (Q2, Q8, Q9).
+
+    state toujours GREEN, days_until_due = 0 (Android ignore ce champ pour
+    uncertain et recalcule son label 'Fait il y a X j' via TaskUrgencyCalculator
+    a partir du dernier completed_at local).
+    """
+    return SuggestionResponse(
+        task_id=scored["task"].id,
+        title=scored["task"].title,
+        category_id=scored["task"].category_id,
+        weight=scored["task"].weight,
+        state=UrgencyState.GREEN.value,
+        days_until_due=0,
+        affinity_score=scored["affinity_score"],
+        reason="uncertain",
+        bonus_eligible=False,
+        bonus_pct=0.0,
+    )
+
+
 @router.get("/suggestions", response_model=list[SuggestionResponse])
 async def get_suggestions(
     limit: int = Query(5, ge=1, le=20),
@@ -747,6 +805,9 @@ async def get_suggestions(
         TaskTolerance.SOUPLE: bonus_config.seuil_bonus_souple,
     }
 
+    # Date du jour (utilisee pour le freeze map et le scoring urgence).
+    today = datetime.now(timezone.utc).date()
+
     # --- Home freeze v2 : charger foyer + categories requires_home ---
     foyer_result = await session.execute(select(Foyer).where(Foyer.id == foyer_uuid))
     foyer = foyer_result.scalar_one_or_none()
@@ -790,11 +851,31 @@ async def get_suggestions(
     if std_aff == 0:
         std_aff = 1.0
 
-    # Scoring par tache : due_date, state, ratio retard, affinite
-    today = datetime.now(timezone.utc).date()
+    # Scoring par tache : due_date, state, ratio retard, affinite.
+    # Les taches 'uncertain' sont scorees separement (bucket dedie Q8).
     scored_tasks = []
+    uncertain_scored: list[dict] = []
     for task in tasks:
         last_comp = last_completions.get(task.id)
+
+        # Bucket uncertain : score base sur maturite d/i (Q8), pas sur urgence.
+        if is_uncertain(task.recurrence_rule):
+            interval = task.inferred_interval_days or float(COLD_START_INTERVAL_DAYS)
+            if last_comp is None:
+                # 0 completion : top de section (Q4 cold start optimiste).
+                score = float("inf")
+                d = None
+            else:
+                d = (today - last_comp.date()).days
+                score = min(d / interval, UNCERTAIN_SCORE_CAP)
+            uncertain_scored.append({
+                "task": task,
+                "score": score,
+                "days_since_last": d,
+                "affinity_score": affinities.get(task.id, 5),
+            })
+            continue
+
         due_date = compute_due_date(task.recurrence_rule, last_comp, task.created_at)
         nominal = compute_nominal_interval_days(task.recurrence_rule)
 
@@ -887,11 +968,25 @@ async def get_suggestions(
                 break
             affinity_picks.append(t)
 
+    # Bucket "Sans cadence" (Q3 3e section, Q8 top-5 par score desc puis
+    # days_since_last desc, created_at asc en tie-break ultime).
+    # Cold start (0 completion) : score = inf -> primary=-inf, passe en premier.
+    def _uncertain_sort_key(s: dict):
+        primary = -s["score"]  # score desc ; -inf pour 0-completion, bat tout
+        d = s["days_since_last"]
+        secondary = -(d if d is not None else 0)  # older completion first
+        tertiary = s["task"].created_at or datetime.min.replace(tzinfo=timezone.utc)
+        return (primary, secondary, tertiary)
+
+    uncertain_picks: list[dict] = sorted(uncertain_scored, key=_uncertain_sort_key)[:limit]
+
     suggestions: list[SuggestionResponse] = []
     for pick in urgent_picks:
         suggestions.append(_build_suggestion(pick, "urgent"))
     for pick in affinity_picks:
         suggestions.append(_build_suggestion(pick, "affinity"))
+    for pick in uncertain_picks:
+        suggestions.append(_build_uncertain_suggestion(pick))
 
     return suggestions
 

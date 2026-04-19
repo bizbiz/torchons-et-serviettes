@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timer
@@ -390,6 +391,20 @@ fun TaskDetailScreen(
                     TaskUrgencyCalculator.State.RED -> "En retard"
                 }
 
+                val assignedIds = task.assignedToIds.toSet()
+                val assignedNames = task.assignedToIds
+                    .mapNotNull { uiState.userNames[it] }
+                    .distinct()
+                val isCurrentUserAssigned = currentUserId in assignedIds
+                val allFoyerAssigned = uiState.userNames.isNotEmpty() &&
+                    uiState.userNames.keys.all { it in assignedIds }
+                val assignedLabel = when {
+                    assignedNames.isEmpty() -> null
+                    allFoyerAssigned -> "Pour tout le foyer"
+                    assignedNames.size == 1 -> "Pour ${assignedNames.single()} uniquement"
+                    else -> "Pour ${assignedNames.joinToString(", ")}"
+                }
+
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -397,6 +412,37 @@ fun TaskDetailScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // Bandeau "Pour : <users assignes>" pour lever toute ambiguite
+                    // sur qui est concerne par la tache. Coherent avec la gate
+                    // cote backend : seuls ces users voient les prompts d'affinite
+                    // et peuvent voter (cf _ensure_user_assigned).
+                    if (assignedLabel != null) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = assignedLabel,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            }
+                        }
+                    }
+
                     // Section etat d'urgence (couleur + countdown)
                     item {
                         Card(
@@ -509,7 +555,9 @@ fun TaskDetailScreen(
                                     Spacer(modifier = Modifier.height(12.dp))
                                 }
 
-                                // Effort & Affinite par user
+                                // Effort & Affinite par user. Bouton "Modifier"
+                                // uniquement pour les users assignes (coherent avec
+                                // la gate backend _ensure_user_assigned).
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
                                         text = "Effort & Affinite",
@@ -517,9 +565,11 @@ fun TaskDetailScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.weight(1f)
                                     )
-                                    androidx.compose.material3.TextButton(
-                                        onClick = { viewModel.openRatingDialog(currentUserId) }
-                                    ) { Text("Modifier") }
+                                    if (isCurrentUserAssigned) {
+                                        androidx.compose.material3.TextButton(
+                                            onClick = { viewModel.openRatingDialog(currentUserId) }
+                                        ) { Text("Modifier") }
+                                    }
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
 

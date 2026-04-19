@@ -321,6 +321,7 @@ fun TaskEditScreen(
                     "none" -> "Ponctuelle (pas de recurrence)"
                     "interval" -> "Tous les X jours"
                     "monthly_variable" -> "Variable par mois"
+                    "uncertain" -> "Quand c'est necessaire"
                     else -> uiState.recurrenceType
                 }
 
@@ -360,6 +361,13 @@ fun TaskEditScreen(
                             text = { Text("Variable par mois") },
                             onClick = {
                                 viewModel.updateRecurrenceType("monthly_variable")
+                                recurrenceExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Quand c'est necessaire") },
+                            onClick = {
+                                viewModel.updateRecurrenceType("uncertain")
                                 recurrenceExpanded = false
                             }
                         )

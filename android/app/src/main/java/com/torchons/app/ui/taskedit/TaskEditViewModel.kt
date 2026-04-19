@@ -192,6 +192,7 @@ class TaskEditViewModel @Inject constructor(
                         .mapValues { it.value.toInt() }
                     RecurrenceRule(type = "monthly_variable", daysPerMonth = dpm)
                 }
+                "uncertain" -> RecurrenceRule(type = "uncertain")
                 else -> null
             }
 

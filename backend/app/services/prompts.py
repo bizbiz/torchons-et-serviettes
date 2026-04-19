@@ -30,7 +30,7 @@ from app.services.bonus_malus import (
     compute_grace_until,
     load_or_create_bonus_config,
 )
-from app.services.recurrence import interval_hours
+from app.services.recurrence import interval_hours, is_uncertain
 
 
 async def generate_bump_prompts(
@@ -46,6 +46,8 @@ async def generate_bump_prompts(
     """
     if task.recurrence_rule is None:
         return  # ponctuelles exclues
+    if is_uncertain(task.recurrence_rule):
+        return  # uncertain : pas de bump (pas de notion d'"en retard", cf Q2)
 
     hours = interval_hours(task.recurrence_rule)
     if not (hours > 0 and hours != float("inf")):
@@ -179,6 +181,10 @@ async def generate_vote_prompts_for_task(
     - Par le cron nightly pour les votes expires (priority=3).
     """
     from app.services.recurrence import interval_hours as _ih
+
+    # Uncertain : pas de vote de frequence (la cadence est inferee, Q2).
+    if is_uncertain(task.recurrence_rule):
+        return
 
     hours = _ih(task.recurrence_rule)
     interval_days = hours / 24.0 if hours > 0 and hours != float("inf") else 0

@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -137,6 +138,20 @@ class HomeViewModel @Inject constructor(
 
     val activeTasks: StateFlow<List<Task>> = taskRepository.observeActiveTasks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
+     * Pour chaque tache, la completedAt la plus recente (ISO-8601). Utilise
+     * par la carte "Sans cadence" (v0.14) pour afficher le label factuel
+     * "Fait il y a X j". Derive du cache local des 200 dernieres completions
+     * (suffisant pour un couple : ~1 task/j × 200 = 6 mois d'historique).
+     */
+    val lastCompletionsByTask: StateFlow<Map<String, String>> =
+        taskRepository.observeRecentCompletions(limit = 200)
+            .map { list ->
+                list.groupBy { it.taskId }
+                    .mapValues { (_, comps) -> comps.maxOf { it.completedAt } }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     private val _affinityPopupEnabled = MutableStateFlow(true)
     val affinityPopupEnabled: StateFlow<Boolean> = _affinityPopupEnabled.asStateFlow()

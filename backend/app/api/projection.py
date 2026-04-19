@@ -36,7 +36,7 @@ from app.models.completion import TaskCompletion
 from app.models.task import Task
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
-from app.services.recurrence import interval_hours, is_overdue
+from app.services.recurrence import interval_hours, is_overdue, is_uncertain
 from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api", tags=["projection"])
@@ -104,12 +104,16 @@ def _compute_maintenance_minutes_per_day(
     Pour chaque tache recurrente, on calcule `task_minutes / jours_par_cycle`
     ou `jours_par_cycle = interval_hours(rule) / 24`. On somme sur toutes les
     taches recurrentes. Les ponctuelles sont exclues (pas d'intervalle).
+
+    Pour les taches 'uncertain' (v0.14) : interval_hours utilise
+    inferred_interval_days persiste sur la tache (ou COLD_START_INTERVAL_DAYS
+    en fallback). Elles comptent donc dans la maintenance-rate (Q10).
     """
     total = 0.0
     for task, _ in tasks_with_last:
         if task.recurrence_rule is None:
             continue
-        hours = interval_hours(task.recurrence_rule)
+        hours = interval_hours(task.recurrence_rule, task.inferred_interval_days)
         if not (hours > 0 and hours != float("inf")):
             continue
         days = hours / 24.0
@@ -187,6 +191,8 @@ async def get_retard(
     for task, last_completed in tasks_with_last:
         if task.recurrence_rule is None:
             continue  # ponctuelles exclues
+        if is_uncertain(task.recurrence_rule):
+            continue  # uncertain : jamais en retard (Q2, Q10)
         if not is_overdue(task.recurrence_rule, last_completed):
             continue
         minutes = _task_minutes(task)

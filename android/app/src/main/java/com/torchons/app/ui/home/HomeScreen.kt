@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -88,6 +89,7 @@ fun HomeScreen(
     val rooms by viewModel.rooms.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val activeTasks by viewModel.activeTasks.collectAsState()
+    val lastCompletionsByTask by viewModel.lastCompletionsByTask.collectAsState()
     val toastContext = LocalContext.current
 
     // Maps de lookup memoisees pour pouvoir resolver task -> room/category sans
@@ -373,11 +375,13 @@ fun HomeScreen(
         val visibleSuggestions = uiState.suggestions.filter { s ->
             s.taskId == uiState.celebratingTaskId || s.taskId !in uiState.justCompletedIds
         }
-        // Top 1 par tier : on affiche la 1ere urgente et la 1ere affinite du
-        // tampon filtre (max 2 cards sur l'ecran, comme avant).
+        // Top 1 par tier : urgent + affinity + uncertain (3 cards max).
+        // La 3e section "Sans cadence" (v0.14, Q3) ne s'affiche que si le
+        // backend a retourne au moins une suggestion reason=uncertain.
         val displayUrgent = visibleSuggestions.firstOrNull { it.reason == "urgent" }
         val displayAffinity = visibleSuggestions.firstOrNull { it.reason == "affinity" }
-        val displayedSuggestions = listOfNotNull(displayUrgent, displayAffinity)
+        val displayUncertain = visibleSuggestions.firstOrNull { it.reason == "uncertain" }
+        val displayedSuggestions = listOfNotNull(displayUrgent, displayAffinity, displayUncertain)
 
         if (displayedSuggestions.isNotEmpty()) {
             displayedSuggestions.forEach { suggestion ->
@@ -388,6 +392,7 @@ fun HomeScreen(
                     suggestion = suggestion,
                     room = room,
                     category = category,
+                    lastCompletedAt = lastCompletionsByTask[suggestion.taskId],
                     isCelebrating = uiState.celebratingTaskId == suggestion.taskId,
                     celebrationPoints = if (uiState.celebratingTaskId == suggestion.taskId) uiState.celebrationPoints else null,
                     celebrationReason = if (uiState.celebratingTaskId == suggestion.taskId) uiState.celebrationReason else null,
@@ -537,6 +542,7 @@ private fun SuggestionCard(
     suggestion: Suggestion,
     room: Room?,
     category: Category?,
+    lastCompletedAt: String? = null,
     isCelebrating: Boolean,
     celebrationPoints: Int? = null,
     celebrationReason: String? = null,
@@ -546,8 +552,20 @@ private fun SuggestionCard(
     onFaitEnsemble: () -> Unit,
     onEdit: () -> Unit,
 ) {
-    val reasonLabel = if (suggestion.reason == "urgent") "La plus urgente" else "Tu aimes bien"
-    val reasonIcon = if (suggestion.reason == "urgent") Icons.Default.Warning else Icons.Default.Favorite
+    val reasonLabel = when (suggestion.reason) {
+        "urgent" -> "La plus urgente"
+        "uncertain" -> "Sans cadence"
+        else -> "Tu aimes bien"
+    }
+    val reasonIcon = when (suggestion.reason) {
+        "urgent" -> Icons.Default.Warning
+        "uncertain" -> Icons.Default.Refresh
+        else -> Icons.Default.Favorite
+    }
+    val reasonColor = when (suggestion.reason) {
+        "urgent" -> TaskUrgencyCalculator.ROUGE
+        else -> TaskUrgencyCalculator.VERT
+    }
     // Pickee une seule fois pour cette celebration (key suggestion.taskId).
     val celebration = remember(suggestion.taskId, isCelebrating) {
         if (isCelebrating) randomCelebration() else null
@@ -576,14 +594,14 @@ private fun SuggestionCard(
                 Icon(
                     imageVector = reasonIcon,
                     contentDescription = null,
-                    tint = if (suggestion.reason == "urgent") TaskUrgencyCalculator.ROUGE else TaskUrgencyCalculator.VERT,
+                    tint = reasonColor,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = reasonLabel,
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (suggestion.reason == "urgent") TaskUrgencyCalculator.ROUGE else TaskUrgencyCalculator.VERT,
+                    color = reasonColor,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
@@ -623,7 +641,16 @@ private fun SuggestionCard(
 
             // Countdown text (dans Nj / aujourd'hui / en retard de Nj). Couleur
             // selon l'etat (vert/orange/rouge) renvoye par /api/suggestions.
-            val countdownLabel = TaskUrgencyCalculator.countdownLabelFromDays(suggestion.daysUntilDue)
+            // Pour uncertain (v0.14) : libelle factuel "Fait il y a X j" au lieu
+            // du countdown (pas de notion de retard, Q2/Q9).
+            val countdownLabel = if (suggestion.reason == "uncertain") {
+                TaskUrgencyCalculator.uncertainCountdownLabel(
+                    lastCompletedAt = lastCompletedAt,
+                    today = java.time.LocalDate.now(),
+                )
+            } else {
+                TaskUrgencyCalculator.countdownLabelFromDays(suggestion.daysUntilDue)
+            }
             if (countdownLabel.isNotEmpty()) {
                 Text(
                     text = countdownLabel,

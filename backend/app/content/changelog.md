@@ -1,5 +1,18 @@
 # Notes de version
 
+## v0.14.0 — 2026-04-19
+
+### Recurrence "Sans cadence"
+- Nouveau choix dans le picker de recurrence : "Quand c'est necessaire" — pour les taches qu'on fait irregulierement sans rythme fixe (ex : lessive, liste de courses).
+- Les taches "sans cadence" apparaissent dans une 3e section dediee sur l'accueil, toujours verte, avec un libelle factuel ("Pas encore faite" ou "Fait il y a X j") au lieu d'un compte a rebours.
+- L'app apprend automatiquement a quelle frequence tu fais cette tache et la classe en tete quand elle te l'a pas proposee depuis longtemps.
+- Le gel des vacances continue de s'appliquer (les jours d'absence ne comptent pas).
+
+### Detail de tache : respect des attributions
+- Sur une tache attribuee a une seule personne, l'ecran detail affiche maintenant un bandeau "Pour Quentin uniquement" (ou ***REMOVED***) en haut.
+- L'autre personne ne voit plus son propre encart "Effort & Affinite" pour cette tache (il etait trompeur : noter une tache qu'on ne fait pas n'a pas de sens).
+- Le bouton "Modifier" de la note d'affinite/effort est masque pour qui n'est pas attribue.
+
 ## v0.13.1 — 2026-04-18
 
 ### Fix recherche
