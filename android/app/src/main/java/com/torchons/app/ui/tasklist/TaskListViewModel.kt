@@ -73,6 +73,7 @@ data class TaskListUiState(
     val filterEffort: FilterState = FilterState.OFF,
     val filterRecurrence: FilterState = FilterState.OFF,
     val filterHome: FilterState = FilterState.OFF,
+    val filterAssignment: FilterState = FilterState.OFF,
     val selectedRoomId: String? = null,
     val availableRooms: List<Room> = emptyList(),
     val error: String? = null,
@@ -106,6 +107,7 @@ private data class TaskListFilters(
     val filterEffort: FilterState = FilterState.OFF,
     val filterRecurrence: FilterState = FilterState.OFF,
     val filterHome: FilterState = FilterState.OFF,
+    val filterAssignment: FilterState = FilterState.OFF,
     val selectedRoomId: String? = null,
     val selectedCategoryIds: Set<String> = emptySet(),
     val showAllTasks: Boolean = false,
@@ -195,7 +197,8 @@ class TaskListViewModel @Inject constructor(
             ) { tasks, categories, rooms, completions, filters ->
                 val homeSsids = tokenManager.homeSsidsFlow.first()
                 val isAtHome = WifiHelper.isAtHome(context, homeSsids)
-                val filtered = applyFilters(tasks, categories, rooms, completions, filters, isAtHome)
+                val currentUserId = tokenManager.userIdFlow.first()
+                val filtered = applyFilters(tasks, categories, rooms, completions, filters, isAtHome, currentUserId)
                 ProcessedTaskList(
                     filtered = filtered,
                     hasCache = tasks.isNotEmpty() || categories.isNotEmpty(),
@@ -223,6 +226,7 @@ class TaskListViewModel @Inject constructor(
                     filterEffort = processed.filters.filterEffort,
                     filterRecurrence = processed.filters.filterRecurrence,
                     filterHome = processed.filters.filterHome,
+                    filterAssignment = processed.filters.filterAssignment,
                     selectedRoomId = processed.filters.selectedRoomId,
                     hasCachedData = processed.hasCache,
                     isLoading = if (processed.hasCache) false else _uiState.value.isLoading,
@@ -392,6 +396,10 @@ class TaskListViewModel @Inject constructor(
         filtersFlow.value = filtersFlow.value.copy(filterHome = nextFilterState(filtersFlow.value.filterHome))
     }
 
+    fun toggleFilterAssignment() {
+        filtersFlow.value = filtersFlow.value.copy(filterAssignment = nextFilterState(filtersFlow.value.filterAssignment))
+    }
+
     fun selectRoom(roomId: String?) {
         filtersFlow.value = filtersFlow.value.copy(selectedRoomId = roomId)
     }
@@ -474,6 +482,7 @@ class TaskListViewModel @Inject constructor(
         completions: List<Completion>,
         filters: TaskListFilters,
         isAtHome: Boolean,
+        currentUserId: String?,
     ): FilteredResult {
         val homeCategoryIds = categories.filter { it.requiresHome }.map { it.id }.toSet()
         val roomsById = rooms.associateBy { it.id }
@@ -511,6 +520,22 @@ class TaskListViewModel @Inject constructor(
             when (filters.filterHome) {
                 FilterState.HIGH -> filteredTasks = filteredTasks.filter { it.categoryId in homeCategoryIds }
                 FilterState.LOW -> filteredTasks = filteredTasks.filter { it.categoryId !in homeCategoryIds }
+                FilterState.OFF -> {}
+            }
+        }
+
+        // Filtre affectation : Solo = je suis le seul assigne. Groupe = 2+
+        // assignes ou tache non assignee (par defaut "on la fait a deux").
+        // Les taches assignees exclusivement a l'autre sont filtrees dans les
+        // deux modes (ni "pour moi seul" ni "ensemble").
+        if (applyUiFilters && currentUserId != null) {
+            when (filters.filterAssignment) {
+                FilterState.HIGH -> filteredTasks = filteredTasks.filter {
+                    it.assignedToIds.size == 1 && it.assignedToIds[0] == currentUserId
+                }
+                FilterState.LOW -> filteredTasks = filteredTasks.filter {
+                    it.assignedToIds.size >= 2 || it.assignedToIds.isEmpty()
+                }
                 FilterState.OFF -> {}
             }
         }

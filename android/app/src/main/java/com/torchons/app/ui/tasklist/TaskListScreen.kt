@@ -329,6 +329,11 @@ fun TaskListScreen(
                         state = uiState.filterHome,
                         onClick = { viewModel.toggleFilterHome() }
                     )
+                    FilterIconChip(
+                        icon = "👤",
+                        state = uiState.filterAssignment,
+                        onClick = { viewModel.toggleFilterAssignment() }
+                    )
 
                     // Label du filtre actif — prend la place restante pour
                     // pousser la loupe tout a droite.
@@ -353,6 +358,11 @@ fun TaskListScreen(
                         when (uiState.filterHome) {
                             FilterState.HIGH -> parts += "🏠 Maison"
                             FilterState.LOW -> parts += "🏠 Hors maison"
+                            else -> {}
+                        }
+                        when (uiState.filterAssignment) {
+                            FilterState.HIGH -> parts += "👤 Solo"
+                            FilterState.LOW -> parts += "👤 Groupe"
                             else -> {}
                         }
                         append(parts.joinToString(" · "))

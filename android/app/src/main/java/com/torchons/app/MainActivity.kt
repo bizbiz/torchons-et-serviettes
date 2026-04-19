@@ -1,10 +1,15 @@
 package com.torchons.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.compose.rememberNavController
@@ -37,6 +42,10 @@ class MainActivity : ComponentActivity() {
     // son execution fiable. La detection de presence passe desormais par
     // un simple checkin WiFi a l'ouverture de l'app (HomeViewModel).
 
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* reponse silencieuse : si refuse, pas de notifs. */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -50,6 +59,20 @@ class MainActivity : ComponentActivity() {
                 popupSessionGate.arm()
             }
         })
+
+        // Android 13+ (API 33) : POST_NOTIFICATIONS devient runtime. Declaree dans
+        // le manifest mais silencieusement refusee tant qu'on demande pas, ce qui
+        // empeche toute notif (DailyNotificationWorker, FCM) de s'afficher.
+        // Pas de rationale : la demande est suffisante, le toggle dans Reglages
+        // continue de piloter le comportement metier.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
 
         // Lire le token de maniere synchrone au demarrage
         // pour eviter un flash de l'ecran de login

@@ -1,5 +1,17 @@
 # Notes de version
 
+## v0.15.0 — 2026-04-19
+
+### Liste des taches
+- Nouveau filtre Solo / Groupe (icone 👤) pour separer les taches attribuees a moi seul des taches partagees.
+
+### Edition d'une tache
+- On peut maintenant changer le type de recurrence en editant une tache existante (ex : passer d'une recurrence reguliere a "Quand c'est necessaire", ou l'inverse).
+- La tolerance au retard n'est plus affichee pour les taches "Quand c'est necessaire" — elle ne s'appliquait pas a ce type et pretait a confusion.
+
+### Corrections
+- Les notifications fonctionnent enfin sur Android 13+ : l'app demande la permission au lancement (elle etait declaree mais jamais demandee, Android les refusait silencieusement).
+
 ## v0.14.0 — 2026-04-19
 
 ### Recurrence "Sans cadence"
