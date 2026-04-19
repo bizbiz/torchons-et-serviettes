@@ -78,7 +78,12 @@ class EffortUpdate(BaseModel):
 
 
 class FrequencyUpdate(BaseModel):
-    every_n_days: int = Field(ge=1, le=60)
+    # Cap a 365j : couvre les taches annuelles (controle technique, decorations
+    # saisonnieres) sans permettre des valeurs aberrantes. L'ancien cap a 60j
+    # creait des 422 silencieux pour tout slider UI qui allait plus loin
+    # (ex : currentDays=60 -> max UI = 120), piegeant la pending_operation
+    # indefiniment cote Android.
+    every_n_days: int = Field(ge=1, le=365)
 
 
 class AffinityResponse(BaseModel):

@@ -69,10 +69,14 @@ class SyncWorker(
                 val days = (payload?.get("every_n_days") as? Number)?.toInt()
                 if (days != null) {
                     val resp = apiService.setFrequency(op.rowId, FrequencyRequest(days))
-                    if (resp.isSuccessful) {
-                        pendingDao.delete(op.clientOpId)
-                    } else {
-                        pendingDao.incrementAttempt(op.clientOpId, "HTTP ${resp.code()}")
+                    when {
+                        resp.isSuccessful -> pendingDao.delete(op.clientOpId)
+                        // 4xx = erreur permanente (payload invalide / tache supprimee /
+                        // foyer different...). Retry indefini pollue le sync et laisse
+                        // le bandeau "Synchronisation en cours" affiche a vie. On drop.
+                        resp.code() in 400..499 -> pendingDao.delete(op.clientOpId)
+                        // 5xx / reseau via onFailure : on retry normalement.
+                        else -> pendingDao.incrementAttempt(op.clientOpId, "HTTP ${resp.code()}")
                     }
                 } else {
                     pendingDao.delete(op.clientOpId)

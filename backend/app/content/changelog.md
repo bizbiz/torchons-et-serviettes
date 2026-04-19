@@ -1,5 +1,11 @@
 # Notes de version
 
+## v0.15.3 — 2026-04-19
+
+### Corrections
+- Le bandeau "Synchronisation en cours" qui restait affiche en permanence est corrige. Certains votes de frequence saisis via le slider (ex : passer a tous les 120 jours) etaient rejetes par le serveur et l'app les rejouait en boucle sans jamais les abandonner, ce qui laissait le bandeau affiche indefiniment.
+- Le cap sur les votes de frequence passe de 60 a 365 jours. Tu peux maintenant voter pour des taches qui reviennent annuellement (controle technique voiture, decorations de Noel, etc.).
+
 ## v0.15.2 — 2026-04-19
 
 ### Notifications
