@@ -192,7 +192,7 @@ class TaskListViewModel @Inject constructor(
                 taskRepository.observeActiveTasks(),
                 taskRepository.observeCategories(),
                 taskRepository.observeRooms(),
-                taskRepository.observeRecentCompletions(500),
+                taskRepository.observeRecentCompletions(2000),
                 filtersFlow,
             ) { tasks, categories, rooms, completions, filters ->
                 val homeSsids = tokenManager.homeSsidsFlow.first()
@@ -248,7 +248,15 @@ class TaskListViewModel @Inject constructor(
                 async { taskRepository.refreshTasks() },
                 async { taskRepository.refreshCategories() },
                 async { taskRepository.refreshRooms() },
-                async { taskRepository.refreshCompletions() },
+                // limit=2000 : sans ca, le backend defaulte a 50 et le repo
+                // fait replaceAll, ce qui wipe toute completion plus ancienne
+                // que le 50e rang global. Conseequence : tasks recurrentes a
+                // long intervalle (ex: 45j) perdaient leur derniere completion
+                // du cache, retombaient sur createdAt dans computeDueDate et
+                // s'affichaient faussement en retard. Doit couvrir plus
+                // largement que observeRecentCompletions(2000) pour rester
+                // aligne.
+                async { taskRepository.refreshCompletions(limit = 2000) },
                 async { taskRepository.refreshUsers() },
             ).awaitAll()
 

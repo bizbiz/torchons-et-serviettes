@@ -214,7 +214,7 @@ fun FoyersScreen(
                             taskRepository.refreshCategories()
                             taskRepository.refreshRooms()
                             taskRepository.refreshUsers()
-                            taskRepository.refreshCompletions()
+                            taskRepository.refreshCompletions(limit = 2000)
                             reload()
                         }
                     }

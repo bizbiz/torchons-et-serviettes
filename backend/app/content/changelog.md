@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.15.1 — 2026-04-19
+
+### Corrections
+- Correction d'un bug qui faisait apparaitre certaines taches recurrentes comme "en retard" dans la liste alors qu'elles avaient ete faites recemment (exemple : une tache tous les 45 jours faite il y a 10 jours pouvait s'afficher en retard de 11 jours). L'ecran de detail affichait la bonne info — c'est uniquement la liste qui etait trompee.
+
 ## v0.15.0 — 2026-04-19
 
 ### Liste des taches

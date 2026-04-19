@@ -181,8 +181,15 @@ class TaskRepository @Inject constructor(
         taskId: String? = null,
         limit: Int? = null,
     ): Boolean {
+        // Full refresh (pas de filtre) + pas de limit explicite : on force 2000
+        // au lieu de laisser partir une requete sans limit (le backend defaulte
+        // a 50). Sans ca, le replaceAll ci-dessous wipe toute completion plus
+        // ancienne que le 50e rang global, et les taches a long intervalle
+        // (coiffeur/45j, etc.) retombent sur createdAt dans le calcul due_date
+        // et s'affichent faussement "en retard" apres chaque refresh.
+        val effectiveLimit = limit ?: if (taskId == null && userId == null) 2000 else null
         return try {
-            val response = apiService.getCompletions(userId, taskId, limit)
+            val response = apiService.getCompletions(userId, taskId, effectiveLimit)
             if (response.isSuccessful) {
                 val completions = response.body() ?: emptyList()
                 if (taskId == null && userId == null) {
