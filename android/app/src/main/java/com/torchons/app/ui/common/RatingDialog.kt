@@ -82,7 +82,15 @@ fun RatingDialog(
 
     var makeRecurring by remember(pending.taskId) { mutableStateOf(isAlreadyInterval) }
     val minDays = if (isAlreadyInterval) (currentDays * 0.5f).coerceAtLeast(1f) else 1f
-    val maxDays = if (isAlreadyInterval) (currentDays * 2f).coerceAtLeast(2f) else 30f
+    // Cap le haut du slider a 365j pour rester dans la fenetre acceptee par
+    // le backend (FrequencyUpdate.every_n_days: Field(ge=1, le=365)). Sans
+    // clamp, une tache a 200j donnerait un max = 400j, rejete en 422 cote
+    // backend, et le worker rejouerait l'op a l'infini (cf. v0.15.3).
+    val maxDays = if (isAlreadyInterval) {
+        (currentDays * 2f).coerceIn(2f, 365f)
+    } else {
+        30f
+    }
     var daysValue by remember(pending.taskId) { mutableFloatStateOf(currentDays.toFloat()) }
 
     AlertDialog(

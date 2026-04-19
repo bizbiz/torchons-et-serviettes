@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.15.4 — 2026-04-19
+
+### Ajustements
+- Le slider de vote de frequence dans la popup de notation ne depasse plus 365 jours, meme quand la tache avait une cadence tres longue. Evite de proposer des votes que le serveur rejetterait.
+
 ## v0.15.3 — 2026-04-19
 
 ### Corrections
