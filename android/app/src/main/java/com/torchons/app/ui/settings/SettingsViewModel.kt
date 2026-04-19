@@ -1,5 +1,6 @@
 package com.torchons.app.ui.settings
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,7 +10,9 @@ import com.torchons.app.data.model.BonusConfig
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
+import com.torchons.app.worker.DailyNotificationWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +37,8 @@ data class UserSettingsState(
 class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
-    private val apiService: ApiService
+    private val apiService: ApiService,
+    @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
     val displayName: StateFlow<String?> = authRepository.displayNameFlow
@@ -157,10 +161,33 @@ class SettingsViewModel @Inject constructor(
         tokenManager.setHomeSsids(s.homeSsids)
     }
 
-    fun setNotifDaily(v: Boolean) { _settings.value = _settings.value.copy(notifDaily = v); updateSetting("notif_daily", v) }
+    fun setNotifDaily(v: Boolean) {
+        _settings.value = _settings.value.copy(notifDaily = v)
+        updateSetting("notif_daily", v)
+        rescheduleDailyNotif()
+    }
     fun setNotifUrgent(v: Boolean) { _settings.value = _settings.value.copy(notifUrgent = v); updateSetting("notif_urgent", v) }
     fun setNotifCompleted(v: Boolean) { _settings.value = _settings.value.copy(notifCompleted = v); updateSetting("notif_completed", v) }
-    fun setNotifHour(v: Int) { _settings.value = _settings.value.copy(notifHour = v); updateSetting("notif_hour", v) }
+    fun setNotifHour(v: Int) {
+        _settings.value = _settings.value.copy(notifHour = v)
+        updateSetting("notif_hour", v)
+        rescheduleDailyNotif()
+    }
+
+    /**
+     * Reschedule le worker de notif quotidienne avec les valeurs courantes
+     * (toggle + heure). replace=true pour ecraser l'instance existante
+     * et appliquer le nouveau delai immediatement.
+     */
+    private fun rescheduleDailyNotif() {
+        val s = _settings.value
+        DailyNotificationWorker.schedule(
+            context = appContext,
+            hourOfDay = s.notifHour,
+            enabled = s.notifDaily,
+            replace = true,
+        )
+    }
     fun setAffinityPopup(v: Boolean) { _settings.value = _settings.value.copy(affinityPopup = v); updateSetting("affinity_popup_enabled", v) }
     fun setAffinityExpiry(v: Int) { _settings.value = _settings.value.copy(affinityExpiry = v); updateSetting("affinity_expiry_months", v) }
     fun setFairShareTolerance(v: Int) { _settings.value = _settings.value.copy(fairShareTolerance = v); updateSetting("fair_share_tolerance_percent", v) }

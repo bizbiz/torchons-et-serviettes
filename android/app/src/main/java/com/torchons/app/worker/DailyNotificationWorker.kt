@@ -7,7 +7,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -16,39 +15,91 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.torchons.app.MainActivity
 import com.torchons.app.R
+import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.Suggestion
-import java.net.HttpURLConnection
-import java.net.URL
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 /**
  * Worker pour envoyer une notification locale quotidienne
  * avec le resume des taches a faire.
+ *
+ * Utilise ApiService (authentifie via AuthInterceptor) plutot qu'un
+ * HttpURLConnection brut. Sans token JWT, l'endpoint /api/suggestions
+ * renvoyait 401 et le worker echouait silencieusement (emptyList ->
+ * Result.success sans notif) — c'etait le bug historique.
  */
 class DailyNotificationWorker(
     appContext: Context,
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
 
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface WorkerEntryPoint {
+        fun apiService(): ApiService
+        fun tokenManager(): TokenManager
+    }
+
     companion object {
         const val CHANNEL_ID = "torchons_daily"
         const val NOTIFICATION_ID = 1001
         const val WORK_NAME = "daily_notification"
 
-        /** Planifie la notification quotidienne. */
-        fun schedule(context: Context) {
+        /**
+         * Planifie la notification quotidienne a l'heure choisie (0..23).
+         *
+         * - `enabled` = false -> annule, aucune notif prevue.
+         * - `replace` = true -> applique immediatement le nouveau delai
+         *   (utilise depuis Reglages quand l'heure change). Sinon KEEP :
+         *   si une instance existe deja, on ne touche pas (appel idempotent
+         *   depuis Application.onCreate).
+         *
+         * WorkManager respecte une fenetre de flex de ~15min pour la batterie :
+         * la notif peut tomber jusqu'a 15min autour de l'heure cible.
+         */
+        fun schedule(
+            context: Context,
+            hourOfDay: Int = 9,
+            enabled: Boolean = true,
+            replace: Boolean = false,
+        ) {
+            if (!enabled) {
+                cancel(context)
+                return
+            }
+
+            val hour = hourOfDay.coerceIn(0, 23)
+            val now = java.time.LocalDateTime.now()
+            var target = now.withHour(hour).withMinute(0).withSecond(0).withNano(0)
+            if (!target.isAfter(now)) {
+                target = target.plusDays(1)
+            }
+            val initialDelayMs = java.time.Duration.between(now, target).toMillis()
+
             val request = PeriodicWorkRequestBuilder<DailyNotificationWorker>(
                 1, TimeUnit.DAYS
-            ).build()
+            )
+                .setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
+                .build()
+
+            val policy = if (replace) {
+                ExistingPeriodicWorkPolicy.UPDATE
+            } else {
+                ExistingPeriodicWorkPolicy.KEEP
+            }
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
-                request
+                policy,
+                request,
             )
         }
 
@@ -61,16 +112,20 @@ class DailyNotificationWorker(
     override suspend fun doWork(): Result {
         createNotificationChannel()
 
-        // Recuperer les suggestions
-        val suggestions = try {
-            val url = URL("${com.torchons.app.BuildConfig.API_BASE_URL}/suggestions")
-            val conn = url.openConnection() as HttpURLConnection
-            conn.connectTimeout = 5000
-            conn.readTimeout = 5000
-            val json = conn.inputStream.bufferedReader().readText()
-            conn.disconnect()
-            Gson().fromJson<List<Suggestion>>(json, object : TypeToken<List<Suggestion>>() {}.type)
-        } catch (e: Exception) {
+        val ep = EntryPointAccessors.fromApplication(
+            applicationContext, WorkerEntryPoint::class.java
+        )
+
+        // Pas connecte : rien a afficher. On laisse le worker se replanifier
+        // normalement, il reessayera demain (eventuellement apres login).
+        val token = try { ep.tokenManager().tokenFlow.first() } catch (_: Exception) { null }
+        if (token.isNullOrBlank()) return Result.success()
+
+        // Appel authentifie via ApiService (Retrofit + AuthInterceptor).
+        val suggestions: List<Suggestion> = try {
+            val resp = ep.apiService().getSuggestions()
+            if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
+        } catch (_: Exception) {
             emptyList()
         }
 

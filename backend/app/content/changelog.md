@@ -1,5 +1,12 @@
 # Notes de version
 
+## v0.15.2 — 2026-04-19
+
+### Notifications
+- Le rappel quotidien des taches a faire fonctionne a nouveau : le worker qui envoie la notification n'etait pas authentifie et recevait systematiquement une erreur du serveur, donc aucune notification n'etait produite.
+- Nouveau : l'heure de la notification quotidienne est maintenant respectee. Choisis l'heure dans Reglages -> Notifications (slider 6h-22h), la notif arrivera autour de cette heure le lendemain. Avant, WorkManager choisissait une fenetre arbitraire dans la journee.
+- Le toggle "Notification quotidienne" dans Reglages desactive correctement le rappel (plus besoin de redemarrer l'app).
+
 ## v0.15.1 — 2026-04-19
 
 ### Corrections
