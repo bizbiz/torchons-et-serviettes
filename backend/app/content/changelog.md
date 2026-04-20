@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.15.5 — 2026-04-20
+
+### Corrections
+- La notification quotidienne sortait a un horaire arbitraire au lieu de l'heure reglee dans les parametres. Cause : l'ancienne planification creee par une version anterieure persistait meme apres mise a jour. Corrige : chaque montee de version replanifie le rappel avec l'heure choisie dans Reglages.
+
 ## v0.15.4 — 2026-04-19
 
 ### Ajustements

@@ -34,10 +34,17 @@ class TorchonsApp : Application() {
         // Suggestion en cache. Wipe avant toute lecture = clean slate a chaque
         // montee de version. Runs runBlocking avant tout setContent, donc les
         // observers Home ne voient jamais d'etat incoherent.
-        runBlocking(Dispatchers.IO) {
+        //
+        // Utilise aussi pour forcer un replace=true du DailyNotificationWorker
+        // sur montee de version : sans ca, l'ancienne planif (v0.15.1 et avant,
+        // sans setInitialDelay) persiste a cause du ExistingPeriodicWorkPolicy
+        // .KEEP et la notif continue de sortir a un horaire arbitraire meme
+        // apres que v0.15.2 ait introduit le respect de notifHour.
+        val versionChanged = runBlocking(Dispatchers.IO) {
             val current = BuildConfig.VERSION_CODE
             val stored = tokenManager.getLastSeenVersionCode()
-            if (stored != current) {
+            val changed = stored != current
+            if (changed) {
                 viewSnapshotDao.clearAll()
                 tokenManager.setLastSeenVersionCode(current)
                 Log.i(
@@ -45,17 +52,23 @@ class TorchonsApp : Application() {
                     "View snapshots cache wiped: $stored -> $current",
                 )
             }
+            changed
         }
 
-        // Lit l'heure de notif + le toggle daily depuis DataStore (meme
-        // runBlocking que le wipe snapshots ci-dessus pour rester avant
-        // tout setContent). KEEP : on ne touche pas une planification
-        // existante a chaque cold start, seuls les changements de reglages
-        // via SettingsViewModel reschedulent (replace=true).
+        // Lit l'heure de notif + le toggle daily depuis DataStore. Sur montee
+        // de version, replace=true pour ecraser toute ancienne planif cree
+        // avec une logique differente (ex : sans setInitialDelay). Sinon
+        // KEEP : on ne touche pas a chaque cold start — les changements de
+        // reglages reschedulent deja via SettingsViewModel.
         val (notifDaily, notifHour) = runBlocking(Dispatchers.IO) {
             tokenManager.notifDailyFlow.first() to tokenManager.notifHourFlow.first()
         }
-        DailyNotificationWorker.schedule(this, hourOfDay = notifHour, enabled = notifDaily)
+        DailyNotificationWorker.schedule(
+            context = this,
+            hourOfDay = notifHour,
+            enabled = notifDaily,
+            replace = versionChanged,
+        )
         syncTrigger.schedulePeriodic()
     }
 }
