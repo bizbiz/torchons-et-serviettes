@@ -19,7 +19,9 @@ import com.torchons.app.data.model.LoginRequest
 import com.torchons.app.data.model.LoginResponse
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.StreakInfo
+import com.torchons.app.data.model.DismissRequest
 import com.torchons.app.data.model.Suggestion
+import com.torchons.app.data.model.SuggestionsResponse
 import com.torchons.app.data.model.SyncRequest
 import com.torchons.app.data.model.SyncResponse
 import com.torchons.app.data.model.UserStats
@@ -221,9 +223,20 @@ interface ApiService {
 
     // --- Gamification ---
 
-    /** Suggestions de taches (la plus urgente + meilleure affinite). */
+    /** Suggestions de taches (la plus urgente + meilleure affinite + sans cadence).
+     *
+     * @param exclude CSV d'UUIDs a exclure (dismiss list client) — v0.16+.
+     */
     @GET("suggestions")
-    suspend fun getSuggestions(): Response<List<Suggestion>>
+    suspend fun getSuggestions(
+        @Query("exclude") exclude: String? = null,
+    ): Response<SuggestionsResponse>
+
+    /** Log analytics fire-and-forget : clic ✕ sur une carte Home (v0.16+). */
+    @POST("suggestions/dismiss")
+    suspend fun logSuggestionDismiss(
+        @Body body: DismissRequest,
+    ): Response<Unit>
 
     /** Recuperer les affinites du user courant pour toutes les taches. */
     @GET("my-affinities")

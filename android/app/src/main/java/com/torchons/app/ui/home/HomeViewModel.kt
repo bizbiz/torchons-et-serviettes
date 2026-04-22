@@ -31,9 +31,12 @@ import com.torchons.app.util.WifiHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -80,6 +83,15 @@ data class HomeUiState(
      */
     val justCompletedIds: Set<String> = emptySet(),
     /**
+     * v0.16+ : set des task_ids dismiss par l'user sur l'ecran Home (clic
+     * sur le ✕ d'une SuggestionCard). Session-only in-memory : reset au
+     * cold start, preservee a travers les LifecycleResumeEffect. Le HomeScreen
+     * les filtre comme pour justCompletedIds. Quand un tier est entierement
+     * dismiss (remainingByTier[tier] == 0), le ViewModel clear ce set et
+     * emet un message sur `recycleToast`.
+     */
+    val dismissedIds: Set<String> = emptySet(),
+    /**
      * True quand il y a des jours incertains non resolus (home freeze v2).
      * Le bandeau s'affiche en haut de la home.
      */
@@ -118,6 +130,23 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    /**
+     * v0.16+ : toasts/snackbars du recycle dismiss. Emis une seule fois
+     * quand un tier devient vide (toutes ses suggestions dismiss). Le
+     * HomeScreen observe ce SharedFlow et appelle SnackbarHostState.
+     * SharedFlow (pas StateFlow) : evite que le meme message ne soit
+     * rejoue sur chaque recomposition.
+     */
+    private val _recycleToast = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = 1)
+    val recycleToast: SharedFlow<String> = _recycleToast.asSharedFlow()
+
+    /**
+     * v0.16+ : nombre de candidats restants par tier (hors dismiss list).
+     * Renseigne a chaque refresh/refetch — sert au declenchement du recycle.
+     * Non expose car purement interne au flow de dismiss.
+     */
+    private var lastRemainingByTier: Map<String, Int> = emptyMap()
 
     val userId: StateFlow<String?> = authRepository.userIdFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -223,8 +252,13 @@ class HomeViewModel @Inject constructor(
             // pour que les SuggestionCard puissent resoudre leur piece+categorie
             // au premier affichage Home (sinon il faut visiter TaskListScreen
             // d'abord pour que ces caches se remplissent).
-            val results = listOf(
-                async { homeRepository.refreshSuggestions() },
+            // v0.16+ : suggestions passe la dismiss list courante pour que le
+            // refetch arrive pre-filtre et que remainingByTier soit precis.
+            val currentDismissed = _uiState.value.dismissedIds
+            val suggestionsDeferred = async {
+                homeRepository.refreshSuggestions(excludeIds = currentDismissed)
+            }
+            val otherResults = listOf(
                 async { homeRepository.refreshInProgress() },
                 async { homeRepository.refreshFairShare() },
                 async { homeRepository.refreshPendingAffinity(6) },
@@ -232,6 +266,11 @@ class HomeViewModel @Inject constructor(
                 async { taskRepository.refreshCategories() },
                 async { taskRepository.refreshTasks() },
             ).awaitAll()
+            val suggestionsResult = suggestionsDeferred.await()
+            if (suggestionsResult.success) {
+                suggestionsResult.remainingByTier?.let { lastRemainingByTier = it }
+            }
+            val results = listOf(suggestionsResult.success) + otherResults
 
             // v0.8.0 : projection (retard, pace, maintenance) en parallele.
             // Non critique — si ca echoue les cards affichent un etat de loading
@@ -466,6 +505,55 @@ class HomeViewModel @Inject constructor(
                 onFailure = { _uiState.value = _uiState.value.copy(error = it.message) },
             )
         }
+    }
+
+    /**
+     * v0.16+ : clic sur le ✕ d'une SuggestionCard.
+     *
+     * 1) Masque immediatement la tache (ajout a dismissedIds) — le filtre
+     *    cote UI fait apparaitre la suivante du pool sans latence.
+     * 2) Fire-and-forget log backend pour analytics.
+     * 3) Refetch /suggestions avec ?exclude=<dismissedIds> pour rafraichir
+     *    le pool local et obtenir remaining_by_tier mis a jour.
+     * 4) Si remaining_by_tier[tier] == 0 ET le pool filtre ne contient plus
+     *    rien pour ce tier, on recycle : clear global de dismissedIds +
+     *    refetch sans exclude + Snackbar tier-aware.
+     */
+    fun dismissSuggestion(taskId: String, tier: String) {
+        viewModelScope.launch {
+            // 1) Masquage immediat
+            val newDismissed = _uiState.value.dismissedIds + taskId
+            _uiState.value = _uiState.value.copy(dismissedIds = newDismissed)
+
+            // 2) Log analytics (fire-and-forget — les erreurs sont deja
+            //    silencieuses cote repository)
+            launch { homeRepository.logSuggestionDismiss(taskId, tier) }
+
+            // 3) Refetch avec la dismiss list a jour
+            val result = homeRepository.refreshSuggestions(excludeIds = newDismissed)
+            if (!result.success) return@launch
+            val remaining = result.remainingByTier ?: emptyMap()
+            lastRemainingByTier = remaining
+
+            // 4) Recycle si le tier est epuise (backend n'a plus rien a
+            //    proposer hors dismiss)
+            if ((remaining[tier] ?: 0) == 0) {
+                _uiState.value = _uiState.value.copy(dismissedIds = emptySet())
+                val recycleResult = homeRepository.refreshSuggestions(excludeIds = emptySet())
+                if (recycleResult.success) {
+                    recycleResult.remainingByTier?.let { lastRemainingByTier = it }
+                }
+                _recycleToast.tryEmit(recycleMessage(tier))
+            }
+        }
+    }
+
+    /** Message Snackbar tier-aware pour le recycle dismiss. */
+    private fun recycleMessage(tier: String): String = when (tier) {
+        "urgent" -> "Plus de suggestions urgentes — reaffichage des taches ignorees"
+        "affinity" -> "Plus de suggestions affinite — reaffichage des taches ignorees"
+        "uncertain" -> "Plus de suggestions sans cadence — reaffichage des taches ignorees"
+        else -> "Reaffichage des taches ignorees"
     }
 
     fun completeTaskAtDate(

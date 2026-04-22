@@ -20,6 +20,25 @@ data class Suggestion(
     @SerializedName("bonus_pct") val bonusPct: Float = 0.0f,
 )
 
+/**
+ * Enveloppe de reponse /suggestions (v0.16+).
+ *
+ * remainingByTier : nombre de candidats restants par tier (urgent /
+ * affinity / uncertain) APRES application du filtre ?exclude=. Le front
+ * l'utilise pour detecter qu'un tier est epuise (valeur = 0) et
+ * declencher le recycle de la dismiss list locale.
+ */
+data class SuggestionsResponse(
+    @SerializedName("suggestions") val suggestions: List<Suggestion>,
+    @SerializedName("remaining_by_tier") val remainingByTier: Map<String, Int> = emptyMap(),
+)
+
+/** Corps du POST /suggestions/dismiss (log analytics fire-and-forget). */
+data class DismissRequest(
+    @SerializedName("task_id") val taskId: String,
+    @SerializedName("tier") val tier: String,
+)
+
 /** Tache en cours. */
 data class TaskInProgress(
     @SerializedName("task_id") val taskId: String,

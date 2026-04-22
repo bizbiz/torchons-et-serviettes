@@ -108,6 +108,24 @@ class SuggestionResponse(BaseModel):
     bonus_pct: float = 0.0  # pct de bonus (ex 0.5 pour +50%)
 
 
+class SuggestionsResponse(BaseModel):
+    """Enveloppe de /suggestions — v0.16 : ajoute remaining_by_tier.
+
+    Le client Android sait ainsi combien de candidats restent par tier
+    (hors dismiss list envoyee via ?exclude=). Quand remaining_by_tier[tier]
+    == 0, le front peut declencher le recycle (clear global des dismiss +
+    refetch sans exclude) et afficher un Snackbar tier-aware.
+    """
+    suggestions: list[SuggestionResponse]
+    remaining_by_tier: dict[str, int]
+
+
+class DismissRequest(BaseModel):
+    """Payload du POST /suggestions/dismiss (log analytics fire-and-forget)."""
+    task_id: UUID
+    tier: str = Field(pattern="^(urgent|affinity|uncertain)$")
+
+
 class InProgressResponse(BaseModel):
     task_id: UUID
     title: str
@@ -730,9 +748,13 @@ def _build_uncertain_suggestion(scored: dict) -> SuggestionResponse:
     )
 
 
-@router.get("/suggestions", response_model=list[SuggestionResponse])
+@router.get("/suggestions", response_model=SuggestionsResponse)
 async def get_suggestions(
     limit: int = Query(5, ge=1, le=20),
+    exclude: str | None = Query(
+        None,
+        description="CSV d'UUIDs de taches a exclure du pool (dismiss list client).",
+    ),
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
@@ -759,6 +781,19 @@ async def get_suggestions(
     """
     user_id = UUID(current["user_id"])
 
+    # Parser exclude (CSV UUIDs). UUIDs invalides -> silently ignores pour
+    # que le client ne s'enraye pas sur un id corrompu dans sa session.
+    exclude_ids: set[UUID] = set()
+    if exclude:
+        for raw in exclude.split(","):
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                exclude_ids.add(UUID(raw))
+            except ValueError:
+                continue
+
     # Taches assignees a l'user, actives, non supprimees
     assigned = select(TaskAssignment.task_id).where(
         TaskAssignment.user_id == user_id
@@ -769,6 +804,10 @@ async def get_suggestions(
         TaskInProgress.user_id != user_id
     ).scalar_subquery()
 
+    # On ne filtre PAS sur exclude_ids ici : on a besoin du pool complet
+    # pour calculer remaining_by_tier (combien de candidats existent au
+    # total par tier, hors dismiss) apres le scoring. L'application du
+    # filtre dismiss se fait plus bas sur les buckets finaux.
     result = await session.execute(
         select(Task).where(
             Task.id.in_(assigned),
@@ -780,7 +819,10 @@ async def get_suggestions(
     )
     tasks = result.scalars().all()
     if not tasks:
-        return []
+        return SuggestionsResponse(
+            suggestions=[],
+            remaining_by_tier={"urgent": 0, "affinity": 0, "uncertain": 0},
+        )
 
     # Charger derniere completion par tache + count pour bonus_eligible
     task_ids = [t.id for t in tasks]
@@ -931,11 +973,18 @@ async def get_suggestions(
             "bonus_pct": bonus_config.bonus_pct if bonus_eligible else 0.0,
         })
 
-    # Buckets par tier pour la cascade "la plus urgente"
-    red_strict = [t for t in scored_tasks if t["state"] == UrgencyState.RED and t["task"].tolerance == TaskTolerance.STRICT]
-    red_normal = [t for t in scored_tasks if t["state"] == UrgencyState.RED and t["task"].tolerance == TaskTolerance.NORMAL]
-    red_souple = [t for t in scored_tasks if t["state"] == UrgencyState.RED and t["task"].tolerance == TaskTolerance.SOUPLE]
-    oranges = [t for t in scored_tasks if t["state"] == UrgencyState.ORANGE]
+    # Buckets par tier pour la cascade "la plus urgente".
+    # On filtre dismiss (exclude_ids) ici sur chaque bucket — ca propage
+    # automatiquement aux cascades urgent et affinity. Le comptage
+    # remaining_by_tier se base ensuite sur ces buckets filtres.
+    def _not_excluded(t: dict) -> bool:
+        return t["task"].id not in exclude_ids
+
+    red_strict = [t for t in scored_tasks if t["state"] == UrgencyState.RED and t["task"].tolerance == TaskTolerance.STRICT and _not_excluded(t)]
+    red_normal = [t for t in scored_tasks if t["state"] == UrgencyState.RED and t["task"].tolerance == TaskTolerance.NORMAL and _not_excluded(t)]
+    red_souple = [t for t in scored_tasks if t["state"] == UrgencyState.RED and t["task"].tolerance == TaskTolerance.SOUPLE and _not_excluded(t)]
+    oranges = [t for t in scored_tasks if t["state"] == UrgencyState.ORANGE and _not_excluded(t)]
+    uncertain_scored = [s for s in uncertain_scored if s["task"].id not in exclude_ids]
 
     # Cascade "urgent" : remplit jusqu'a `limit` en parcourant les tiers dans
     # l'ordre rouge_strict -> rouge_normal -> rouge_souple -> oranges.
@@ -993,7 +1042,51 @@ async def get_suggestions(
     for pick in uncertain_picks:
         suggestions.append(_build_uncertain_suggestion(pick))
 
-    return suggestions
+    # remaining_by_tier = nombre total de candidats disponibles par tier
+    # APRES filtrage des dismiss. Sert au front a savoir quand un tier est
+    # epuise et qu'il faut recycler (clear dismiss + refetch sans exclude).
+    # Le tier urgent compte les rouges+oranges (toute la cascade urgent),
+    # affinity compte aussi rouges+oranges (memes taches vues sous un
+    # autre tri), uncertain compte le bucket dedie.
+    urgent_pool_size = len(red_strict) + len(red_normal) + len(red_souple) + len(oranges)
+    remaining = {
+        "urgent": urgent_pool_size,
+        "affinity": urgent_pool_size,
+        "uncertain": len(uncertain_scored),
+    }
+    return SuggestionsResponse(suggestions=suggestions, remaining_by_tier=remaining)
+
+
+@router.post("/suggestions/dismiss", status_code=204)
+async def log_dismiss(
+    payload: DismissRequest,
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Log analytics fire-and-forget : enregistre un ✕ sur une carte Home.
+
+    Aucun impact sur l'algo de selection des suggestions. Sert uniquement
+    aux stats a posteriori (quelle tache est evitee, par qui, combien de
+    fois). Pas de validation metier sur l'existence de la task — si la
+    FK casse (tache supprimee entretemps), l'insert echoue et on renvoie
+    quand meme 204 cote client (best-effort, on ne veut pas propager
+    d'erreur pour un log).
+    """
+    from app.models.suggestion_dismissal import SuggestionDismissal
+
+    try:
+        session.add(SuggestionDismissal(
+            user_id=UUID(current["user_id"]),
+            foyer_id=current_foyer_uuid(current),
+            task_id=payload.task_id,
+            tier=payload.tier,
+        ))
+        await session.commit()
+    except Exception:
+        # Best-effort : on drop silencieusement (race condition avec un
+        # delete concurrent de la tache, par exemple).
+        await session.rollback()
+    return None
 
 
 # --- Fair-share status ---

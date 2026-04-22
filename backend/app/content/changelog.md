@@ -1,5 +1,11 @@
 # Notes de version
 
+## v0.16.0 — 2026-04-22
+
+### Nouveau
+- Bouton pour ignorer une suggestion sur l'ecran d'accueil : chaque carte a maintenant une petite croix en haut a droite qui masque la tache et affiche la suivante du meme tier. Les dismiss sont purement locaux et se reinitialisent a chaque redemarrage de l'app.
+- Quand toutes les suggestions d'un tier (urgentes / affinite / sans cadence) ont ete ignorees, un message apparait et les taches ignorees redeviennent visibles — rien n'est jamais perdu.
+
 ## v0.15.5 — 2026-04-20
 
 ### Corrections

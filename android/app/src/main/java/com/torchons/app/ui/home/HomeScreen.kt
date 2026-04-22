@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Groups
@@ -40,6 +41,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import android.widget.Toast
@@ -102,6 +106,18 @@ fun HomeScreen(
         uiState.error?.let {
             Toast.makeText(toastContext, it, Toast.LENGTH_SHORT).show()
             viewModel.clearError()
+        }
+    }
+
+    // v0.16+ : Snackbar du recycle dismiss (tier-aware). Le SharedFlow
+    // n'emet qu'une fois par recycle, pas de replay sur recomposition.
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) {
+        viewModel.recycleToast.collect { msg ->
+            snackbarHostState.showSnackbar(
+                message = msg,
+                duration = SnackbarDuration.Short,
+            )
         }
     }
 
@@ -372,8 +388,11 @@ fun HomeScreen(
         // cours de celebration (pour l'animation) meme si deja dans le set.
         // Le backend envoie maintenant jusqu'a 5+5 suggestions (v0.11.1) ce
         // qui garantit qu'il y a quasi toujours du stock a afficher.
+        // v0.16+ : on filtre aussi dismissedIds (clic ✕ sur la carte), reset
+        // au cold start — preserve a travers LifecycleResumeEffect.
         val visibleSuggestions = uiState.suggestions.filter { s ->
-            s.taskId == uiState.celebratingTaskId || s.taskId !in uiState.justCompletedIds
+            s.taskId == uiState.celebratingTaskId ||
+                (s.taskId !in uiState.justCompletedIds && s.taskId !in uiState.dismissedIds)
         }
         // Top 1 par tier : urgent + affinity + uncertain (3 cards max).
         // La 3e section "Sans cadence" (v0.14, Q3) ne s'affiche que si le
@@ -423,6 +442,7 @@ fun HomeScreen(
                         }
                     },
                     onEdit = { onEditTask(suggestion.taskId) },
+                    onDismiss = { viewModel.dismissSuggestion(suggestion.taskId, suggestion.reason) },
                 )
             }
         }
@@ -534,6 +554,13 @@ fun HomeScreen(
     androidx.compose.runtime.key(uiState.celebrationTrigger) {
         CelebrationOverlay(isCelebrating = uiState.celebratingTaskId != null)
     }
+
+    // v0.16+ : SnackbarHost pour messages de recycle dismiss (tier-aware).
+    // Aligne en bas de l'ecran, au-dessus de la BottomNav si presente.
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier.align(Alignment.BottomCenter),
+    )
     } // fin du Box outer (celebration overlay layer)
 }
 
@@ -551,6 +578,7 @@ private fun SuggestionCard(
     onDejaFait: () -> Unit,
     onFaitEnsemble: () -> Unit,
     onEdit: () -> Unit,
+    onDismiss: () -> Unit = {},
 ) {
     val reasonLabel = when (suggestion.reason) {
         "urgent" -> "La plus urgente"
@@ -625,6 +653,16 @@ private fun SuggestionCard(
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Modifier",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                // v0.16+ : ignorer cette suggestion (session only, reset au
+                // cold start). La suivante du meme tier prend la place.
+                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Ignorer cette suggestion",
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

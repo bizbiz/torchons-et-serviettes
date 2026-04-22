@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.dao.ViewSnapshotDao
 import com.torchons.app.data.local.entities.ViewSnapshotEntity
+import com.torchons.app.data.model.DismissRequest
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.Suggestion
@@ -42,11 +43,34 @@ class HomeRepository @Inject constructor(
             entity?.let { decode<List<Suggestion>>(it.jsonContent) }
         }
 
-    suspend fun refreshSuggestions(): Boolean {
+    /**
+     * Resultat du refresh suggestions (v0.16+).
+     *
+     * @param success vrai si l'API a repondu avec succes
+     * @param remainingByTier nombre de candidats restants par tier apres
+     *   filtrage dismiss ; null si success=false. Le ViewModel s'en sert
+     *   pour detecter qu'un tier est epuise (= 0) et declencher le recycle.
+     */
+    data class SuggestionsRefreshResult(
+        val success: Boolean,
+        val remainingByTier: Map<String, Int>? = null,
+    )
+
+    /**
+     * Refetch /suggestions avec une dismiss list optionnelle.
+     *
+     * Le cache Room ne stocke que la liste `suggestions` — `remainingByTier`
+     * depend de la dismiss list volatile (session-only, pas cachee offline).
+     */
+    suspend fun refreshSuggestions(
+        excludeIds: Set<String> = emptySet(),
+    ): SuggestionsRefreshResult {
         return try {
-            val response = apiService.getSuggestions()
+            val excludeParam = excludeIds.takeIf { it.isNotEmpty() }?.joinToString(",")
+            val response = apiService.getSuggestions(exclude = excludeParam)
             if (response.isSuccessful) {
-                val data = response.body() ?: emptyList()
+                val body = response.body()
+                val data = body?.suggestions ?: emptyList()
                 snapshotDao.upsert(
                     ViewSnapshotEntity(
                         key = ViewSnapshotEntity.KEY_HOME_SUGGESTIONS,
@@ -54,12 +78,28 @@ class HomeRepository @Inject constructor(
                         updatedAt = System.currentTimeMillis(),
                     )
                 )
-                true
+                SuggestionsRefreshResult(
+                    success = true,
+                    remainingByTier = body?.remainingByTier ?: emptyMap(),
+                )
             } else {
-                false
+                SuggestionsRefreshResult(success = false)
             }
         } catch (_: Exception) {
-            false
+            SuggestionsRefreshResult(success = false)
+        }
+    }
+
+    /**
+     * Log analytics fire-and-forget d'un ✕ sur carte Home. Les erreurs
+     * (reseau, backend, task supprimee entre-temps) sont silencieuses —
+     * on ne veut pas bloquer l'UX pour un log best-effort.
+     */
+    suspend fun logSuggestionDismiss(taskId: String, tier: String) {
+        try {
+            apiService.logSuggestionDismiss(DismissRequest(taskId = taskId, tier = tier))
+        } catch (_: Exception) {
+            // drop silencieux
         }
     }
 

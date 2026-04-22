@@ -21,6 +21,7 @@ from app.models.objective_proposition import ObjectiveProposition, ObjectiveProp
 from app.models.foyer_bonus_config import FoyerBonusConfig
 from app.models.user_prompt import UserPrompt
 from app.models.presence_day import PresenceDay
+from app.models.suggestion_dismissal import SuggestionDismissal
 
 __all__ = [
     "Base", "User", "Foyer", "UserFoyer", "Category", "Room", "Task",
@@ -30,4 +31,5 @@ __all__ = [
     "ObjectiveProposition", "ObjectivePropositionResponse",
     "FoyerBonusConfig",
     "UserPrompt", "PresenceDay",
+    "SuggestionDismissal",
 ]

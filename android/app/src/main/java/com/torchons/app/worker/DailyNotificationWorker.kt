@@ -122,9 +122,11 @@ class DailyNotificationWorker(
         if (token.isNullOrBlank()) return Result.success()
 
         // Appel authentifie via ApiService (Retrofit + AuthInterceptor).
+        // v0.16+ : /suggestions retourne un wrapper SuggestionsResponse — on
+        // extrait juste la liste (le worker n'a pas de notion de dismiss list).
         val suggestions: List<Suggestion> = try {
             val resp = ep.apiService().getSuggestions()
-            if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
+            if (resp.isSuccessful) resp.body()?.suggestions ?: emptyList() else emptyList()
         } catch (_: Exception) {
             emptyList()
         }
