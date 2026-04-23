@@ -103,3 +103,30 @@ async def get_absent_days_map(
         absent_map[task_id] = total - present
 
     return absent_map
+
+
+async def get_absent_dates(
+    session: AsyncSession,
+    foyer_id: uuid.UUID,
+    since_date: date,
+    until_date: date,
+) -> set[date]:
+    """Retourne les dates explicitement confirmed_absent (foyer-level) dans
+    la fenetre [since_date, until_date] inclusive.
+
+    Contrairement a count_absent_days_since / get_absent_days_map, les jours
+    sans ligne presence_day ne sont PAS consideres absents — sert au gel
+    des streaks ou un jour incertain doit casser le streak comme un jour
+    ordinaire sans completion (incite l'user a resoudre via le dialog).
+    """
+    if since_date > until_date:
+        return set()
+    result = await session.execute(
+        select(PresenceDay.date).where(
+            PresenceDay.foyer_id == foyer_id,
+            PresenceDay.date >= since_date,
+            PresenceDay.date <= until_date,
+            PresenceDay.status == "confirmed_absent",
+        )
+    )
+    return {row[0] for row in result.all()}

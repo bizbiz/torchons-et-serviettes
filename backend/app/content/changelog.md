@@ -1,5 +1,12 @@
 # Notes de version
 
+## v0.17.0 — 2026-04-23
+
+### Mode vacances
+- Les streaks (jours d'affilee) ne sont plus casses par les jours d'absence : si vous etes en vacances et que vos jours sont marques absents (via le dialog de resolution de presence), votre serie continue comme si rien ne s'etait passe. Le compteur reste honnete : il affiche toujours le nombre reel de jours d'activite, mais l'absence ne casse plus la serie.
+- Meme regle pour les badges "Regulier" / "Semaine parfaite" / "Deux semaines" / "Mois parfait" : ils restent debloquables apres une periode de vacances, sans devoir tout recommencer a zero.
+- Seuls les jours **explicitement** marques absents gelent la serie. Les jours "a confirmer" (incertains) la cassent toujours — pensez a resoudre via le dialog au prochain lancement de l'app pour que vos vacances soient bien comptees.
+
 ## v0.16.2 — 2026-04-23
 
 ### Correction

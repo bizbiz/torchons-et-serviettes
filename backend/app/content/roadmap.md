@@ -1,9 +1,5 @@
 # Roadmap
 
-## Important
-
-- **Mode vacances** : geler les streaks ET les taches pendant une absence. Si vous partez 10 jours, les taches ne s'accumulent pas pendant la periode et les streaks ne sont pas casses au retour. Une tache nettoyee juste avant le depart n'a pas besoin d'etre refaite tout de suite en revenant.
-
 ## Prochainement
 
 - **Onboarding guide a la creation d'un foyer** : quand on cree un nouveau foyer, un ecran propose directement de cocher des pieces (cuisine, salon, chambre, sdb, ...) puis des tachees (faire la vaisselle, passer l'aspirateur, ...) tirees du catalogue pour passer de foyer vide a utilisable en 30 secondes, sans avoir a tout creer a la main.

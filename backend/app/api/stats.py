@@ -17,6 +17,7 @@ from app.models.completion import TaskCompletion
 from app.models.streak import Streak
 from app.models.task import Task
 from app.models.user import User
+from app.services.presence import get_absent_dates
 from app.services.recurrence import min_completion_gap_seconds
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
@@ -309,6 +310,59 @@ async def get_leaderboard(
 
 # --- Streaks ---
 
+def _compute_user_streak(
+    days: list[date],
+    today: date,
+    absent_set: set[date],
+) -> tuple[int, int]:
+    """Calcule (current_streak, best_streak) pour un user.
+
+    `days` = dates distinctes avec >=1 completion, triees descendant.
+    `absent_set` = dates explicitement confirmed_absent du foyer.
+
+    Un jour de absent_set est neutre : il ne casse pas le streak mais ne
+    s'incremente pas non plus (semantique "jours actifs" — le compteur
+    affiche le vrai nombre de jours d'activite, jamais menteur).
+    """
+    days_set = set(days)
+
+    # Curseur "current" : tolerance hier si rien aujourd'hui ni absent aujourd'hui.
+    cursor = today
+    if cursor not in days_set and cursor not in absent_set:
+        if (cursor - timedelta(days=1)) in days_set:
+            cursor = cursor - timedelta(days=1)
+
+    current = 0
+    while True:
+        if cursor in days_set:
+            current += 1
+            cursor -= timedelta(days=1)
+        elif cursor in absent_set:
+            cursor -= timedelta(days=1)
+        else:
+            break
+
+    # Best : on itere les completions desc, en autorisant un gap >1 si tous
+    # les jours intermediaires sont absent_set.
+    best = 0
+    if days:
+        run = 1
+        for i in range(1, len(days)):
+            gap = (days[i - 1] - days[i]).days
+            if gap == 1:
+                run += 1
+                continue
+            intermediate = {days[i - 1] - timedelta(days=k) for k in range(1, gap)}
+            if intermediate.issubset(absent_set):
+                run += 1
+            else:
+                best = max(best, run)
+                run = 1
+        best = max(best, run)
+
+    return current, best
+
+
 @router.get("/streaks", response_model=list[StreakInfo])
 async def get_streaks(
     session: AsyncSession = Depends(get_session),
@@ -327,6 +381,7 @@ async def get_streaks(
     users = users_result.scalars().all()
 
     streaks = []
+    today = date.today()
     for user in users:
         # Recuperer les dates distinctes de completion (scope foyer)
         day_col = func.date_trunc('day', TaskCompletion.completed_at).label('d')
@@ -341,31 +396,11 @@ async def get_streaks(
         )
         days = [row[0].date() if hasattr(row[0], 'date') else row[0] for row in result.all()]
 
-        # Calculer streak courant
-        current = 0
-        today = date.today()
-        for i, d in enumerate(days):
-            expected = today - timedelta(days=i)
-            if d == expected:
-                current += 1
-            elif i == 0 and d == today - timedelta(days=1):
-                # Accepter hier si pas encore fait aujourd'hui
-                current += 1
-                today = today - timedelta(days=1)
-            else:
-                break
-
-        # Calculer meilleur streak
-        best = 0
-        if days:
-            run = 1
-            for i in range(1, len(days)):
-                if days[i - 1] - days[i] == timedelta(days=1):
-                    run += 1
-                else:
-                    best = max(best, run)
-                    run = 1
-            best = max(best, run)
+        # Charger les jours d'absence couvrant la fenetre du calcul (de la
+        # plus vieille completion a aujourd'hui) pour neutraliser les vacances.
+        oldest = days[-1] if days else today
+        absent_set = await get_absent_dates(session, foyer_uuid, oldest, today)
+        current, best = _compute_user_streak(days, today, absent_set)
 
         streaks.append(StreakInfo(
             user_id=user.id,
@@ -417,7 +452,7 @@ async def get_badges(
             session.add(badge)
             earned[badge_type] = datetime.now(timezone.utc)
 
-    # Streaks (scope foyer)
+    # Streaks (scope foyer) — meme logique que GET /streaks (gel des absences).
     day_col = func.date_trunc('day', TaskCompletion.completed_at).label('d')
     streaks_result = await session.execute(
         select(day_col)
@@ -429,16 +464,10 @@ async def get_badges(
         ).group_by(day_col).order_by(day_col.desc())
     )
     days = [row[0].date() if hasattr(row[0], 'date') else row[0] for row in streaks_result.all()]
-    best_streak = 0
-    if days:
-        run = 1
-        for i in range(1, len(days)):
-            if days[i - 1] - days[i] == timedelta(days=1):
-                run += 1
-            else:
-                best_streak = max(best_streak, run)
-                run = 1
-        best_streak = max(best_streak, run)
+    today = date.today()
+    oldest = days[-1] if days else today
+    absent_set = await get_absent_dates(session, foyer_uuid, oldest, today)
+    _, best_streak = _compute_user_streak(days, today, absent_set)
 
     streak_thresholds = {"streak_3": 3, "streak_7": 7, "streak_14": 14, "streak_30": 30}
     for badge_type, threshold in streak_thresholds.items():
