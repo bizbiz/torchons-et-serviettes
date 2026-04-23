@@ -1,5 +1,11 @@
 # Notes de version
 
+## v0.16.2 — 2026-04-23
+
+### Correction
+- Quand on cree une nouvelle tache, on n'est plus prompted instantanement de la noter (affinite + effort). L'app attend maintenant que la tache ait ete faite au moins 2 fois et que la derniere completion remonte a au moins 1 jour avant de proposer la notation. Evite le double travail "je remplis le formulaire de creation puis je remplis le formulaire de notation" et laisse le temps d'eprouver la tache pour pouvoir la noter sincerement.
+- Les taches ponctuelles (sans recurrence) ne sont plus jamais proposees a la notation : noter une tache one-shot n'a pas d'utilite long-terme.
+
 ## v0.16.1 — 2026-04-23
 
 ### Correction

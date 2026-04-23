@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
@@ -308,13 +308,17 @@ async def oldest_rating(
         TaskAssignment.user_id == user_id
     ).scalar_subquery()
 
-    # Trouver toutes les taches assignees actives (scope foyer)
+    # Trouver toutes les taches assignees actives (scope foyer).
+    # Memes filtres anti-spam que /pending-affinity : ponctuelles exclues +
+    # seuil 2 completions / 1j minimum avant d'etre proposee a la notation.
     tasks_result = await session.execute(
         select(Task).where(
             Task.id.in_(assigned),
             Task.foyer_id == current_foyer_uuid(current),
             Task.deleted_at.is_(None),
             Task.is_active.is_(True),
+            Task.recurrence_rule.isnot(None),
+            Task.id.in_(_eligible_for_rating_subq()),
         )
     )
     tasks = tasks_result.scalars().all()
@@ -516,6 +520,29 @@ async def task_rating_context(
     return await _build_pending_payload(session, task, user_id)
 
 
+def _eligible_for_rating_subq():
+    """Sous-requete des task_id eligibles a la notation (affinite/effort).
+
+    Une tache est eligible si elle a ete completee >=2 fois ET que la
+    derniere completion remonte a >=1j. Empeche le prompt de notation de
+    s'afficher des la creation d'une tache (double travail) : on attend que
+    l'utilisateur ait pu eprouver la tache pour pouvoir la noter sincerement.
+    """
+    one_day_ago = datetime.now(timezone.utc) - timedelta(days=1)
+    return (
+        select(TaskCompletion.task_id)
+        .where(TaskCompletion.deleted_at.is_(None))
+        .group_by(TaskCompletion.task_id)
+        .having(
+            and_(
+                func.count(TaskCompletion.id) >= 2,
+                func.max(TaskCompletion.completed_at) <= one_day_ago,
+            )
+        )
+        .scalar_subquery()
+    )
+
+
 @router.get("/pending-affinity", response_model=list[dict])
 async def pending_affinity(
     expiry_months: int = 6,
@@ -544,14 +571,17 @@ async def pending_affinity(
     ).scalar_subquery()
 
     # Condition commune : taches sans affinite recente OU sans effort recent
-    # (scope foyer)
-    from sqlalchemy import or_
+    # (scope foyer). Filtres anti-spam : on exclut les ponctuelles et on
+    # attend qu'une tache ait ete completee >=2 fois avec la derniere >=1j
+    # avant de la proposer a la notation (sinon on prompt des la creation).
     pending_condition = [
         Task.id.in_(assigned),
         Task.foyer_id == current_foyer_uuid(current),
         or_(Task.id.notin_(rated_affinity), Task.id.notin_(rated_effort)),
         Task.deleted_at.is_(None),
         Task.is_active.is_(True),
+        Task.recurrence_rule.isnot(None),
+        Task.id.in_(_eligible_for_rating_subq()),
     ]
 
     # Compter le total AVANT le limit pour le compteur "X/Y"
