@@ -57,13 +57,18 @@ class DailyNotificationWorker(
          * Planifie la notification quotidienne a l'heure choisie (0..23).
          *
          * - `enabled` = false -> annule, aucune notif prevue.
-         * - `replace` = true -> applique immediatement le nouveau delai
-         *   (utilise depuis Reglages quand l'heure change). Sinon KEEP :
-         *   si une instance existe deja, on ne touche pas (appel idempotent
-         *   depuis Application.onCreate).
+         * - `replace` = true -> CANCEL_AND_REENQUEUE : annule l'ancienne planif
+         *   et en cree une fraiche avec le nouveau `setInitialDelay`. C'est le
+         *   seul moyen de deplacer le prochain tir apres un changement d'heure
+         *   depuis le slider Reglages. UPDATE preserve `lastEnqueueTime` et
+         *   `setInitialDelay` ne s'applique qu'au 1er run d'un PeriodicWork :
+         *   apres le 1er tir, UPDATE laisse le worker coince sur l'ancien
+         *   creneau malgre le nouveau spec.
+         * - `replace` = false -> KEEP : si une instance existe deja, on ne
+         *   touche pas (appel idempotent depuis Application.onCreate).
          *
-         * WorkManager respecte une fenetre de flex de ~15min pour la batterie :
-         * la notif peut tomber jusqu'a 15min autour de l'heure cible.
+         * WorkManager respecte une fenetre de flex de ~10min pour la batterie :
+         * la notif peut tomber jusqu'a 10min autour de l'heure cible.
          */
         fun schedule(
             context: Context,
@@ -91,7 +96,7 @@ class DailyNotificationWorker(
                 .build()
 
             val policy = if (replace) {
-                ExistingPeriodicWorkPolicy.UPDATE
+                ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE
             } else {
                 ExistingPeriodicWorkPolicy.KEEP
             }

@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.16.1 — 2026-04-23
+
+### Correction
+- L'heure du resume quotidien choisie dans les Reglages est enfin respectee des qu'on bouge le slider : on deplace, on relache, la prochaine notif tombe a la nouvelle heure. Plus besoin de tuer et relancer l'app.
+
 ## v0.16.0 — 2026-04-22
 
 ### Nouveau

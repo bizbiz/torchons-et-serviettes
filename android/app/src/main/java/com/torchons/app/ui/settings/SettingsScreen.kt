@@ -415,6 +415,12 @@ fun SettingsScreen(
 
                 // Heure du resume
                 if (notifDaily) {
+                    // Etat local qui suit le pouce pendant le drag. On ne
+                    // pousse la valeur au VM (backend + reschedule worker)
+                    // qu'au release, sinon le drag spamme 15+ POST et
+                    // cancel/reenqueue WorkManager. La cle `remember(notifHour)`
+                    // re-seed quand la valeur backend arrive apres loadAll.
+                    var pendingNotifHour by remember(notifHour) { mutableStateOf(notifHour) }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -429,14 +435,19 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Heure : ${notifHour}h00",
+                            text = "Heure : ${pendingNotifHour}h00",
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f)
                         )
                     }
                     Slider(
-                        value = notifHour.toFloat(),
-                        onValueChange = { viewModel.setNotifHour(it.toInt()) },
+                        value = pendingNotifHour.toFloat(),
+                        onValueChange = { pendingNotifHour = it.toInt() },
+                        onValueChangeFinished = {
+                            if (pendingNotifHour != notifHour) {
+                                viewModel.setNotifHour(pendingNotifHour)
+                            }
+                        },
                         valueRange = 6f..22f,
                         steps = 15,
                         modifier = Modifier.fillMaxWidth()
