@@ -15,6 +15,27 @@ data class FrequencyVoteResponse(
     @SerializedName("consensus") val consensus: Int
 )
 
+/** Vote individuel d'un autre membre du foyer (sans le user courant). */
+data class OtherFrequencyVote(
+    @SerializedName("user_id") val userId: String,
+    @SerializedName("display_name") val displayName: String,
+    @SerializedName("every_n_days") val everyNDays: Int
+)
+
+/**
+ * Etat des votes de frequence pour une tache, retourne par
+ * GET /tasks/{id}/frequency-votes. Alimente le mini-dialog de re-vote
+ * et la ligne "Consensus : Xj (N votes)" sur la fiche d'edition.
+ */
+data class FrequencyVotesState(
+    @SerializedName("task_id") val taskId: String,
+    @SerializedName("consensus_every_n_days") val consensusEveryNDays: Int? = null,
+    @SerializedName("votes_count") val votesCount: Int = 0,
+    @SerializedName("my_vote") val myVote: Int? = null,
+    @SerializedName("can_vote") val canVote: Boolean = false,
+    @SerializedName("others") val others: List<OtherFrequencyVote> = emptyList()
+)
+
 /**
  * Ligne brute d'un evenement d'historique de modification de tache
  * telle que retournee par GET /tasks/{id}/history.

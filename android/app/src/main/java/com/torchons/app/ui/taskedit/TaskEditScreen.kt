@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.ui.common.FrequencyVoteDialog
 import com.torchons.app.ui.common.InfoTooltip
 
 /**
@@ -94,6 +95,18 @@ fun TaskEditScreen(
             snackbarHostState.showSnackbar(it)
             viewModel.clearError()
         }
+    }
+
+    // Mini-dialog de re-vote frequence (ouvert depuis le bouton "Modifier
+    // via le vote" sous le champ every_n_days grise).
+    val freqVotes = uiState.frequencyVotes
+    if (uiState.showFrequencyVoteDialog && taskId != null && freqVotes != null) {
+        FrequencyVoteDialog(
+            taskTitle = uiState.title,
+            state = freqVotes,
+            onSubmit = { everyNDays -> viewModel.submitFrequencyVote(taskId, everyNDays) },
+            onDismiss = { viewModel.dismissFrequencyVoteDialog() },
+        )
     }
 
     // Dialog de confirmation de suppression
@@ -374,15 +387,38 @@ fun TaskEditScreen(
                 }
             }
 
-            // Nombre de jours si interval
+            // Nombre de jours si interval. Si la tache a deja >=1 vote de
+            // frequence, le champ est grise et seul le mini-dialog "Modifier
+            // via le vote" peut le modifier (decision Q1+Q5 du grilling :
+            // every_n_days est pilote par les votes en mode interval).
             if (uiState.recurrenceType == "interval") {
+                val votes = uiState.frequencyVotes
+                val isVoteLocked = votes != null && votes.votesCount >= 1
                 OutlinedTextField(
                     value = uiState.recurrenceEveryNDays,
                     onValueChange = { viewModel.updateRecurrenceEveryNDays(it) },
                     label = { Text("Tous les combien de jours ?") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = !isVoteLocked,
                 )
+                if (isVoteLocked) {
+                    val s = if (votes!!.votesCount > 1) "s" else ""
+                    Text(
+                        text = "Consensus : ${votes.consensusEveryNDays ?: "?"} j (${votes.votesCount} vote$s)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+                    )
+                    if (votes.canVote) {
+                        OutlinedButton(
+                            onClick = { viewModel.openFrequencyVoteDialog() },
+                            modifier = Modifier.padding(top = 4.dp),
+                        ) {
+                            Text("Modifier via le vote")
+                        }
+                    }
+                }
             }
 
             // Tableau 12 mois si monthly_variable

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, delete
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
@@ -14,8 +14,10 @@ from app.database import get_session
 from app.models.sync import ChangeLog
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
+from app.models.task_frequency_vote import TaskFrequencyVote
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
+from app.services.frequency_vote import upsert_vote_and_sync_consensus
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid, scoped
 
@@ -121,6 +123,16 @@ async def create_task(
         session.add(TaskAssignment(task_id=task.id, user_id=uid))
     await session.flush()
 
+    # Auto-vote du createur si la tache est en type interval : sa saisie devient
+    # son vote initial. Garantit l'invariant "every_n_days = round(avg(votes))"
+    # des la creation et empeche la voie "edition directe sans vote".
+    if task.recurrence_rule and task.recurrence_rule.get("type") == "interval":
+        every_n = task.recurrence_rule.get("every_n_days")
+        if isinstance(every_n, int) and every_n >= 1:
+            await upsert_vote_and_sync_consensus(
+                session, task, UUID(current["user_id"]), every_n
+            )
+
     await record_change(
         session, "tasks", task.id, "INSERT", current["user_id"],
         foyer_id=current["foyer_id"],
@@ -169,10 +181,57 @@ async def update_task(
         for uid in new_assigned_ids:
             session.add(TaskAssignment(task_id=task_id, user_id=uid))
 
-    # Mettre a jour les champs de la tache
+    # Normaliser recurrence_rule en dict (Pydantic -> dict)
     if "recurrence_rule" in updates and updates["recurrence_rule"]:
         rr = updates["recurrence_rule"]
         updates["recurrence_rule"] = rr.model_dump() if hasattr(rr, "model_dump") else rr
+
+    # Garde anti-court-circuit du systeme de vote frequence : en type interval,
+    # every_n_days est pilote par les votes (PUT /api/tasks/{id}/frequency).
+    # Toute valeur differente du consensus avec votes existants est rejetee.
+    # Le retour a interval depuis un autre type devient un vote de l'user courant.
+    if "recurrence_rule" in updates and updates["recurrence_rule"]:
+        new_rule = updates["recurrence_rule"]
+        old_rule = task.recurrence_rule or {}
+        new_type = new_rule.get("type")
+        old_type = old_rule.get("type")
+
+        if new_type == "interval" and old_type == "interval":
+            votes_count_r = await session.execute(
+                select(func.count(TaskFrequencyVote.task_id)).where(
+                    TaskFrequencyVote.task_id == task_id
+                )
+            )
+            votes_count = votes_count_r.scalar() or 0
+            consensus = old_rule.get("every_n_days")
+            if votes_count > 0 and new_rule.get("every_n_days") != consensus:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "FREQUENCY_VOTE_LOCKED",
+                        "message": "Cadence pilotee par les votes — re-vote requis via PUT /tasks/{id}/frequency",
+                        "votes_count": votes_count,
+                        "consensus_every_n_days": consensus,
+                    },
+                )
+            # Idempotent (valeur egale) : on laisse le bloc setattr ecrire la
+            # meme valeur sans effet de bord.
+
+        elif new_type == "interval" and old_type != "interval":
+            # Retour a interval : la saisie devient le vote de l'user courant,
+            # le helper recalcule le consensus avec les votes en sommeil.
+            every_n = new_rule.get("every_n_days")
+            if isinstance(every_n, int) and every_n >= 1:
+                updates.pop("recurrence_rule")
+                await upsert_vote_and_sync_consensus(
+                    session, task, UUID(current["user_id"]), every_n
+                )
+            # Si every_n absent/invalide, on laisse le bloc setattr ecrire
+            # la regle telle quelle (cas pathologique, validation Pydantic
+            # devrait avoir filtre amont).
+
+        # new_type != "interval" : changement libre, votes restent dormants.
+
     for key, val in updates.items():
         setattr(task, key, val)
     task.version += 1

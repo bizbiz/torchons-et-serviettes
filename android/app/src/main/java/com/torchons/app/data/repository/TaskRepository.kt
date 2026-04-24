@@ -421,6 +421,21 @@ class TaskRepository @Inject constructor(
         enqueue(clientOpId, "task_frequency_votes", "VOTE", taskId, payload)
     }
 
+    /**
+     * Retourne l'etat des votes de frequence pour une tache (consensus,
+     * my_vote, others). null si la tache n'est pas accessible ou si offline.
+     * Sert a alimenter la fiche d'edition (champ grise) et le mini-dialog
+     * "Modifier via le vote".
+     */
+    suspend fun getFrequencyVotes(taskId: String): com.torchons.app.data.model.FrequencyVotesState? {
+        return try {
+            val response = apiService.getFrequencyVotes(taskId)
+            if (response.isSuccessful) response.body() else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private suspend fun enqueue(
         clientOpId: String,
         table: String,

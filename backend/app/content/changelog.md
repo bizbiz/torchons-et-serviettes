@@ -1,5 +1,13 @@
 # Notes de version
 
+## v0.18.0 — 2026-04-24
+
+### Cadence des taches : enfin pilotee 100% par les votes
+- Tu ne peux plus ecraser la cadence d'une tache (champ "tous les X jours") en l'editant directement dans la fiche : le champ devient grise et affiche "Consensus : 7 j (2 votes)". Pour modifier la cadence, un bouton "Modifier via le vote" ouvre un mini-dialog dedie ou tu peux poser ton vote, qui rentre dans le calcul du consensus avec ceux des autres membres du foyer.
+- Le mini-dialog affiche le consensus actuel et les votes des autres membres ("Quentin : 7 j") pour que tu voies pourquoi la cadence est ce qu'elle est avant de voter.
+- A la creation d'une tache recurrente "tous les X jours", la valeur que tu saisis devient automatiquement ton vote initial — plus de cadence "fantome" qui ne correspond a aucun vote.
+- Si tu changes le type de recurrence (ex : passer de "tous les 7 jours" a "variable par mois"), tes votes sont conserves en sommeil. Si tu reviens a "tous les X jours" plus tard, ils reprennent vie automatiquement et la cadence est recalculee.
+
 ## v0.17.0 — 2026-04-23
 
 ### Mode vacances

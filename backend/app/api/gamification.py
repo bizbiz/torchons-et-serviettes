@@ -23,6 +23,7 @@ from app.models.task_assignment import TaskAssignment
 from app.models.task_effort import TaskEffort
 from app.models.task_frequency_vote import TaskFrequencyVote
 from app.models.task_in_progress import TaskInProgress
+from app.services.frequency_vote import upsert_vote_and_sync_consensus
 from app.services.presence import get_absent_days_map
 from app.services.recurrence import (
     COLD_START_INTERVAL_DAYS,
@@ -437,41 +438,9 @@ async def set_frequency(
         raise HTTPException(status_code=404, detail="Tache introuvable")
 
     old_rule = dict(task.recurrence_rule) if task.recurrence_rule else None
-    consensus_before = None
-    if old_rule and isinstance(old_rule.get("every_n_days"), int):
-        consensus_before = old_rule["every_n_days"]
-
-    # Upsert du vote
-    result = await session.execute(
-        select(TaskFrequencyVote).where(
-            TaskFrequencyVote.task_id == task_id,
-            TaskFrequencyVote.user_id == user_id,
-        )
+    consensus_before, consensus_after = await upsert_vote_and_sync_consensus(
+        session, task, user_id, body.every_n_days
     )
-    vote = result.scalar_one_or_none()
-    if vote:
-        vote.every_n_days = body.every_n_days
-        from sqlalchemy import func as sa_func
-        vote.updated_at = sa_func.now()
-    else:
-        vote = TaskFrequencyVote(
-            task_id=task_id, user_id=user_id, every_n_days=body.every_n_days
-        )
-        session.add(vote)
-    await session.flush()
-
-    # Consensus apres : moyenne arrondie des votes de frequence.
-    avg_result = await session.execute(
-        select(func.avg(TaskFrequencyVote.every_n_days)).where(
-            TaskFrequencyVote.task_id == task_id
-        )
-    )
-    avg = avg_result.scalar()
-    consensus_after = round(avg) if avg is not None else body.every_n_days
-
-    # Mettre a jour la recurrence de la tache.
-    task.recurrence_rule = {"type": "interval", "every_n_days": consensus_after}
-    task.version += 1
 
     # Log du changement de la tache (cote sync) — sera dedoublonne en GET /history.
     await record_change(
@@ -497,6 +466,78 @@ async def set_frequency(
         "user_id": str(user_id),
         "every_n_days": body.every_n_days,
         "consensus": consensus_after,
+    }
+
+
+@router.get("/tasks/{task_id}/frequency-votes")
+async def get_frequency_votes(
+    task_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Retourne les votes individuels et le consensus pour une tache. Sert
+    a alimenter le mini-dialog "Modifier via le vote" et la ligne
+    "Consensus : Xj (N votes)" sur la fiche d'edition.
+
+    Scope : foyer (tous les membres peuvent lire). Champ `can_vote=true`
+    uniquement si l'user courant est assigne a la tache.
+    """
+    from app.models.user import User
+
+    user_id = UUID(current["user_id"])
+    foyer_uuid = current_foyer_uuid(current)
+
+    task_r = await session.execute(
+        select(Task).where(
+            Task.id == task_id,
+            Task.foyer_id == foyer_uuid,
+            Task.deleted_at.is_(None),
+        )
+    )
+    task = task_r.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Tache introuvable")
+
+    # Votes + display_name des voteurs
+    votes_r = await session.execute(
+        select(TaskFrequencyVote, User)
+        .join(User, User.id == TaskFrequencyVote.user_id)
+        .where(TaskFrequencyVote.task_id == task_id)
+    )
+    rows = votes_r.all()
+
+    my_vote = None
+    others = []
+    for vote, user in rows:
+        if vote.user_id == user_id:
+            my_vote = vote.every_n_days
+        else:
+            others.append({
+                "user_id": str(vote.user_id),
+                "display_name": user.display_name,
+                "every_n_days": vote.every_n_days,
+            })
+
+    # can_vote = user assigne a la tache
+    assign_r = await session.execute(
+        select(TaskAssignment.task_id).where(
+            TaskAssignment.task_id == task_id,
+            TaskAssignment.user_id == user_id,
+        )
+    )
+    can_vote = assign_r.scalar_one_or_none() is not None
+
+    consensus = None
+    if task.recurrence_rule and isinstance(task.recurrence_rule.get("every_n_days"), int):
+        consensus = task.recurrence_rule["every_n_days"]
+
+    return {
+        "task_id": str(task_id),
+        "consensus_every_n_days": consensus,
+        "votes_count": len(rows),
+        "my_vote": my_vote,
+        "can_vote": can_vote,
+        "others": others,
     }
 
 

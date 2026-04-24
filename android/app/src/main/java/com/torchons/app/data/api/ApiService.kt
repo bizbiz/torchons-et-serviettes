@@ -4,6 +4,7 @@ import com.torchons.app.data.model.AffinityRequest
 import com.torchons.app.data.model.BadgeInfo
 import com.torchons.app.data.model.FrequencyRequest
 import com.torchons.app.data.model.FrequencyVoteResponse
+import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.TaskHistoryDto
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.CategoryCreateRequest
@@ -280,6 +281,12 @@ interface ApiService {
         @Path("id") taskId: String,
         @Body request: FrequencyRequest
     ): Response<FrequencyVoteResponse>
+
+    /** Etat des votes de frequence pour une tache (consensus, my_vote, others). */
+    @GET("tasks/{id}/frequency-votes")
+    suspend fun getFrequencyVotes(
+        @Path("id") taskId: String
+    ): Response<FrequencyVotesState>
 
     /** Historique de modification d'une tache (votes + modifs directes). */
     @GET("tasks/{id}/history")

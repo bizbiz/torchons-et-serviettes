@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.CreateTaskRequest
+import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.RecurrenceRule
 import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.UpdateTaskRequest
@@ -42,7 +43,16 @@ data class TaskEditUiState(
     val users: List<User> = emptyList(),
     val error: String? = null,
     val saved: Boolean = false,
-    val deleted: Boolean = false
+    val deleted: Boolean = false,
+    /**
+     * Etat des votes de frequence pour la tache en cours d'edition.
+     * Non-null uniquement en mode edition + type interval. Si votesCount >= 1,
+     * le champ recurrenceEveryNDays est grise dans l'UI et seul le mini-dialog
+     * "Modifier via le vote" peut le faire bouger.
+     */
+    val frequencyVotes: FrequencyVotesState? = null,
+    /** Affiche le mini-dialog de re-vote frequence. */
+    val showFrequencyVoteDialog: Boolean = false,
 )
 
 /**
@@ -86,6 +96,13 @@ class TaskEditViewModel @Inject constructor(
                 if (task != null) {
                     val dpm = task.recurrenceRule?.daysPerMonth?.mapValues { it.value.toString() }
                         ?: (1..12).associate { it.toString() to "" }
+                    // Fetch des votes de frequence si la tache est en interval —
+                    // sert a griser le champ + afficher le consensus + bouton vote.
+                    val votes = if (task.recurrenceRule?.type == "interval") {
+                        taskRepository.getFrequencyVotes(taskId)
+                    } else {
+                        null
+                    }
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isEditMode = true,
@@ -102,6 +119,7 @@ class TaskEditViewModel @Inject constructor(
                         categories = categories,
                         rooms = rooms,
                         users = users,
+                        frequencyVotes = votes,
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
@@ -260,5 +278,46 @@ class TaskEditViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    /** Ouvre le mini-dialog de re-vote frequence. */
+    fun openFrequencyVoteDialog() {
+        _uiState.value = _uiState.value.copy(showFrequencyVoteDialog = true)
+    }
+
+    /** Ferme le mini-dialog sans voter. */
+    fun dismissFrequencyVoteDialog() {
+        _uiState.value = _uiState.value.copy(showFrequencyVoteDialog = false)
+    }
+
+    /**
+     * Soumet un vote de frequence via PUT /tasks/{id}/frequency.
+     * En cas de succes : refetch l'etat des votes pour mettre a jour le
+     * consensus affiche sur la fiche (et griser l'affichage avec la nouvelle
+     * valeur). Le champ recurrenceEveryNDays local est aussi mis a jour pour
+     * que le save() final ne renvoie pas l'ancienne valeur au backend
+     * (sinon 409 FREQUENCY_VOTE_LOCKED).
+     */
+    fun submitFrequencyVote(taskId: String, everyNDays: Int) {
+        viewModelScope.launch {
+            val result = taskRepository.voteFrequency(taskId, everyNDays)
+            result.fold(
+                onSuccess = {
+                    val refreshed = taskRepository.getFrequencyVotes(taskId)
+                    val newConsensus = refreshed?.consensusEveryNDays ?: everyNDays
+                    _uiState.value = _uiState.value.copy(
+                        showFrequencyVoteDialog = false,
+                        frequencyVotes = refreshed,
+                        recurrenceEveryNDays = newConsensus.toString(),
+                    )
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        showFrequencyVoteDialog = false,
+                        error = error.message ?: "Erreur lors du vote",
+                    )
+                },
+            )
+        }
     }
 }
