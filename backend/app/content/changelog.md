@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.18.1 — 2026-04-24
+
+### Ajustement
+- Le slider du mini-dialog "Modifier via le vote" propose maintenant une plage adaptee a la cadence de la tache (de 30% a 300% du consensus actuel) au lieu de toujours afficher 1 a 365 jours. Sur une tache a 5 jours, tu vois maintenant un slider de 2 a 15 jours, et ton vote actuel est visible au milieu de la barre au lieu d'etre colle a gauche. Si tu avais deja vote tres differemment du consensus actuel, la plage est etendue pour inclure ta valeur — pas de troncature silencieuse.
+
 ## v0.18.0 — 2026-04-24
 
 ### Cadence des taches : enfin pilotee 100% par les votes

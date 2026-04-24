@@ -19,6 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.torchons.app.data.model.FrequencyVotesState
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * Mini-dialog dedie au vote de frequence d'une tache, ouvert depuis la
@@ -44,10 +47,18 @@ fun FrequencyVoteDialog(
     val consensus = state.consensusEveryNDays ?: 7
     val initial = state.myVote ?: consensus
 
-    // Slider plage [1, 365] — meme contrat que le backend (FrequencyUpdate
-    // valide ge=1, le=365). On laisse ouvert plutot que de coller au
-    // currentDays*2 du RatingDialog : ici l'user vient explicitement
-    // ajuster, on lui donne toute la plage.
+    // Range adaptative 30%-300% du consensus pour rester pertinent (proposer
+    // 365j a quelqu'un qui vote sur 5j n'a pas de sens ; et le curseur sur
+    // une plage 1-365 etait visuellement colle a gauche pour les petites
+    // valeurs). Etendue pour inclure myVote si l'user avait deja vote tres
+    // differemment du consensus actuel. Clamp absolu [1, 365] = contrat
+    // backend (FrequencyUpdate.every_n_days: Field(ge=1, le=365)).
+    val baseMin = max(1, (consensus * 0.3f).roundToInt())
+    val baseMax = max(baseMin + 1, min(365, (consensus * 3f).roundToInt()))
+    val sliderMin = min(baseMin, initial).coerceAtLeast(1)
+    val sliderMax = max(baseMax, initial).coerceAtMost(365).coerceAtLeast(sliderMin + 1)
+    val sliderSteps = (sliderMax - sliderMin - 1).coerceAtLeast(0)
+
     var daysValue by remember(state.taskId) { mutableFloatStateOf(initial.toFloat()) }
 
     val daysLabel = if (daysValue.toInt() == 1) "1 jour" else "${daysValue.toInt()} jours"
@@ -68,8 +79,8 @@ fun FrequencyVoteDialog(
                 Slider(
                     value = daysValue,
                     onValueChange = { daysValue = it },
-                    valueRange = 1f..365f,
-                    steps = 363,
+                    valueRange = sliderMin.toFloat()..sliderMax.toFloat(),
+                    steps = sliderSteps,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
