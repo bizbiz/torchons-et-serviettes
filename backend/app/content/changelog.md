@@ -1,5 +1,20 @@
 # Notes de version
 
+## v0.19.0 — 2026-04-24
+
+### Historique : filtres et recherche
+- Une barre de recherche permet de filtrer l'historique par titre de tache. Tape "lavabo" et tu ne verras que ce qui touche a la tache "Nettoyer le lavabo".
+- Un bouton "Filtres" ouvre un panneau pliable avec :
+  - Type d'evenement (3 chips multi-select : Completions, Votes, Modifications) pour ne voir qu'une famille a la fois.
+  - Acteur (Tous, Quentin, ***REMOVED***) pour filtrer par personne.
+  - Periode (Cette semaine, Ce mois, 3 derniers mois, Tout) pour scoper la fenetre temporelle.
+- Les filtres sont combinables et un compteur sur le bouton "Filtres" indique combien sont actifs. Un bouton "Effacer" remet tout a zero.
+
+### Historique : meilleure lisibilite
+- Les modifications de cadence affichent maintenant la transition complete : "modifie la recurrence de 'Aspirateur' (recurrence) : tous les 7j → tous les 10j", au lieu d'un simple "(recurrence)" sans contexte.
+- Les taches definitivement supprimees gardent leur titre suivi de "(supprimee)" au lieu d'apparaitre comme '?' dans l'historique.
+- Les votes de frequence n'apparaissent plus en double : avant, chaque vote etait visible a la fois comme "vote" et comme "modification de recurrence". Maintenant un seul evenement par vote.
+
 ## v0.18.1 — 2026-04-24
 
 ### Ajustement

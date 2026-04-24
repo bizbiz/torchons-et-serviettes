@@ -17,15 +17,28 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -120,6 +133,14 @@ fun StatsScreen(
                 2 -> BadgesTab(uiState.badges)
                 3 -> HistoryTab(
                     history = uiState.history,
+                    filters = uiState.historyFilters,
+                    isHistoryLoading = uiState.isHistoryLoading,
+                    users = uiState.stats.map { it.userId to it.displayName },
+                    onQueryChange = viewModel::updateHistoryQuery,
+                    onToggleFamily = viewModel::toggleHistoryFamily,
+                    onSetActor = viewModel::setHistoryActor,
+                    onSetPeriod = viewModel::setHistoryPeriod,
+                    onClearFilters = viewModel::clearHistoryFilters,
                     onTaskClick = onTaskClick,
                     onUserClick = onUserClick
                 )
@@ -507,29 +528,169 @@ private fun BadgeRow(badge: BadgeInfo) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryTab(
     history: List<Map<String, Any>>,
+    filters: HistoryFilters,
+    isHistoryLoading: Boolean,
+    users: List<Pair<String, String>>,        // (userId, displayName)
+    onQueryChange: (String) -> Unit,
+    onToggleFamily: (String) -> Unit,
+    onSetActor: (String?) -> Unit,
+    onSetPeriod: (HistoryPeriod) -> Unit,
+    onClearFilters: () -> Unit,
     onTaskClick: (String) -> Unit,
     onUserClick: (UserProfileRequest) -> Unit,
 ) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        if (history.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(40.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Aucun historique", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    var showFilters by remember { mutableStateOf(false) }
+    val activeFilterCount = listOf(
+        filters.families.isNotEmpty(),
+        filters.actorId != null,
+        filters.period != HistoryPeriod.ALL,
+    ).count { it }
+
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        // Barre de recherche persistante en haut.
+        OutlinedTextField(
+            value = filters.query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Rechercher dans les titres de taches…") },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            trailingIcon = {
+                if (filters.query.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(Icons.Filled.Clear, contentDescription = "Effacer")
+                    }
+                }
+            },
+            singleLine = true,
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Bouton "Filtres" (avec badge si filtres actifs) + lien "Effacer".
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            BadgedBox(
+                badge = {
+                    if (activeFilterCount > 0) {
+                        Badge { Text(activeFilterCount.toString()) }
+                    }
+                }
+            ) {
+                OutlinedButton(onClick = { showFilters = !showFilters }) {
+                    Icon(Icons.Filled.FilterList, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(if (showFilters) "Masquer les filtres" else "Filtres")
+                }
+            }
+            if (filters.hasActiveFilters || filters.query.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = {
+                    onClearFilters()
+                    if (filters.query.isNotEmpty()) onQueryChange("")
+                }) { Text("Effacer") }
+            }
+        }
+
+        // Panneau pliable des filtres.
+        AnimatedVisibility(visible = showFilters) {
+            Column(modifier = Modifier.padding(top = 4.dp)) {
+                // --- Type (familles) ---
+                Text(
+                    "Type",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(
+                        "completions" to "Completions",
+                        "votes" to "Votes",
+                        "modifications" to "Modifications",
+                    ).forEach { (key, label) ->
+                        FilterChip(
+                            selected = filters.families.contains(key),
+                            onClick = { onToggleFamily(key) },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+
+                // --- Acteur ---
+                Text(
+                    "Acteur",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilterChip(
+                        selected = filters.actorId == null,
+                        onClick = { onSetActor(null) },
+                        label = { Text("Tous") },
+                    )
+                    users.forEach { (uid, name) ->
+                        FilterChip(
+                            selected = filters.actorId == uid,
+                            onClick = { onSetActor(uid) },
+                            label = { Text(name) },
+                        )
+                    }
+                }
+
+                // --- Periode ---
+                Text(
+                    "Periode",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(
+                        HistoryPeriod.WEEK to "Cette semaine",
+                        HistoryPeriod.MONTH to "Ce mois",
+                        HistoryPeriod.THREE_MONTHS to "3 derniers mois",
+                        HistoryPeriod.ALL to "Tout",
+                    ).forEach { (period, label) ->
+                        FilterChip(
+                            selected = filters.period == period,
+                            onClick = { onSetPeriod(period) },
+                            label = { Text(label) },
+                        )
+                    }
                 }
             }
         }
-        items(history.size) { index ->
+
+        // Indicateur de chargement subtil pendant les refetch (filtres).
+        if (isHistoryLoading) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (history.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            if (filters.hasActiveFilters || filters.query.isNotEmpty())
+                                "Aucun resultat avec ces filtres"
+                            else "Aucun historique",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            items(history.size) { index ->
             val event = history[index]
             val type = event["type"] as? String ?: ""
             val desc = event["description"] as? String ?: ""
@@ -609,6 +770,7 @@ private fun HistoryTab(
                 }
             }
         }
-        item { Spacer(modifier = Modifier.height(16.dp)) }
+            item { Spacer(modifier = Modifier.height(16.dp)) }
+        }
     }
 }

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone, date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select, case, extract
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -564,26 +564,97 @@ def _format_minutes(points: int) -> str:
     return f"{minutes}min"
 
 
+# Mapping famille -> event_type retournes (cf. _build_history). Sert au
+# filtre cote client (3 chips de famille) -> liste plate de event_type
+# cote API. Garde une seule source de verite pour la projection.
+HISTORY_FAMILY_TYPES: dict[str, set[str]] = {
+    "completions": {"completion", "completion_edited", "completion_deleted"},
+    "votes": {"affinity", "effort"},
+    "modifications": {"task_created", "task_updated", "task_deleted", "category_changed"},
+}
+
+# Mapping inverse : event_type -> source (utilise pour decider quelles
+# queries fetcher en amont quand l'user ne demande qu'un sous-ensemble).
+_TYPES_FROM_COMPLETIONS = {"completion"}
+_TYPES_FROM_AFFINITIES = {"affinity"}
+_TYPES_FROM_EFFORTS = {"effort"}
+_TYPES_FROM_TASKS_LOG = {"task_created", "task_updated", "task_deleted"}
+_TYPES_FROM_COMPLETIONS_LOG = {"completion_edited", "completion_deleted"}
+_TYPES_FROM_CATEGORIES_LOG = {"category_changed"}
+
+
+def _format_recurrence_rule(rule: dict | None) -> str | None:
+    """Rend une recurrence_rule lisible pour l'historique. None si vide."""
+    if not rule:
+        return None
+    rtype = rule.get("type")
+    if rtype == "interval":
+        n = rule.get("every_n_days")
+        return f"tous les {n}j" if n else "interval"
+    if rtype == "monthly_variable":
+        return "variable par mois"
+    if rtype == "uncertain":
+        return "incertain"
+    if rtype == "none":
+        return "ponctuelle"
+    return rtype or "?"
+
+
 async def _build_history(
     session: AsyncSession,
     foyer_uuid: UUID,
     limit: int,
     before: datetime | None,
     actor_id: UUID | None = None,
+    event_types: set[str] | None = None,
+    since: datetime | None = None,
+    q: str | None = None,
 ) -> list[dict]:
-    """Construit le feed d'historique, filtrable par actor. Scope foyer.
+    """Construit le feed d'historique, filtrable par actor + type + periode +
+    recherche titre. Scope foyer.
 
     - Deduplique les completions consecutives (meme task + meme user dans la
       fenetre derivee de la recurrence), pour masquer les doubles validations.
     - Filtre les UPDATE tasks qui ne touchent que des champs techniques.
-    - Si `actor_id` est fourni, ne retourne que les events de cet utilisateur.
-    - Toutes les sources (completions, affinities, efforts, change_log) sont
-      filtrees par foyer : soit directement (change_log.foyer_id), soit via
-      un JOIN sur tasks (completions, affinities, efforts, task history).
+    - `actor_id` : ne retourne que les events de cet utilisateur.
+    - `event_types` : ensemble de types `event["type"]` a garder (None = tous).
+      Les sources non concernees ne sont pas fetchees du tout.
+    - `since` : borne basse de date (>=) appliquee a chaque source.
+    - `q` : recherche dans le titre de tache (ILIKE %q%). Les events sans
+      tache associee (category_changed) sont exclus quand `q` est fourni.
+    - Toutes les sources sont filtrees par foyer : soit directement
+      (change_log.foyer_id), soit via un JOIN sur tasks.
     """
     from app.models.sync import ChangeLog
     from app.models.task_affinity import TaskAffinity
     from app.models.task_effort import TaskEffort
+
+    # Determiner quelles sources fetcher selon event_types.
+    if event_types is None:
+        fetch_completions = True
+        fetch_affinities = True
+        fetch_efforts = True
+        log_tables: list[str] = ["tasks", "task_completions", "categories"]
+    else:
+        fetch_completions = bool(event_types & _TYPES_FROM_COMPLETIONS)
+        fetch_affinities = bool(event_types & _TYPES_FROM_AFFINITIES)
+        fetch_efforts = bool(event_types & _TYPES_FROM_EFFORTS)
+        log_tables = []
+        if event_types & _TYPES_FROM_TASKS_LOG:
+            log_tables.append("tasks")
+        if event_types & _TYPES_FROM_COMPLETIONS_LOG:
+            log_tables.append("task_completions")
+        # categories n'a pas de titre de tache : exclu quand `q` est fourni.
+        if event_types & _TYPES_FROM_CATEGORIES_LOG and not q:
+            log_tables.append("categories")
+
+    # Si l'user fournit q sans event_types restreint, on exclut quand meme
+    # les categories (pas de titre a matcher).
+    if q and event_types is None:
+        log_tables = [t for t in log_tables if t != "categories"]
+
+    # Token de recherche normalise (case-insensitive via ILIKE).
+    q_pattern = f"%{q}%" if q else None
 
     # On sur-echantillonne chaque source puis on tronque apres tri global,
     # pour eviter de perdre des events quand une source domine.
@@ -606,24 +677,32 @@ async def _build_history(
     events: list[dict] = []
 
     # --- 1. Completions (avec recurrence pour dedup) ---
-    comp_query = select(TaskCompletion, Task.title, Task.recurrence_rule).join(
-        Task, Task.id == TaskCompletion.task_id
-    ).where(
-        TaskCompletion.deleted_at.is_(None),
-        Task.foyer_id == foyer_uuid,
-    )
-    if before is not None:
-        comp_query = comp_query.where(TaskCompletion.completed_at < before)
-    if actor_id is not None:
-        comp_query = comp_query.where(TaskCompletion.completed_by == actor_id)
-    comp_query = comp_query.order_by(TaskCompletion.completed_at.desc()).limit(fetch_limit)
+    if fetch_completions:
+        comp_query = select(TaskCompletion, Task.title, Task.recurrence_rule).join(
+            Task, Task.id == TaskCompletion.task_id
+        ).where(
+            TaskCompletion.deleted_at.is_(None),
+            Task.foyer_id == foyer_uuid,
+        )
+        if before is not None:
+            comp_query = comp_query.where(TaskCompletion.completed_at < before)
+        if since is not None:
+            comp_query = comp_query.where(TaskCompletion.completed_at >= since)
+        if actor_id is not None:
+            comp_query = comp_query.where(TaskCompletion.completed_by == actor_id)
+        if q_pattern is not None:
+            comp_query = comp_query.where(Task.title.ilike(q_pattern))
+        comp_query = comp_query.order_by(TaskCompletion.completed_at.desc()).limit(fetch_limit)
+        comp_rows = (await session.execute(comp_query)).all()
+    else:
+        comp_rows = []
 
     # Dedup : pour chaque (task_id, user_id), on ne garde la completion que si
     # elle est separee de la precedente (plus recente deja vue) d'au moins la
     # fenetre anti-doublon de cette tache.
     seen_last: dict[tuple[UUID, UUID], datetime] = {}
 
-    for comp, title, rule in (await session.execute(comp_query)).all():
+    for comp, title, rule in comp_rows:
         key = (comp.task_id, comp.completed_by)
         last_seen = seen_last.get(key)
         if last_seen is not None:
@@ -646,19 +725,27 @@ async def _build_history(
         })
 
     # --- 2. Affinites (seulement celles qui ont reellement change : created_at != updated_at) ---
-    aff_query = select(TaskAffinity, Task.title).join(
-        Task, Task.id == TaskAffinity.task_id
-    ).where(
-        TaskAffinity.updated_at > TaskAffinity.created_at,
-        Task.foyer_id == foyer_uuid,
-    )
-    if before is not None:
-        aff_query = aff_query.where(TaskAffinity.updated_at < before)
-    if actor_id is not None:
-        aff_query = aff_query.where(TaskAffinity.user_id == actor_id)
-    aff_query = aff_query.order_by(TaskAffinity.updated_at.desc()).limit(fetch_limit)
+    if fetch_affinities:
+        aff_query = select(TaskAffinity, Task.title).join(
+            Task, Task.id == TaskAffinity.task_id
+        ).where(
+            TaskAffinity.updated_at > TaskAffinity.created_at,
+            Task.foyer_id == foyer_uuid,
+        )
+        if before is not None:
+            aff_query = aff_query.where(TaskAffinity.updated_at < before)
+        if since is not None:
+            aff_query = aff_query.where(TaskAffinity.updated_at >= since)
+        if actor_id is not None:
+            aff_query = aff_query.where(TaskAffinity.user_id == actor_id)
+        if q_pattern is not None:
+            aff_query = aff_query.where(Task.title.ilike(q_pattern))
+        aff_query = aff_query.order_by(TaskAffinity.updated_at.desc()).limit(fetch_limit)
+        aff_rows = (await session.execute(aff_query)).all()
+    else:
+        aff_rows = []
 
-    for aff, title in (await session.execute(aff_query)).all():
+    for aff, title in aff_rows:
         actor = _actor(aff.user_id)
         who = actor["name"] if actor else "?"
         events.append({
@@ -672,19 +759,27 @@ async def _build_history(
         })
 
     # --- 3. Efforts (idem : filtre created_at != updated_at) ---
-    eff_query = select(TaskEffort, Task.title).join(
-        Task, Task.id == TaskEffort.task_id
-    ).where(
-        TaskEffort.updated_at > TaskEffort.created_at,
-        Task.foyer_id == foyer_uuid,
-    )
-    if before is not None:
-        eff_query = eff_query.where(TaskEffort.updated_at < before)
-    if actor_id is not None:
-        eff_query = eff_query.where(TaskEffort.user_id == actor_id)
-    eff_query = eff_query.order_by(TaskEffort.updated_at.desc()).limit(fetch_limit)
+    if fetch_efforts:
+        eff_query = select(TaskEffort, Task.title).join(
+            Task, Task.id == TaskEffort.task_id
+        ).where(
+            TaskEffort.updated_at > TaskEffort.created_at,
+            Task.foyer_id == foyer_uuid,
+        )
+        if before is not None:
+            eff_query = eff_query.where(TaskEffort.updated_at < before)
+        if since is not None:
+            eff_query = eff_query.where(TaskEffort.updated_at >= since)
+        if actor_id is not None:
+            eff_query = eff_query.where(TaskEffort.user_id == actor_id)
+        if q_pattern is not None:
+            eff_query = eff_query.where(Task.title.ilike(q_pattern))
+        eff_query = eff_query.order_by(TaskEffort.updated_at.desc()).limit(fetch_limit)
+        eff_rows = (await session.execute(eff_query)).all()
+    else:
+        eff_rows = []
 
-    for eff, title in (await session.execute(eff_query)).all():
+    for eff, title in eff_rows:
         actor = _actor(eff.user_id)
         who = actor["name"] if actor else "?"
         events.append({
@@ -698,17 +793,47 @@ async def _build_history(
         })
 
     # --- 4. Modifications via change_log (scope foyer direct) ---
-    log_query = select(ChangeLog).where(
-        ChangeLog.table_name.in_(["tasks", "task_completions", "categories"]),
-        ChangeLog.operation.in_(["INSERT", "UPDATE", "DELETE"]),
-        ChangeLog.foyer_id == foyer_uuid,
-    )
-    if before is not None:
-        log_query = log_query.where(ChangeLog.changed_at < before)
-    if actor_id is not None:
-        log_query = log_query.where(ChangeLog.changed_by == actor_id)
-    log_query = log_query.order_by(ChangeLog.changed_at.desc()).limit(fetch_limit * 2)
-    logs = (await session.execute(log_query)).scalars().all()
+    if log_tables:
+        log_query = select(ChangeLog).where(
+            ChangeLog.table_name.in_(log_tables),
+            ChangeLog.operation.in_(["INSERT", "UPDATE", "DELETE"]),
+            ChangeLog.foyer_id == foyer_uuid,
+        )
+        if before is not None:
+            log_query = log_query.where(ChangeLog.changed_at < before)
+        if since is not None:
+            log_query = log_query.where(ChangeLog.changed_at >= since)
+        if actor_id is not None:
+            log_query = log_query.where(ChangeLog.changed_by == actor_id)
+        log_query = log_query.order_by(ChangeLog.changed_at.desc()).limit(fetch_limit * 2)
+        logs = (await session.execute(log_query)).scalars().all()
+    else:
+        logs = []
+
+    # Pour dedup vote/recurrence : chaque vote de frequence (set_frequency)
+    # ecrit a la fois un task_frequency_votes/VOTE ET un tasks/UPDATE avec
+    # new_data == {"recurrence_rule": ...}. On masque le tasks/UPDATE quand
+    # un freq_vote du meme user existe a ±2s. Meme logique que
+    # /tasks/{id}/history (cf. tasks.py:317-340).
+    # (changed_at, changed_by, row_id=task_id) — le row_id est essentiel pour
+    # ne dedupliquer que le tasks/UPDATE de la MEME tache (sinon plusieurs
+    # actions enchainees sur des taches differentes se masquent mutuellement).
+    freq_votes_ts: list[tuple[datetime, UUID | None, UUID]] = []
+    if "tasks" in log_tables:
+        fv_query = select(
+            ChangeLog.changed_at, ChangeLog.changed_by, ChangeLog.row_id
+        ).where(
+            ChangeLog.table_name == "task_frequency_votes",
+            ChangeLog.foyer_id == foyer_uuid,
+        )
+        if before is not None:
+            fv_query = fv_query.where(ChangeLog.changed_at < before)
+        if since is not None:
+            fv_query = fv_query.where(ChangeLog.changed_at >= since)
+        if actor_id is not None:
+            fv_query = fv_query.where(ChangeLog.changed_by == actor_id)
+        fv_query = fv_query.order_by(ChangeLog.changed_at.desc()).limit(fetch_limit * 2)
+        freq_votes_ts = [(r[0], r[1], r[2]) for r in (await session.execute(fv_query)).all()]
 
     # Eager-load des titres de taches mentionnes dans les logs (plus de N+1).
     task_ids_needed: set[UUID] = set()
@@ -726,6 +851,29 @@ async def _build_history(
         )
         task_titles = {row[0]: row[1] for row in rows.all()}
 
+        # Fallback pour les taches absentes de `tasks` (hard-deleted) :
+        # recuperer le dernier titre connu depuis change_log en cherchant un
+        # INSERT/UPDATE precedent qui contient `new_data.title`.
+        missing = task_ids_needed - set(task_titles.keys())
+        if missing:
+            fallback_rows = await session.execute(
+                select(ChangeLog.row_id, ChangeLog.new_data, ChangeLog.changed_at)
+                .where(
+                    ChangeLog.table_name == "tasks",
+                    ChangeLog.row_id.in_(missing),
+                    ChangeLog.new_data["title"].astext.isnot(None),
+                )
+                .order_by(ChangeLog.changed_at.desc())
+            )
+            seen: set[UUID] = set()
+            for row_id, new_data, _changed_at in fallback_rows.all():
+                if row_id in seen:
+                    continue
+                seen.add(row_id)
+                title = (new_data or {}).get("title")
+                if title:
+                    task_titles[row_id] = f"{title} (supprimee)"
+
     completion_task_titles: dict[UUID, tuple[UUID, str]] = {}
     if completion_ids_needed:
         rows = await session.execute(
@@ -734,6 +882,8 @@ async def _build_history(
             .where(TaskCompletion.id.in_(completion_ids_needed))
         )
         completion_task_titles = {row[0]: (row[1], row[2]) for row in rows.all()}
+
+    q_lower = q.lower() if q else None
 
     for log in logs:
         actor = _actor(log.changed_by)
@@ -752,6 +902,28 @@ async def _build_history(
                 desc = f"{who} a supprime la tache '{title}'"
                 meta = {}
             else:  # UPDATE
+                # Dedup vote/recurrence : un tasks/UPDATE qui ne touche QUE
+                # recurrence_rule et qui partage le MEME timestamp transaction
+                # qu'un task_frequency_votes/VOTE du meme user sur la meme
+                # tache = meme transaction, evenement loggue 2x. On masque
+                # le tasks/UPDATE pour ne garder que le vote sous-jacent.
+                # Egalite stricte volontaire : Postgres func.now() retourne
+                # le timestamp de debut de transaction, donc deux record_change
+                # dans la meme transaction partagent le meme changed_at. Un
+                # changement de type fait dans une autre transaction (meme a
+                # 50 ms d'ecart) ne sera donc pas dedup a tort.
+                if (
+                    log.new_data
+                    and set(log.new_data.keys()) == {"recurrence_rule"}
+                    and any(
+                        log.changed_by == fv[1]
+                        and log.row_id == fv[2]
+                        and log.changed_at == fv[0]
+                        for fv in freq_votes_ts
+                    )
+                ):
+                    continue
+
                 # Filtrer les champs techniques : si rien ne reste, on saute.
                 raw_fields = list((log.new_data or {}).keys())
                 meaningful = [f for f in raw_fields if f not in _TASK_TECHNICAL_FIELDS]
@@ -759,8 +931,24 @@ async def _build_history(
                     continue
                 labels = [_TASK_FIELD_LABELS.get(f, f) for f in meaningful]
                 event_type = "task_updated"
-                desc = f"{who} a modifie la tache '{title}' ({', '.join(labels)})"
+                # Detail enrichi pour recurrence_rule : "tous les 5j -> tous les 7j".
+                detail_extra = ""
+                if "recurrence_rule" in meaningful:
+                    old_rec = _format_recurrence_rule((log.old_data or {}).get("recurrence_rule"))
+                    new_rec = _format_recurrence_rule((log.new_data or {}).get("recurrence_rule"))
+                    if old_rec and new_rec and old_rec != new_rec:
+                        detail_extra = f" : {old_rec} → {new_rec}"
+                    elif new_rec:
+                        detail_extra = f" : {new_rec}"
+                desc = f"{who} a modifie la tache '{title}' ({', '.join(labels)}){detail_extra}"
                 meta = {"fields": meaningful}
+
+            # Filtres a grain fin (event_types + q) pour les events partageant
+            # la meme table change_log.
+            if event_types is not None and event_type not in event_types:
+                continue
+            if q_lower is not None and q_lower not in title.lower():
+                continue
 
             events.append({
                 "type": event_type,
@@ -784,9 +972,16 @@ async def _build_history(
             else:
                 task_id, title = info
                 task_info = {"id": str(task_id), "title": title}
+            event_type = "completion_edited" if log.operation == "UPDATE" else "completion_deleted"
             action = "modifie" if log.operation == "UPDATE" else "supprime"
+
+            if event_types is not None and event_type not in event_types:
+                continue
+            if q_lower is not None and q_lower not in title.lower():
+                continue
+
             events.append({
-                "type": "completion_edited" if log.operation == "UPDATE" else "completion_deleted",
+                "type": event_type,
                 "date": log.changed_at,
                 "description": f"{who} a {action} une completion de '{title}'",
                 "user": who,
@@ -796,6 +991,8 @@ async def _build_history(
             })
 
         elif log.table_name == "categories":
+            # Les category_changed n'ont pas de titre de tache : pas de filtre
+            # `q` applicable (deja exclu en amont si `q` fourni).
             action_map = {"INSERT": "cree", "UPDATE": "modifie", "DELETE": "supprime"}
             action = action_map.get(log.operation, log.operation.lower())
             events.append({
@@ -822,21 +1019,48 @@ async def _build_history(
 async def global_history(
     limit: int = 50,
     before: datetime | None = None,
+    since: datetime | None = None,
+    family: list[str] = Query(default=[]),
+    actor_id: UUID | None = None,
+    q: str | None = None,
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Historique global du foyer actif : completions, modifications taches/categories, affinites, efforts.
+    """Historique global du foyer actif (completions, votes, modifications).
 
-    - `limit` : nombre max d'evenements a retourner (defaut 50).
+    - `limit` : nombre max d'evenements (defaut 50).
     - `before` : curseur de pagination. Si fourni, ne retourne que les events
-      strictement anterieurs a cette date (utile pour scroller le passe).
+      strictement anterieurs a cette date (scroll vers le passe).
+    - `since` : borne basse de date (>=). Combine avec `before` pour une
+      fenetre temporelle (cette semaine, ce mois, etc.).
+    - `family` : multi-valued. Un ou plusieurs parmi {completions, votes,
+      modifications}. Defaut vide = toutes les familles. Les familles sont
+      mappees vers les `event_type` cibles via `HISTORY_FAMILY_TYPES`.
+    - `actor_id` : ne retourne que les events de cet utilisateur (Quentin
+      ou ***REMOVED***). Defaut = tous.
+    - `q` : recherche dans le titre de tache (ILIKE %q%, case-insensitive).
+      Les events sans tache (category_changed) sont exclus quand `q` est
+      fourni.
     """
+    # Mapper les familles -> set de event_types. Famille inconnue = ignoree.
+    if family:
+        event_types: set[str] | None = set()
+        for fam in family:
+            event_types.update(HISTORY_FAMILY_TYPES.get(fam, set()))
+        # Si aucune famille connue n'a ete fournie -> set vide -> aucun
+        # resultat (semantique stricte, plutot que de tout retourner).
+    else:
+        event_types = None
+
     return await _build_history(
         session,
         foyer_uuid=current_foyer_uuid(current),
         limit=limit,
         before=before,
-        actor_id=None,
+        actor_id=actor_id,
+        event_types=event_types,
+        since=since,
+        q=q,
     )
 
 

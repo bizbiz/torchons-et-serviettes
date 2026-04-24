@@ -130,7 +130,8 @@ async def create_task(
         every_n = task.recurrence_rule.get("every_n_days")
         if isinstance(every_n, int) and every_n >= 1:
             await upsert_vote_and_sync_consensus(
-                session, task, UUID(current["user_id"]), every_n
+                session, task, UUID(current["user_id"]), every_n,
+                foyer_id=current["foyer_id"],
             )
 
     await record_change(
@@ -224,7 +225,8 @@ async def update_task(
             if isinstance(every_n, int) and every_n >= 1:
                 updates.pop("recurrence_rule")
                 await upsert_vote_and_sync_consensus(
-                    session, task, UUID(current["user_id"]), every_n
+                    session, task, UUID(current["user_id"]), every_n,
+                    foyer_id=current["foyer_id"],
                 )
             # Si every_n absent/invalide, on laisse le bloc setattr ecrire
             # la regle telle quelle (cas pathologique, validation Pydantic

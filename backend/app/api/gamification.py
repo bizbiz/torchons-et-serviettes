@@ -438,8 +438,10 @@ async def set_frequency(
         raise HTTPException(status_code=404, detail="Tache introuvable")
 
     old_rule = dict(task.recurrence_rule) if task.recurrence_rule else None
+    # Le helper logge desormais lui-meme le task_frequency_votes/VOTE quand
+    # foyer_id est fourni — pas de double-log a faire ici.
     consensus_before, consensus_after = await upsert_vote_and_sync_consensus(
-        session, task, user_id, body.every_n_days
+        session, task, user_id, body.every_n_days, foyer_id=current["foyer_id"]
     )
 
     # Log du changement de la tache (cote sync) — sera dedoublonne en GET /history.
@@ -448,16 +450,6 @@ async def set_frequency(
         foyer_id=current["foyer_id"],
         old_data={"recurrence_rule": old_rule},
         new_data={"recurrence_rule": task.recurrence_rule},
-    )
-    # Log du vote individuel (alimente l'historique UI).
-    await record_change(
-        session, "task_frequency_votes", task_id, "VOTE", current["user_id"],
-        foyer_id=current["foyer_id"],
-        new_data={
-            "every_n_days": body.every_n_days,
-            "consensus_before": consensus_before,
-            "consensus_after": consensus_after,
-        },
     )
     await session.commit()
 

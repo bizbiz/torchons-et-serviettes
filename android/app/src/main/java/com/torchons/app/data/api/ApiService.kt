@@ -317,11 +317,15 @@ interface ApiService {
 
     // --- Stats ---
 
-    /** Historique global. */
+    /** Historique global avec filtres optionnels (famille, acteur, periode, recherche). */
     @GET("history")
     suspend fun getHistory(
         @Query("limit") limit: Int = 50,
-        @Query("before") before: String? = null
+        @Query("before") before: String? = null,
+        @Query("since") since: String? = null,
+        @Query("family") families: List<String> = emptyList(),
+        @Query("actor_id") actorId: String? = null,
+        @Query("q") q: String? = null,
     ): Response<List<Map<String, Any>>>
 
     /** Historique personnel d'un utilisateur. */

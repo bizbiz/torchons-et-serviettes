@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.task import Task
 from app.models.task_frequency_vote import TaskFrequencyVote
+from app.utils.changelog import record_change
 
 
 async def upsert_vote_and_sync_consensus(
@@ -24,9 +25,17 @@ async def upsert_vote_and_sync_consensus(
     task: Task,
     user_id: UUID,
     every_n_days: int,
+    foyer_id: UUID | str | None = None,
 ) -> tuple[int | None, int]:
     """Upsert le vote frequence de l'user, recalcule le consensus (moyenne
     arrondie des votes) et l'ecrit dans `task.recurrence_rule` (type=interval).
+
+    Si `foyer_id` est fourni, logge aussi un `task_frequency_votes/VOTE` dans
+    change_log (necessaire pour la dedup vote/recurrence dans /api/history :
+    sans ce log, le tasks/UPDATE redondant ne peut pas etre identifie comme
+    accompagnant un vote). Les callers (set_frequency, create_task,
+    update_task retour-interval) doivent passer foyer_id pour que le vote
+    soit visible dans l'historique sous la bonne forme.
 
     Retourne `(consensus_before, consensus_after)` pour alimenter le change_log.
     Ne commit pas — le caller controle la transaction.
@@ -64,5 +73,18 @@ async def upsert_vote_and_sync_consensus(
 
     task.recurrence_rule = {"type": "interval", "every_n_days": consensus_after}
     task.version += 1
+
+    # Log du vote individuel dans change_log si foyer_id fourni. Permet la
+    # dedup vote/recurrence cote /api/history (cf. _build_history dans stats).
+    if foyer_id is not None:
+        await record_change(
+            session, "task_frequency_votes", task.id, "VOTE", str(user_id),
+            foyer_id=str(foyer_id),
+            new_data={
+                "every_n_days": every_n_days,
+                "consensus_before": consensus_before,
+                "consensus_after": consensus_after,
+            },
+        )
 
     return consensus_before, consensus_after
