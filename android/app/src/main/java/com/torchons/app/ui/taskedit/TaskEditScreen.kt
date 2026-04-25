@@ -1,5 +1,6 @@
 package com.torchons.app.ui.taskedit
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -16,8 +17,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -51,7 +57,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.ui.common.FrequencyVoteDialog
@@ -59,7 +69,10 @@ import com.torchons.app.ui.common.InfoTooltip
 
 /**
  * Ecran de creation ou edition d'une tache.
- * Si taskId est null = creation, sinon edition.
+ * - taskId != null  => mode edition
+ * - cloneFromId != null (et taskId == null) => mode creation par clonage,
+ *   pre-remplit le formulaire depuis la tache source.
+ * - les deux null => mode creation neuve.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -68,15 +81,27 @@ fun TaskEditScreen(
     onBack: () -> Unit,
     onSaved: () -> Unit,
     onDeleted: () -> Unit = {},
+    cloneFromId: String? = null,
     viewModel: TaskEditViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val suggestions by viewModel.suggestions.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val titleFocusRequester = remember { FocusRequester() }
 
     // Charger les donnees au lancement
-    LaunchedEffect(taskId) {
-        viewModel.loadData(taskId)
+    LaunchedEffect(taskId, cloneFromId) {
+        viewModel.loadData(taskId, cloneFromId)
+    }
+
+    // Focus + select-all sur le titre quand on entre en mode clone, pour que
+    // l'user puisse renommer rapidement (ex: "...salon" -> "...chambre") sans
+    // avoir a effacer manuellement le texte pre-rempli.
+    LaunchedEffect(uiState.clonedFromTitle) {
+        if (uiState.clonedFromTitle != null) {
+            titleFocusRequester.requestFocus()
+        }
     }
 
     // Naviguer en arriere apres sauvegarde
@@ -195,14 +220,93 @@ fun TaskEditScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Titre
+            // Chip "Duplique de [titre]" en mode creation par clonage.
+            // Tap sur le chip = annuler la duplication (vide tous les champs).
+            uiState.clonedFromTitle?.let { src ->
+                AssistChip(
+                    onClick = { viewModel.resetClone() },
+                    label = { Text("Duplique de : $src") },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Annuler la duplication",
+                            modifier = Modifier.height(AssistChipDefaults.IconSize),
+                        )
+                    },
+                )
+            }
+
+            // Titre — TextFieldValue local pour pouvoir piloter la selection
+            // (select-all au montage en mode clone, fin de texte sinon).
+            var titleFieldValue by remember { mutableStateOf(TextFieldValue(uiState.title)) }
+            LaunchedEffect(uiState.title, uiState.clonedFromTitle) {
+                if (titleFieldValue.text != uiState.title) {
+                    titleFieldValue = TextFieldValue(
+                        text = uiState.title,
+                        selection = if (uiState.clonedFromTitle != null) {
+                            TextRange(0, uiState.title.length)
+                        } else {
+                            TextRange(uiState.title.length)
+                        },
+                    )
+                }
+            }
             OutlinedTextField(
-                value = uiState.title,
-                onValueChange = { viewModel.updateTitle(it) },
+                value = titleFieldValue,
+                onValueChange = { newValue ->
+                    titleFieldValue = newValue
+                    if (newValue.text != uiState.title) {
+                        viewModel.updateTitle(newValue.text)
+                    }
+                },
                 label = { Text("Titre *") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(titleFocusRequester),
+                singleLine = true,
             )
+
+            // Dropdown des suggestions de duplication. Visible uniquement en
+            // creation neuve (pas en edition, pas avec un clone deja applique)
+            // et a partir de 2 caracteres tapes — geres dans le ViewModel.
+            if (suggestions.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    tonalElevation = 4.dp,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    Column {
+                        Text(
+                            text = "Dupliquer une tache existante :",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        )
+                        suggestions.forEach { sugg ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.applyCloneFrom(sugg.id) }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = null,
+                                    modifier = Modifier.height(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = sugg.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             // Description
             OutlinedTextField(

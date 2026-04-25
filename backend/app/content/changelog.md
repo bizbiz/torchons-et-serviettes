@@ -1,5 +1,18 @@
 # Notes de version
 
+## v0.20.0 — 2026-04-25
+
+### Auto-archivage des taches ponctuelles
+- Les taches ponctuelles (sans recurrence) completees depuis plus de 7 jours sont automatiquement masquees de la liste principale.
+- L'historique reste preserve : les completions restent visibles dans les stats, le leaderboard et le pace.
+- Pas de bouton de restauration : si une tache archivee redevient pertinente, il suffit de la recreer (l'autocomplete de duplication la propose toujours).
+
+### Dupliquer une tache existante
+- Nouveau bouton "Dupliquer" en haut de l'ecran detail d'une tache : cree une nouvelle tache pre-remplie avec les memes parametres, qu'il suffit d'ajuster (par ex. changer la piece) avant de valider.
+- Dans le formulaire de creation d'une nouvelle tache, des suggestions apparaissent des 2 caracteres tapes dans le titre : selectionner une suggestion remplit tout le formulaire d'un coup.
+- Un chip "Duplique de [titre]" indique qu'on est en train de cloner ; tap dessus pour annuler la duplication et repartir d'un formulaire vierge.
+- Le clone herite du consensus de cadence et de la repartition d'effort de la tache d'origine, mais demarre avec un historique vide (les votes individuels ne sont pas copies, chacun re-votera au prochain prompt).
+
 ## v0.19.0 — 2026-04-24
 
 ### Historique : filtres et recherche

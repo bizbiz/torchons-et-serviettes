@@ -55,6 +55,7 @@ object Routes {
     const val TASK_DETAIL = "task_detail/{taskId}"
     const val TASK_CREATE = "task_create"
     const val TASK_EDIT = "task_edit/{taskId}"
+    const val TASK_CLONE = "task_clone/{cloneFromId}"
     const val CATEGORIES = "categories"
     const val ROOMS = "rooms"
     const val FOYERS = "foyers"
@@ -63,6 +64,7 @@ object Routes {
 
     fun taskDetail(taskId: String) = "task_detail/$taskId"
     fun taskEdit(taskId: String) = "task_edit/$taskId"
+    fun taskClone(cloneFromId: String) = "task_clone/$cloneFromId"
 }
 
 /**
@@ -208,7 +210,10 @@ fun NavGraph(
                 onBack = { navController.popBackStack() },
                 onEdit = { taskId ->
                     navController.navigate(Routes.taskEdit(taskId))
-                }
+                },
+                onClone = { sourceId ->
+                    navController.navigate(Routes.taskClone(sourceId))
+                },
             )
         }
 
@@ -232,6 +237,25 @@ fun NavGraph(
             val taskId = backStackEntry.arguments?.getString("taskId")
             TaskEditScreen(
                 taskId = taskId,
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+                onDeleted = {
+                    navController.popBackStack(Routes.MAIN, inclusive = false)
+                }
+            )
+        }
+
+        // Dupliquer une tache : meme ecran TaskEditScreen, mais en mode creation
+        // pre-remplie depuis la tache source. Pas de tache cree tant que l'user
+        // n'a pas valide.
+        composable(
+            route = Routes.TASK_CLONE,
+            arguments = listOf(navArgument("cloneFromId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val cloneFromId = backStackEntry.arguments?.getString("cloneFromId")
+            TaskEditScreen(
+                taskId = null,
+                cloneFromId = cloneFromId,
                 onBack = { navController.popBackStack() },
                 onSaved = { navController.popBackStack() },
                 onDeleted = {

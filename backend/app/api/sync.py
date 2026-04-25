@@ -239,6 +239,10 @@ async def _handle_task(
             raise StaleUpdateError()
         if _truncate_to_ms(row.updated_at) > _truncate_to_ms(op.client_timestamp):
             raise StaleUpdateError(_row_to_dict(row))
+        # is_archived n'est jamais ecrit par le client : seul le job backend
+        # d'auto-archivage le toggle. Defense en profondeur si un vieux client
+        # renvoie le champ par inadvertance.
+        data.pop("is_archived", None)
         for key, val in data.items():
             if key == "assigned_to_ids":
                 await session.execute(

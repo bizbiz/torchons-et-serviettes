@@ -156,6 +156,18 @@ class SyncWorker(
             return
         }
         val data = change.data ?: return
+
+        // Cas special v0.20 : l'auto-archivage serveur emet un UPDATE dont
+        // new_data ne contient QUE is_archived. Ne jamais reconstruire la tache
+        // via le bloc ci-dessous (efface les autres champs avec des defauts) :
+        // on recupere la row existante et on toggle uniquement le drapeau.
+        if (change.operation == "UPDATE" && data.keys == setOf("is_archived")) {
+            val existing = taskDao.getById(change.rowId) ?: return
+            val archived = data["is_archived"] as? Boolean ?: false
+            taskDao.upsert(existing.copy(isArchived = archived))
+            return
+        }
+
         val task = Task(
             id = change.rowId,
             title = data["title"] as? String ?: "",
@@ -165,6 +177,7 @@ class SyncWorker(
             weight = (data["weight"] as? Double)?.toInt() ?: 1,
             tolerance = data["tolerance"] as? String ?: "NORMAL",
             isActive = data["is_active"] as? Boolean ?: true,
+            isArchived = data["is_archived"] as? Boolean ?: false,
             sortOrder = (data["sort_order"] as? Double)?.toInt() ?: 0,
             createdAt = data["created_at"] as? String ?: "",
             updatedAt = data["updated_at"] as? String ?: "",

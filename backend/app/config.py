@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     backend_host: str = "0.0.0.0"
     backend_port: int = 8002
 
+    # Auto-archivage (v0.20) : une tache ponctuelle (sans recurrence) completee
+    # depuis plus de ARCHIVE_AFTER_DAYS jours est automatiquement archivee
+    # par un job quotidien (is_archived=true, filtree des lectures liste).
+    archive_after_days: int = 7
+
 
 settings = Settings()
 

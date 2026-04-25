@@ -7,19 +7,46 @@ Lance avec :
 from contextlib import asynccontextmanager
 
 import structlog
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.database import engine
+from app.services.archiving import daily_archive_job
 
 logger = structlog.get_logger()
+
+# Scheduler unique process-wide. Declare ici pour pouvoir le shutdown dans
+# lifespan. Configure avec CronTrigger UTC (cf timezone handling du backend).
+_scheduler: AsyncIOScheduler | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _scheduler
     logger.info("T&S backend starting", port=8002)
+
+    # Job quotidien : auto-archive des taches ponctuelles completees depuis
+    # plus de settings.archive_after_days jours. 03h00 UTC = creux d'activite
+    # (05h Paris ete, 04h Paris hiver). Si le backend est down a cette heure,
+    # APScheduler ne retente pas automatiquement : on accepte un archivage
+    # decale d'un jour, sans consequence fonctionnelle.
+    _scheduler = AsyncIOScheduler(timezone="UTC")
+    _scheduler.add_job(
+        daily_archive_job,
+        CronTrigger(hour=3, minute=0),
+        id="daily_archive",
+        replace_existing=True,
+    )
+    _scheduler.start()
+    logger.info("scheduler_started", job="daily_archive", trigger="03:00 UTC")
+
     yield
+
+    if _scheduler is not None and _scheduler.running:
+        _scheduler.shutdown(wait=False)
     await engine.dispose()
     logger.info("T&S backend stopped")
 

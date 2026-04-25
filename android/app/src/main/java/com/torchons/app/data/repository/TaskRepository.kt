@@ -63,6 +63,18 @@ class TaskRepository @Inject constructor(
     fun observeTaskById(id: String): Flow<Task?> =
         taskDao.observeById(id).map { it?.toDomain() }
 
+    /** Lookup one-shot dans le cache Room. Pour le pre-remplissage du clone. */
+    suspend fun getCachedTaskById(id: String): Task? =
+        taskDao.getById(id)?.toDomain()
+
+    /**
+     * Pool de taches candidates a la duplication via autocomplete.
+     * Inclut actives + archivees, exclut les inactives. Filtrage par titre
+     * fait cote ViewModel (normalize + tokenize) pour gerer les accents.
+     */
+    fun observeTasksForSuggestions(): Flow<List<Task>> =
+        taskDao.observeForSuggestions().map { list -> list.map { it.toDomain() } }
+
     suspend fun refreshTasks(): Boolean {
         return try {
             val response = apiService.getTasks(activeOnly = null)

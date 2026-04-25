@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
@@ -98,6 +99,7 @@ import java.time.format.DateTimeFormatter
 fun TaskDetailScreen(
     onBack: () -> Unit,
     onEdit: (String) -> Unit = {},
+    onClone: (String) -> Unit = {},
     viewModel: TaskDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -316,6 +318,13 @@ fun TaskDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { uiState.task?.let { onClone(it.id) } }) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Dupliquer cette tache",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                     IconButton(onClick = { uiState.task?.let { onEdit(it.id) } }) {
                         Icon(
                             imageVector = Icons.Default.Edit,

@@ -27,6 +27,10 @@ data class Task(
     @SerializedName("weight") val weight: Int = 1,
     @SerializedName("tolerance") val tolerance: String = "NORMAL",
     @SerializedName("is_active") val isActive: Boolean = true,
+    // v0.20 : archivage soft cote backend. true = tache ponctuelle completee
+    // depuis >7j, masquee des listes par un job quotidien serveur. Lecture
+    // seule cote client : on ne l'emet jamais dans CreateTask/UpdateTask.
+    @SerializedName("is_archived") val isArchived: Boolean = false,
     @SerializedName("sort_order") val sortOrder: Int = 0,
     @SerializedName("created_at") val createdAt: String = "",
     @SerializedName("updated_at") val updatedAt: String = ""

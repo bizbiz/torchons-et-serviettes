@@ -51,6 +51,13 @@ class Task(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # v0.20 : archivage soft des ponctuelles terminees. Job quotidien met
+    # is_archived=true pour toute tache sans recurrence completee depuis
+    # plus de ARCHIVE_AFTER_DAYS jours. Toutes les lectures liste filtrent
+    # is_archived=false par defaut. Lecture seule cote UI (pas de restore).
+    is_archived: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     # Si cette tache a ete importee depuis le catalogue (v0.9.0 Feature 4),
     # on stocke la `key` stable du template d'origine ici pour le tracking

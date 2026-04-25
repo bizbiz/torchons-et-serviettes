@@ -24,6 +24,9 @@ data class TaskEntity(
     val weight: Int,
     val tolerance: String,
     val isActive: Boolean,
+    // v0.20 : tache archivee par le job serveur (ponctuelle completee >7j).
+    // Filtree des listes UI. Propagee via change_log en sync.
+    val isArchived: Boolean = false,
     val sortOrder: Int,
     val createdAt: String,
     val updatedAt: String,
@@ -42,6 +45,7 @@ fun Task.toEntity(): TaskEntity = TaskEntity(
     weight = weight,
     tolerance = tolerance,
     isActive = isActive,
+    isArchived = isArchived,
     sortOrder = sortOrder,
     createdAt = createdAt,
     updatedAt = updatedAt,
@@ -60,6 +64,7 @@ fun TaskEntity.toDomain(): Task = Task(
     weight = weight,
     tolerance = tolerance,
     isActive = isActive,
+    isArchived = isArchived,
     sortOrder = sortOrder,
     createdAt = createdAt,
     updatedAt = updatedAt,

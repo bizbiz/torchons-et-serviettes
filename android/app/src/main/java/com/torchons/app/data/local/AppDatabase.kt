@@ -32,7 +32,7 @@ import com.torchons.app.data.local.entities.ViewSnapshotEntity
         TaskHistoryEntity::class,
         RoomEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

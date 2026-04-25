@@ -18,10 +18,14 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface TaskDao {
 
-    @Query("SELECT * FROM tasks WHERE isActive = 1 ORDER BY sortOrder, title")
+    // v0.20 : les taches archivees (ponctuelles completees >7j) sont filtrees
+    // pour ne pas polluer la liste principale. Le drapeau isArchived est
+    // pilote exclusivement par le serveur via change_log — le client ne
+    // l'ecrit jamais lui-meme.
+    @Query("SELECT * FROM tasks WHERE isActive = 1 AND isArchived = 0 ORDER BY sortOrder, title")
     fun observeActive(): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM tasks ORDER BY sortOrder, title")
+    @Query("SELECT * FROM tasks WHERE isArchived = 0 ORDER BY sortOrder, title")
     fun observeAll(): Flow<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE id = :id LIMIT 1")
@@ -29,6 +33,13 @@ interface TaskDao {
 
     @Query("SELECT * FROM tasks WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): TaskEntity?
+
+    // Pool pour l'autocomplete de duplication (TaskEditScreen v0.21).
+    // Inclut les taches archivees (ponctuelles completees >7j) car cloner une
+    // ponctuelle passee est un cas d'usage legitime ; exclut les inactives
+    // que l'user a explicitement desactivees.
+    @Query("SELECT * FROM tasks WHERE isActive = 1 OR isArchived = 1 ORDER BY title")
+    fun observeForSuggestions(): Flow<List<TaskEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(tasks: List<TaskEntity>)

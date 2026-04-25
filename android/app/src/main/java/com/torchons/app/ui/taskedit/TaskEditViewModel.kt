@@ -7,16 +7,22 @@ import com.torchons.app.data.model.CreateTaskRequest
 import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.RecurrenceRule
 import com.torchons.app.data.model.Room
+import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.UpdateTaskRequest
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -53,6 +59,14 @@ data class TaskEditUiState(
     val frequencyVotes: FrequencyVotesState? = null,
     /** Affiche le mini-dialog de re-vote frequence. */
     val showFrequencyVoteDialog: Boolean = false,
+    /**
+     * Titre de la tache source quand on est en mode "creation par clonage"
+     * (via bouton Dupliquer dans TaskDetail ou selection d'une suggestion
+     * d'autocomplete). Non-null = un chip "Duplique de [titre]" est affiche
+     * en haut du formulaire et l'autocomplete est desactive le temps que
+     * l'user n'ait pas reset le clone.
+     */
+    val clonedFromTitle: String? = null,
 )
 
 /**
@@ -70,8 +84,39 @@ class TaskEditViewModel @Inject constructor(
     val currentUserId: StateFlow<String?> = authRepository.userIdFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /**
+     * Suggestions d'autocomplete pour le champ titre en mode creation.
+     * Pipeline : titre saisi -> debounce 150ms -> filtre tokenise (NFD +
+     * lowercase) sur le pool des taches actives + archivees du cache Room.
+     * Vide en mode edition, vide quand un clone est deja applique
+     * (clonedFromTitle != null), vide tant que la query fait moins de 2 chars.
+     */
+    @OptIn(FlowPreview::class)
+    val suggestions: StateFlow<List<Task>> = combine(
+        _uiState.map { it.title }.distinctUntilChanged().debounce(150L),
+        taskRepository.observeTasksForSuggestions(),
+    ) { query, all ->
+        val state = _uiState.value
+        if (state.isEditMode || state.clonedFromTitle != null || query.length < 2) {
+            emptyList()
+        } else {
+            val tokens = normalize(query).split(Regex("\\s+")).filter { it.isNotBlank() }
+            if (tokens.isEmpty()) {
+                emptyList()
+            } else {
+                all.asSequence()
+                    .filter { task ->
+                        val haystack = normalize(task.title)
+                        tokens.all { haystack.contains(it) }
+                    }
+                    .take(5)
+                    .toList()
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     /** Charge les donnees de reference (categories, rooms, users) et la tache si edition. */
-    fun loadData(taskId: String?) {
+    fun loadData(taskId: String?, cloneFromId: String? = null) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
@@ -120,14 +165,27 @@ class TaskEditViewModel @Inject constructor(
                         rooms = rooms,
                         users = users,
                         frequencyVotes = votes,
+                        clonedFromTitle = null,
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false, error = "Tache introuvable"
                     )
                 }
+            } else if (cloneFromId != null) {
+                // Mode creation par clonage — projete la source dans le formulaire.
+                // recurrenceRule.everyNDays est deja le consensus des votes
+                // (synchronise par upsert_vote_and_sync_consensus cote backend),
+                // donc on copie tel quel : le clone herite du consensus actuel
+                // sans copier les votes individuels, qui sont propres au task_id.
+                applyCloneSourceInternal(
+                    sourceId = cloneFromId,
+                    categories = categories,
+                    rooms = rooms,
+                    users = users,
+                )
             } else {
-                // Mode creation — initialiser avec tous les users assignes (commune)
+                // Mode creation neuve — initialiser avec tous les users assignes (commune)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isEditMode = false,
@@ -135,9 +193,89 @@ class TaskEditViewModel @Inject constructor(
                     categories = categories,
                     rooms = rooms,
                     users = users,
+                    clonedFromTitle = null,
                 )
             }
         }
+    }
+
+    /**
+     * Applique un clone depuis l'autocomplete (selection d'une suggestion).
+     * Reutilise les categories/users/rooms deja en memoire pour eviter un
+     * re-fetch reseau. Appele sur tap dans la dropdown du champ titre.
+     */
+    fun applyCloneFrom(sourceId: String) {
+        val state = _uiState.value
+        if (state.isEditMode) return
+        viewModelScope.launch {
+            applyCloneSourceInternal(
+                sourceId = sourceId,
+                categories = state.categories,
+                rooms = state.rooms,
+                users = state.users,
+            )
+        }
+    }
+
+    /**
+     * Reset du clone : remet le formulaire dans l'etat "creation neuve"
+     * (tous les users assignes, champs vides). Appele par le X du chip
+     * "Duplique de [titre]" pour annuler la duplication.
+     */
+    fun resetClone() {
+        val state = _uiState.value
+        if (state.isEditMode) return
+        _uiState.value = TaskEditUiState(
+            isEditMode = false,
+            assignedToIds = state.users.map { it.id },
+            categories = state.categories,
+            rooms = state.rooms,
+            users = state.users,
+            clonedFromTitle = null,
+        )
+    }
+
+    private suspend fun applyCloneSourceInternal(
+        sourceId: String,
+        categories: List<Category>,
+        rooms: List<Room>,
+        users: List<User>,
+    ) {
+        val source = taskRepository.getCachedTaskById(sourceId)
+        if (source == null) {
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                error = "Tache source introuvable",
+                categories = categories,
+                rooms = rooms,
+                users = users,
+                assignedToIds = if (_uiState.value.assignedToIds.isEmpty()) users.map { it.id } else _uiState.value.assignedToIds,
+            )
+            return
+        }
+        val dpm = source.recurrenceRule?.daysPerMonth?.mapValues { it.value.toString() }
+            ?: (1..12).associate { it.toString() to "" }
+        _uiState.value = _uiState.value.copy(
+            isLoading = false,
+            isEditMode = false,
+            title = source.title,
+            description = source.description ?: "",
+            categoryId = source.categoryId,
+            roomId = source.roomId,
+            assignedToIds = source.assignedToIds,
+            recurrenceType = source.recurrenceRule?.type ?: "none",
+            recurrenceEveryNDays = source.recurrenceRule?.everyNDays?.toString() ?: "7",
+            daysPerMonth = dpm,
+            weight = source.weight,
+            tolerance = source.tolerance,
+            categories = categories,
+            rooms = rooms,
+            users = users,
+            // Pas de votes : le clone n'a pas de TaskFrequencyVote tant qu'aucun
+            // user n'a vote — chaque user re-vote au prochain prompt.
+            frequencyVotes = null,
+            clonedFromTitle = source.title,
+        )
     }
 
     fun updateTitle(value: String) {
@@ -321,3 +459,9 @@ class TaskEditViewModel @Inject constructor(
         }
     }
 }
+
+/** NFD + strip diacritiques + lowercase. Idem TaskListViewModel.normalize. */
+private fun normalize(s: String): String =
+    java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+        .lowercase()

@@ -68,6 +68,7 @@ async def _fetch_foyer_tasks_with_last_completion(
             Task.foyer_id == foyer_id,
             Task.deleted_at.is_(None),
             Task.is_active.is_(True),
+            Task.is_archived.is_(False),
         )
     )
     tasks = tasks_result.scalars().all()

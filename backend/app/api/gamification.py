@@ -878,6 +878,7 @@ async def get_suggestions(
             Task.foyer_id == current_foyer_uuid(current),
             Task.deleted_at.is_(None),
             Task.is_active.is_(True),
+            Task.is_archived.is_(False),
         )
     )
     tasks = result.scalars().all()

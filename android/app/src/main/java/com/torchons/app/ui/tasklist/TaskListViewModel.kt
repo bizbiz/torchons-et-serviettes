@@ -43,6 +43,16 @@ import javax.inject.Inject
  * annotation, le `task: Task` (qui contient List<String>) rend la classe
  * instable et chaque emission de la liste recompose tous les items visibles.
  */
+/**
+ * Classification v0.20 d'une tache selon qu'elle porte une cadence :
+ * - CADENCE : recurrence definie (interval/weekdays/monthly/custom/monthly_variable)
+ * - SANS_CADENCE : non-recurrente OU type "uncertain" (cadence libre/inconnue)
+ *
+ * Pilote le chip 🔁 (HIGH = CADENCE seul, LOW = SANS_CADENCE seul) et la
+ * semantique adaptative du filtre "a faire" (voir applyFilters).
+ */
+enum class RecurrenceGroup { CADENCE, SANS_CADENCE }
+
 @Immutable
 data class TaskWithUrgency(
     val task: Task,
@@ -54,6 +64,14 @@ data class TaskWithUrgency(
     val roomName: String?,
     val roomEmoji: String?,
     val myAffinity: Int? = null,
+    val group: RecurrenceGroup = RecurrenceGroup.CADENCE,
+    /** Date ISO de la derniere completion, null si jamais completee. Sert au tri
+     *  du Groupe B (buckets jamais-faite / deja-faite) et a la semantique
+     *  "a faire" pour les non-recurrentes. */
+    val lastCompletedAt: String? = null,
+    /** true uniquement pour les taches de type "uncertain" (v0.14) : par
+     *  convention elles ne sont jamais cachees par le filtre "a faire". */
+    val isUncertain: Boolean = false,
 )
 
 /** Etat tri-state pour les filtres : Off / High / Low */
@@ -584,6 +602,16 @@ class TaskListViewModel @Inject constructor(
             val category = task.categoryId?.let { categoriesById[it] }
             val room = task.roomId?.let { roomsById[it] }
 
+            // Classification v0.20. Une 'uncertain' est recurrente de nom mais
+            // sans cadence effective : on la range dans SANS_CADENCE pour
+            // qu'elle soit filtrable via le chip 🔁 LOW aux cotes des ponctuelles.
+            val isUncertain = task.recurrenceRule?.type == "uncertain"
+            val group = if (task.recurrenceRule == null || isUncertain) {
+                RecurrenceGroup.SANS_CADENCE
+            } else {
+                RecurrenceGroup.CADENCE
+            }
+
             TaskWithUrgency(
                 task = task,
                 state = state,
@@ -593,19 +621,38 @@ class TaskListViewModel @Inject constructor(
                 categoryColor = category?.color,
                 roomName = room?.name,
                 roomEmoji = room?.emoji,
+                group = group,
+                lastCompletedAt = lastCompletion?.completedAt,
+                isUncertain = isUncertain,
             )
         }
 
+        // Filtre "a faire" (v0.20) : semantique adaptative selon le groupe.
+        // - Groupe CADENCE : etat != GREEN (inchange, cf modele due_date)
+        // - SANS_CADENCE non-uncertain : "jamais completee" (lastCompletedAt == null)
+        // - SANS_CADENCE uncertain : toujours visible (bypass du filtre),
+        //   car le type existe justement pour tracker des choses a refaire
+        //   sans cadence connue — les masquer apres une completion reviendrait
+        //   a les oublier.
         if (applyUiFilters && filters.filterTodo) {
-            tasksWithUrgency = tasksWithUrgency.filter {
-                it.state != TaskUrgencyCalculator.State.GREEN
+            tasksWithUrgency = tasksWithUrgency.filter { t ->
+                when {
+                    t.isUncertain -> true
+                    t.group == RecurrenceGroup.CADENCE ->
+                        t.state != TaskUrgencyCalculator.State.GREEN
+                    else -> t.lastCompletedAt == null
+                }
             }
         }
 
+        // Chip 🔁 (v0.20) — filtre tri-etat par groupe :
+        // - HIGH = Groupe CADENCE seul (taches a rythme regulier)
+        // - LOW  = Groupe SANS_CADENCE seul (ponctuelles + uncertain)
+        // - OFF  = tout (le tri final empile CADENCE puis SANS_CADENCE)
         if (applyUiFilters) {
             when (filters.filterRecurrence) {
-                FilterState.HIGH -> tasksWithUrgency = tasksWithUrgency.filter { it.task.recurrenceRule != null }
-                FilterState.LOW -> tasksWithUrgency = tasksWithUrgency.filter { it.task.recurrenceRule == null }
+                FilterState.HIGH -> tasksWithUrgency = tasksWithUrgency.filter { it.group == RecurrenceGroup.CADENCE }
+                FilterState.LOW -> tasksWithUrgency = tasksWithUrgency.filter { it.group == RecurrenceGroup.SANS_CADENCE }
                 FilterState.OFF -> {}
             }
         }
@@ -643,11 +690,28 @@ class TaskListViewModel @Inject constructor(
             }
         }
 
-        // Tri : etat le plus urgent en premier (RED > ORANGE > GREEN), tiebreak
-        // par days_until_due asc (les plus en retard / les plus proches d'abord).
-        tasksWithUrgency = tasksWithUrgency.sortedWith(
-            compareBy({ TaskUrgencyCalculator.urgencyOrder(it.state) }, { it.daysUntilDue })
-        )
+        // Tri v0.20 — empilement en trois blocs :
+        // 1. Groupe CADENCE trie par urgence (RED > ORANGE > GREEN puis
+        //    days_until_due asc : les plus en retard d'abord).
+        // 2. Groupe SANS_CADENCE jamais completees, tri createdAt DESC
+        //    (plus recemment creees d'abord).
+        // 3. Groupe SANS_CADENCE deja completees, tri completedAt DESC
+        //    (plus recemment faites d'abord).
+        // En mode chip HIGH seul le bloc 1 survit, en LOW les blocs 2+3.
+        // En OFF les trois s'empilent sans separateur visuel (decision UI).
+        val cadence = tasksWithUrgency
+            .filter { it.group == RecurrenceGroup.CADENCE }
+            .sortedWith(compareBy(
+                { TaskUrgencyCalculator.urgencyOrder(it.state) },
+                { it.daysUntilDue },
+            ))
+        val sansCadenceNeverDone = tasksWithUrgency
+            .filter { it.group == RecurrenceGroup.SANS_CADENCE && it.lastCompletedAt == null }
+            .sortedByDescending { it.task.createdAt }
+        val sansCadenceDone = tasksWithUrgency
+            .filter { it.group == RecurrenceGroup.SANS_CADENCE && it.lastCompletedAt != null }
+            .sortedByDescending { it.lastCompletedAt }
+        tasksWithUrgency = cadence + sansCadenceNeverDone + sansCadenceDone
 
         return FilteredResult(tasksWithUrgency, availableRooms, isAtHome, homeTasksHidden)
     }

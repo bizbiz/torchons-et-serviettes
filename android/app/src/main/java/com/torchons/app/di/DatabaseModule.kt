@@ -107,6 +107,15 @@ private val migration6to7 = object : Migration(6, 7) {
     }
 }
 
+private val migration7to8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // v0.20 : drapeau d'archivage, toggle par un job backend quotidien
+        // pour les taches ponctuelles completees depuis >7j. Defaut 0 : le
+        // prochain /sync propage la vraie valeur depuis change_log si besoin.
+        db.execSQL("ALTER TABLE tasks ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -119,7 +128,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7)
+            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8)
             .build()
     }
 

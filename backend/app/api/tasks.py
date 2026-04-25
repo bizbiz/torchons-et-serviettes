@@ -43,9 +43,11 @@ async def _task_to_response(session: AsyncSession, task: Task) -> dict:
         "room_id": task.room_id,
         "assigned_to_ids": assigned_ids,
         "recurrence_rule": task.recurrence_rule,
+        "inferred_interval_days": task.inferred_interval_days,
         "weight": task.weight,
         "tolerance": task.tolerance,
         "is_active": task.is_active,
+        "is_archived": task.is_archived,
         "sort_order": task.sort_order,
         "created_at": task.created_at,
         "updated_at": task.updated_at,
@@ -56,10 +58,15 @@ async def _task_to_response(session: AsyncSession, task: Task) -> dict:
 async def list_tasks(
     category_id: UUID | None = None,
     active_only: bool = True,
+    include_archived: bool = False,
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Liste des taches visibles par l'utilisateur courant, scopees par foyer."""
+    """Liste des taches visibles par l'utilisateur courant, scopees par foyer.
+
+    include_archived=false (defaut) masque les taches auto-archivees (ponctuelles
+    completees depuis plus de ARCHIVE_AFTER_DAYS jours).
+    """
     user_id = UUID(current["user_id"])
 
     # Sous-requete : taches assignees a l'utilisateur courant
@@ -74,6 +81,8 @@ async def list_tasks(
     )
     if active_only:
         q = q.where(Task.is_active.is_(True))
+    if not include_archived:
+        q = q.where(Task.is_archived.is_(False))
     if category_id:
         q = q.where(Task.category_id == category_id)
     q = q.order_by(Task.sort_order, Task.created_at)

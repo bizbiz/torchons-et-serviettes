@@ -79,6 +79,7 @@ class TaskResponse(BaseModel):
     weight: int
     tolerance: TaskTolerance
     is_active: bool
+    is_archived: bool = False
     sort_order: int
     created_at: datetime
     updated_at: datetime
