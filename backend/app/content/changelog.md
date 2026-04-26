@@ -1,5 +1,16 @@
 # Notes de version
 
+## v0.21.0 — 2026-04-26
+
+### Recurrence : choisir l'unite (jours, semaines, mois)
+- Sur le formulaire d'edition d'une tache, l'unite de saisie de la frequence se bascule entre Jours, Semaines et Mois via trois petits boutons. Pratique pour creer une tache mensuelle sans avoir a calculer "30 jours".
+- Le mini-dialog de vote sur la cadence et la popup de notation (post-completion) ont aussi ce switch d'unite : voter "tous les 3 mois" ne demande plus de calcul mental.
+- Quand on change d'unite, la valeur s'adapte intelligemment (92 j devient "3 mois", soit 90 j) — la conversion est explicite et le breakdown est affiche en clair.
+
+### Affichage humain des durees
+- Les durees longues sont affichees dans la forme la plus lisible : "3 mois 2 j" plutot que "92 jours", "1 sem. 3 j" plutot que "10 jours".
+- Visible partout ou la cadence apparait : ecran detail d'une tache, formulaire d'edition, popup de vote, popup de notation, votes des autres membres.
+
 ## v0.20.0 — 2026-04-25
 
 ### Auto-archivage des taches ponctuelles

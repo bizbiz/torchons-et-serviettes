@@ -66,6 +66,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.ui.common.FrequencyVoteDialog
 import com.torchons.app.ui.common.InfoTooltip
+import com.torchons.app.util.DurationFormat
+import com.torchons.app.util.DurationUnit
 
 /**
  * Ecran de creation ou edition d'une tache.
@@ -436,7 +438,7 @@ fun TaskEditScreen(
             var recurrenceExpanded by remember { mutableStateOf(false) }
             val recurrenceLabel = when (uiState.recurrenceType) {
                 "none" -> "Ponctuelle (pas de recurrence)"
-                "interval" -> "Tous les X jours"
+                "interval" -> "Recurrente (frequence fixe)"
                 "monthly_variable" -> "Variable par mois"
                 "uncertain" -> "Quand c'est necessaire"
                 else -> uiState.recurrenceType
@@ -468,7 +470,7 @@ fun TaskEditScreen(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Tous les X jours") },
+                        text = { Text("Recurrente (frequence fixe)") },
                         onClick = {
                             viewModel.updateRecurrenceType("interval")
                             recurrenceExpanded = false
@@ -495,21 +497,56 @@ fun TaskEditScreen(
             // frequence, le champ est grise et seul le mini-dialog "Modifier
             // via le vote" peut le modifier (decision Q1+Q5 du grilling :
             // every_n_days est pilote par les votes en mode interval).
+            // L'utilisateur peut basculer l'unite de saisie entre Jours,
+            // Semaines et Mois (1 sem = 7 j, 1 mois = 30 j) via le segmented
+            // button. Le breakdown smart sous le champ ("3 mois 2 j") aide
+            // a se reperer quand la valeur ne tombe pas pile sur l'unite.
             if (uiState.recurrenceType == "interval") {
                 val votes = uiState.frequencyVotes
                 val isVoteLocked = votes != null && votes.votesCount >= 1
+                val unit = uiState.recurrenceUnit
+                val canonicalDays = uiState.recurrenceFieldText.toIntOrNull()
+                    ?.let { unit.toDays(it) } ?: 7
+
+                // Toggle d'unite [Jours | Semaines | Mois]
+                val units = DurationUnit.values().toList()
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    units.forEachIndexed { idx, u ->
+                        SegmentedButton(
+                            selected = unit == u,
+                            onClick = { viewModel.updateRecurrenceUnit(u) },
+                            shape = SegmentedButtonDefaults.itemShape(idx, units.size),
+                            enabled = !isVoteLocked,
+                        ) { Text(u.label) }
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
-                    value = uiState.recurrenceEveryNDays,
-                    onValueChange = { viewModel.updateRecurrenceEveryNDays(it) },
-                    label = { Text("Tous les combien de jours ?") },
+                    value = uiState.recurrenceFieldText,
+                    onValueChange = { viewModel.updateRecurrenceFieldText(it) },
+                    label = { Text("Tous les combien de ${unit.label.lowercase()} ?") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     enabled = !isVoteLocked,
                 )
+                // Breakdown smart sous le champ — seulement si la valeur
+                // depasse l'unite (eviter "1 mois ≈ 1 mois").
+                if (canonicalDays >= 7) {
+                    val human = DurationFormat.formatDaysHuman(canonicalDays, long = true)
+                    Text(
+                        text = "≈ $human ($canonicalDays j)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
                 if (isVoteLocked) {
                     val s = if (votes!!.votesCount > 1) "s" else ""
+                    val consensusDays = votes.consensusEveryNDays ?: 0
+                    val consensusHuman = if (consensusDays > 0)
+                        DurationFormat.formatDaysHuman(consensusDays) else "?"
                     Text(
-                        text = "Consensus : ${votes.consensusEveryNDays ?: "?"} j (${votes.votesCount} vote$s)",
+                        text = "Consensus : $consensusHuman (${votes.votesCount} vote$s)",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 4.dp, top = 4.dp),

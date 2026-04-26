@@ -84,6 +84,7 @@ import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.common.randomCelebration
 import com.torchons.app.ui.user.UserProfileDialog
 import com.torchons.app.ui.user.UserProfileRequest
+import com.torchons.app.util.DurationFormat
 import com.torchons.app.util.TaskUrgencyCalculator
 import java.time.Instant
 import java.time.ZoneId
@@ -1114,7 +1115,7 @@ private fun formatDateTime(isoDateTime: String): String {
 /** Formate la regle de recurrence en texte lisible. */
 private fun formatRecurrence(rule: com.torchons.app.data.model.RecurrenceRule): String {
     return when (rule.type) {
-        "interval" -> "Tous les ${rule.everyNDays ?: "?"} jours"
+        "interval" -> rule.everyNDays?.let { "Tous les ${DurationFormat.formatDaysHuman(it, long = true)}" } ?: "Tous les ? jours"
         "weekdays" -> {
             val dayNames = listOf("Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim")
             val days = rule.days?.map { dayNames.getOrElse(it - 1) { "?" } }?.joinToString(", ")

@@ -13,6 +13,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -30,9 +33,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.torchons.app.data.model.PendingAffinity
+import com.torchons.app.util.DurationFormat
+import com.torchons.app.util.DurationUnit
 import com.torchons.app.util.TaskUrgencyCalculator
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import kotlin.math.roundToInt
 
 /**
  * Resultat de la popup rating : affinity, effort, et update de recurrence
@@ -92,6 +98,11 @@ fun RatingDialog(
         30f
     }
     var daysValue by remember(pending.taskId) { mutableFloatStateOf(currentDays.toFloat()) }
+    // Unite locale pour le slider de frequence — defaut sur l'unite la plus
+    // naturelle pour la valeur courante (1 mois ↔ 30 j, 1 sem ↔ 7 j).
+    var freqUnit by remember(pending.taskId) {
+        mutableStateOf(DurationUnit.bestFor(currentDays))
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -185,26 +196,44 @@ fun RatingDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // === Frequence ===
+                // Helper local pour snapper la valeur sur les multiples de
+                // l'unite courante (1 j / 7 j / 30 j) — partage entre les
+                // deux branches isAlreadyInterval / makeRecurring.
+                fun snapToUnit(raw: Float, lo: Float, hi: Float): Float {
+                    val r = raw.roundToInt()
+                    val s = if (freqUnit == DurationUnit.JOURS) r
+                    else freqUnit.toDays(freqUnit.fromDays(r))
+                    return s.coerceIn(lo.toInt(), hi.toInt()).toFloat()
+                }
                 if (isAlreadyInterval) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "Frequence : tous les ${daysValue.toInt()} jours",
+                            "Frequence : tous les ${DurationFormat.formatDaysHuman(daysValue.toInt(), long = true)}",
                             style = MaterialTheme.typography.labelLarge,
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         InfoTooltip(
                             title = "Frequence",
-                            description = "Ajuste la frequence de la tache. Tu peux modifier de 50% a 200% de la valeur actuelle ($currentDays jours).",
+                            description = "Ajuste la frequence de la tache. Tu peux modifier de 50% a 200% de la valeur actuelle (${DurationFormat.formatDaysHuman(currentDays, long = true)}).",
                         )
                     }
+                    UnitToggleRow(
+                        unit = freqUnit,
+                        onUnitChange = { u ->
+                            freqUnit = u
+                            daysValue = u.toDays(u.fromDays(daysValue.toInt()))
+                                .coerceIn(minDays.toInt(), maxDays.toInt()).toFloat()
+                        },
+                        sliderMaxDays = maxDays.toInt(),
+                    )
                     Slider(
                         value = daysValue,
-                        onValueChange = { daysValue = it },
+                        onValueChange = { daysValue = snapToUnit(it, minDays, maxDays) },
                         valueRange = minDays..maxDays,
                     )
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${minDays.toInt()}j", style = MaterialTheme.typography.labelSmall)
-                        Text("${maxDays.toInt()}j", style = MaterialTheme.typography.labelSmall)
+                        Text(DurationFormat.formatDaysHuman(minDays.toInt()), style = MaterialTheme.typography.labelSmall)
+                        Text(DurationFormat.formatDaysHuman(maxDays.toInt()), style = MaterialTheme.typography.labelSmall)
                     }
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -224,13 +253,22 @@ fun RatingDialog(
                     if (makeRecurring) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Tous les ${daysValue.toInt()} jours",
+                            "Tous les ${DurationFormat.formatDaysHuman(daysValue.toInt(), long = true)}",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
+                        UnitToggleRow(
+                            unit = freqUnit,
+                            onUnitChange = { u ->
+                                freqUnit = u
+                                daysValue = u.toDays(u.fromDays(daysValue.toInt()))
+                                    .coerceIn(1, 30).toFloat()
+                            },
+                            sliderMaxDays = 30,
+                        )
                         Slider(
                             value = daysValue,
-                            onValueChange = { daysValue = it },
+                            onValueChange = { daysValue = snapToUnit(it, 1f, 30f) },
                             valueRange = 1f..30f,
                             steps = 28,
                         )
@@ -260,6 +298,31 @@ fun RatingDialog(
             TextButton(onClick = onDismiss) { Text("Plus tard") }
         },
     )
+}
+
+/**
+ * Petite ligne de boutons segmentes Jours / Semaines / Mois — partagee
+ * entre RatingDialog et FrequencyVoteDialog. Un cran est desactive si
+ * le slider courant ne peut pas l'accommoder (sliderMaxDays < unit.days),
+ * ex: pas de "Mois" sur un slider qui plafonne a 14 j.
+ */
+@Composable
+private fun UnitToggleRow(
+    unit: DurationUnit,
+    onUnitChange: (DurationUnit) -> Unit,
+    sliderMaxDays: Int,
+) {
+    val units = DurationUnit.values().toList()
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        units.forEachIndexed { idx, u ->
+            SegmentedButton(
+                selected = unit == u,
+                onClick = { onUnitChange(u) },
+                shape = SegmentedButtonDefaults.itemShape(idx, units.size),
+                enabled = sliderMaxDays >= u.days,
+            ) { Text(u.label) }
+        }
+    }
 }
 
 private fun effortPointsToTime(points: Int): String {

@@ -12,6 +12,7 @@ import com.torchons.app.data.model.UpdateTaskRequest
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.util.DurationUnit
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,7 +41,15 @@ data class TaskEditUiState(
     val roomId: String? = null,
     val assignedToIds: List<String> = emptyList(),
     val recurrenceType: String = "none",
-    val recurrenceEveryNDays: String = "7",
+    /**
+     * Texte affiche dans le champ "Tous les X" — exprime la valeur dans
+     * l'unite [recurrenceUnit] courante (ex: "3" en MOIS = 90 jours).
+     * La conversion vers le canonique en jours se fait au save() via
+     * [recurrenceUnit].toDays(...).
+     */
+    val recurrenceFieldText: String = "7",
+    /** Unite de saisie pour le champ de recurrence (Jours / Semaines / Mois). */
+    val recurrenceUnit: DurationUnit = DurationUnit.JOURS,
     val daysPerMonth: Map<String, String> = (1..12).associate { it.toString() to "" },
     val weight: Int = 1,
     val tolerance: String = "NORMAL",
@@ -53,7 +62,7 @@ data class TaskEditUiState(
     /**
      * Etat des votes de frequence pour la tache en cours d'edition.
      * Non-null uniquement en mode edition + type interval. Si votesCount >= 1,
-     * le champ recurrenceEveryNDays est grise dans l'UI et seul le mini-dialog
+     * le champ recurrenceFieldText est grise dans l'UI et seul le mini-dialog
      * "Modifier via le vote" peut le faire bouger.
      */
     val frequencyVotes: FrequencyVotesState? = null,
@@ -148,6 +157,8 @@ class TaskEditViewModel @Inject constructor(
                     } else {
                         null
                     }
+                    val canonicalDays = task.recurrenceRule?.everyNDays ?: 7
+                    val unit = DurationUnit.bestFor(canonicalDays)
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isEditMode = true,
@@ -157,7 +168,8 @@ class TaskEditViewModel @Inject constructor(
                         roomId = task.roomId,
                         assignedToIds = task.assignedToIds,
                         recurrenceType = task.recurrenceRule?.type ?: "none",
-                        recurrenceEveryNDays = task.recurrenceRule?.everyNDays?.toString() ?: "7",
+                        recurrenceFieldText = unit.fromDays(canonicalDays).toString(),
+                        recurrenceUnit = unit,
                         daysPerMonth = dpm,
                         weight = task.weight,
                         tolerance = task.tolerance,
@@ -255,6 +267,8 @@ class TaskEditViewModel @Inject constructor(
         }
         val dpm = source.recurrenceRule?.daysPerMonth?.mapValues { it.value.toString() }
             ?: (1..12).associate { it.toString() to "" }
+        val canonicalDays = source.recurrenceRule?.everyNDays ?: 7
+        val unit = DurationUnit.bestFor(canonicalDays)
         _uiState.value = _uiState.value.copy(
             isLoading = false,
             isEditMode = false,
@@ -264,7 +278,8 @@ class TaskEditViewModel @Inject constructor(
             roomId = source.roomId,
             assignedToIds = source.assignedToIds,
             recurrenceType = source.recurrenceRule?.type ?: "none",
-            recurrenceEveryNDays = source.recurrenceRule?.everyNDays?.toString() ?: "7",
+            recurrenceFieldText = unit.fromDays(canonicalDays).toString(),
+            recurrenceUnit = unit,
             daysPerMonth = dpm,
             weight = source.weight,
             tolerance = source.tolerance,
@@ -308,8 +323,31 @@ class TaskEditViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(recurrenceType = value)
     }
 
-    fun updateRecurrenceEveryNDays(value: String) {
-        _uiState.value = _uiState.value.copy(recurrenceEveryNDays = value)
+    fun updateRecurrenceFieldText(value: String) {
+        _uiState.value = _uiState.value.copy(recurrenceFieldText = value)
+    }
+
+    /**
+     * Bascule l'unite de saisie (Jours / Semaines / Mois) en preservant la
+     * duree affichee. La duree canonique en jours est snappee sur la nouvelle
+     * unite (ex: 92 j en JOURS -> 3 mois en MOIS = 90 j) — c'est explicite et
+     * coherent avec l'affichage qui montrera "3 mois (90 j)".
+     */
+    fun updateRecurrenceUnit(unit: DurationUnit) {
+        val state = _uiState.value
+        val currentCanonical = state.recurrenceFieldText.toIntOrNull()
+            ?.let { state.recurrenceUnit.toDays(it) } ?: 7
+        val newDisplay = unit.fromDays(currentCanonical)
+        _uiState.value = state.copy(
+            recurrenceUnit = unit,
+            recurrenceFieldText = newDisplay.toString(),
+        )
+    }
+
+    /** Duree canonique en jours derivee de [recurrenceFieldText] et [recurrenceUnit]. */
+    private fun TaskEditUiState.canonicalEveryNDays(): Int {
+        val raw = recurrenceFieldText.toIntOrNull() ?: 7
+        return recurrenceUnit.toDays(raw)
     }
 
     fun updateDaysPerMonth(month: String, value: String) {
@@ -340,7 +378,7 @@ class TaskEditViewModel @Inject constructor(
             val recurrenceRule = when (state.recurrenceType) {
                 "interval" -> RecurrenceRule(
                     type = "interval",
-                    everyNDays = state.recurrenceEveryNDays.toIntOrNull() ?: 7
+                    everyNDays = state.canonicalEveryNDays()
                 )
                 "monthly_variable" -> {
                     val dpm = state.daysPerMonth
@@ -432,9 +470,9 @@ class TaskEditViewModel @Inject constructor(
      * Soumet un vote de frequence via PUT /tasks/{id}/frequency.
      * En cas de succes : refetch l'etat des votes pour mettre a jour le
      * consensus affiche sur la fiche (et griser l'affichage avec la nouvelle
-     * valeur). Le champ recurrenceEveryNDays local est aussi mis a jour pour
-     * que le save() final ne renvoie pas l'ancienne valeur au backend
-     * (sinon 409 FREQUENCY_VOTE_LOCKED).
+     * valeur). Le champ recurrenceFieldText local est aussi mis a jour
+     * (converti dans l'unite courante) pour que le save() final ne renvoie
+     * pas l'ancienne valeur au backend (sinon 409 FREQUENCY_VOTE_LOCKED).
      */
     fun submitFrequencyVote(taskId: String, everyNDays: Int) {
         viewModelScope.launch {
@@ -442,11 +480,13 @@ class TaskEditViewModel @Inject constructor(
             result.fold(
                 onSuccess = {
                     val refreshed = taskRepository.getFrequencyVotes(taskId)
+                    val state = _uiState.value
                     val newConsensus = refreshed?.consensusEveryNDays ?: everyNDays
-                    _uiState.value = _uiState.value.copy(
+                    val newFieldText = state.recurrenceUnit.fromDays(newConsensus).toString()
+                    _uiState.value = state.copy(
                         showFrequencyVoteDialog = false,
                         frequencyVotes = refreshed,
-                        recurrenceEveryNDays = newConsensus.toString(),
+                        recurrenceFieldText = newFieldText,
                     )
                 },
                 onFailure = { error ->
