@@ -86,7 +86,7 @@ data class TaskListUiState(
     val isAtHome: Boolean = true,
     val showAllTasks: Boolean = false,
     val homeTasksHidden: Int = 0,
-    val filterTodo: Boolean = true,
+    val filterTodo: FilterState = FilterState.HIGH,
     val filterAffinity: FilterState = FilterState.OFF,
     val filterEffort: FilterState = FilterState.OFF,
     val filterRecurrence: FilterState = FilterState.OFF,
@@ -114,13 +114,14 @@ data class TaskListUiState(
  * Etat des filtres en memoire. Stocke dans un Flow pour reactiver le
  * combine automatiquement a chaque changement de filtre.
  *
- * Note : filterTodo est ON par defaut. Au demarrage, on n'affiche que les
- * taches en etat ORANGE ou RED (du / en retard), ce qui reduit drastiquement
- * le nombre d'items rendu et donne un scroll fluide d'emblee. L'utilisateur
- * peut desactiver le filtre via la chip pour voir tout.
+ * Note : filterTodo est tri-state, defaut HIGH ("A faire"). Au demarrage,
+ * on n'affiche que les taches en etat ORANGE ou RED (du / en retard), ce
+ * qui reduit drastiquement le nombre d'items rendu et donne un scroll
+ * fluide d'emblee. LOW ("Pas a faire") est l'inverse pour explorer ce qui
+ * est deja a jour. OFF affiche tout.
  */
 private data class TaskListFilters(
-    val filterTodo: Boolean = true,
+    val filterTodo: FilterState = FilterState.HIGH,
     val filterAffinity: FilterState = FilterState.OFF,
     val filterEffort: FilterState = FilterState.OFF,
     val filterRecurrence: FilterState = FilterState.OFF,
@@ -403,7 +404,9 @@ class TaskListViewModel @Inject constructor(
     }
 
     fun toggleFilterTodo() {
-        filtersFlow.value = filtersFlow.value.copy(filterTodo = !filtersFlow.value.filterTodo)
+        filtersFlow.value = filtersFlow.value.copy(
+            filterTodo = nextFilterState(filtersFlow.value.filterTodo)
+        )
     }
 
     fun toggleFilterAffinity() {
@@ -627,21 +630,42 @@ class TaskListViewModel @Inject constructor(
             )
         }
 
-        // Filtre "a faire" (v0.20) : semantique adaptative selon le groupe.
-        // - Groupe CADENCE : etat != GREEN (inchange, cf modele due_date)
-        // - SANS_CADENCE non-uncertain : "jamais completee" (lastCompletedAt == null)
-        // - SANS_CADENCE uncertain : toujours visible (bypass du filtre),
-        //   car le type existe justement pour tracker des choses a refaire
-        //   sans cadence connue — les masquer apres une completion reviendrait
-        //   a les oublier.
-        if (applyUiFilters && filters.filterTodo) {
-            tasksWithUrgency = tasksWithUrgency.filter { t ->
-                when {
-                    t.isUncertain -> true
-                    t.group == RecurrenceGroup.CADENCE ->
-                        t.state != TaskUrgencyCalculator.State.GREEN
-                    else -> t.lastCompletedAt == null
+        // Filtre "a faire" (v0.20, tri-state v0.26) : semantique adaptative
+        // selon le groupe.
+        // HIGH = A faire :
+        //   - Groupe CADENCE : etat != GREEN
+        //   - SANS_CADENCE non-uncertain : "jamais completee"
+        //   - SANS_CADENCE uncertain : toujours visible (bypass) car le type
+        //     existe justement pour tracker des choses a refaire sans cadence
+        //     connue — les masquer apres une completion reviendrait a les oublier.
+        // LOW = Pas a faire (inverse strict du HIGH, uncertain exclu) :
+        //   - Groupe CADENCE : etat == GREEN
+        //   - SANS_CADENCE non-uncertain : "deja completee"
+        //   - SANS_CADENCE uncertain : exclues (elles ne sont jamais "faites")
+        // OFF = pas de filtre.
+        if (applyUiFilters) {
+            when (filters.filterTodo) {
+                FilterState.HIGH -> {
+                    tasksWithUrgency = tasksWithUrgency.filter { t ->
+                        when {
+                            t.isUncertain -> true
+                            t.group == RecurrenceGroup.CADENCE ->
+                                t.state != TaskUrgencyCalculator.State.GREEN
+                            else -> t.lastCompletedAt == null
+                        }
+                    }
                 }
+                FilterState.LOW -> {
+                    tasksWithUrgency = tasksWithUrgency.filter { t ->
+                        when {
+                            t.isUncertain -> false
+                            t.group == RecurrenceGroup.CADENCE ->
+                                t.state == TaskUrgencyCalculator.State.GREEN
+                            else -> t.lastCompletedAt != null
+                        }
+                    }
+                }
+                FilterState.OFF -> {}
             }
         }
 

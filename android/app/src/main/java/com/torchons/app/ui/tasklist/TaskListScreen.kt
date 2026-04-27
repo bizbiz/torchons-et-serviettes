@@ -1,6 +1,7 @@
 package com.torchons.app.ui.tasklist
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -294,90 +295,58 @@ fun TaskListScreen(
                     singleLine = true,
                 )
             } else {
-                // Chips de filtres avancés + label + loupe a droite — premiere
-                // rangee colle au top (juste sous la barre de sync).
+                // Chips de filtres avances en texte tri-state (v0.26 — UX
+                // pour ***REMOVED*** qui confondait les icones). Carrousel a defilement
+                // horizontal pour gagner de la place ; loupe fixee a droite.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FilterIconChip(
-                        icon = "🔥",
-                        active = uiState.filterTodo,
-                        color = Color(0xFFEF4444),
-                        onClick = { viewModel.toggleFilterTodo() }
-                    )
-                    FilterIconChip(
-                        icon = "❤",
-                        state = uiState.filterAffinity,
-                        onClick = { viewModel.toggleFilterAffinity() }
-                    )
-                    FilterIconChip(
-                        icon = "⏱",
-                        state = uiState.filterEffort,
-                        onClick = { viewModel.toggleFilterEffort() }
-                    )
-                    FilterIconChip(
-                        icon = "🔁",
-                        state = uiState.filterRecurrence,
-                        onClick = { viewModel.toggleFilterRecurrence() }
-                    )
-                    FilterIconChip(
-                        icon = "🏠",
-                        state = uiState.filterHome,
-                        onClick = { viewModel.toggleFilterHome() }
-                    )
-                    FilterIconChip(
-                        icon = "👤",
-                        state = uiState.filterAssignment,
-                        onClick = { viewModel.toggleFilterAssignment() }
-                    )
-
-                    // Label du filtre actif — prend la place restante pour
-                    // pousser la loupe tout a droite.
-                    val filterLabel = buildString {
-                        val parts = mutableListOf<String>()
-                        if (uiState.filterTodo) parts += "🔥 A faire"
-                        when (uiState.filterAffinity) {
-                            FilterState.HIGH -> parts += "❤ Aimees"
-                            FilterState.LOW -> parts += "❤ Detestees"
-                            else -> {}
-                        }
-                        when (uiState.filterEffort) {
-                            FilterState.HIGH -> parts += "⏱ Long"
-                            FilterState.LOW -> parts += "⏱ Court"
-                            else -> {}
-                        }
-                        when (uiState.filterRecurrence) {
-                            FilterState.HIGH -> parts += "🔁 Recurrentes"
-                            FilterState.LOW -> parts += "🔁 Ponctuelles"
-                            else -> {}
-                        }
-                        when (uiState.filterHome) {
-                            FilterState.HIGH -> parts += "🏠 Maison"
-                            FilterState.LOW -> parts += "🏠 Hors maison"
-                            else -> {}
-                        }
-                        when (uiState.filterAssignment) {
-                            FilterState.HIGH -> parts += "👤 Solo"
-                            FilterState.LOW -> parts += "👤 Groupe"
-                            else -> {}
-                        }
-                        append(parts.joinToString(" · "))
-                    }
-                    if (filterLabel.isNotEmpty()) {
-                        Text(
-                            text = filterLabel,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(start = 4.dp)
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        FilterTextChip(
+                            highLabel = "A faire",
+                            lowLabel = "Pas a faire",
+                            state = uiState.filterTodo,
+                            onClick = { viewModel.toggleFilterTodo() },
                         )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
+                        FilterTextChip(
+                            highLabel = "Aimees",
+                            lowLabel = "Detestees",
+                            state = uiState.filterAffinity,
+                            onClick = { viewModel.toggleFilterAffinity() },
+                        )
+                        FilterTextChip(
+                            highLabel = "Long",
+                            lowLabel = "Court",
+                            state = uiState.filterEffort,
+                            onClick = { viewModel.toggleFilterEffort() },
+                        )
+                        FilterTextChip(
+                            highLabel = "Recurrentes",
+                            lowLabel = "Ponctuelles",
+                            state = uiState.filterRecurrence,
+                            onClick = { viewModel.toggleFilterRecurrence() },
+                        )
+                        FilterTextChip(
+                            highLabel = "Maison",
+                            lowLabel = "Hors maison",
+                            state = uiState.filterHome,
+                            onClick = { viewModel.toggleFilterHome() },
+                        )
+                        FilterTextChip(
+                            highLabel = "Solo",
+                            lowLabel = "Groupe",
+                            state = uiState.filterAssignment,
+                            onClick = { viewModel.toggleFilterAssignment() },
+                        )
                     }
 
                     IconButton(onClick = { viewModel.openSearchBar() }) {
@@ -631,59 +600,58 @@ private data class TaskListCompletionDialogState(
     val assignedIds: Set<String>,
 )
 
-/** Chip icone pour filtre tri-state (off / high rouge / low vert). */
+/**
+ * Chip texte tri-state pour les filtres de la liste (v0.26).
+ *
+ * Cycle des etats au clic : OFF -> HIGH -> LOW -> OFF.
+ *  - OFF  : libelle HIGH, sans fond, juste un contour leger. Indique
+ *           ce que ferait un clic ("filtrer par X").
+ *  - HIGH : libelle HIGH, fond rouge plein. Filtre actif positif.
+ *  - LOW  : libelle LOW, fond vert plein. Filtre actif inverse.
+ *
+ * Le passage HIGH -> LOW change donc a la fois le fond ET le libelle,
+ * pour que l'utilisateur (testeur ***REMOVED***) lise directement ce qu'il
+ * filtre, sans a avoir a memoriser un code couleur d'icone.
+ */
 @Composable
-private fun FilterIconChip(
-    icon: String,
+private fun FilterTextChip(
+    highLabel: String,
+    lowLabel: String,
     state: FilterState,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
-    val bgColor = when (state) {
-        FilterState.OFF -> MaterialTheme.colorScheme.surfaceVariant
-        FilterState.HIGH -> Color(0xFFEF4444)
-        FilterState.LOW -> Color(0xFF10B981)
-    }
-    val textColor = if (state == FilterState.OFF) MaterialTheme.colorScheme.onSurfaceVariant else Color.White
-
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(bgColor)
-            .clickable(onClick = onClick)
-    ) {
-        Text(
-            text = icon,
-            modifier = Modifier.align(Alignment.Center),
-            color = textColor,
-            style = MaterialTheme.typography.titleMedium
+    val (bgColor, fgColor, showBorder) = when (state) {
+        FilterState.OFF -> Triple(
+            Color.Transparent,
+            MaterialTheme.colorScheme.onSurfaceVariant,
+            true,
         )
+        FilterState.HIGH -> Triple(Color(0xFFEF4444), Color.White, false)
+        FilterState.LOW -> Triple(Color(0xFF10B981), Color.White, false)
     }
-}
-
-/** Chip icone pour filtre simple on/off. */
-@Composable
-private fun FilterIconChip(
-    icon: String,
-    active: Boolean,
-    color: Color,
-    onClick: () -> Unit
-) {
-    val bgColor = if (active) color else MaterialTheme.colorScheme.surfaceVariant
-    val textColor = if (active) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+    val label = when (state) {
+        FilterState.LOW -> lowLabel
+        else -> highLabel  // HIGH et OFF affichent le libelle positif
+    }
+    val shape = RoundedCornerShape(20.dp)
+    val borderMod = if (showBorder)
+        Modifier.border(1.dp, MaterialTheme.colorScheme.outline, shape)
+    else Modifier
 
     Box(
         modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(shape)
             .background(bgColor)
+            .then(borderMod)
             .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
         Text(
-            text = icon,
-            modifier = Modifier.align(Alignment.Center),
-            color = textColor,
-            style = MaterialTheme.typography.titleMedium
+            text = label,
+            color = fgColor,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
         )
     }
 }

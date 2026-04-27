@@ -1,5 +1,12 @@
 # Notes de version
 
+## v0.26.0 — 2026-04-27
+
+### Filtres de la liste des taches en mots clairs
+- Les six filtres en haut de la liste (a faire / aimees / long / recurrentes / maison / solo) ne sont plus des icones mais des chips texte. Plus besoin de deviner ce que veut dire la flamme ou le coeur.
+- Trois etats au lieu de deux : un clic active le filtre positif (fond rouge, "A faire"), un deuxieme clic le bascule en filtre inverse (fond vert, "Pas a faire"), un troisieme clic l'enleve (juste le texte avec un contour).
+- Les chips defilent horizontalement quand il y en a trop pour la largeur de l'ecran.
+
 ## v0.25.1 — 2026-04-27
 
 ### Ajustements de la mini-courbe Retard sur l'Accueil
