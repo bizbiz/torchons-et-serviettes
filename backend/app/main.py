@@ -15,6 +15,7 @@ from sqlalchemy import text
 
 from app.database import engine
 from app.services.archiving import daily_archive_job
+from app.services.retard_history import daily_retard_job
 
 logger = structlog.get_logger()
 
@@ -40,8 +41,19 @@ async def lifespan(app: FastAPI):
         id="daily_archive",
         replace_existing=True,
     )
+    # Snapshot retard du foyer : 15 min apres l'archivage pour etaler la
+    # charge (cron sequentiel foyer par foyer cf. retard_history.py).
+    _scheduler.add_job(
+        daily_retard_job,
+        CronTrigger(hour=3, minute=15),
+        id="daily_retard_snapshot",
+        replace_existing=True,
+    )
     _scheduler.start()
-    logger.info("scheduler_started", job="daily_archive", trigger="03:00 UTC")
+    logger.info(
+        "scheduler_started",
+        jobs=["daily_archive@03:00 UTC", "daily_retard_snapshot@03:15 UTC"],
+    )
 
     yield
 

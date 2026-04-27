@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, func, select, case, extract
+from sqlalchemy import delete, func, or_, select, case, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
@@ -21,6 +21,7 @@ from app.services.presence import get_absent_dates
 from app.services.recurrence import min_completion_gap_seconds
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
+from app.utils.text import join_with_amp
 
 router = APIRouter(prefix="/api", tags=["stats"])
 
@@ -492,6 +493,293 @@ async def get_badges(
     return badges
 
 
+# --- Graphiques : course de points + frequence par jour de semaine ---
+
+class PointsTimelinePoint(BaseModel):
+    date: str
+    cumulative: int
+
+
+class PointsTimelineUser(BaseModel):
+    user_id: UUID
+    display_name: str
+    points: list[PointsTimelinePoint]
+
+
+class PointsTimelineResponse(BaseModel):
+    period: str   # week | month | all
+    bucket: str   # day | week
+    users: list[PointsTimelineUser]
+
+
+@router.get("/stats/points-timeline", response_model=PointsTimelineResponse)
+async def get_points_timeline(
+    period: str = "week",
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Course de points cumules par utilisateur sur la periode choisie.
+
+    - week  : 7 jours, granularite jour
+    - month : 30 jours, granularite jour
+    - all   : depuis la 1ere completion du foyer ; granularite semaine si la
+              fenetre depasse 90 jours, sinon jour.
+
+    Toutes les series partagent la meme grille temporelle (memes buckets) pour
+    superposer les courbes proprement cote client.
+    """
+    from app.models.user_foyer import UserFoyer
+
+    foyer_uuid = current_foyer_uuid(current)
+    today = datetime.now(timezone.utc).date()
+
+    # Determiner la fenetre + granularite
+    if period == "week":
+        start_date = today - timedelta(days=6)
+        bucket = "day"
+    elif period == "month":
+        start_date = today - timedelta(days=29)
+        bucket = "day"
+    else:  # all
+        first_result = await session.execute(
+            select(func.min(TaskCompletion.completed_at))
+            .join(Task, Task.id == TaskCompletion.task_id)
+            .where(
+                TaskCompletion.deleted_at.is_(None),
+                Task.foyer_id == foyer_uuid,
+            )
+        )
+        first_dt = first_result.scalar()
+        start_date = first_dt.date() if first_dt is not None else today
+        bucket = "week" if (today - start_date).days > 90 else "day"
+
+    # Users du foyer
+    users_result = await session.execute(
+        select(User)
+        .join(UserFoyer, UserFoyer.user_id == User.id)
+        .where(UserFoyer.foyer_id == foyer_uuid)
+        .order_by(User.username)
+    )
+    users = users_result.scalars().all()
+
+    # Completions du foyer dans la fenetre
+    start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
+    comps_result = await session.execute(
+        select(
+            TaskCompletion.completed_by,
+            TaskCompletion.completed_at,
+            TaskCompletion.points_earned,
+        )
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
+            TaskCompletion.deleted_at.is_(None),
+            TaskCompletion.completed_at >= start_dt,
+            Task.foyer_id == foyer_uuid,
+        )
+    )
+    rows = comps_result.all()
+
+    # Grille de buckets : journee ou semaine alignee sur le lundi
+    buckets: list[date] = []
+    if bucket == "day":
+        d = start_date
+        while d <= today:
+            buckets.append(d)
+            d += timedelta(days=1)
+    else:
+        d = start_date - timedelta(days=start_date.weekday())
+        end = today - timedelta(days=today.weekday())
+        while d <= end:
+            buckets.append(d)
+            d += timedelta(days=7)
+
+    # Assure au moins un bucket pour les courbes vides (foyer fraichement cree)
+    if not buckets:
+        buckets = [today]
+
+    # Index bucket -> position (pour O(1) lookup)
+    idx_of: dict[date, int] = {b: i for i, b in enumerate(buckets)}
+
+    # Cumul par user
+    user_results: list[PointsTimelineUser] = []
+    for user in users:
+        per_bucket = [0] * len(buckets)
+        for completed_by, completed_at, pts in rows:
+            if completed_by != user.id:
+                continue
+            comp_date = completed_at.date()
+            if bucket == "day":
+                pos = idx_of.get(comp_date)
+            else:
+                wk = comp_date - timedelta(days=comp_date.weekday())
+                pos = idx_of.get(wk)
+            if pos is not None:
+                per_bucket[pos] += int(pts)
+
+        cum = 0
+        points_list = []
+        for i, b in enumerate(buckets):
+            cum += per_bucket[i]
+            points_list.append(PointsTimelinePoint(
+                date=b.isoformat(),
+                cumulative=cum,
+            ))
+        user_results.append(PointsTimelineUser(
+            user_id=user.id,
+            display_name=user.display_name,
+            points=points_list,
+        ))
+
+    return PointsTimelineResponse(period=period, bucket=bucket, users=user_results)
+
+
+class WeekdayFrequencyUser(BaseModel):
+    user_id: UUID
+    display_name: str
+    counts: list[int]   # 7 entrees, lundi=0..dimanche=6
+    points: list[int]
+
+
+class WeekdayFrequencyResponse(BaseModel):
+    users: list[WeekdayFrequencyUser]
+
+
+@router.get("/stats/weekday-frequency", response_model=WeekdayFrequencyResponse)
+async def get_weekday_frequency(
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Frequence des taches faites par jour de semaine, par utilisateur.
+
+    Index 0=lundi..6=dimanche (postgres isodow renvoie 1..7 -> on remappe).
+    Compte tout l'historique (pas de filtre de periode pour l'instant).
+    """
+    from app.models.user_foyer import UserFoyer
+
+    foyer_uuid = current_foyer_uuid(current)
+
+    users_result = await session.execute(
+        select(User)
+        .join(UserFoyer, UserFoyer.user_id == User.id)
+        .where(UserFoyer.foyer_id == foyer_uuid)
+        .order_by(User.username)
+    )
+    users = users_result.scalars().all()
+
+    dow = func.extract("isodow", TaskCompletion.completed_at).label("dow")
+    result = await session.execute(
+        select(
+            TaskCompletion.completed_by,
+            dow,
+            func.count(TaskCompletion.id).label("cnt"),
+            func.coalesce(func.sum(TaskCompletion.points_earned), 0).label("pts"),
+        )
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
+            TaskCompletion.deleted_at.is_(None),
+            Task.foyer_id == foyer_uuid,
+        )
+        .group_by(TaskCompletion.completed_by, dow)
+    )
+    rows = result.all()
+
+    user_results: list[WeekdayFrequencyUser] = []
+    for user in users:
+        counts = [0] * 7
+        points = [0] * 7
+        for completed_by, day_of_week, cnt, pts in rows:
+            if completed_by != user.id:
+                continue
+            idx = int(day_of_week) - 1   # 1..7 -> 0..6
+            if 0 <= idx < 7:
+                counts[idx] = int(cnt)
+                points[idx] = int(pts)
+        user_results.append(WeekdayFrequencyUser(
+            user_id=user.id,
+            display_name=user.display_name,
+            counts=counts,
+            points=points,
+        ))
+
+    return WeekdayFrequencyResponse(users=user_results)
+
+
+# --- Retard historique du foyer ---
+
+class RetardTimelinePoint(BaseModel):
+    date: str
+    minutes: int
+    task_count: int
+
+
+class RetardTimelineResponse(BaseModel):
+    points: list[RetardTimelinePoint]
+
+
+@router.get("/stats/retard-timeline", response_model=RetardTimelineResponse)
+async def get_retard_timeline(
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Historique du retard du foyer (taches en commun uniquement).
+
+    Lit la table `foyer_retard_snapshots`. Si vide pour ce foyer (1ere
+    consultation, juste apres deploy), declenche un backfill in-line depuis
+    la 1ere creation de tache. Le job APScheduler 03h15 UTC garde la table
+    a jour ensuite.
+
+    Pas de parametre periode : on retourne tout l'historique disponible. La
+    granularite est journaliere ; le client decide d'echantillonner si la
+    serie est tres longue.
+    """
+    from app.models.foyer_retard_snapshot import FoyerRetardSnapshot
+    from app.services.retard_history import (
+        backfill_retard, has_snapshots,
+    )
+
+    foyer_uuid = current_foyer_uuid(current)
+
+    # Auto-backfill lazy si table vide pour ce foyer.
+    if not await has_snapshots(session, foyer_uuid):
+        await backfill_retard(session, foyer_uuid)
+        await session.commit()
+
+    rows = (await session.execute(
+        select(
+            FoyerRetardSnapshot.date,
+            FoyerRetardSnapshot.total_minutes,
+            FoyerRetardSnapshot.task_count,
+        )
+        .where(FoyerRetardSnapshot.foyer_id == foyer_uuid)
+        .order_by(FoyerRetardSnapshot.date.asc())
+    )).all()
+
+    # Triche assumee : on coupe la phase de creation initiale du backlog
+    # pour que la courbe affichee parte du sommet et descende, pas qu'elle
+    # monte. Heuristique : on cherche le 1er pic des minutes dans les 7
+    # premiers jours seulement, pour ne pas masquer un vrai pic de retard
+    # apparu plus tard (procrastination, vacances, etc.). Apres 7 jours,
+    # toute ascension est du backlog reel a montrer, pas de la creation.
+    INITIAL_CREATION_WINDOW_DAYS = 7
+    if len(rows) >= 2:
+        head = rows[: min(INITIAL_CREATION_WINDOW_DAYS, len(rows))]
+        max_minutes_head = max(r[1] for r in head)
+        peak_idx = next(i for i, r in enumerate(head) if r[1] == max_minutes_head)
+        # Garde-fou : si le pic-tete est le dernier point disponible, pas
+        # de trim (sinon courbe a 1 point => "Pas encore de donnees").
+        if peak_idx <= len(rows) - 2:
+            rows = rows[peak_idx:]
+
+    return RetardTimelineResponse(points=[
+        RetardTimelinePoint(
+            date=d.isoformat(),
+            minutes=int(m),
+            task_count=int(c),
+        )
+        for d, m, c in rows
+    ])
+
+
 # --- Historique audit ---
 
 @router.get("/completions/{completion_id}/history")
@@ -676,7 +964,10 @@ async def _build_history(
 
     events: list[dict] = []
 
-    # --- 1. Completions (avec recurrence pour dedup) ---
+    # --- 1. Completions (avec recurrence pour dedup, groupees par collectif) ---
+    # Note pagination : toutes les lignes d'un collectif partagent completed_at
+    # exactement (cree dans la meme transaction). Le cursor `before` < ne split
+    # donc jamais un collectif entre deux pages.
     if fetch_completions:
         comp_query = select(TaskCompletion, Task.title, Task.recurrence_rule).join(
             Task, Task.id == TaskCompletion.task_id
@@ -689,7 +980,21 @@ async def _build_history(
         if since is not None:
             comp_query = comp_query.where(TaskCompletion.completed_at >= since)
         if actor_id is not None:
-            comp_query = comp_query.where(TaskCompletion.completed_by == actor_id)
+            # Inclure les collectifs ou actor_id est UN des participants : on
+            # ramene toutes les lignes du collectif pour reconstruire la liste
+            # complete (sinon le grouping aurait une participation amputee).
+            comp_query = comp_query.where(
+                or_(
+                    TaskCompletion.completed_by == actor_id,
+                    TaskCompletion.collective_id.in_(
+                        select(TaskCompletion.collective_id).where(
+                            TaskCompletion.completed_by == actor_id,
+                            TaskCompletion.collective_id.is_not(None),
+                            TaskCompletion.deleted_at.is_(None),
+                        )
+                    ),
+                )
+            )
         if q_pattern is not None:
             comp_query = comp_query.where(Task.title.ilike(q_pattern))
         comp_query = comp_query.order_by(TaskCompletion.completed_at.desc()).limit(fetch_limit)
@@ -697,32 +1002,65 @@ async def _build_history(
     else:
         comp_rows = []
 
-    # Dedup : pour chaque (task_id, user_id), on ne garde la completion que si
-    # elle est separee de la precedente (plus recente deja vue) d'au moins la
-    # fenetre anti-doublon de cette tache.
-    seen_last: dict[tuple[UUID, UUID], datetime] = {}
-
+    # Grouping par collective_id (None = solo, cle unique par row).
+    comp_groups: dict[object, list[tuple[TaskCompletion, str, dict | None]]] = {}
+    group_order: list[object] = []
     for comp, title, rule in comp_rows:
-        key = (comp.task_id, comp.completed_by)
-        last_seen = seen_last.get(key)
+        key: object = comp.collective_id if comp.collective_id is not None else ("solo", comp.id)
+        if key not in comp_groups:
+            comp_groups[key] = []
+            group_order.append(key)
+        comp_groups[key].append((comp, title, rule))
+
+    # Dedup anti-doublon : key = (task_id, frozenset(participants)). Permet
+    # qu'un solo et un collectif sur la meme tache dans la meme fenetre ne
+    # se masquent pas mutuellement.
+    seen_last: dict[tuple[UUID, frozenset[UUID]], datetime] = {}
+
+    for key in group_order:
+        rows = comp_groups[key]
+        head, title, rule = rows[0]
+        participants = [r[0].completed_by for r in rows]
+        seen_key = (head.task_id, frozenset(participants))
+        last_seen = seen_last.get(seen_key)
         if last_seen is not None:
             gap = min_completion_gap_seconds(rule)
-            if (last_seen - comp.completed_at).total_seconds() < gap:
+            if (last_seen - head.completed_at).total_seconds() < gap:
                 # Doublon dans la fenetre : on skip.
                 continue
-        seen_last[key] = comp.completed_at
+        seen_last[seen_key] = head.completed_at
 
-        actor = _actor(comp.completed_by)
-        who = actor["name"] if actor else "?"
-        events.append({
-            "type": "completion",
-            "date": comp.completed_at,
-            "description": f"{who} a complete : {title} (+{comp.points_earned} pts)",
-            "user": who,
-            "actor": actor,
-            "task": {"id": str(comp.task_id), "title": title},
-            "meta": {"points": comp.points_earned},
-        })
+        is_collective = head.collective_id is not None and len(rows) >= 2
+        if not is_collective:
+            actor = _actor(head.completed_by)
+            who = actor["name"] if actor else "?"
+            events.append({
+                "type": "completion",
+                "date": head.completed_at,
+                "description": f"{who} a complete : {title} (+{head.points_earned} pts)",
+                "user": who,
+                "actor": actor,
+                "task": {"id": str(head.task_id), "title": title},
+                "meta": {"points": head.points_earned},
+            })
+        else:
+            participant_names = [user_names.get(uid, "?") for uid in participants]
+            joined = join_with_amp(participant_names)
+            pts = head.points_earned  # toutes les lignes partagent les memes points
+            events.append({
+                "type": "completion",
+                "date": head.completed_at,
+                "description": f"{joined} ont fait : {title} (+{pts} pts chacun)",
+                "user": joined,
+                "actor": _actor(head.completed_by),  # le recorder
+                "task": {"id": str(head.task_id), "title": title},
+                "meta": {
+                    "points": pts,
+                    "collective_id": str(head.collective_id),
+                    "participant_ids": [str(p) for p in participants],
+                    "participant_names": participant_names,
+                },
+            })
 
     # --- 2. Affinites (seulement celles qui ont reellement change : created_at != updated_at) ---
     if fetch_affinities:

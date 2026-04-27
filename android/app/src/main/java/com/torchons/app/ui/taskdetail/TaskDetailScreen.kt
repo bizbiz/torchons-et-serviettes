@@ -57,6 +57,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.style.TextAlign
@@ -69,6 +70,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -786,19 +789,28 @@ fun TaskDetailScreen(
                             )
                         }
                     } else {
+                        // Grouping par collective_id : un evenement collectif =
+                        // une seule carte. Solo : carte = 1 row comme avant.
+                        // Pas de `remember` ici (LazyListScope n'est pas
+                        // @Composable) — le groupBy sur une liste courte est
+                        // negligeable en cout.
+                        val groups = groupCompletions(uiState.completions)
                         items(
-                            items = uiState.completions,
-                            key = { it.id }
-                        ) { completion ->
+                            items = groups,
+                            key = { it.key }
+                        ) { group ->
                             CompletionCard(
-                                completion = completion,
-                                userName = uiState.userNames[completion.completedBy] ?: "?",
-                                onDelete = { viewModel.deleteCompletion(completion.id) },
-                                onEdit = { viewModel.showEditCompletion(completion) },
-                                onUserClick = {
-                                    val name = uiState.userNames[completion.completedBy] ?: "?"
+                                group = group,
+                                userNames = uiState.userNames,
+                                onDeleteOne = { viewModel.deleteCompletion(group.head.id) },
+                                onDeleteCollective = {
+                                    group.collectiveId?.let { viewModel.deleteCollective(it) }
+                                },
+                                onEdit = { viewModel.showEditCompletion(group.head) },
+                                onUserClick = { uid ->
+                                    val name = uiState.userNames[uid] ?: "?"
                                     userProfileRequest = UserProfileRequest(
-                                        userId = completion.completedBy,
+                                        userId = uid,
                                         userName = name
                                     )
                                 }
@@ -986,30 +998,92 @@ private fun frenchFieldName(key: String): String? = when (key) {
 }
 
 /**
- * Carte affichant une completion dans l'historique.
- * Long press pour supprimer.
+ * Groupe de completions partageant un collective_id (1 ligne dans l'UI = 1
+ * evenement). `head` est la premiere ligne triee chronologique desc — sert
+ * de reference pour la date, le score, les notes. `participantIds` enumere
+ * les participants dans l'ordre de saisie.
+ */
+data class CompletionGroup(
+    val key: String,
+    val collectiveId: String?,
+    val head: Completion,
+    val rows: List<Completion>,
+)
+
+/** Joint une liste de noms en francais : "A, B & C" — virgules + esperluette finale. */
+private fun joinWithAmp(names: List<String>): String = when {
+    names.isEmpty() -> ""
+    names.size == 1 -> names[0]
+    else -> names.dropLast(1).joinToString(", ") + " & " + names.last()
+}
+
+/**
+ * Regroupe une liste de Completion par collective_id. Les lignes solo gardent
+ * leur cle individuelle. Le head de chaque groupe = la row dont l'id est
+ * minimal lexicalement (deterministe ; toutes partagent le meme completed_at).
+ */
+private fun groupCompletions(completions: List<Completion>): List<CompletionGroup> {
+    val grouped = LinkedHashMap<String, MutableList<Completion>>()
+    for (c in completions) {
+        val key = c.collectiveId ?: "solo:${c.id}"
+        grouped.getOrPut(key) { mutableListOf() }.add(c)
+    }
+    return grouped.map { (key, rows) ->
+        val sorted = rows.sortedBy { it.id }
+        CompletionGroup(
+            key = key,
+            collectiveId = sorted.first().collectiveId,
+            head = sorted.first(),
+            rows = sorted,
+        )
+    }
+}
+
+/**
+ * Carte affichant une completion (ou un groupe collectif) dans l'historique.
+ * Solo : tap = edit, long-press = delete-one. Collectif : tap = edit head,
+ * long-press = delete-collective (toutes les lignes du collective_id).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CompletionCard(
-    completion: Completion,
-    userName: String = "?",
-    onDelete: () -> Unit,
+    group: CompletionGroup,
+    userNames: Map<String, String>,
+    onDeleteOne: () -> Unit,
+    onDeleteCollective: () -> Unit,
     onEdit: () -> Unit = {},
-    onUserClick: () -> Unit = {},
+    onUserClick: (String) -> Unit = {},
 ) {
+    val isCollective = group.collectiveId != null && group.rows.size >= 2
+    val head = group.head
+    val participantNames = group.rows.map { userNames[it.completedBy] ?: "?" }
+
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Supprimer cette completion ?") },
-            text = { Text("La completion du ${formatDateTime(completion.completedAt)} sera supprimee.") },
+            title = {
+                Text(
+                    if (isCollective) "Supprimer ce collectif ?"
+                    else "Supprimer cette completion ?"
+                )
+            },
+            text = {
+                if (isCollective) {
+                    Text(
+                        "Le collectif (${joinWithAmp(participantNames)}) du " +
+                                "${formatDateTime(head.completedAt)} sera entierement supprime."
+                    )
+                } else {
+                    Text("La completion du ${formatDateTime(head.completedAt)} sera supprimee.")
+                }
+            },
             confirmButton = {
                 Button(
                     onClick = {
                         showDeleteDialog = false
-                        onDelete()
+                        if (isCollective) onDeleteCollective() else onDeleteOne()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) { Text("Supprimer") }
@@ -1038,7 +1112,7 @@ private fun CompletionCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icone de validation
+            // Icone : check pour solo, groupe pour collectif.
             Box(
                 modifier = Modifier
                     .size(32.dp)
@@ -1047,7 +1121,7 @@ private fun CompletionCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Check,
+                    imageVector = if (isCollective) Icons.Default.Groups else Icons.Default.Check,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                     tint = TaskUrgencyCalculator.VERT
@@ -1057,37 +1131,79 @@ private fun CompletionCard(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                // Qui + date — le nom est cliquable vers le profil utilisateur.
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = userName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.clickable { onUserClick() }
-                    )
-                    Text(
-                        text = " — ${formatDateTime(completion.completedAt)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
+                // AnnotatedString unique : noms cliquables (couleur primaire +
+                // souligne) + date inline. Une seule ligne de texte → baseline
+                // coherente entre les noms et le reste, plus de decalage vertical.
+                val primaryColor = MaterialTheme.colorScheme.primary
+                val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+                val rowsForKey = group.rows
+                val annotated = remember(rowsForKey, userNames, head.completedAt, primaryColor, onSurfaceColor) {
+                    buildAnnotatedString {
+                        addStyle(SpanStyle(color = onSurfaceColor), 0, 0)
+                        if (isCollective) {
+                            rowsForKey.forEachIndexed { idx, row ->
+                                val name = userNames[row.completedBy] ?: "?"
+                                if (idx > 0) {
+                                    append(if (idx == rowsForKey.size - 1) " & " else ", ")
+                                }
+                                val start = length
+                                append(name)
+                                addStyle(
+                                    SpanStyle(
+                                        color = primaryColor,
+                                        fontWeight = FontWeight.SemiBold,
+                                        textDecoration = TextDecoration.Underline,
+                                    ),
+                                    start, length,
+                                )
+                                addStringAnnotation("user", row.completedBy, start, length)
+                            }
+                        } else {
+                            val name = userNames[head.completedBy] ?: "?"
+                            val start = length
+                            append(name)
+                            addStyle(
+                                SpanStyle(
+                                    color = primaryColor,
+                                    fontWeight = FontWeight.SemiBold,
+                                    textDecoration = TextDecoration.Underline,
+                                ),
+                                start, length,
+                            )
+                            addStringAnnotation("user", head.completedBy, start, length)
+                        }
+                        append(" — ${formatDateTime(head.completedAt)}")
+                    }
                 }
+                ClickableText(
+                    text = annotated,
+                    style = MaterialTheme.typography.bodyMedium.copy(color = onSurfaceColor),
+                    onClick = { offset ->
+                        val ann = annotated.getStringAnnotations(
+                            tag = "user", start = offset, end = offset
+                        ).firstOrNull()
+                        if (ann != null) {
+                            onUserClick(ann.item)
+                        } else {
+                            onEdit()
+                        }
+                    },
+                )
 
-                // Notes si presentes
-                if (!completion.notes.isNullOrBlank()) {
+                if (!head.notes.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = completion.notes,
+                        text = head.notes,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // Points gagnes
+            // Points gagnes : "+X pt" solo / "+X pt chacun" collectif.
             Text(
-                text = "+${completion.pointsEarned} pt",
+                text = if (isCollective) "+${head.pointsEarned} pt chacun"
+                else "+${head.pointsEarned} pt",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold

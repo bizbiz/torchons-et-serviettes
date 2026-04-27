@@ -294,6 +294,30 @@ class TaskDetailViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Supprime un evenement collectif entier (toutes les lignes du collective_id).
+     * Appelle la route serveur dediee qui soft-delete en transaction unique.
+     */
+    fun deleteCollective(collectiveId: String) {
+        viewModelScope.launch {
+            try {
+                val resp = apiService.deleteCollectiveCompletion(taskId, collectiveId)
+                if (!resp.isSuccessful) {
+                    _uiState.value = _uiState.value.copy(
+                        error = "Erreur ${resp.code()} lors de la suppression du collectif"
+                    )
+                    return@launch
+                }
+                taskRepository.refreshCompletions(taskId = taskId)
+                _uiState.value = _uiState.value.copy(completionMessage = "Collectif supprime")
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = e.message ?: "Erreur lors de la suppression du collectif"
+                )
+            }
+        }
+    }
+
     fun showEditCompletion(completion: Completion) {
         _uiState.value = _uiState.value.copy(editingCompletion = completion)
     }

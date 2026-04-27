@@ -36,3 +36,46 @@ data class BadgeInfo(
     @SerializedName("earned_at") val earnedAt: String? = null,
     @SerializedName("earned") val earned: Boolean = false
 )
+
+// --- Graphiques ---
+
+/** Un point de la courbe de cumul (date ISO + total cumule a cette date). */
+data class PointsTimelinePoint(
+    @SerializedName("date") val date: String,
+    @SerializedName("cumulative") val cumulative: Int = 0,
+)
+
+data class PointsTimelineUser(
+    @SerializedName("user_id") val userId: String,
+    @SerializedName("display_name") val displayName: String,
+    @SerializedName("points") val points: List<PointsTimelinePoint> = emptyList(),
+)
+
+data class PointsTimelineResponse(
+    @SerializedName("period") val period: String,        // week | month | all
+    @SerializedName("bucket") val bucket: String,        // day | week
+    @SerializedName("users") val users: List<PointsTimelineUser> = emptyList(),
+)
+
+/** Frequence par jour de semaine (index 0=lundi..6=dimanche). */
+data class WeekdayFrequencyUser(
+    @SerializedName("user_id") val userId: String,
+    @SerializedName("display_name") val displayName: String,
+    @SerializedName("counts") val counts: List<Int> = emptyList(),
+    @SerializedName("points") val points: List<Int> = emptyList(),
+)
+
+data class WeekdayFrequencyResponse(
+    @SerializedName("users") val users: List<WeekdayFrequencyUser> = emptyList(),
+)
+
+/** Snapshot quotidien du retard du foyer (taches en commun uniquement). */
+data class RetardTimelinePoint(
+    @SerializedName("date") val date: String,
+    @SerializedName("minutes") val minutes: Int = 0,
+    @SerializedName("task_count") val taskCount: Int = 0,
+)
+
+data class RetardTimelineResponse(
+    @SerializedName("points") val points: List<RetardTimelinePoint> = emptyList(),
+)

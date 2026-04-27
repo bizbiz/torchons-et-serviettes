@@ -1,5 +1,22 @@
 # Notes de version
 
+## v0.22.0 — 2026-04-27
+
+### Notifications affinees pour les completions
+- Trois reglages independants remplacent l'ancien "Taches completees" : "Quand quelqu'un fait une tache seul", "Quand on fait une tache ensemble (avec moi)", et "Quand une tache est faite a plusieurs sans moi" (visible uniquement a 3+ membres dans le foyer).
+- Les notifs collectives sont personnalisees : "Quentin a fait la vaisselle avec toi", "Quentin, ***REMOVED*** & toi avez fait …", ou "Quentin & ***REMOVED*** ont fait …" selon que tu participes ou non.
+
+### Historique des taches repense pour les collectifs
+- Un evenement "fait ensemble" apparait comme une seule carte avec tous les participants ("A, B & C") au lieu d'une ligne par personne.
+- Icone groupe distincte des completions solo, et chaque nom est cliquable vers le profil du participant.
+- Long-press sur un collectif supprime tout l'evenement d'un coup.
+
+### Onglet Statistiques repense
+- Streaks remontees en premier dans Resume.
+- Nouvelle carte "Statistiques" avec cinq graphiques que l'on swipe : retard du foyer dans le temps, course de points cumules sur 7 jours, 30 jours, depuis toujours, et frequence des taches faites par jour de semaine.
+- Le graphique "Retard" (en 1ere position) montre l'evolution du retard du foyer depuis le debut, sur les taches en commun uniquement (les taches assignees a une seule personne sont exclues). Toggle Minutes / Taches pour basculer l'unite. Le delta vs debut s'affiche en vert quand le retard a baisse.
+- Classement (Semaine / Mois / Total) fusionne dans Resume — l'onglet "Classement" disparait.
+
 ## v0.21.0 — 2026-04-26
 
 ### Recurrence : choisir l'unite (jours, semaines, mois)

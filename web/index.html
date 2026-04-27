@@ -182,8 +182,16 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; h
           <label class="switch"><input type="checkbox" id="s-notif-urgent" onchange="saveSetting('notif_urgent',this.checked)"><span class="slider"></span></label>
         </div>
         <div class="setting-row">
-          <div><div class="setting-label">Taches completees</div><div class="setting-desc">Notification quand l'autre complete une tache</div></div>
-          <label class="switch"><input type="checkbox" id="s-notif-completed" onchange="saveSetting('notif_completed',this.checked)"><span class="slider"></span></label>
+          <div><div class="setting-label">Quand quelqu'un fait une tache seul</div><div class="setting-desc">Notification quand l'autre fait une tache solo</div></div>
+          <label class="switch"><input type="checkbox" id="s-notif-solo" onchange="saveSetting('notif_solo',this.checked)"><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">Quand on fait une tache ensemble (avec moi)</div><div class="setting-desc">Notification quand quelqu'un enregistre un collectif qui t'inclut</div></div>
+          <label class="switch"><input type="checkbox" id="s-notif-collective-with-me" onchange="saveSetting('notif_collective_with_me',this.checked)"><span class="slider"></span></label>
+        </div>
+        <div class="setting-row" id="row-notif-collective-without-me" style="display:none">
+          <div><div class="setting-label">Quand une tache est faite a plusieurs sans moi</div><div class="setting-desc">Notification quand un collectif te laisse de cote</div></div>
+          <label class="switch"><input type="checkbox" id="s-notif-collective-without-me" onchange="saveSetting('notif_collective_without_me',this.checked)"><span class="slider"></span></label>
         </div>
       </div>
 
@@ -600,7 +608,12 @@ async function loadSettings() {
   if (settings) {
     document.getElementById('s-notif-daily').checked = settings.notif_daily;
     document.getElementById('s-notif-urgent').checked = settings.notif_urgent;
-    document.getElementById('s-notif-completed').checked = settings.notif_completed;
+    document.getElementById('s-notif-solo').checked = settings.notif_solo || false;
+    document.getElementById('s-notif-collective-with-me').checked = settings.notif_collective_with_me || false;
+    document.getElementById('s-notif-collective-without-me').checked = settings.notif_collective_without_me || false;
+    // Cache la ligne "without me" si le foyer n'a que 2 membres.
+    document.getElementById('row-notif-collective-without-me').style.display =
+      (settings.foyer_member_count || 2) > 2 ? '' : 'none';
     document.getElementById('s-notif-hour').value = settings.notif_hour;
     document.getElementById('s-notif-hour-label').textContent = settings.notif_hour + 'h00';
     document.getElementById('s-affinity-popup').checked = settings.affinity_popup_enabled;

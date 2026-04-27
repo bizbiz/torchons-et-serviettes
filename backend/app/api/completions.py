@@ -239,9 +239,15 @@ async def complete_task(
     await session.commit()
     await session.refresh(completion)
 
-    # Envoyer notification push aux autres utilisateurs assignes
-    from app.services.push import send_task_completed_notification
-    await send_task_completed_notification(session, current["user_id"], str(task_id), task.title)
+    # Envoyer notification push (bucket "solo" — un seul participant).
+    from app.services.push import send_completion_event
+    await send_completion_event(
+        session,
+        completer_id=UUID(current["user_id"]),
+        participant_ids=[UUID(current["user_id"])],
+        task_title=task.title,
+        foyer_id=current_foyer_uuid(current),
+    )
 
     # Trigger analyse bump (fire-and-forget)
     try:
@@ -399,10 +405,14 @@ async def complete_task_collective(
     for comp in created:
         await session.refresh(comp)
 
-    # 10. Notification push (une seule pour l'evenement collectif).
-    from app.services.push import send_task_completed_notification
-    await send_task_completed_notification(
-        session, current["user_id"], str(task_id), task.title
+    # 10. Notification push (bucket "with_me" / "without_me" selon destinataire).
+    from app.services.push import send_completion_event
+    await send_completion_event(
+        session,
+        completer_id=UUID(current["user_id"]),
+        participant_ids=list(participants),
+        task_title=task.title,
+        foyer_id=foyer_uuid,
     )
 
     # 11. Trigger analyse bump (fire-and-forget)
@@ -448,6 +458,56 @@ async def undo_completion(
     )
     await session.commit()
     return {"ok": True}
+
+
+@router.delete(
+    "/api/tasks/{task_id}/completions/collective/{collective_id}"
+)
+async def undo_collective_completion(
+    task_id: UUID,
+    collective_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Annule un evenement collectif entier (soft delete des N lignes).
+
+    Le grouping cote UI traite un collectif comme un seul evenement ; sa
+    suppression doit donc etre atomique. Une entree change_log par row pour
+    que la sync offline rapatrie la suppression complete.
+    """
+    foyer_uuid = current_foyer_uuid(current)
+    result = await session.execute(
+        select(TaskCompletion)
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
+            TaskCompletion.collective_id == collective_id,
+            TaskCompletion.task_id == task_id,
+            TaskCompletion.deleted_at.is_(None),
+            Task.foyer_id == foyer_uuid,
+        )
+    )
+    rows = list(result.scalars().all())
+    if not rows:
+        raise HTTPException(status_code=404, detail="Collectif introuvable")
+
+    now = datetime.now(timezone.utc)
+    for comp in rows:
+        comp.deleted_at = now
+        await record_change(
+            session, "task_completions", comp.id, "DELETE", current["user_id"],
+            foyer_id=current["foyer_id"],
+        )
+
+    # Recalcul de inferred_interval_days vu qu'on retire des points d'ancrage.
+    task_result = await session.execute(
+        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
+    )
+    task = task_result.scalar_one_or_none()
+    if task is not None:
+        await _recompute_inferred_interval(session, task, foyer_uuid)
+
+    await session.commit()
+    return {"ok": True, "deleted": len(rows)}
 
 
 @router.get("/api/completions", response_model=list[CompletionResponse])

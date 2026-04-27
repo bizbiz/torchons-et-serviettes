@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
@@ -22,18 +22,26 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 class SettingsResponse(BaseModel):
     notif_daily: bool
     notif_urgent: bool
-    notif_completed: bool
+    # Trois flags orthogonaux pour les completions (remplacent notif_completed).
+    notif_solo: bool
+    notif_collective_with_me: bool
+    notif_collective_without_me: bool
     notif_hour: int
     affinity_popup_enabled: bool
     affinity_expiry_months: int
     fair_share_tolerance_percent: int
     home_ssids: list[str]
+    # Nb de membres du foyer actif : permet a l'app de cacher le toggle
+    # "without_me" quand <= 2 (l'option n'a pas de sens a deux).
+    foyer_member_count: int
 
 
 class SettingsUpdate(BaseModel):
     notif_daily: bool | None = None
     notif_urgent: bool | None = None
-    notif_completed: bool | None = None
+    notif_solo: bool | None = None
+    notif_collective_with_me: bool | None = None
+    notif_collective_without_me: bool | None = None
     notif_hour: int | None = Field(default=None, ge=0, le=23)
     affinity_popup_enabled: bool | None = None
     affinity_expiry_months: int | None = Field(default=None, ge=1, le=24)
@@ -63,6 +71,14 @@ def _ssids_to_list(raw: str | None) -> list[str]:
     return [s for s in raw.split("|") if s]
 
 
+async def _count_foyer_members(session: AsyncSession, foyer_id: UUID) -> int:
+    """Nombre de membres actifs du foyer (utilise pour gater l'UI without_me)."""
+    result = await session.execute(
+        select(func.count(UserFoyer.user_id)).where(UserFoyer.foyer_id == foyer_id)
+    )
+    return int(result.scalar_one() or 0)
+
+
 @router.get("", response_model=SettingsResponse)
 async def get_settings(
     session: AsyncSession = Depends(get_session),
@@ -86,16 +102,20 @@ async def get_settings(
 
     # Home SSIDs : per-foyer depuis v0.7.2. On lit la row user_foyers.
     uf = await _load_or_create_user_foyer(session, user_id, foyer_uuid)
+    member_count = await _count_foyer_members(session, foyer_uuid)
 
     return SettingsResponse(
         notif_daily=settings.notif_daily,
         notif_urgent=settings.notif_urgent,
-        notif_completed=settings.notif_completed,
+        notif_solo=settings.notif_solo,
+        notif_collective_with_me=settings.notif_collective_with_me,
+        notif_collective_without_me=settings.notif_collective_without_me,
         notif_hour=settings.notif_hour,
         affinity_popup_enabled=settings.affinity_popup_enabled,
         affinity_expiry_months=settings.affinity_expiry_months,
         fair_share_tolerance_percent=settings.fair_share_tolerance_percent,
         home_ssids=_ssids_to_list(uf.home_ssids),
+        foyer_member_count=member_count,
     )
 
 
@@ -141,14 +161,18 @@ async def update_settings(
 
     # Re-read home_ssids depuis user_foyers pour la reponse
     uf = await _load_or_create_user_foyer(session, user_id, foyer_uuid)
+    member_count = await _count_foyer_members(session, foyer_uuid)
 
     return SettingsResponse(
         notif_daily=settings.notif_daily,
         notif_urgent=settings.notif_urgent,
-        notif_completed=settings.notif_completed,
+        notif_solo=settings.notif_solo,
+        notif_collective_with_me=settings.notif_collective_with_me,
+        notif_collective_without_me=settings.notif_collective_without_me,
         notif_hour=settings.notif_hour,
         affinity_popup_enabled=settings.affinity_popup_enabled,
         affinity_expiry_months=settings.affinity_expiry_months,
         fair_share_tolerance_percent=settings.fair_share_tolerance_percent,
         home_ssids=_ssids_to_list(uf.home_ssids),
+        foyer_member_count=member_count,
     )

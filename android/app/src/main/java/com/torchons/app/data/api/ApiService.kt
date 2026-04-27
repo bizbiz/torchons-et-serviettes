@@ -137,6 +137,13 @@ interface ApiService {
         @Path("completionId") completionId: String
     ): Response<Map<String, Any>>
 
+    /** Supprimer un collectif entier : toutes les lignes partageant collective_id. */
+    @DELETE("tasks/{taskId}/completions/collective/{collectiveId}")
+    suspend fun deleteCollectiveCompletion(
+        @Path("taskId") taskId: String,
+        @Path("collectiveId") collectiveId: String
+    ): Response<Map<String, Any>>
+
     // --- Categories ---
 
     /** Liste de toutes les categories. */
@@ -351,6 +358,20 @@ interface ApiService {
     /** Badges. */
     @GET("badges")
     suspend fun getBadges(): Response<List<BadgeInfo>>
+
+    /** Course de points cumules (par user, sur la periode demandee). */
+    @GET("stats/points-timeline")
+    suspend fun getPointsTimeline(
+        @Query("period") period: String = "week",
+    ): Response<com.torchons.app.data.model.PointsTimelineResponse>
+
+    /** Frequence des taches par jour de semaine, par user. */
+    @GET("stats/weekday-frequency")
+    suspend fun getWeekdayFrequency(): Response<com.torchons.app.data.model.WeekdayFrequencyResponse>
+
+    /** Historique journalier du retard du foyer (taches en commun). */
+    @GET("stats/retard-timeline")
+    suspend fun getRetardTimeline(): Response<com.torchons.app.data.model.RetardTimelineResponse>
 
     // --- Settings ---
 

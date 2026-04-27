@@ -35,10 +35,13 @@ class TokenManager @Inject constructor(
         private val DISPLAY_NAME_KEY = stringPreferencesKey("display_name")
         // Foyer actif (multi-tenant v0.7.0)
         private val FOYER_ID_KEY = stringPreferencesKey("foyer_id")
-        // Reglages notifications
+        // Reglages notifications. Note v0.22+ : `notif_completed` retire au
+        // profit de trois flags backend (notif_solo / notif_collective_with_me /
+        // notif_collective_without_me). Le filtrage se fait cote serveur, donc
+        // ces flags ne sont pas dupliques en local — quand un push arrive ici,
+        // c'est qu'il a deja passe le filtre.
         private val NOTIF_DAILY_KEY = booleanPreferencesKey("notif_daily")
         private val NOTIF_URGENT_KEY = booleanPreferencesKey("notif_urgent")
-        private val NOTIF_COMPLETED_KEY = booleanPreferencesKey("notif_completed")
         private val NOTIF_HOUR_KEY = intPreferencesKey("notif_hour")
         // Reglages affinite
         private val AFFINITY_POPUP_KEY = booleanPreferencesKey("affinity_popup_enabled")
@@ -85,18 +88,11 @@ class TokenManager @Inject constructor(
 
     val notifDailyFlow: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_DAILY_KEY] ?: true }
     val notifUrgentFlow: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_URGENT_KEY] ?: true }
-    val notifCompletedFlow: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_COMPLETED_KEY] ?: false }
     val notifHourFlow: Flow<Int> = context.dataStore.data.map { it[NOTIF_HOUR_KEY] ?: 9 }
     val affinityPopupFlow: Flow<Boolean> = context.dataStore.data.map { it[AFFINITY_POPUP_KEY] ?: true }
 
     suspend fun setNotifDaily(enabled: Boolean) { context.dataStore.edit { it[NOTIF_DAILY_KEY] = enabled } }
     suspend fun setNotifUrgent(enabled: Boolean) { context.dataStore.edit { it[NOTIF_URGENT_KEY] = enabled } }
-    suspend fun setNotifCompleted(enabled: Boolean) {
-        context.dataStore.edit { it[NOTIF_COMPLETED_KEY] = enabled }
-        // Aussi dans SharedPreferences pour le FCM Service (pas acces au DataStore)
-        context.getSharedPreferences("fcm", Context.MODE_PRIVATE)
-            .edit().putBoolean("notif_completed", enabled).apply()
-    }
     suspend fun setNotifHour(hour: Int) { context.dataStore.edit { it[NOTIF_HOUR_KEY] = hour } }
     suspend fun setAffinityPopup(enabled: Boolean) { context.dataStore.edit { it[AFFINITY_POPUP_KEY] = enabled } }
 

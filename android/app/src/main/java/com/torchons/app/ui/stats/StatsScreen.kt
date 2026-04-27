@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.AnimatedVisibility
@@ -51,10 +53,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -67,11 +71,14 @@ import androidx.compose.material.icons.filled.Favorite
 import com.torchons.app.data.model.BadgeInfo
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.LeaderboardEntry
+import com.torchons.app.data.model.PointsTimelineResponse
+import com.torchons.app.data.model.RetardTimelineResponse
 import com.torchons.app.data.model.StreakInfo
-import com.torchons.app.data.model.UserStats
+import com.torchons.app.data.model.WeekdayFrequencyResponse
 import com.torchons.app.ui.user.UserProfileDialog
 import com.torchons.app.ui.user.UserProfileRequest
 import com.torchons.app.util.TaskUrgencyCalculator
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,7 +87,7 @@ fun StatsScreen(
     viewModel: StatsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val tabs = listOf("Resume", "Classement", "Badges", "Historique")
+    val tabs = listOf("Resume", "Badges", "Historique")
 
     // Etat pour l'ouverture du modal profil utilisateur.
     var userProfileRequest by remember { mutableStateOf<UserProfileRequest?>(null) }
@@ -119,19 +126,21 @@ fun StatsScreen(
 
             when (uiState.selectedTab) {
                 0 -> ResumeTab(
-                    uiState.stats,
-                    uiState.streaks,
-                    uiState.fairShare,
-                    currentUserId,
-                    onUserClick,
+                    streaks = uiState.streaks,
+                    leaderboardWeek = uiState.leaderboardWeek,
+                    leaderboardMonth = uiState.leaderboardMonth,
+                    leaderboardAll = uiState.leaderboardAll,
+                    retardTimeline = uiState.retardTimeline,
+                    pointsWeek = uiState.pointsWeek,
+                    pointsMonth = uiState.pointsMonth,
+                    pointsAll = uiState.pointsAll,
+                    weekdayFrequency = uiState.weekdayFrequency,
+                    fairShare = uiState.fairShare,
+                    currentUserId = currentUserId,
+                    onUserClick = onUserClick,
                 )
-                1 -> LeaderboardTab(
-                    week = uiState.leaderboardWeek,
-                    month = uiState.leaderboardMonth,
-                    onUserClick = onUserClick
-                )
-                2 -> BadgesTab(uiState.badges)
-                3 -> HistoryTab(
+                1 -> BadgesTab(uiState.badges)
+                2 -> HistoryTab(
                     history = uiState.history,
                     filters = uiState.historyFilters,
                     isHistoryLoading = uiState.isHistoryLoading,
@@ -163,8 +172,15 @@ fun StatsScreen(
 
 @Composable
 private fun ResumeTab(
-    stats: List<UserStats>,
     streaks: List<StreakInfo>,
+    leaderboardWeek: List<LeaderboardEntry>,
+    leaderboardMonth: List<LeaderboardEntry>,
+    leaderboardAll: List<LeaderboardEntry>,
+    retardTimeline: RetardTimelineResponse?,
+    pointsWeek: PointsTimelineResponse?,
+    pointsMonth: PointsTimelineResponse?,
+    pointsAll: PointsTimelineResponse?,
+    weekdayFrequency: WeekdayFrequencyResponse?,
     fairShare: List<FairShareStatus>,
     currentUserId: String?,
     onUserClick: (UserProfileRequest) -> Unit,
@@ -210,40 +226,9 @@ private fun ResumeTab(
             }
         }
 
-        // Stats par user
-        items(stats) { userStat ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = userStat.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.clickable {
-                            onUserClick(UserProfileRequest(userStat.userId, userStat.displayName))
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Barres de stats
-                    StatRow("Semaine", userStat.pointsWeek, userStat.tasksWeek)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    StatRow("Mois", userStat.pointsMonth, userStat.tasksMonth)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    StatRow("Total", userStat.pointsTotal, userStat.tasksTotal)
-                }
-            }
-        }
-
-        // Streaks
+        // 1) Streaks en premier — bloc identique a l'ancien (titre + carte par user).
         if (streaks.isNotEmpty()) {
             item {
-                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Streaks",
                     style = MaterialTheme.typography.titleMedium,
@@ -305,69 +290,208 @@ private fun ResumeTab(
             }
         }
 
-        item { Spacer(modifier = Modifier.height(16.dp)) }
-    }
-}
+        // 2) Carte graphiques — pager 5 vues (Retard foyer + 3 courses de points + frequence).
+        item {
+            Spacer(modifier = Modifier.height(4.dp))
+            ChartsCard(
+                retardTimeline = retardTimeline,
+                pointsWeek = pointsWeek,
+                pointsMonth = pointsMonth,
+                pointsAll = pointsAll,
+                weekdayFrequency = weekdayFrequency,
+            )
+        }
 
-@Composable
-private fun StatRow(label: String, points: Int, tasks: Int) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(70.dp)
-        )
-        Text(
-            text = "${points}pts",
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.width(60.dp)
-        )
-        Text(
-            text = "$tasks taches",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun LeaderboardTab(
-    week: List<LeaderboardEntry>,
-    month: List<LeaderboardEntry>,
-    onUserClick: (UserProfileRequest) -> Unit,
-) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+        // 3) Classement combine — Semaine / Mois / Total avec ligne "Total" en plus.
+        item {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Classement",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
         item {
             Text(
                 text = "Cette semaine",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        items(week) { entry -> LeaderboardRow(entry, onUserClick) }
+        items(leaderboardWeek) { entry -> LeaderboardRow(entry, onUserClick) }
 
         item {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Ce mois-ci",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        items(month) { entry -> LeaderboardRow(entry, onUserClick) }
+        items(leaderboardMonth) { entry -> LeaderboardRow(entry, onUserClick) }
+
+        item {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Total",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        items(leaderboardAll) { entry -> LeaderboardRow(entry, onUserClick) }
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+/**
+ * Carte "Statistiques" : un selecteur d'onglets en haut + un HorizontalPager
+ * (4 vues) couplé. L'utilisateur peut swiper ou cliquer sur un onglet.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChartsCard(
+    retardTimeline: RetardTimelineResponse?,
+    pointsWeek: PointsTimelineResponse?,
+    pointsMonth: PointsTimelineResponse?,
+    pointsAll: PointsTimelineResponse?,
+    weekdayFrequency: WeekdayFrequencyResponse?,
+) {
+    // Retard foyer en 1ere position : c'est la metrique commune au foyer
+    // (vs les courses de points qui sont per-user).
+    val titles = listOf("Retard", "Semaine", "Mois", "Toujours", "Par jour")
+    val pagerState = rememberPagerState(pageCount = { titles.size })
+    val scope = rememberCoroutineScope()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(modifier = Modifier.padding(vertical = 12.dp)) {
+            Text(
+                text = "Statistiques",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            Text(
+                text = "Glisse pour voir les autres graphiques",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+            )
+
+            // Selecteur d'onglets cliquable, synchronise avec le pager.
+            TabRow(
+                selectedTabIndex = pagerState.currentPage,
+                modifier = Modifier.padding(top = 6.dp),
+            ) {
+                titles.forEachIndexed { i, title ->
+                    Tab(
+                        selected = pagerState.currentPage == i,
+                        onClick = { scope.launch { pagerState.animateScrollToPage(i) } },
+                        text = {
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                            )
+                        }
+                    )
+                }
+            }
+
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            ) { page ->
+                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    when (page) {
+                        0 -> RetardContent(
+                            title = "Retard du foyer (taches en commun)",
+                            data = retardTimeline,
+                        )
+                        1 -> ChartContent(
+                            title = "Course de points · 7 jours",
+                            data = pointsWeek,
+                        )
+                        2 -> ChartContent(
+                            title = "Course de points · 30 jours",
+                            data = pointsMonth,
+                        )
+                        3 -> ChartContent(
+                            title = "Course de points · depuis toujours",
+                            data = pointsAll,
+                        )
+                        4 -> WeekdayContent(
+                            title = "Taches par jour de semaine",
+                            data = weekdayFrequency,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RetardContent(title: String, data: RetardTimelineResponse?) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    if (data == null) {
+        Box(
+            modifier = Modifier.fillMaxWidth().height(200.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+        }
+    } else {
+        RetardTimelineChart(data = data)
+    }
+}
+
+@Composable
+private fun ChartContent(title: String, data: PointsTimelineResponse?) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    if (data == null) {
+        Box(
+            modifier = Modifier.fillMaxWidth().height(200.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+        }
+    } else {
+        PointsTimelineChart(data = data)
+    }
+}
+
+@Composable
+private fun WeekdayContent(title: String, data: WeekdayFrequencyResponse?) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    if (data == null) {
+        Box(
+            modifier = Modifier.fillMaxWidth().height(200.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+        }
+    } else {
+        WeekdayFrequencyChart(data = data)
     }
 }
 
@@ -701,6 +825,19 @@ private fun HistoryTab(
             val task = event["task"] as? Map<*, *>
             val taskId = task?.get("id") as? String
             val taskTitle = task?.get("title") as? String
+            val meta = event["meta"] as? Map<*, *>
+            // Pour un collectif, meta porte la liste complete (ids + noms)
+            // pour rendre chaque participant cliquable. Sinon on retombe
+            // sur le seul actor (cas solo et autres types d'evenements).
+            val participantIds = (meta?.get("participant_ids") as? List<*>)?.mapNotNull { it as? String }
+            val participantNames = (meta?.get("participant_names") as? List<*>)?.mapNotNull { it as? String }
+            val clickables: List<Pair<String, String>> = when {
+                participantIds != null && participantNames != null
+                    && participantIds.size == participantNames.size ->
+                    participantIds.zip(participantNames)
+                actorId != null && actorName != null -> listOf(actorId to actorName)
+                else -> emptyList()
+            }
 
             val icon = when (type) {
                 "completion" -> "✅"
@@ -730,6 +867,39 @@ private fun HistoryTab(
                 Modifier.fillMaxWidth()
             }
 
+            // Construction d'un AnnotatedString unique pour la description :
+            // chaque participant est rendu cliquable (souligne + couleur primaire)
+            // dans un seul Text → baseline coherente, plus de decalage vertical.
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+            val descAnnotated = remember(desc, clickables, primaryColor, onSurfaceColor) {
+                buildAnnotatedString {
+                    append(desc)
+                    addStyle(SpanStyle(color = onSurfaceColor), 0, desc.length)
+                    // Reperer chaque nom dans l'ordre, sans chevauchement.
+                    var cursor = 0
+                    for ((uid, name) in clickables) {
+                        val idx = desc.indexOf(name, startIndex = cursor)
+                        if (idx >= 0) {
+                            addStyle(
+                                SpanStyle(
+                                    color = primaryColor,
+                                    fontWeight = FontWeight.SemiBold,
+                                    textDecoration = TextDecoration.Underline,
+                                ),
+                                idx, idx + name.length,
+                            )
+                            addStringAnnotation(
+                                tag = "user",
+                                annotation = uid,
+                                start = idx, end = idx + name.length,
+                            )
+                            cursor = idx + name.length
+                        }
+                    }
+                }
+            }
+
             Card(
                 modifier = cardModifier,
                 shape = RoundedCornerShape(8.dp),
@@ -738,29 +908,24 @@ private fun HistoryTab(
                 Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
                     Text(icon, modifier = Modifier.width(28.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        // Ligne 1 : nom cliquable + reste de la description.
-                        // Si on a un actor avec id/name, on rend son nom cliquable ;
-                        // sinon on affiche la description brute.
-                        if (actorId != null && actorName != null && desc.startsWith(actorName)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = actorName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    textDecoration = TextDecoration.Underline,
-                                    modifier = Modifier.clickable {
-                                        onUserClick(UserProfileRequest(actorId, actorName))
-                                    }
-                                )
-                                Text(
-                                    text = desc.removePrefix(actorName),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        } else {
-                            Text(desc, style = MaterialTheme.typography.bodyMedium)
-                        }
+                        ClickableText(
+                            text = descAnnotated,
+                            style = MaterialTheme.typography.bodyMedium.copy(color = onSurfaceColor),
+                            onClick = { offset ->
+                                val ann = descAnnotated.getStringAnnotations(
+                                    tag = "user", start = offset, end = offset
+                                ).firstOrNull()
+                                if (ann != null) {
+                                    val name = descAnnotated.text
+                                        .substring(ann.start, ann.end)
+                                    onUserClick(UserProfileRequest(ann.item, name))
+                                } else if (taskId != null) {
+                                    // Fallback : si on tape ailleurs sur la ligne,
+                                    // on ouvre la tache (comme la card cliquable).
+                                    onTaskClick(taskId)
+                                }
+                            },
+                        )
                         Text(
                             formattedDate,
                             style = MaterialTheme.typography.bodySmall,

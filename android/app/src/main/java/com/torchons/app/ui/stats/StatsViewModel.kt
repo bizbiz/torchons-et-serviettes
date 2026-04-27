@@ -7,8 +7,11 @@ import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.BadgeInfo
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.LeaderboardEntry
+import com.torchons.app.data.model.PointsTimelineResponse
+import com.torchons.app.data.model.RetardTimelineResponse
 import com.torchons.app.data.model.StreakInfo
 import com.torchons.app.data.model.UserStats
+import com.torchons.app.data.model.WeekdayFrequencyResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -42,12 +45,19 @@ data class StatsUiState(
     val stats: List<UserStats> = emptyList(),
     val leaderboardWeek: List<LeaderboardEntry> = emptyList(),
     val leaderboardMonth: List<LeaderboardEntry> = emptyList(),
+    val leaderboardAll: List<LeaderboardEntry> = emptyList(),
     val streaks: List<StreakInfo> = emptyList(),
     val badges: List<BadgeInfo> = emptyList(),
     val history: List<Map<String, Any>> = emptyList(),
     val historyFilters: HistoryFilters = HistoryFilters(),
     val isHistoryLoading: Boolean = false,
     val fairShare: List<FairShareStatus> = emptyList(),
+    // Donnees graphiques (chargees en parallele du reste).
+    val pointsWeek: PointsTimelineResponse? = null,
+    val pointsMonth: PointsTimelineResponse? = null,
+    val pointsAll: PointsTimelineResponse? = null,
+    val weekdayFrequency: WeekdayFrequencyResponse? = null,
+    val retardTimeline: RetardTimelineResponse? = null,
     val selectedTab: Int = 0,
     val error: String? = null
 )
@@ -78,10 +88,16 @@ class StatsViewModel @Inject constructor(
                 val statsResp = apiService.getStats()
                 val weekResp = apiService.getLeaderboard("week")
                 val monthResp = apiService.getLeaderboard("month")
+                val allResp = apiService.getLeaderboard("all")
                 val streaksResp = apiService.getStreaks()
                 val badgesResp = apiService.getBadges()
                 val historyResp = apiService.getHistory()
                 val fairShareResp = apiService.getFairShareStatus()
+                val ptsWeekResp = apiService.getPointsTimeline("week")
+                val ptsMonthResp = apiService.getPointsTimeline("month")
+                val ptsAllResp = apiService.getPointsTimeline("all")
+                val weekdayResp = apiService.getWeekdayFrequency()
+                val retardResp = apiService.getRetardTimeline()
 
                 _uiState.value = StatsUiState(
                     isLoading = false,
@@ -89,10 +105,16 @@ class StatsViewModel @Inject constructor(
                     stats = if (statsResp.isSuccessful) statsResp.body() ?: emptyList() else emptyList(),
                     leaderboardWeek = if (weekResp.isSuccessful) weekResp.body() ?: emptyList() else emptyList(),
                     leaderboardMonth = if (monthResp.isSuccessful) monthResp.body() ?: emptyList() else emptyList(),
+                    leaderboardAll = if (allResp.isSuccessful) allResp.body() ?: emptyList() else emptyList(),
                     streaks = if (streaksResp.isSuccessful) streaksResp.body() ?: emptyList() else emptyList(),
                     badges = if (badgesResp.isSuccessful) badgesResp.body() ?: emptyList() else emptyList(),
                     history = if (historyResp.isSuccessful) historyResp.body() ?: emptyList() else emptyList(),
                     fairShare = if (fairShareResp.isSuccessful) fairShareResp.body() ?: emptyList() else emptyList(),
+                    pointsWeek = if (ptsWeekResp.isSuccessful) ptsWeekResp.body() else null,
+                    pointsMonth = if (ptsMonthResp.isSuccessful) ptsMonthResp.body() else null,
+                    pointsAll = if (ptsAllResp.isSuccessful) ptsAllResp.body() else null,
+                    weekdayFrequency = if (weekdayResp.isSuccessful) weekdayResp.body() else null,
+                    retardTimeline = if (retardResp.isSuccessful) retardResp.body() else null,
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)

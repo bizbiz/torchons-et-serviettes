@@ -22,6 +22,7 @@ from app.models.foyer_bonus_config import FoyerBonusConfig
 from app.models.user_prompt import UserPrompt
 from app.models.presence_day import PresenceDay
 from app.models.suggestion_dismissal import SuggestionDismissal
+from app.models.foyer_retard_snapshot import FoyerRetardSnapshot
 
 __all__ = [
     "Base", "User", "Foyer", "UserFoyer", "Category", "Room", "Task",
@@ -32,4 +33,5 @@ __all__ = [
     "FoyerBonusConfig",
     "UserPrompt", "PresenceDay",
     "SuggestionDismissal",
+    "FoyerRetardSnapshot",
 ]

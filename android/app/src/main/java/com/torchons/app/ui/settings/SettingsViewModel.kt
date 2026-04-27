@@ -24,12 +24,18 @@ import javax.inject.Inject
 data class UserSettingsState(
     val notifDaily: Boolean = true,
     val notifUrgent: Boolean = true,
-    val notifCompleted: Boolean = false,
+    // Trois flags pour les completions, par defaut opt-in (false).
+    val notifSolo: Boolean = false,
+    val notifCollectiveWithMe: Boolean = false,
+    val notifCollectiveWithoutMe: Boolean = false,
     val notifHour: Int = 9,
     val affinityPopup: Boolean = true,
     val affinityExpiry: Int = 6,
     val fairShareTolerance: Int = 30,
     val homeSsids: List<String> = emptyList(),
+    // Nb de membres du foyer actif : utilise pour cacher le toggle
+    // "without_me" quand <= 2.
+    val foyerMemberCount: Int = 2,
     val isLoaded: Boolean = false
 )
 
@@ -88,12 +94,15 @@ class SettingsViewModel @Inject constructor(
                     _settings.value = UserSettingsState(
                         notifDaily = data["notif_daily"] as? Boolean ?: true,
                         notifUrgent = data["notif_urgent"] as? Boolean ?: true,
-                        notifCompleted = data["notif_completed"] as? Boolean ?: false,
+                        notifSolo = data["notif_solo"] as? Boolean ?: false,
+                        notifCollectiveWithMe = data["notif_collective_with_me"] as? Boolean ?: false,
+                        notifCollectiveWithoutMe = data["notif_collective_without_me"] as? Boolean ?: false,
                         notifHour = (data["notif_hour"] as? Double)?.toInt() ?: 9,
                         affinityPopup = data["affinity_popup_enabled"] as? Boolean ?: true,
                         affinityExpiry = (data["affinity_expiry_months"] as? Double)?.toInt() ?: 6,
                         fairShareTolerance = (data["fair_share_tolerance_percent"] as? Double)?.toInt() ?: 30,
                         homeSsids = (data["home_ssids"] as? List<*>)?.map { it.toString() } ?: emptyList(),
+                        foyerMemberCount = (data["foyer_member_count"] as? Double)?.toInt() ?: 2,
                         isLoaded = true,
                     )
                     // Sync tous les reglages vers TokenManager local
@@ -153,7 +162,6 @@ class SettingsViewModel @Inject constructor(
     private suspend fun syncToTokenManager(s: UserSettingsState) {
         tokenManager.setNotifDaily(s.notifDaily)
         tokenManager.setNotifUrgent(s.notifUrgent)
-        tokenManager.setNotifCompleted(s.notifCompleted)
         tokenManager.setNotifHour(s.notifHour)
         tokenManager.setAffinityPopup(s.affinityPopup)
         tokenManager.setAffinityExpiry(s.affinityExpiry)
@@ -167,7 +175,9 @@ class SettingsViewModel @Inject constructor(
         rescheduleDailyNotif()
     }
     fun setNotifUrgent(v: Boolean) { _settings.value = _settings.value.copy(notifUrgent = v); updateSetting("notif_urgent", v) }
-    fun setNotifCompleted(v: Boolean) { _settings.value = _settings.value.copy(notifCompleted = v); updateSetting("notif_completed", v) }
+    fun setNotifSolo(v: Boolean) { _settings.value = _settings.value.copy(notifSolo = v); updateSetting("notif_solo", v) }
+    fun setNotifCollectiveWithMe(v: Boolean) { _settings.value = _settings.value.copy(notifCollectiveWithMe = v); updateSetting("notif_collective_with_me", v) }
+    fun setNotifCollectiveWithoutMe(v: Boolean) { _settings.value = _settings.value.copy(notifCollectiveWithoutMe = v); updateSetting("notif_collective_without_me", v) }
     fun setNotifHour(v: Int) {
         _settings.value = _settings.value.copy(notifHour = v)
         updateSetting("notif_hour", v)

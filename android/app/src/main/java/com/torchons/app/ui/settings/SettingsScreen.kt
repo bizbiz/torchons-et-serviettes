@@ -78,7 +78,10 @@ fun SettingsScreen(
     val s by viewModel.settings.collectAsState()
     val notifDaily = s.notifDaily
     val notifUrgent = s.notifUrgent
-    val notifCompleted = s.notifCompleted
+    val notifSolo = s.notifSolo
+    val notifCollectiveWithMe = s.notifCollectiveWithMe
+    val notifCollectiveWithoutMe = s.notifCollectiveWithoutMe
+    val foyerMemberCount = s.foyerMemberCount
     val notifHour = s.notifHour
     val affinityPopup = s.affinityPopup
     val affinityExpiry = s.affinityExpiry
@@ -466,13 +469,35 @@ fun SettingsScreen(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-                // Taches completees
+                // Trois flags orthogonaux pour les completions (v0.22) : on
+                // ne gere plus un seul "notif_completed", l'utilisateur choisit
+                // par categorie.
                 SettingSwitch(
-                    title = "Taches completees",
-                    subtitle = "Notification quand l'autre complete une tache",
-                    checked = notifCompleted,
-                    onCheckedChange = { viewModel.setNotifCompleted(it) }
+                    title = "Quand quelqu'un fait une tache seul",
+                    subtitle = "Notification quand l'autre fait une tache solo",
+                    checked = notifSolo,
+                    onCheckedChange = { viewModel.setNotifSolo(it) }
                 )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                SettingSwitch(
+                    title = "Quand on fait une tache ensemble (avec moi)",
+                    subtitle = "Notification quand quelqu'un enregistre un collectif qui t'inclut",
+                    checked = notifCollectiveWithMe,
+                    onCheckedChange = { viewModel.setNotifCollectiveWithMe(it) }
+                )
+
+                if (foyerMemberCount > 2) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                    SettingSwitch(
+                        title = "Quand une tache est faite a plusieurs sans moi",
+                        subtitle = "Notification quand un collectif te laisse de cote",
+                        checked = notifCollectiveWithoutMe,
+                        onCheckedChange = { viewModel.setNotifCollectiveWithoutMe(it) }
+                    )
+                }
             }
         }
 

@@ -65,11 +65,9 @@ class TorchonsMessagingService : FirebaseMessagingService() {
             return
         }
 
-        // Verifier si l'utilisateur veut recevoir les notifs de taches completees
-        val prefs = getSharedPreferences("fcm", Context.MODE_PRIVATE)
-        val notifCompleted = prefs.getBoolean("notif_completed", false)
-        if (!notifCompleted) return
-
+        // v0.22+ : le filtrage par categorie (solo / collective_with_me /
+        // collective_without_me) est entierement cote backend. Si un push
+        // arrive jusqu'ici, c'est qu'il a deja passe le filtre serveur.
         val title = message.notification?.title ?: message.data["title"] ?: "Torchons & Serviettes"
         val body = message.notification?.body ?: message.data["body"] ?: return
 

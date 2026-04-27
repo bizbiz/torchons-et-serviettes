@@ -21,7 +21,17 @@ class UserSettings(Base):
     # Notifications
     notif_daily: Mapped[bool] = mapped_column(Boolean, default=True)
     notif_urgent: Mapped[bool] = mapped_column(Boolean, default=True)
-    notif_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Trois flags orthogonaux pour les completions (remplacent notif_completed) :
+    # solo = quelqu'un d'autre fait une tache seul
+    # collective_with_me = collectif qui inclut ce user (et qu'il n'a pas enregistre lui-meme)
+    # collective_without_me = collectif qui ne l'inclut pas (utile a partir de 3 membres)
+    notif_solo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    notif_collective_with_me: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    notif_collective_without_me: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
     notif_hour: Mapped[int] = mapped_column(Integer, default=9)
     # Affinite
     affinity_popup_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
