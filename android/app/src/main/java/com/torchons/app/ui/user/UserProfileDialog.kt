@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.model.LeaderboardEntry
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -84,6 +86,10 @@ fun UserProfileDialog(
 
     var loading by remember { mutableStateOf(true) }
     var history by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+    // Leaderboards foyer (semaine + total) pour la section "Stats du couple".
+    // Pas bloquant : la dialog s'affiche meme si ces fetch echouent.
+    var leaderboardWeek by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
+    var leaderboardAll by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(request.userId) {
@@ -98,6 +104,15 @@ fun UserProfileDialog(
             } else {
                 error = "Erreur ${resp.code()}"
             }
+            // Fetchs paralleles pour les leaderboards (best-effort).
+            try {
+                val w = withContext(Dispatchers.IO) { apiService.getLeaderboard("week") }
+                if (w.isSuccessful) leaderboardWeek = w.body() ?: emptyList()
+            } catch (_: Exception) { /* silencieux */ }
+            try {
+                val a = withContext(Dispatchers.IO) { apiService.getLeaderboard("all") }
+                if (a.isSuccessful) leaderboardAll = a.body() ?: emptyList()
+            } catch (_: Exception) { /* silencieux */ }
         } catch (e: Exception) {
             error = e.message ?: "Erreur reseau"
         } finally {
@@ -155,6 +170,34 @@ fun UserProfileDialog(
                     StatPill(label = "Points", value = "+$totalPoints")
                 }
 
+                // Section "Stats du couple" : repartition Quentin vs ***REMOVED***
+                // sur la semaine et sur tout le temps. Affichee uniquement si
+                // au moins un des leaderboards a ete charge avec >= 2 entrees.
+                if (leaderboardWeek.size >= 2 || leaderboardAll.size >= 2) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "Stats du foyer",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    if (leaderboardWeek.size >= 2) {
+                        FoyerSplitBar(
+                            label = "Cette semaine",
+                            entries = leaderboardWeek,
+                            highlightedUserId = request.userId,
+                        )
+                    }
+                    if (leaderboardAll.size >= 2) {
+                        Spacer(Modifier.height(8.dp))
+                        FoyerSplitBar(
+                            label = "Au total",
+                            entries = leaderboardAll,
+                            highlightedUserId = request.userId,
+                        )
+                    }
+                }
+
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = "Historique recent",
@@ -206,6 +249,84 @@ fun UserProfileDialog(
             }
         }
     )
+}
+
+/** Palette stable couleurs user — alignee avec les charts de Stats. */
+private val FoyerPalette = listOf(
+    Color(0xFF6366F1),  // Indigo
+    Color(0xFFEC4899),  // Rose
+    Color(0xFF10B981),  // Vert
+    Color(0xFFF59E0B),  // Jaune
+)
+
+/**
+ * Barre horizontale segmentee : 1 segment par user, largeur ∝ points. Sous
+ * la barre, une legende compacte "Nom XX% (N pts)". Le user du profil
+ * courant est mis en gras pour le reperage immediat.
+ */
+@Composable
+private fun FoyerSplitBar(
+    label: String,
+    entries: List<LeaderboardEntry>,
+    highlightedUserId: String,
+) {
+    // On ordonne stable (par display_name) plutot que par rang pour eviter
+    // que la barre change de couleurs entre semaine/total.
+    val ordered = entries.sortedBy { it.displayName }
+    val total = ordered.sumOf { it.points }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+        if (total <= 0) {
+            Text(
+                text = "0 point",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            return
+        }
+        // Barre segmentee : un Row qui distribue les segments par poids.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(12.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            ordered.forEachIndexed { i, e ->
+                if (e.points > 0) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .weight(e.points.toFloat())
+                            .background(FoyerPalette[i % FoyerPalette.size]),
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        // Legende : noms + % + pts bruts. Mise en gras du user courant.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            ordered.forEachIndexed { i, e ->
+                val pct = (e.points * 100.0 / total).toInt()
+                val isMe = e.userId == highlightedUserId
+                Text(
+                    text = "${e.displayName} $pct% (${e.points} pts)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = FoyerPalette[i % FoyerPalette.size],
+                    fontWeight = if (isMe) FontWeight.Bold else FontWeight.Normal,
+                )
+            }
+        }
+    }
 }
 
 @Composable

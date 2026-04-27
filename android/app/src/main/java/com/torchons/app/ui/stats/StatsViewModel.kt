@@ -74,6 +74,10 @@ data class StatsUiState(
     val categoryFrequency: CategoryFrequencyResponse? = null,
     val categoryPeriod: WeekdayPeriod = WeekdayPeriod.ALL,
     val isCategoryLoading: Boolean = false,
+    // Snapshots semaine pour la carte "Cette semaine" (independants des
+    // graphiques principaux qui peuvent etre toggle sur d'autres periodes).
+    val weekdayThisWeek: WeekdayFrequencyResponse? = null,
+    val categoryThisWeek: CategoryFrequencyResponse? = null,
     val retardTimeline: RetardTimelineResponse? = null,
     val selectedTab: Int = 0,
     val error: String? = null
@@ -115,6 +119,8 @@ class StatsViewModel @Inject constructor(
                 val ptsAllResp = apiService.getPointsTimeline("all")
                 val weekdayResp = apiService.getWeekdayFrequency("all")
                 val categoryResp = apiService.getCategoryFrequency("all")
+                val weekdayThisWeekResp = apiService.getWeekdayFrequency("week")
+                val categoryThisWeekResp = apiService.getCategoryFrequency("week")
                 val retardResp = apiService.getRetardTimeline()
 
                 _uiState.value = StatsUiState(
@@ -133,6 +139,8 @@ class StatsViewModel @Inject constructor(
                     pointsAll = if (ptsAllResp.isSuccessful) ptsAllResp.body() else null,
                     weekdayFrequency = if (weekdayResp.isSuccessful) weekdayResp.body() else null,
                     categoryFrequency = if (categoryResp.isSuccessful) categoryResp.body() else null,
+                    weekdayThisWeek = if (weekdayThisWeekResp.isSuccessful) weekdayThisWeekResp.body() else null,
+                    categoryThisWeek = if (categoryThisWeekResp.isSuccessful) categoryThisWeekResp.body() else null,
                     retardTimeline = if (retardResp.isSuccessful) retardResp.body() else null,
                 )
             } catch (e: Exception) {

@@ -1,5 +1,15 @@
 # Notes de version
 
+## v0.24.0 — 2026-04-27
+
+### Recap "Cette semaine" en tete des stats
+- Une nouvelle carte en haut de l'onglet Resume montre tes points de la semaine, ton "+/- X% vs semaine precedente", le jour ou le foyer a fait le plus de taches, et la categorie la plus active.
+- Carte automatiquement masquee si rien a afficher (foyer tout neuf ou debut de semaine).
+
+### Stats du foyer dans le profil utilisateur
+- Quand on clique sur le nom de quelqu'un (dans une carte d'historique, un classement, etc.), la modal de profil affiche desormais aussi la repartition Quentin / ***REMOVED*** sur la semaine et au total, avec une barre coloree.
+- Le nom de l'utilisateur ouvert est en gras dans la legende pour le reperage immediat.
+
 ## v0.23.0 — 2026-04-27
 
 ### Statistiques enrichies

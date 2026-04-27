@@ -143,6 +143,8 @@ fun StatsScreen(
                     categoryPeriod = uiState.categoryPeriod,
                     isCategoryLoading = uiState.isCategoryLoading,
                     onCategoryPeriodChange = viewModel::setCategoryPeriod,
+                    weekdayThisWeek = uiState.weekdayThisWeek,
+                    categoryThisWeek = uiState.categoryThisWeek,
                     onPointTap = viewModel::jumpToHistoryForDate,
                     fairShare = uiState.fairShare,
                     currentUserId = currentUserId,
@@ -197,6 +199,8 @@ private fun ResumeTab(
     categoryPeriod: WeekdayPeriod,
     isCategoryLoading: Boolean,
     onCategoryPeriodChange: (WeekdayPeriod) -> Unit,
+    weekdayThisWeek: WeekdayFrequencyResponse?,
+    categoryThisWeek: CategoryFrequencyResponse?,
     onPointTap: (String) -> Unit,
     fairShare: List<FairShareStatus>,
     currentUserId: String?,
@@ -307,7 +311,18 @@ private fun ResumeTab(
             }
         }
 
-        // 2) Carte graphiques — pager 6 vues.
+        // 2) Carte "Cette semaine" — recap leger avant les graphiques.
+        item {
+            Spacer(modifier = Modifier.height(4.dp))
+            WeekRecapCard(
+                pointsWeek = pointsWeek,
+                weekdayThisWeek = weekdayThisWeek,
+                categoryThisWeek = categoryThisWeek,
+                currentUserId = currentUserId,
+            )
+        }
+
+        // 3) Carte graphiques — pager 6 vues.
         item {
             Spacer(modifier = Modifier.height(4.dp))
             ChartsCard(
@@ -660,6 +675,129 @@ private fun LeaderboardRow(
                 )
             }
         }
+    }
+}
+
+/**
+ * Recap "Cette semaine" pour le user courant : ses points de la semaine + delta
+ * vs sem precedente, top jour de semaine et top categorie. Carte legere qui
+ * vit en haut du Resume et reuse les donnees deja chargees (pas de query
+ * supplementaire au-dela des 2 fetches "this week" du ViewModel).
+ */
+@Composable
+private fun WeekRecapCard(
+    pointsWeek: PointsTimelineResponse?,
+    weekdayThisWeek: WeekdayFrequencyResponse?,
+    categoryThisWeek: CategoryFrequencyResponse?,
+    currentUserId: String?,
+) {
+    // Trouver le user courant dans pointsWeek pour son delta personnel.
+    val me = pointsWeek?.users?.firstOrNull { it.userId == currentUserId }
+    val myCurrent = me?.points?.lastOrNull()?.cumulative ?: 0
+    val myPrevious = me?.pointsPrevious
+
+    // Top weekday : on aggrege tous les users (foyer-level pour la lecture
+    // rapide), prend le max. Indice 0=lundi..6=dimanche.
+    val weekdaySum = IntArray(7)
+    weekdayThisWeek?.users?.forEach { u ->
+        u.counts.take(7).forEachIndexed { i, c -> weekdaySum[i] += c }
+    }
+    val topWeekdayIdx = if (weekdaySum.any { it > 0 })
+        weekdaySum.indices.maxBy { weekdaySum[it] } else null
+    val weekdayLabels = listOf(
+        "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"
+    )
+
+    // Top categorie cette semaine : la 1ere de la liste (deja triee desc backend).
+    val topCategory = categoryThisWeek?.categories?.firstOrNull { it.total > 0 }
+
+    // Si rien a montrer, on n'affiche pas la carte (foyer fraichement cree
+    // ou debut de semaine encore vide).
+    val nothingToShow = me == null && topWeekdayIdx == null && topCategory == null
+    if (nothingToShow) return
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Cette semaine",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(8.dp))
+
+            // Ligne 1 : mes points + delta. Mise en valeur visuelle.
+            if (me != null) {
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    Text(
+                        text = "$myCurrent",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "pts",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
+                    if (myPrevious != null) {
+                        Spacer(Modifier.width(12.dp))
+                        val deltaText = formatWeekDelta(myCurrent, myPrevious)
+                        val deltaColor = when {
+                            myPrevious == 0 && myCurrent == 0 -> MaterialTheme.colorScheme.onSurfaceVariant
+                            myPrevious == 0 -> androidx.compose.ui.graphics.Color(0xFF10B981)
+                            myCurrent > myPrevious -> androidx.compose.ui.graphics.Color(0xFF10B981)
+                            myCurrent < myPrevious -> androidx.compose.ui.graphics.Color(0xFFEF4444)
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                        Text(
+                            text = deltaText,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = deltaColor,
+                            modifier = Modifier.padding(bottom = 6.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
+            // Ligne 2 : top jour + top categorie cote foyer (lecture rapide).
+            if (topWeekdayIdx != null) {
+                val nbTop = weekdaySum[topWeekdayIdx]
+                Text(
+                    text = "Top jour : ${weekdayLabels[topWeekdayIdx]} ($nbTop tache${if (nbTop > 1) "s" else ""})",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (topCategory != null) {
+                Text(
+                    text = "Top categorie : ${topCategory.categoryName} (${topCategory.total} tache${if (topCategory.total > 1) "s" else ""})",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** Formate "+15% vs sem prec." / "-20%" / "= vs sem prec." pour le recap. */
+private fun formatWeekDelta(current: Int, previous: Int): String {
+    if (previous == 0 && current == 0) return "= vs sem prec."
+    if (previous == 0) return "(c'est parti !)"
+    val pct = ((current - previous).toDouble() / previous.toDouble() * 100.0).toInt()
+    return when {
+        pct == 0 -> "= vs sem prec."
+        pct > 0 -> "+${pct}% vs sem prec."
+        else -> "${pct}% vs sem prec."
     }
 }
 
