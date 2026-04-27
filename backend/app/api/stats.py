@@ -504,11 +504,14 @@ class PointsTimelineUser(BaseModel):
     user_id: UUID
     display_name: str
     points: list[PointsTimelinePoint]
+    # Total de la periode precedente symetrique (pour delta W vs W-1, M vs M-1).
+    # None pour period=all (pas de "all-1" qui ait du sens).
+    points_previous: int | None = None
 
 
 class PointsTimelineResponse(BaseModel):
     period: str   # week | month | all
-    bucket: str   # day | week
+    bucket: str   # day | week | month
     users: list[PointsTimelineUser]
 
 
@@ -522,24 +525,34 @@ async def get_points_timeline(
 
     - week  : 7 jours, granularite jour
     - month : 30 jours, granularite jour
-    - all   : depuis la 1ere completion du foyer ; granularite semaine si la
-              fenetre depasse 90 jours, sinon jour.
+    - all   : depuis la 1ere completion du foyer ; granularite jour si <= 90j,
+              semaine entre 90j et 365j, mois si > 365j.
 
     Toutes les series partagent la meme grille temporelle (memes buckets) pour
     superposer les courbes proprement cote client.
+
+    `points_previous` : total brut sur la periode precedente symetrique, pour
+    afficher un "+/-X% vs sem precedente" cote client. None pour `all`.
     """
     from app.models.user_foyer import UserFoyer
 
     foyer_uuid = current_foyer_uuid(current)
     today = datetime.now(timezone.utc).date()
 
-    # Determiner la fenetre + granularite
+    # Determiner la fenetre + granularite + fenetre comparatif precedent.
+    # `prev_start_dt` / `prev_end_dt` : fenetre [start, end[ pour W-1/M-1.
+    prev_start_dt: datetime | None = None
+    prev_end_dt: datetime | None = None
     if period == "week":
         start_date = today - timedelta(days=6)
         bucket = "day"
+        prev_end_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
+        prev_start_dt = prev_end_dt - timedelta(days=7)
     elif period == "month":
         start_date = today - timedelta(days=29)
         bucket = "day"
+        prev_end_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
+        prev_start_dt = prev_end_dt - timedelta(days=30)
     else:  # all
         first_result = await session.execute(
             select(func.min(TaskCompletion.completed_at))
@@ -551,7 +564,13 @@ async def get_points_timeline(
         )
         first_dt = first_result.scalar()
         start_date = first_dt.date() if first_dt is not None else today
-        bucket = "week" if (today - start_date).days > 90 else "day"
+        span_days = (today - start_date).days
+        if span_days > 365:
+            bucket = "month"
+        elif span_days > 90:
+            bucket = "week"
+        else:
+            bucket = "day"
 
     # Users du foyer
     users_result = await session.execute(
@@ -579,19 +598,29 @@ async def get_points_timeline(
     )
     rows = comps_result.all()
 
-    # Grille de buckets : journee ou semaine alignee sur le lundi
+    # Grille de buckets : journee, semaine (lundi), ou mois (1er du mois).
     buckets: list[date] = []
     if bucket == "day":
         d = start_date
         while d <= today:
             buckets.append(d)
             d += timedelta(days=1)
-    else:
+    elif bucket == "week":
         d = start_date - timedelta(days=start_date.weekday())
         end = today - timedelta(days=today.weekday())
         while d <= end:
             buckets.append(d)
             d += timedelta(days=7)
+    else:  # month
+        d = date(start_date.year, start_date.month, 1)
+        end = date(today.year, today.month, 1)
+        while d <= end:
+            buckets.append(d)
+            # Mois suivant : addition manuelle (pas de timedelta de mois).
+            if d.month == 12:
+                d = date(d.year + 1, 1, 1)
+            else:
+                d = date(d.year, d.month + 1, 1)
 
     # Assure au moins un bucket pour les courbes vides (foyer fraichement cree)
     if not buckets:
@@ -599,6 +628,27 @@ async def get_points_timeline(
 
     # Index bucket -> position (pour O(1) lookup)
     idx_of: dict[date, int] = {b: i for i, b in enumerate(buckets)}
+
+    # Pre-charger les totals de la periode precedente symetrique (1 query
+    # groupee par user) — utilise par le footer "+/-X% vs sem precedente".
+    prev_totals_by_user: dict[UUID, int] = {}
+    if prev_start_dt is not None and prev_end_dt is not None:
+        prev_q = (
+            select(
+                TaskCompletion.completed_by,
+                func.coalesce(func.sum(TaskCompletion.points_earned), 0),
+            )
+            .join(Task, Task.id == TaskCompletion.task_id)
+            .where(
+                TaskCompletion.deleted_at.is_(None),
+                TaskCompletion.completed_at >= prev_start_dt,
+                TaskCompletion.completed_at < prev_end_dt,
+                Task.foyer_id == foyer_uuid,
+            )
+            .group_by(TaskCompletion.completed_by)
+        )
+        for row in (await session.execute(prev_q)).all():
+            prev_totals_by_user[row[0]] = int(row[1])
 
     # Cumul par user
     user_results: list[PointsTimelineUser] = []
@@ -610,9 +660,12 @@ async def get_points_timeline(
             comp_date = completed_at.date()
             if bucket == "day":
                 pos = idx_of.get(comp_date)
-            else:
+            elif bucket == "week":
                 wk = comp_date - timedelta(days=comp_date.weekday())
                 pos = idx_of.get(wk)
+            else:  # month
+                mo = date(comp_date.year, comp_date.month, 1)
+                pos = idx_of.get(mo)
             if pos is not None:
                 per_bucket[pos] += int(pts)
 
@@ -628,6 +681,11 @@ async def get_points_timeline(
             user_id=user.id,
             display_name=user.display_name,
             points=points_list,
+            points_previous=(
+                prev_totals_by_user.get(user.id, 0)
+                if prev_start_dt is not None
+                else None
+            ),
         ))
 
     return PointsTimelineResponse(period=period, bucket=bucket, users=user_results)
@@ -646,17 +704,31 @@ class WeekdayFrequencyResponse(BaseModel):
 
 @router.get("/stats/weekday-frequency", response_model=WeekdayFrequencyResponse)
 async def get_weekday_frequency(
+    period: str = "all",
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
     """Frequence des taches faites par jour de semaine, par utilisateur.
 
     Index 0=lundi..6=dimanche (postgres isodow renvoie 1..7 -> on remappe).
-    Compte tout l'historique (pas de filtre de periode pour l'instant).
+    Filtre par periode : `week` (7j), `month` (30j), `three_months` (90j),
+    `all` (defaut, pas de filtre).
     """
     from app.models.user_foyer import UserFoyer
 
     foyer_uuid = current_foyer_uuid(current)
+
+    # Cutoff selon la periode demandee.
+    now = datetime.now(timezone.utc)
+    cutoff: datetime | None
+    if period == "week":
+        cutoff = now - timedelta(days=7)
+    elif period == "month":
+        cutoff = now - timedelta(days=30)
+    elif period == "three_months":
+        cutoff = now - timedelta(days=90)
+    else:
+        cutoff = None  # all
 
     users_result = await session.execute(
         select(User)
@@ -667,7 +739,7 @@ async def get_weekday_frequency(
     users = users_result.scalars().all()
 
     dow = func.extract("isodow", TaskCompletion.completed_at).label("dow")
-    result = await session.execute(
+    base_q = (
         select(
             TaskCompletion.completed_by,
             dow,
@@ -679,8 +751,11 @@ async def get_weekday_frequency(
             TaskCompletion.deleted_at.is_(None),
             Task.foyer_id == foyer_uuid,
         )
-        .group_by(TaskCompletion.completed_by, dow)
     )
+    if cutoff is not None:
+        base_q = base_q.where(TaskCompletion.completed_at >= cutoff)
+    base_q = base_q.group_by(TaskCompletion.completed_by, dow)
+    result = await session.execute(base_q)
     rows = result.all()
 
     user_results: list[WeekdayFrequencyUser] = []
@@ -702,6 +777,128 @@ async def get_weekday_frequency(
         ))
 
     return WeekdayFrequencyResponse(users=user_results)
+
+
+# --- Frequence par categorie ---
+
+class CategoryFrequencyEntry(BaseModel):
+    category_id: UUID | None  # None = sans categorie
+    category_name: str
+    counts: list[int]  # parallele a `users` (meme ordre)
+    total: int
+
+
+class CategoryFrequencyUser(BaseModel):
+    user_id: UUID
+    display_name: str
+
+
+class CategoryFrequencyResponse(BaseModel):
+    users: list[CategoryFrequencyUser]
+    categories: list[CategoryFrequencyEntry]  # top 8, triees par total desc
+
+
+@router.get("/stats/category-frequency", response_model=CategoryFrequencyResponse)
+async def get_category_frequency(
+    period: str = "all",
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Repartition des completions par categorie, breakdown per-user.
+
+    Top 8 categories par nombre total de completions, avec un breakdown
+    `counts` parallele a la liste `users`. Les taches sans categorie sont
+    rangees dans une categorie virtuelle "Sans categorie" (category_id=None).
+
+    Periode (default `all`) : week, month, three_months, all — meme semantique
+    que /stats/weekday-frequency.
+    """
+    from app.models.category import Category
+    from app.models.user_foyer import UserFoyer
+
+    foyer_uuid = current_foyer_uuid(current)
+
+    # Cutoff
+    now = datetime.now(timezone.utc)
+    cutoff: datetime | None
+    if period == "week":
+        cutoff = now - timedelta(days=7)
+    elif period == "month":
+        cutoff = now - timedelta(days=30)
+    elif period == "three_months":
+        cutoff = now - timedelta(days=90)
+    else:
+        cutoff = None
+
+    # Users du foyer (ordre stable)
+    users_result = await session.execute(
+        select(User)
+        .join(UserFoyer, UserFoyer.user_id == User.id)
+        .where(UserFoyer.foyer_id == foyer_uuid)
+        .order_by(User.username)
+    )
+    users = list(users_result.scalars().all())
+    user_index = {u.id: i for i, u in enumerate(users)}
+
+    # Counts par (user_id, category_id_or_NULL).
+    base_q = (
+        select(
+            TaskCompletion.completed_by,
+            Task.category_id,
+            func.count(TaskCompletion.id).label("cnt"),
+        )
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
+            TaskCompletion.deleted_at.is_(None),
+            Task.foyer_id == foyer_uuid,
+        )
+    )
+    if cutoff is not None:
+        base_q = base_q.where(TaskCompletion.completed_at >= cutoff)
+    base_q = base_q.group_by(TaskCompletion.completed_by, Task.category_id)
+    rows = (await session.execute(base_q)).all()
+
+    # Aggreger par categorie : counts[i] = count pour users[i].
+    cat_acc: dict[UUID | None, list[int]] = {}
+    cat_total: dict[UUID | None, int] = {}
+    for completed_by, category_id, cnt in rows:
+        if completed_by not in user_index:
+            continue
+        if category_id not in cat_acc:
+            cat_acc[category_id] = [0] * len(users)
+            cat_total[category_id] = 0
+        cat_acc[category_id][user_index[completed_by]] += int(cnt)
+        cat_total[category_id] += int(cnt)
+
+    # Charger les noms des categories utilisees
+    cat_ids = [cid for cid in cat_acc.keys() if cid is not None]
+    cat_names: dict[UUID, str] = {}
+    if cat_ids:
+        cat_result = await session.execute(
+            select(Category.id, Category.name).where(Category.id.in_(cat_ids))
+        )
+        cat_names = {row[0]: row[1] for row in cat_result.all()}
+
+    # Trier par total desc, top 8.
+    ordered = sorted(cat_acc.items(), key=lambda kv: cat_total[kv[0]], reverse=True)[:8]
+
+    entries: list[CategoryFrequencyEntry] = []
+    for cid, counts in ordered:
+        name = cat_names.get(cid, "?") if cid is not None else "Sans categorie"
+        entries.append(CategoryFrequencyEntry(
+            category_id=cid,
+            category_name=name,
+            counts=counts,
+            total=cat_total[cid],
+        ))
+
+    return CategoryFrequencyResponse(
+        users=[
+            CategoryFrequencyUser(user_id=u.id, display_name=u.display_name)
+            for u in users
+        ],
+        categories=entries,
+    )
 
 
 # --- Retard historique du foyer ---

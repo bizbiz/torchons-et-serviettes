@@ -367,7 +367,15 @@ interface ApiService {
 
     /** Frequence des taches par jour de semaine, par user. */
     @GET("stats/weekday-frequency")
-    suspend fun getWeekdayFrequency(): Response<com.torchons.app.data.model.WeekdayFrequencyResponse>
+    suspend fun getWeekdayFrequency(
+        @Query("period") period: String = "all",
+    ): Response<com.torchons.app.data.model.WeekdayFrequencyResponse>
+
+    /** Frequence des taches par categorie (top N), per-user. */
+    @GET("stats/category-frequency")
+    suspend fun getCategoryFrequency(
+        @Query("period") period: String = "all",
+    ): Response<com.torchons.app.data.model.CategoryFrequencyResponse>
 
     /** Historique journalier du retard du foyer (taches en commun). */
     @GET("stats/retard-timeline")

@@ -1,5 +1,16 @@
 # Notes de version
 
+## v0.23.0 — 2026-04-27
+
+### Statistiques enrichies
+- Sur les courses de points 7 jours et 30 jours, un "+/- X% vs avant" en couleur (vert si en progres, rouge si en recul) compare a la periode precedente.
+- Un nouveau graphique "Repartition par categorie" arrive en derniere position du swiper : top 8 des categories que tu fais le plus, avec un breakdown par utilisateur. Selecteur de periode integre (Semaine / Mois / 3 mois / Tout).
+- Le graphique "Par jour de semaine" gagne le meme selecteur de periode pour zoomer sur l'evolution recente vs l'historique total.
+- La course de points "Depuis toujours" passe automatiquement en buckets mensuels au-dela d'un an d'historique pour rester lisible.
+
+### Tap sur un point de graphique
+- Toucher un point sur les courses de points ouvre directement l'historique filtre sur la journee correspondante. Pratique pour enqueter sur un pic ou un creux.
+
 ## v0.22.0 — 2026-04-27
 
 ### Notifications affinees pour les completions

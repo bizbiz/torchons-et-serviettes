@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.BadgeInfo
+import com.torchons.app.data.model.CategoryFrequencyResponse
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.LeaderboardEntry
 import com.torchons.app.data.model.PointsTimelineResponse
@@ -24,19 +25,30 @@ import javax.inject.Inject
 /** Periode preset pour le filtre de l'historique. Mappe vers une borne `since`. */
 enum class HistoryPeriod { ALL, WEEK, MONTH, THREE_MONTHS }
 
+/** Periode du chart Weekday/Category — controle local au chart. */
+enum class WeekdayPeriod(val apiValue: String) {
+    WEEK("week"), MONTH("month"), THREE_MONTHS("three_months"), ALL("all"),
+}
+
 /**
  * Etat des filtres applicables a l'historique. `families` est multi-select
  * (3 chips : completions / votes / modifications) ; `actorId` null = tous.
+ *
+ * `dayFilter` : ISO date YYYY-MM-DD. Quand non null, prend le pas sur
+ * `period` et restreint l'historique a une journee precise (utilise par le
+ * tap-on-point des charts qui deeplinke vers l'onglet Historique).
  */
 data class HistoryFilters(
     val families: Set<String> = emptySet(),     // sous-ensemble de {completions,votes,modifications}
     val actorId: String? = null,
     val period: HistoryPeriod = HistoryPeriod.ALL,
     val query: String = "",
+    val dayFilter: String? = null,
 ) {
     /** True si au moins un filtre est actif (sert a afficher un badge). */
     val hasActiveFilters: Boolean
-        get() = families.isNotEmpty() || actorId != null || period != HistoryPeriod.ALL
+        get() = families.isNotEmpty() || actorId != null
+                || period != HistoryPeriod.ALL || dayFilter != null
 }
 
 data class StatsUiState(
@@ -57,6 +69,11 @@ data class StatsUiState(
     val pointsMonth: PointsTimelineResponse? = null,
     val pointsAll: PointsTimelineResponse? = null,
     val weekdayFrequency: WeekdayFrequencyResponse? = null,
+    val weekdayPeriod: WeekdayPeriod = WeekdayPeriod.ALL,
+    val isWeekdayLoading: Boolean = false,
+    val categoryFrequency: CategoryFrequencyResponse? = null,
+    val categoryPeriod: WeekdayPeriod = WeekdayPeriod.ALL,
+    val isCategoryLoading: Boolean = false,
     val retardTimeline: RetardTimelineResponse? = null,
     val selectedTab: Int = 0,
     val error: String? = null
@@ -96,7 +113,8 @@ class StatsViewModel @Inject constructor(
                 val ptsWeekResp = apiService.getPointsTimeline("week")
                 val ptsMonthResp = apiService.getPointsTimeline("month")
                 val ptsAllResp = apiService.getPointsTimeline("all")
-                val weekdayResp = apiService.getWeekdayFrequency()
+                val weekdayResp = apiService.getWeekdayFrequency("all")
+                val categoryResp = apiService.getCategoryFrequency("all")
                 val retardResp = apiService.getRetardTimeline()
 
                 _uiState.value = StatsUiState(
@@ -114,6 +132,7 @@ class StatsViewModel @Inject constructor(
                     pointsMonth = if (ptsMonthResp.isSuccessful) ptsMonthResp.body() else null,
                     pointsAll = if (ptsAllResp.isSuccessful) ptsAllResp.body() else null,
                     weekdayFrequency = if (weekdayResp.isSuccessful) weekdayResp.body() else null,
+                    categoryFrequency = if (categoryResp.isSuccessful) categoryResp.body() else null,
                     retardTimeline = if (retardResp.isSuccessful) retardResp.body() else null,
                 )
             } catch (e: Exception) {
@@ -124,6 +143,51 @@ class StatsViewModel @Inject constructor(
 
     fun selectTab(tab: Int) {
         _uiState.value = _uiState.value.copy(selectedTab = tab)
+    }
+
+    // --- Periode des charts Weekday / Category ---
+
+    fun setWeekdayPeriod(period: WeekdayPeriod) {
+        if (_uiState.value.weekdayPeriod == period) return
+        _uiState.value = _uiState.value.copy(weekdayPeriod = period, isWeekdayLoading = true)
+        viewModelScope.launch {
+            try {
+                val resp = apiService.getWeekdayFrequency(period.apiValue)
+                _uiState.value = _uiState.value.copy(
+                    weekdayFrequency = if (resp.isSuccessful) resp.body() else _uiState.value.weekdayFrequency,
+                    isWeekdayLoading = false,
+                )
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isWeekdayLoading = false)
+            }
+        }
+    }
+
+    fun setCategoryPeriod(period: WeekdayPeriod) {
+        if (_uiState.value.categoryPeriod == period) return
+        _uiState.value = _uiState.value.copy(categoryPeriod = period, isCategoryLoading = true)
+        viewModelScope.launch {
+            try {
+                val resp = apiService.getCategoryFrequency(period.apiValue)
+                _uiState.value = _uiState.value.copy(
+                    categoryFrequency = if (resp.isSuccessful) resp.body() else _uiState.value.categoryFrequency,
+                    isCategoryLoading = false,
+                )
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isCategoryLoading = false)
+            }
+        }
+    }
+
+    /** Deeplink depuis un tap-on-point d'un chart : applique un filtre sur
+     *  une journee precise et bascule sur l'onglet Historique. */
+    fun jumpToHistoryForDate(isoDate: String) {
+        val newFilters = HistoryFilters(dayFilter = isoDate)
+        _uiState.value = _uiState.value.copy(
+            historyFilters = newFilters,
+            selectedTab = 2,  // Historique (Resume=0, Badges=1, Historique=2)
+        )
+        refetchHistory(newFilters)
     }
 
     // --- Filtres de l'historique ---
@@ -161,20 +225,31 @@ class StatsViewModel @Inject constructor(
     }
 
     /** Re-appelle GET /history avec les filtres courants. Debouncing simple :
-     * une nouvelle requete remplace l'ancienne (la derniere arrivee gagne). */
+     * une nouvelle requete remplace l'ancienne (la derniere arrivee gagne).
+     * `dayFilter` (deeplink chart) prend le pas sur `period` quand il est non-null. */
     private fun refetchHistory(filters: HistoryFilters) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isHistoryLoading = true)
-            val sinceIso = when (filters.period) {
-                HistoryPeriod.ALL -> null
-                HistoryPeriod.WEEK -> isoMinusDays(7)
-                HistoryPeriod.MONTH -> isoMinusDays(30)
-                HistoryPeriod.THREE_MONTHS -> isoMinusDays(90)
+            val sinceIso: String?
+            val beforeIso: String?
+            if (filters.dayFilter != null) {
+                // Bornes de la journee en UTC : [00:00 ce jour, 00:00 lendemain[
+                sinceIso = "${filters.dayFilter}T00:00:00Z"
+                val nextDay = java.time.LocalDate.parse(filters.dayFilter).plusDays(1)
+                beforeIso = "${nextDay}T00:00:00Z"
+            } else {
+                sinceIso = when (filters.period) {
+                    HistoryPeriod.ALL -> null
+                    HistoryPeriod.WEEK -> isoMinusDays(7)
+                    HistoryPeriod.MONTH -> isoMinusDays(30)
+                    HistoryPeriod.THREE_MONTHS -> isoMinusDays(90)
+                }
+                beforeIso = null
             }
             try {
                 val resp = apiService.getHistory(
-                    limit = 50,
-                    before = null,
+                    limit = 100,
+                    before = beforeIso,
                     since = sinceIso,
                     families = filters.families.toList(),
                     actorId = filters.actorId,

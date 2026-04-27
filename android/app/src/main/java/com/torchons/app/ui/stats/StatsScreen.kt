@@ -71,6 +71,7 @@ import androidx.compose.material.icons.filled.Favorite
 import com.torchons.app.data.model.BadgeInfo
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.LeaderboardEntry
+import com.torchons.app.data.model.CategoryFrequencyResponse
 import com.torchons.app.data.model.PointsTimelineResponse
 import com.torchons.app.data.model.RetardTimelineResponse
 import com.torchons.app.data.model.StreakInfo
@@ -135,6 +136,14 @@ fun StatsScreen(
                     pointsMonth = uiState.pointsMonth,
                     pointsAll = uiState.pointsAll,
                     weekdayFrequency = uiState.weekdayFrequency,
+                    weekdayPeriod = uiState.weekdayPeriod,
+                    isWeekdayLoading = uiState.isWeekdayLoading,
+                    onWeekdayPeriodChange = viewModel::setWeekdayPeriod,
+                    categoryFrequency = uiState.categoryFrequency,
+                    categoryPeriod = uiState.categoryPeriod,
+                    isCategoryLoading = uiState.isCategoryLoading,
+                    onCategoryPeriodChange = viewModel::setCategoryPeriod,
+                    onPointTap = viewModel::jumpToHistoryForDate,
                     fairShare = uiState.fairShare,
                     currentUserId = currentUserId,
                     onUserClick = onUserClick,
@@ -181,6 +190,14 @@ private fun ResumeTab(
     pointsMonth: PointsTimelineResponse?,
     pointsAll: PointsTimelineResponse?,
     weekdayFrequency: WeekdayFrequencyResponse?,
+    weekdayPeriod: WeekdayPeriod,
+    isWeekdayLoading: Boolean,
+    onWeekdayPeriodChange: (WeekdayPeriod) -> Unit,
+    categoryFrequency: CategoryFrequencyResponse?,
+    categoryPeriod: WeekdayPeriod,
+    isCategoryLoading: Boolean,
+    onCategoryPeriodChange: (WeekdayPeriod) -> Unit,
+    onPointTap: (String) -> Unit,
     fairShare: List<FairShareStatus>,
     currentUserId: String?,
     onUserClick: (UserProfileRequest) -> Unit,
@@ -290,7 +307,7 @@ private fun ResumeTab(
             }
         }
 
-        // 2) Carte graphiques — pager 5 vues (Retard foyer + 3 courses de points + frequence).
+        // 2) Carte graphiques — pager 6 vues.
         item {
             Spacer(modifier = Modifier.height(4.dp))
             ChartsCard(
@@ -299,6 +316,14 @@ private fun ResumeTab(
                 pointsMonth = pointsMonth,
                 pointsAll = pointsAll,
                 weekdayFrequency = weekdayFrequency,
+                weekdayPeriod = weekdayPeriod,
+                isWeekdayLoading = isWeekdayLoading,
+                onWeekdayPeriodChange = onWeekdayPeriodChange,
+                categoryFrequency = categoryFrequency,
+                categoryPeriod = categoryPeriod,
+                isCategoryLoading = isCategoryLoading,
+                onCategoryPeriodChange = onCategoryPeriodChange,
+                onPointTap = onPointTap,
             )
         }
 
@@ -356,10 +381,18 @@ private fun ChartsCard(
     pointsMonth: PointsTimelineResponse?,
     pointsAll: PointsTimelineResponse?,
     weekdayFrequency: WeekdayFrequencyResponse?,
+    weekdayPeriod: WeekdayPeriod,
+    isWeekdayLoading: Boolean,
+    onWeekdayPeriodChange: (WeekdayPeriod) -> Unit,
+    categoryFrequency: CategoryFrequencyResponse?,
+    categoryPeriod: WeekdayPeriod,
+    isCategoryLoading: Boolean,
+    onCategoryPeriodChange: (WeekdayPeriod) -> Unit,
+    onPointTap: (String) -> Unit,
 ) {
     // Retard foyer en 1ere position : c'est la metrique commune au foyer
     // (vs les courses de points qui sont per-user).
-    val titles = listOf("Retard", "Semaine", "Mois", "Toujours", "Par jour")
+    val titles = listOf("Retard", "Semaine", "Mois", "Toujours", "Par jour", "Categorie")
     val pagerState = rememberPagerState(pageCount = { titles.size })
     val scope = rememberCoroutineScope()
 
@@ -415,18 +448,31 @@ private fun ChartsCard(
                         1 -> ChartContent(
                             title = "Course de points · 7 jours",
                             data = pointsWeek,
+                            onPointTap = onPointTap,
                         )
                         2 -> ChartContent(
                             title = "Course de points · 30 jours",
                             data = pointsMonth,
+                            onPointTap = onPointTap,
                         )
                         3 -> ChartContent(
                             title = "Course de points · depuis toujours",
                             data = pointsAll,
+                            onPointTap = onPointTap,
                         )
                         4 -> WeekdayContent(
                             title = "Taches par jour de semaine",
                             data = weekdayFrequency,
+                            period = weekdayPeriod,
+                            isLoading = isWeekdayLoading,
+                            onPeriodChange = onWeekdayPeriodChange,
+                        )
+                        5 -> CategoryContent(
+                            title = "Repartition par categorie",
+                            data = categoryFrequency,
+                            period = categoryPeriod,
+                            isLoading = isCategoryLoading,
+                            onPeriodChange = onCategoryPeriodChange,
                         )
                     }
                 }
@@ -456,7 +502,11 @@ private fun RetardContent(title: String, data: RetardTimelineResponse?) {
 }
 
 @Composable
-private fun ChartContent(title: String, data: PointsTimelineResponse?) {
+private fun ChartContent(
+    title: String,
+    data: PointsTimelineResponse?,
+    onPointTap: (String) -> Unit = {},
+) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelMedium,
@@ -471,12 +521,18 @@ private fun ChartContent(title: String, data: PointsTimelineResponse?) {
             CircularProgressIndicator(modifier = Modifier.size(24.dp))
         }
     } else {
-        PointsTimelineChart(data = data)
+        PointsTimelineChart(data = data, onPointTap = onPointTap)
     }
 }
 
 @Composable
-private fun WeekdayContent(title: String, data: WeekdayFrequencyResponse?) {
+private fun WeekdayContent(
+    title: String,
+    data: WeekdayFrequencyResponse?,
+    period: WeekdayPeriod,
+    isLoading: Boolean,
+    onPeriodChange: (WeekdayPeriod) -> Unit,
+) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelMedium,
@@ -491,7 +547,43 @@ private fun WeekdayContent(title: String, data: WeekdayFrequencyResponse?) {
             CircularProgressIndicator(modifier = Modifier.size(24.dp))
         }
     } else {
-        WeekdayFrequencyChart(data = data)
+        WeekdayFrequencyChart(
+            data = data,
+            period = period,
+            isLoading = isLoading,
+            onPeriodChange = onPeriodChange,
+        )
+    }
+}
+
+@Composable
+private fun CategoryContent(
+    title: String,
+    data: CategoryFrequencyResponse?,
+    period: WeekdayPeriod,
+    isLoading: Boolean,
+    onPeriodChange: (WeekdayPeriod) -> Unit,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    if (data == null) {
+        Box(
+            modifier = Modifier.fillMaxWidth().height(220.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+        }
+    } else {
+        CategoryFrequencyChart(
+            data = data,
+            period = period,
+            isLoading = isLoading,
+            onPeriodChange = onPeriodChange,
+        )
     }
 }
 
@@ -672,9 +764,31 @@ private fun HistoryTab(
         filters.families.isNotEmpty(),
         filters.actorId != null,
         filters.period != HistoryPeriod.ALL,
+        filters.dayFilter != null,
     ).count { it }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        // Chip dedie "Activites du JJ/MM" — visible uniquement quand on
+        // arrive ici via tap-on-point d'un graphique. Cliquer sur la croix
+        // efface ce filtre (et tous les autres, geste "retour a la normale").
+        if (filters.dayFilter != null) {
+            val isoDate = filters.dayFilter
+            val pretty = remember(isoDate) {
+                try {
+                    val d = java.time.LocalDate.parse(isoDate)
+                    d.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                } catch (_: Exception) { isoDate }
+            }
+            FilterChip(
+                selected = true,
+                onClick = { onClearFilters() },
+                label = { Text("Activites du $pretty") },
+                trailingIcon = {
+                    Icon(Icons.Filled.Clear, contentDescription = "Effacer le filtre", modifier = Modifier.size(16.dp))
+                },
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
         // Barre de recherche persistante en haut.
         OutlinedTextField(
             value = filters.query,

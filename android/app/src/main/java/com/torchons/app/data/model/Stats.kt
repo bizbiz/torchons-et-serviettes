@@ -49,11 +49,13 @@ data class PointsTimelineUser(
     @SerializedName("user_id") val userId: String,
     @SerializedName("display_name") val displayName: String,
     @SerializedName("points") val points: List<PointsTimelinePoint> = emptyList(),
+    /** Total brut sur la periode precedente symetrique (W-1, M-1). null pour all. */
+    @SerializedName("points_previous") val pointsPrevious: Int? = null,
 )
 
 data class PointsTimelineResponse(
     @SerializedName("period") val period: String,        // week | month | all
-    @SerializedName("bucket") val bucket: String,        // day | week
+    @SerializedName("bucket") val bucket: String,        // day | week | month
     @SerializedName("users") val users: List<PointsTimelineUser> = emptyList(),
 )
 
@@ -78,4 +80,22 @@ data class RetardTimelinePoint(
 
 data class RetardTimelineResponse(
     @SerializedName("points") val points: List<RetardTimelinePoint> = emptyList(),
+)
+
+/** Frequence par categorie : top N categories avec breakdown per-user. */
+data class CategoryFrequencyEntry(
+    @SerializedName("category_id") val categoryId: String?,
+    @SerializedName("category_name") val categoryName: String,
+    @SerializedName("counts") val counts: List<Int> = emptyList(),
+    @SerializedName("total") val total: Int = 0,
+)
+
+data class CategoryFrequencyUser(
+    @SerializedName("user_id") val userId: String,
+    @SerializedName("display_name") val displayName: String,
+)
+
+data class CategoryFrequencyResponse(
+    @SerializedName("users") val users: List<CategoryFrequencyUser> = emptyList(),
+    @SerializedName("categories") val categories: List<CategoryFrequencyEntry> = emptyList(),
 )
