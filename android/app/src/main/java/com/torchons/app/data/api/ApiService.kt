@@ -377,9 +377,12 @@ interface ApiService {
         @Query("period") period: String = "all",
     ): Response<com.torchons.app.data.model.CategoryFrequencyResponse>
 
-    /** Historique journalier du retard du foyer (taches en commun). */
+    /** Historique journalier du retard du foyer (taches en commun).
+     *  `period` : "all" (defaut, avec trim creation) ou "month" (30j sans trim). */
     @GET("stats/retard-timeline")
-    suspend fun getRetardTimeline(): Response<com.torchons.app.data.model.RetardTimelineResponse>
+    suspend fun getRetardTimeline(
+        @Query("period") period: String = "all",
+    ): Response<com.torchons.app.data.model.RetardTimelineResponse>
 
     // --- Settings ---
 

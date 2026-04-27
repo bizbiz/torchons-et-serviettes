@@ -1,5 +1,14 @@
 # Notes de version
 
+## v0.25.0 — 2026-04-27
+
+### Retard du foyer sur l'Accueil
+- L'Accueil affiche desormais une mini-courbe du retard du foyer sur les 30 derniers jours glissants, sous les cartes "Rythme" et "Retard". Permet de voir d'un coup d'oeil la tendance recente sans aller dans les Stats.
+- Pas de triche sur la phase de creation pour cette vue : on montre les 30 derniers jours fideles a la realite, contrairement a la vue "Depuis le debut" des stats qui demarre au pic.
+
+### Selecteur de periode sur le graphique Retard
+- Dans Stats, le graphique "Retard" gagne deux chips en haut : "Depuis le debut" (defaut, trim de la phase de creation) et "30 derniers jours" (vue glissante recente).
+
 ## v0.24.0 — 2026-04-27
 
 ### Recap "Cette semaine" en tete des stats

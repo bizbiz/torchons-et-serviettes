@@ -30,6 +30,11 @@ enum class WeekdayPeriod(val apiValue: String) {
     WEEK("week"), MONTH("month"), THREE_MONTHS("three_months"), ALL("all"),
 }
 
+/** Periode du chart Retard — toggle binaire (depuis le debut OU 30 jours). */
+enum class RetardPeriod(val apiValue: String) {
+    ALL("all"), MONTH("month"),
+}
+
 /**
  * Etat des filtres applicables a l'historique. `families` est multi-select
  * (3 chips : completions / votes / modifications) ; `actorId` null = tous.
@@ -79,6 +84,8 @@ data class StatsUiState(
     val weekdayThisWeek: WeekdayFrequencyResponse? = null,
     val categoryThisWeek: CategoryFrequencyResponse? = null,
     val retardTimeline: RetardTimelineResponse? = null,
+    val retardPeriod: RetardPeriod = RetardPeriod.ALL,
+    val isRetardLoading: Boolean = false,
     val selectedTab: Int = 0,
     val error: String? = null
 )
@@ -121,7 +128,7 @@ class StatsViewModel @Inject constructor(
                 val categoryResp = apiService.getCategoryFrequency("all")
                 val weekdayThisWeekResp = apiService.getWeekdayFrequency("week")
                 val categoryThisWeekResp = apiService.getCategoryFrequency("week")
-                val retardResp = apiService.getRetardTimeline()
+                val retardResp = apiService.getRetardTimeline("all")
 
                 _uiState.value = StatsUiState(
                     isLoading = false,
@@ -167,6 +174,22 @@ class StatsViewModel @Inject constructor(
                 )
             } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(isWeekdayLoading = false)
+            }
+        }
+    }
+
+    fun setRetardPeriod(period: RetardPeriod) {
+        if (_uiState.value.retardPeriod == period) return
+        _uiState.value = _uiState.value.copy(retardPeriod = period, isRetardLoading = true)
+        viewModelScope.launch {
+            try {
+                val resp = apiService.getRetardTimeline(period.apiValue)
+                _uiState.value = _uiState.value.copy(
+                    retardTimeline = if (resp.isSuccessful) resp.body() else _uiState.value.retardTimeline,
+                    isRetardLoading = false,
+                )
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isRetardLoading = false)
             }
         }
     }

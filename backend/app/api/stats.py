@@ -915,6 +915,7 @@ class RetardTimelineResponse(BaseModel):
 
 @router.get("/stats/retard-timeline", response_model=RetardTimelineResponse)
 async def get_retard_timeline(
+    period: str = "all",
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
@@ -925,9 +926,15 @@ async def get_retard_timeline(
     la 1ere creation de tache. Le job APScheduler 03h15 UTC garde la table
     a jour ensuite.
 
-    Pas de parametre periode : on retourne tout l'historique disponible. La
-    granularite est journaliere ; le client decide d'echantillonner si la
-    serie est tres longue.
+    Parametre `period` :
+    - `all` (defaut) : tout l'historique. Triche assumee — on coupe la
+      phase de creation initiale du backlog (1er pic des minutes dans les
+      7 premiers jours) pour que la courbe parte du sommet.
+    - `month` : 30 derniers jours, sans trim. Utilise par la carte Home
+      qui veut une vue glissante recente, fidele a la realite.
+
+    La granularite est journaliere ; le client decide d'echantillonner si
+    la serie est tres longue.
     """
     from app.models.foyer_retard_snapshot import FoyerRetardSnapshot
     from app.services.retard_history import (
@@ -941,7 +948,7 @@ async def get_retard_timeline(
         await backfill_retard(session, foyer_uuid)
         await session.commit()
 
-    rows = (await session.execute(
+    base_q = (
         select(
             FoyerRetardSnapshot.date,
             FoyerRetardSnapshot.total_minutes,
@@ -949,16 +956,22 @@ async def get_retard_timeline(
         )
         .where(FoyerRetardSnapshot.foyer_id == foyer_uuid)
         .order_by(FoyerRetardSnapshot.date.asc())
-    )).all()
+    )
+    if period == "month":
+        cutoff_date = datetime.now(timezone.utc).date() - timedelta(days=30)
+        base_q = base_q.where(FoyerRetardSnapshot.date >= cutoff_date)
+    rows = (await session.execute(base_q)).all()
 
-    # Triche assumee : on coupe la phase de creation initiale du backlog
-    # pour que la courbe affichee parte du sommet et descende, pas qu'elle
-    # monte. Heuristique : on cherche le 1er pic des minutes dans les 7
-    # premiers jours seulement, pour ne pas masquer un vrai pic de retard
-    # apparu plus tard (procrastination, vacances, etc.). Apres 7 jours,
-    # toute ascension est du backlog reel a montrer, pas de la creation.
-    INITIAL_CREATION_WINDOW_DAYS = 7
-    if len(rows) >= 2:
+    # Trim creation phase uniquement pour `all` (pour `month` on veut la
+    # realite recente, pas un effet psychologique).
+    if period != "month" and len(rows) >= 2:
+        # Triche assumee : on coupe la phase de creation initiale du backlog
+        # pour que la courbe affichee parte du sommet et descende, pas qu'elle
+        # monte. Heuristique : on cherche le 1er pic des minutes dans les 7
+        # premiers jours seulement, pour ne pas masquer un vrai pic de retard
+        # apparu plus tard (procrastination, vacances, etc.). Apres 7 jours,
+        # toute ascension est du backlog reel a montrer, pas de la creation.
+        INITIAL_CREATION_WINDOW_DAYS = 7
         head = rows[: min(INITIAL_CREATION_WINDOW_DAYS, len(rows))]
         max_minutes_head = max(r[1] for r in head)
         peak_idx = next(i for i, r in enumerate(head) if r[1] == max_minutes_head)

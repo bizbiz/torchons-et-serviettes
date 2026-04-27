@@ -440,6 +440,9 @@ fun WeekdayFrequencyChart(
 fun RetardTimelineChart(
     data: RetardTimelineResponse,
     modifier: Modifier = Modifier,
+    period: RetardPeriod? = null,
+    onPeriodChange: ((RetardPeriod) -> Unit)? = null,
+    isLoading: Boolean = false,
 ) {
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
@@ -462,7 +465,30 @@ fun RetardTimelineChart(
     val maxY = series.maxOrNull() ?: 0
 
     Column(modifier = modifier) {
-        // Toggle Minutes / Taches (chips Material3).
+        // 1) Chips de periode (Tout / 1 mois) si callback fourni.
+        if (period != null && onPeriodChange != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                FilterChip(
+                    selected = period == RetardPeriod.ALL,
+                    onClick = { if (period != RetardPeriod.ALL) onPeriodChange(RetardPeriod.ALL) },
+                    label = { Text("Depuis le debut") },
+                )
+                Spacer(Modifier.width(8.dp))
+                FilterChip(
+                    selected = period == RetardPeriod.MONTH,
+                    onClick = { if (period != RetardPeriod.MONTH) onPeriodChange(RetardPeriod.MONTH) },
+                    label = { Text("30 derniers jours") },
+                )
+            }
+            if (isLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp))
+            }
+        }
+
+        // 2) Toggle Minutes / Taches (chips Material3).
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.Center,

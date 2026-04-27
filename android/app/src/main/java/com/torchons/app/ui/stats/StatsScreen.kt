@@ -132,6 +132,9 @@ fun StatsScreen(
                     leaderboardMonth = uiState.leaderboardMonth,
                     leaderboardAll = uiState.leaderboardAll,
                     retardTimeline = uiState.retardTimeline,
+                    retardPeriod = uiState.retardPeriod,
+                    isRetardLoading = uiState.isRetardLoading,
+                    onRetardPeriodChange = viewModel::setRetardPeriod,
                     pointsWeek = uiState.pointsWeek,
                     pointsMonth = uiState.pointsMonth,
                     pointsAll = uiState.pointsAll,
@@ -188,6 +191,9 @@ private fun ResumeTab(
     leaderboardMonth: List<LeaderboardEntry>,
     leaderboardAll: List<LeaderboardEntry>,
     retardTimeline: RetardTimelineResponse?,
+    retardPeriod: RetardPeriod,
+    isRetardLoading: Boolean,
+    onRetardPeriodChange: (RetardPeriod) -> Unit,
     pointsWeek: PointsTimelineResponse?,
     pointsMonth: PointsTimelineResponse?,
     pointsAll: PointsTimelineResponse?,
@@ -327,6 +333,9 @@ private fun ResumeTab(
             Spacer(modifier = Modifier.height(4.dp))
             ChartsCard(
                 retardTimeline = retardTimeline,
+                retardPeriod = retardPeriod,
+                isRetardLoading = isRetardLoading,
+                onRetardPeriodChange = onRetardPeriodChange,
                 pointsWeek = pointsWeek,
                 pointsMonth = pointsMonth,
                 pointsAll = pointsAll,
@@ -392,6 +401,9 @@ private fun ResumeTab(
 @Composable
 private fun ChartsCard(
     retardTimeline: RetardTimelineResponse?,
+    retardPeriod: RetardPeriod,
+    isRetardLoading: Boolean,
+    onRetardPeriodChange: (RetardPeriod) -> Unit,
     pointsWeek: PointsTimelineResponse?,
     pointsMonth: PointsTimelineResponse?,
     pointsAll: PointsTimelineResponse?,
@@ -459,6 +471,9 @@ private fun ChartsCard(
                         0 -> RetardContent(
                             title = "Retard du foyer (taches en commun)",
                             data = retardTimeline,
+                            period = retardPeriod,
+                            isLoading = isRetardLoading,
+                            onPeriodChange = onRetardPeriodChange,
                         )
                         1 -> ChartContent(
                             title = "Course de points · 7 jours",
@@ -497,7 +512,13 @@ private fun ChartsCard(
 }
 
 @Composable
-private fun RetardContent(title: String, data: RetardTimelineResponse?) {
+private fun RetardContent(
+    title: String,
+    data: RetardTimelineResponse?,
+    period: RetardPeriod,
+    isLoading: Boolean,
+    onPeriodChange: (RetardPeriod) -> Unit,
+) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelMedium,
@@ -512,7 +533,12 @@ private fun RetardContent(title: String, data: RetardTimelineResponse?) {
             CircularProgressIndicator(modifier = Modifier.size(24.dp))
         }
     } else {
-        RetardTimelineChart(data = data)
+        RetardTimelineChart(
+            data = data,
+            period = period,
+            isLoading = isLoading,
+            onPeriodChange = onPeriodChange,
+        )
     }
 }
 

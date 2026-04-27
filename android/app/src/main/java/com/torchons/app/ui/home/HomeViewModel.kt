@@ -105,6 +105,11 @@ data class HomeUiState(
     val retard: RetardResponse? = null,
     val pace: PaceResponse? = null,
     val maintenance: MaintenanceRateResponse? = null,
+    /**
+     * Historique du retard du foyer sur les 30 derniers jours, fetch en
+     * parallele pour la mini-courbe Home (period=month, sans trim creation).
+     */
+    val retardTimelineMonth: com.torchons.app.data.model.RetardTimelineResponse? = null,
     /** Prompt de la queue unifiee (BUMP_EFFORT / VOTE_RATING). null = rien a afficher. */
     val currentPrompt: UserPrompt? = null,
     /** True quand le modal prompt est actif. */
@@ -338,13 +343,19 @@ class HomeViewModel @Inject constructor(
         val retardDeferred = viewModelScope.async { runCatching { apiService.getRetard() }.getOrNull() }
         val paceDeferred = viewModelScope.async { runCatching { apiService.getPace() }.getOrNull() }
         val maintDeferred = viewModelScope.async { runCatching { apiService.getMaintenanceRate() }.getOrNull() }
+        val timelineDeferred = viewModelScope.async {
+            runCatching { apiService.getRetardTimeline("month") }.getOrNull()
+        }
         val retardResp = retardDeferred.await()
         val paceResp = paceDeferred.await()
         val maintResp = maintDeferred.await()
+        val timelineResp = timelineDeferred.await()
         _uiState.value = _uiState.value.copy(
             retard = if (retardResp?.isSuccessful == true) retardResp.body() else _uiState.value.retard,
             pace = if (paceResp?.isSuccessful == true) paceResp.body() else _uiState.value.pace,
             maintenance = if (maintResp?.isSuccessful == true) maintResp.body() else _uiState.value.maintenance,
+            retardTimelineMonth = if (timelineResp?.isSuccessful == true)
+                timelineResp.body() else _uiState.value.retardTimelineMonth,
         )
     }
 
