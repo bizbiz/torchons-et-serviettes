@@ -962,12 +962,13 @@ async def get_retard_timeline(
         base_q = base_q.where(FoyerRetardSnapshot.date >= cutoff_date)
     rows = (await session.execute(base_q)).all()
 
-    # Trim creation phase uniquement pour `all` (pour `month` on veut la
-    # realite recente, pas un effet psychologique).
-    if period != "month" and len(rows) >= 2:
-        # Triche assumee : on coupe la phase de creation initiale du backlog
-        # pour que la courbe affichee parte du sommet et descende, pas qu'elle
-        # monte. Heuristique : on cherche le 1er pic des minutes dans les 7
+    # Trim de la phase ascendante bruitee (creation initiale du backlog OU
+    # debut de fenetre coincide avec un pic). On applique le meme trim pour
+    # `all` et `month` : sur `month`, si le foyer est recent (< 30 jours),
+    # les 1ers points de la fenetre sont la phase de creation et bruitent
+    # autant la lecture que pour `all`.
+    if len(rows) >= 2:
+        # Heuristique : on cherche le 1er pic des minutes dans les 7
         # premiers jours seulement, pour ne pas masquer un vrai pic de retard
         # apparu plus tard (procrastination, vacances, etc.). Apres 7 jours,
         # toute ascension est du backlog reel a montrer, pas de la creation.

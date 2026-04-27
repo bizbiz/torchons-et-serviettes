@@ -1,5 +1,11 @@
 # Notes de version
 
+## v0.25.1 — 2026-04-27
+
+### Ajustements de la mini-courbe Retard sur l'Accueil
+- La carte du retard du foyer remonte maintenant la phase de creation initiale du backlog (memes premiers points filtres que sur l'ecran Stats), pour une lecture plus claire des 30 derniers jours utiles.
+- La carte est repositionnee tout en bas de l'Accueil, sous les taches urgentes : c'est une lecture contextuelle, pas une action a entreprendre.
+
 ## v0.25.0 — 2026-04-27
 
 ### Retard du foyer sur l'Accueil

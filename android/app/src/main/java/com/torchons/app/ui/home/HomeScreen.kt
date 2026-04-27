@@ -381,26 +381,6 @@ fun HomeScreen(
             onCardClick = { showProjectionDialog = true },
         )
 
-        // Mini-courbe Retard du foyer sur 30 jours glissants. Carte cachee
-        // si la timeline est vide (foyer fraichement cree, aucun snapshot).
-        uiState.retardTimelineMonth?.takeIf { it.points.size >= 2 }?.let { timeline ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Retard du foyer · 30 jours",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    com.torchons.app.ui.stats.RetardTimelineChart(data = timeline)
-                }
-            }
-        }
-
         // Suggestions (titre retire v0.8.0 — evident que c'est des suggestions)
         // Filtrage + tampon : on filtre les suggestions recemment completees
         // cote client (justCompletedIds) pour eviter de re-afficher la meme
@@ -550,6 +530,29 @@ fun HomeScreen(
                             textAlign = TextAlign.Center
                         )
                     }
+                }
+            }
+        }
+
+        // Mini-courbe Retard du foyer sur 30 jours glissants — placee tout
+        // en bas (apres les taches urgentes) car c'est une lecture
+        // contextuelle, pas une action a entreprendre. Carte cachee si la
+        // timeline est vide (foyer fraichement cree, aucun snapshot).
+        uiState.retardTimelineMonth?.takeIf { it.points.size >= 2 }?.let { timeline ->
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Retard du foyer · 30 jours",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    com.torchons.app.ui.stats.RetardTimelineChart(data = timeline)
                 }
             }
         }
