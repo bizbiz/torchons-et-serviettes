@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.28.1 — 2026-04-28
+
+### Notifications push enfin fiables
+- Le token de notification est désormais re-synchronisé au démarrage de l'app, plus seulement après un login. Avant ce fix, un utilisateur connecté depuis longtemps via Tailscale ne renvoyait jamais son token au serveur — résultat : aucune notif arrivait. Ouvrir l'app suffit maintenant à corriger.
+
 ## v0.28.0 — 2026-04-28
 
 ### Bandeau "Tu n'as pas voté" sur le détail des tâches

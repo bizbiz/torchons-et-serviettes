@@ -14,12 +14,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.compose.rememberNavController
 import com.torchons.app.data.local.TokenManager
+import com.torchons.app.service.TokenRegistrar
 import com.torchons.app.ui.navigation.NavGraph
 import com.torchons.app.ui.navigation.Routes
 import com.torchons.app.ui.theme.TorchonsServiettesTheme
 import com.torchons.app.util.PopupSessionGate
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
@@ -36,6 +40,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var popupSessionGate: PopupSessionGate
+
+    @Inject
+    lateinit var tokenRegistrar: TokenRegistrar
 
     // Note : le PresenceTrigger (worker periodique 6h) a ete supprime car
     // les restrictions Android 12+ (Doze, background limits) empechaient
@@ -78,6 +85,17 @@ class MainActivity : ComponentActivity() {
         // pour eviter un flash de l'ecran de login
         val initialToken = runBlocking {
             tokenManager.tokenFlow.first()
+        }
+
+        // v0.28.1 — Sync FCM token au cold start si user deja loggue.
+        // Avant, registerFcmToken() etait uniquement appele depuis
+        // LoginViewModel.autoLogin(), donc un user qui a un JWT sauvegarde
+        // depuis longtemps ne re-poussait jamais son token. Resultat :
+        // pas de notif. L'appel ici est idempotent cote backend.
+        if (!initialToken.isNullOrEmpty()) {
+            CoroutineScope(Dispatchers.IO).launch {
+                tokenRegistrar.registerFcmToken()
+            }
         }
 
         setContent {
