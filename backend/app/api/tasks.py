@@ -17,7 +17,11 @@ from app.models.task_assignment import TaskAssignment
 from app.models.task_frequency_vote import TaskFrequencyVote
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
-from app.services.frequency_vote import upsert_vote_and_sync_consensus
+from app.services.frequency_vote import (
+    expand_interval,
+    normalize_days_per_month,
+    upsert_vote_and_sync_consensus,
+)
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid, scoped
 
@@ -132,16 +136,30 @@ async def create_task(
         session.add(TaskAssignment(task_id=task.id, user_id=uid))
     await session.flush()
 
-    # Auto-vote du createur si la tache est en type interval : sa saisie devient
-    # son vote initial. Garantit l'invariant "every_n_days = round(avg(votes))"
-    # des la creation et empeche la voie "edition directe sans vote".
-    if task.recurrence_rule and task.recurrence_rule.get("type") == "interval":
-        every_n = task.recurrence_rule.get("every_n_days")
-        if isinstance(every_n, int) and every_n >= 1:
-            await upsert_vote_and_sync_consensus(
-                session, task, UUID(current["user_id"]), every_n,
-                foyer_id=current["foyer_id"],
-            )
+    # Auto-vote du createur sur tout type votable (interval ou
+    # monthly_variable) : la saisie initiale devient son vote, ce qui
+    # garantit l'invariant "consensus = moyenne des votes" des la creation.
+    if task.recurrence_rule:
+        rule_type = task.recurrence_rule.get("type")
+        if rule_type == "interval":
+            every_n = task.recurrence_rule.get("every_n_days")
+            if isinstance(every_n, int) and every_n >= 1:
+                await upsert_vote_and_sync_consensus(
+                    session, task, UUID(current["user_id"]),
+                    expand_interval(every_n),
+                    foyer_id=current["foyer_id"],
+                )
+        elif rule_type == "monthly_variable":
+            dpm_raw = task.recurrence_rule.get("days_per_month")
+            if dpm_raw:
+                try:
+                    dpm = normalize_days_per_month(dpm_raw)
+                    await upsert_vote_and_sync_consensus(
+                        session, task, UUID(current["user_id"]), dpm,
+                        foyer_id=current["foyer_id"],
+                    )
+                except ValueError:
+                    pass  # input invalide, on saute l'auto-vote
 
     await record_change(
         session, "tasks", task.id, "INSERT", current["user_id"],
@@ -196,52 +214,60 @@ async def update_task(
         rr = updates["recurrence_rule"]
         updates["recurrence_rule"] = rr.model_dump() if hasattr(rr, "model_dump") else rr
 
-    # Garde anti-court-circuit du systeme de vote frequence : en type interval,
-    # every_n_days est pilote par les votes (PUT /api/tasks/{id}/frequency).
-    # Toute valeur differente du consensus avec votes existants est rejetee.
-    # Le retour a interval depuis un autre type devient un vote de l'user courant.
+    # Garde anti-court-circuit du systeme de vote (v0.27 : 2 types votables).
+    # Pour interval ou monthly_variable, la cadence est pilotee par les votes
+    # via PUT /tasks/{id}/frequency. Toute mutation directe via PUT /tasks/{id}
+    # qui change la cadence et a deja des votes est rejetee. Le retour a un
+    # type votable depuis un type non-votable (uncertain ou rule=None) devient
+    # un vote de l'user courant.
+    VOTABLE = {"interval", "monthly_variable"}
     if "recurrence_rule" in updates and updates["recurrence_rule"]:
         new_rule = updates["recurrence_rule"]
         old_rule = task.recurrence_rule or {}
         new_type = new_rule.get("type")
         old_type = old_rule.get("type")
 
-        if new_type == "interval" and old_type == "interval":
-            votes_count_r = await session.execute(
-                select(func.count(TaskFrequencyVote.task_id)).where(
-                    TaskFrequencyVote.task_id == task_id
+        if new_type in VOTABLE and old_type in VOTABLE:
+            # Idempotent si rule identique, sinon 409 (passer par /frequency).
+            if new_rule != old_rule:
+                votes_count_r = await session.execute(
+                    select(func.count(TaskFrequencyVote.task_id)).where(
+                        TaskFrequencyVote.task_id == task_id
+                    )
                 )
-            )
-            votes_count = votes_count_r.scalar() or 0
-            consensus = old_rule.get("every_n_days")
-            if votes_count > 0 and new_rule.get("every_n_days") != consensus:
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        "code": "FREQUENCY_VOTE_LOCKED",
-                        "message": "Cadence pilotee par les votes — re-vote requis via PUT /tasks/{id}/frequency",
-                        "votes_count": votes_count,
-                        "consensus_every_n_days": consensus,
-                    },
-                )
-            # Idempotent (valeur egale) : on laisse le bloc setattr ecrire la
-            # meme valeur sans effet de bord.
+                votes_count = votes_count_r.scalar() or 0
+                if votes_count > 0:
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "code": "FREQUENCY_VOTE_LOCKED",
+                            "message": "Cadence pilotee par les votes — re-vote requis via PUT /tasks/{id}/frequency",
+                            "votes_count": votes_count,
+                            "consensus_rule": old_rule,
+                        },
+                    )
 
-        elif new_type == "interval" and old_type != "interval":
-            # Retour a interval : la saisie devient le vote de l'user courant,
-            # le helper recalcule le consensus avec les votes en sommeil.
-            every_n = new_rule.get("every_n_days")
-            if isinstance(every_n, int) and every_n >= 1:
+        elif new_type in VOTABLE and old_type not in VOTABLE:
+            # Retour a un type votable : la saisie devient le vote de l'user
+            # courant, le helper recalcule le consensus avec d'eventuels
+            # votes en sommeil (peu probable mais possible).
+            try:
+                if new_type == "interval":
+                    every_n = new_rule.get("every_n_days")
+                    if not (isinstance(every_n, int) and every_n >= 1):
+                        raise ValueError("every_n_days manquant ou invalide")
+                    dpm = expand_interval(every_n)
+                else:  # monthly_variable
+                    dpm = normalize_days_per_month(new_rule.get("days_per_month"))
                 updates.pop("recurrence_rule")
                 await upsert_vote_and_sync_consensus(
-                    session, task, UUID(current["user_id"]), every_n,
+                    session, task, UUID(current["user_id"]), dpm,
                     foyer_id=current["foyer_id"],
                 )
-            # Si every_n absent/invalide, on laisse le bloc setattr ecrire
-            # la regle telle quelle (cas pathologique, validation Pydantic
-            # devrait avoir filtre amont).
+            except ValueError:
+                pass  # cas pathologique, on laisse setattr ecrire tel quel
 
-        # new_type != "interval" : changement libre, votes restent dormants.
+        # new_type non votable : changement libre, votes restent dormants.
 
     for key, val in updates.items():
         setattr(task, key, val)

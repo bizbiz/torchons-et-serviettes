@@ -79,12 +79,16 @@ class EffortUpdate(BaseModel):
 
 
 class FrequencyUpdate(BaseModel):
-    # Cap a 365j : couvre les taches annuelles (controle technique, decorations
-    # saisonnieres) sans permettre des valeurs aberrantes. L'ancien cap a 60j
-    # creait des 422 silencieux pour tout slider UI qui allait plus loin
-    # (ex : currentDays=60 -> max UI = 120), piegeant la pending_operation
-    # indefiniment cote Android.
-    every_n_days: int = Field(ge=1, le=365)
+    """Vote de frequence d'un user — accepte 2 raccourcis :
+
+    - `every_n_days` : valeur unique appliquee aux 12 mois (mode "Régulière").
+    - `days_per_month` : dict explicite (mode "Selon le mois").
+
+    Exactement un des deux. Backend normalise en canonique 12-mois (cf.
+    `app.services.frequency_vote.normalize_days_per_month`).
+    """
+    every_n_days: int | None = Field(default=None, ge=1, le=365)
+    days_per_month: dict[str, int] | None = None
 
 
 class AffinityResponse(BaseModel):
@@ -420,13 +424,19 @@ async def set_frequency(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Definit le vote de frequence (every_n_days) de l'utilisateur courant.
-    Recalcule le consensus (moyenne arrondie) et l'ecrit dans
-    tasks.recurrence_rule. Enregistre deux entrees change_log :
-    - task_frequency_votes/VOTE (value + consensus_before/after)
-    - tasks/UPDATE (pour que le client sync recupere la nouvelle recurrence)
-    Le GET /tasks/{id}/history dedoublonne ces deux entrees.
+    """Definit le vote de frequence de l'utilisateur courant (forme canonique
+    12 mois). Recalcule le consensus (moyenne arrondie par mois) et l'ecrit
+    dans `tasks.recurrence_rule` (collapse-on-write : interval si 12 valeurs
+    egales, sinon monthly_variable).
+
+    Le helper `upsert_vote_and_sync_consensus` logge le
+    `task_frequency_votes/VOTE` dans change_log, on logge ici en plus
+    `tasks/UPDATE` pour la sync — les deux sont dedup en GET /history.
     """
+    from app.services.frequency_vote import (
+        expand_interval, normalize_days_per_month
+    )
+
     user_id = UUID(current["user_id"])
     await _ensure_user_assigned(session, task_id, user_id)
 
@@ -437,14 +447,26 @@ async def set_frequency(
     if not task:
         raise HTTPException(status_code=404, detail="Tache introuvable")
 
+    # Normaliser l'entree : exactement l'un des 2 champs doit etre fourni.
+    if (body.every_n_days is None) == (body.days_per_month is None):
+        raise HTTPException(
+            status_code=422,
+            detail="Fournir exactement un des champs : every_n_days ou days_per_month.",
+        )
+    if body.every_n_days is not None:
+        days_per_month = expand_interval(body.every_n_days)
+    else:
+        try:
+            days_per_month = normalize_days_per_month(body.days_per_month)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     old_rule = dict(task.recurrence_rule) if task.recurrence_rule else None
-    # Le helper logge desormais lui-meme le task_frequency_votes/VOTE quand
-    # foyer_id est fourni — pas de double-log a faire ici.
-    consensus_before, consensus_after = await upsert_vote_and_sync_consensus(
-        session, task, user_id, body.every_n_days, foyer_id=current["foyer_id"]
+    rule_before, rule_after = await upsert_vote_and_sync_consensus(
+        session, task, user_id, days_per_month, foyer_id=current["foyer_id"]
     )
 
-    # Log du changement de la tache (cote sync) — sera dedoublonne en GET /history.
+    # Log du changement de la tache (cote sync) — dedup en GET /history.
     await record_change(
         session, "tasks", task_id, "UPDATE", current["user_id"],
         foyer_id=current["foyer_id"],
@@ -456,8 +478,8 @@ async def set_frequency(
     return {
         "task_id": str(task_id),
         "user_id": str(user_id),
-        "every_n_days": body.every_n_days,
-        "consensus": consensus_after,
+        "days_per_month": days_per_month,
+        "consensus_rule": rule_after,
     }
 
 
@@ -490,7 +512,7 @@ async def get_frequency_votes(
     if not task:
         raise HTTPException(status_code=404, detail="Tache introuvable")
 
-    # Votes + display_name des voteurs
+    # Votes + display_name des voteurs (forme canonique 12 mois v0.27).
     votes_r = await session.execute(
         select(TaskFrequencyVote, User)
         .join(User, User.id == TaskFrequencyVote.user_id)
@@ -498,16 +520,19 @@ async def get_frequency_votes(
     )
     rows = votes_r.all()
 
-    my_vote = None
-    others = []
+    my_days_per_month = None
+    my_updated_at = None
+    others: list[dict] = []
     for vote, user in rows:
         if vote.user_id == user_id:
-            my_vote = vote.every_n_days
+            my_days_per_month = vote.days_per_month
+            my_updated_at = vote.updated_at.isoformat() if vote.updated_at else None
         else:
             others.append({
                 "user_id": str(vote.user_id),
                 "display_name": user.display_name,
-                "every_n_days": vote.every_n_days,
+                "days_per_month": vote.days_per_month,
+                "updated_at": vote.updated_at.isoformat() if vote.updated_at else None,
             })
 
     # can_vote = user assigne a la tache
@@ -519,15 +544,12 @@ async def get_frequency_votes(
     )
     can_vote = assign_r.scalar_one_or_none() is not None
 
-    consensus = None
-    if task.recurrence_rule and isinstance(task.recurrence_rule.get("every_n_days"), int):
-        consensus = task.recurrence_rule["every_n_days"]
-
     return {
         "task_id": str(task_id),
-        "consensus_every_n_days": consensus,
+        "consensus_rule": task.recurrence_rule,
         "votes_count": len(rows),
-        "my_vote": my_vote,
+        "my_days_per_month": my_days_per_month,
+        "my_updated_at": my_updated_at,
         "can_vote": can_vote,
         "others": others,
     }

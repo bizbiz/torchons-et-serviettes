@@ -56,52 +56,15 @@ def next_due(rule: dict | None, last_completed: datetime | None) -> datetime | N
             return now
         return last_completed + timedelta(days=n)
 
-    elif rtype == "weekdays":
-        days = rule.get("days", [])  # ISO: 1=lundi ... 7=dimanche
-        if not days:
-            return None
-        start = (anchor + timedelta(days=1)).date() if last_completed else anchor.date()
-        for offset in range(8):  # max 7 jours + 1
-            candidate = start + timedelta(days=offset)
-            if candidate.isoweekday() in days:
-                return datetime(candidate.year, candidate.month, candidate.day, tzinfo=timezone.utc)
-        return None
-
-    elif rtype == "monthly":
-        dom = rule.get("day_of_month", 1)
-        ref = anchor.date() if last_completed else anchor.date() - timedelta(days=1)
-        # Mois suivant si on a deja passe le jour ce mois-ci
-        year, month = ref.year, ref.month
-        if ref.day >= dom:
-            month += 1
-            if month > 12:
-                month, year = 1, year + 1
-        # Clamp au dernier jour du mois si dom > nb jours
-        import calendar
-        max_day = calendar.monthrange(year, month)[1]
-        day = min(dom, max_day)
-        return datetime(year, month, day, tzinfo=timezone.utc)
-
-    elif rtype == "custom":
-        n_weeks = rule.get("every_n_weeks", 1)
-        day = rule.get("day", 1)  # ISO weekday
-        if last_completed is None:
-            return now
-        start = last_completed.date() + timedelta(days=1)
-        # Avancer de n_weeks semaines depuis la derniere completion, trouver le bon jour
-        target = last_completed.date() + timedelta(weeks=n_weeks)
-        # Ajuster au jour de la semaine voulu
-        diff = (day - target.isoweekday()) % 7
-        target = target + timedelta(days=diff)
-        return datetime(target.year, target.month, target.day, tzinfo=timezone.utc)
-
     elif rtype == "monthly_variable":
-        # Recurrence variable par mois : days_per_month = {"1": 30, "7": 3, ...}
+        # Recurrence variable par mois : days_per_month = {"1": 30, "7": 3, ...}.
+        # Avec la v0.27, le format canonique est toujours 12 entrees, donc le
+        # cas "mois manquant" ne devrait plus arriver — on garde quand meme un
+        # fallback pour les anciens enregistrements eventuels.
         dpm = rule.get("days_per_month", {})
         current_month = str(now.month)
         n_days = dpm.get(current_month)
         if n_days is None:
-            # Mois inactif — chercher le prochain mois actif
             for offset in range(1, 13):
                 m = ((now.month - 1 + offset) % 12) + 1
                 if str(m) in dpm:
@@ -112,6 +75,9 @@ def next_due(rule: dict | None, last_completed: datetime | None) -> datetime | N
             return now
         return last_completed + timedelta(days=n_days)
 
+    # uncertain : pas d'echeance visible. weekdays/monthly/custom ont ete
+    # supprimes en v0.27 (ils n'existaient plus en base mais le code mort
+    # est nettoye pour reduire la surface de bug).
     return None
 
 
@@ -155,17 +121,8 @@ def min_completion_gap_seconds(
         every_n_days = rule.get("every_n_days", 1)
         return one_day if every_n_days >= 7 else one_hour
 
-    if rtype == "weekdays":
-        days = rule.get("days", [])
-        # 1 jour/semaine ou moins = 24h, sinon 1h
-        return one_day if len(days) <= 1 else one_hour
-
-    if rtype == "monthly" or rtype == "monthly_variable":
+    if rtype == "monthly_variable":
         return one_day
-
-    if rtype == "custom":
-        every_n_weeks = rule.get("every_n_weeks", 1)
-        return one_day if every_n_weeks >= 1 else one_hour
 
     if rtype == "uncertain":
         if inferred_interval_days is not None and inferred_interval_days >= 7:
@@ -195,18 +152,6 @@ def interval_hours(
     if rtype == "interval":
         return rule.get("every_n_days", 1) * 24.0
 
-    elif rtype == "weekdays":
-        days = rule.get("days", [])
-        if not days:
-            return float("inf")
-        return (7.0 / len(days)) * 24.0
-
-    elif rtype == "monthly":
-        return 30.44 * 24.0  # moyenne mois
-
-    elif rtype == "custom":
-        return rule.get("every_n_weeks", 1) * 7.0 * 24.0
-
     elif rtype == "monthly_variable":
         now = datetime.now(timezone.utc)
         dpm = rule.get("days_per_month", {})
@@ -231,14 +176,9 @@ def compute_nominal_interval_days(rule: dict | None) -> int:
     Utilise pour dimensionner la fenetre orange "du / bientot du" :
     window = floor(nominal * 0.10).
 
-    Pour les recurrences non-interval, on renvoie une constante par tache
-    (pas de gap reel entre occurrences), plus previsible pour l'utilisateur.
-
     - interval : every_n_days
-    - weekdays : max(1, round(7 / len(days)))
-    - monthly : 30
-    - custom : every_n_weeks * 7
     - monthly_variable : moyenne des valeurs de days_per_month, fallback 30
+    - uncertain : 0 -> pas de fenetre orange (etat reste GREEN par compute_urgency_state)
     - None (ponctuelle) : 0 -> window = 0, pas de zone orange
     """
     if rule is None:
@@ -249,18 +189,6 @@ def compute_nominal_interval_days(rule: dict | None) -> int:
     if rtype == "interval":
         return int(rule.get("every_n_days", 1))
 
-    if rtype == "weekdays":
-        days = rule.get("days", [])
-        if not days:
-            return 0
-        return max(1, round(7 / len(days)))
-
-    if rtype == "monthly":
-        return 30
-
-    if rtype == "custom":
-        return int(rule.get("every_n_weeks", 1)) * 7
-
     if rtype == "monthly_variable":
         dpm = rule.get("days_per_month", {})
         vals = [v for v in dpm.values() if isinstance(v, (int, float))]
@@ -268,11 +196,7 @@ def compute_nominal_interval_days(rule: dict | None) -> int:
             return max(1, round(sum(vals) / len(vals)))
         return 30
 
-    # uncertain : pas de fenetre orange — l'etat reste toujours GREEN (Q2).
-    # Rendu via compute_due_date -> None, donc compute_urgency_state -> GREEN.
-    if rtype == "uncertain":
-        return 0
-
+    # uncertain : pas de fenetre orange — l'etat reste toujours GREEN.
     return 0
 
 

@@ -1,50 +1,121 @@
-"""Service vote de frequence — upsert + recalcul du consensus.
+"""Service vote de frequence (v0.27 : 12 mois + collapse-on-write).
 
-Toute cadence visible (`tasks.recurrence_rule.every_n_days` en type `interval`)
-DOIT etre la moyenne arrondie des `task_frequency_votes`. L'edition directe du
-champ `recurrence_rule.every_n_days` via PUT /api/tasks/{id} est bloquee si
-des votes existent (cf. tasks.update_task) ; les chemins legitimes qui
-introduisent une nouvelle cadence (creation d'une tache, retour au type
-interval depuis un autre type) passent par ce helper qui enregistre la saisie
-comme un vote de l'user courant et resynchronise le champ.
+Forme canonique d'un vote : `days_per_month: dict[str(1..12), int]` — 12
+entrees, une par mois. Un vote "Simple" (mode interval cote UI) ecrit la
+meme valeur sur les 12 mois. Un vote "Selon le mois" ecrit des valeurs
+distinctes.
+
+Le consensus est calcule comme la moyenne arrondie par mois sur tous les
+votes de la tache. Apres calcul, on applique un collapse-on-write :
+- 12 valeurs identiques -> task.recurrence_rule = {type:"interval",
+  every_n_days: N}
+- valeurs distinctes -> task.recurrence_rule = {type:"monthly_variable",
+  days_per_month: {"1": ..., "12": ...}}
+
+Cette regle de collapse rend le format affiche conforme au mental model
+("Tous les N jours" si stable, "Variable selon le mois" sinon) sans
+toucher la forme canonique des votes.
 """
 from __future__ import annotations
 
+from typing import Iterable
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.task import Task
 from app.models.task_frequency_vote import TaskFrequencyVote
 from app.utils.changelog import record_change
 
+MONTHS = [str(m) for m in range(1, 13)]   # ["1", "2", ..., "12"]
+
+
+def expand_interval(every_n_days: int) -> dict[str, int]:
+    """Construit un dict 12-mois avec la meme valeur partout."""
+    return {m: every_n_days for m in MONTHS}
+
+
+def normalize_days_per_month(value: dict | None) -> dict[str, int]:
+    """Verifie/coerce un dict en forme canonique 12-mois (cles "1".."12").
+
+    Accepte :
+    - dict[str, int] complet ("1".."12") -> retourne tel quel (cast int).
+    - dict[int, int] -> conversion des cles en str.
+    - dict partiel -> remplit les manquants avec la moyenne des presents.
+    Leve ValueError si valeurs invalides ou dict vide / None.
+    """
+    if not value:
+        raise ValueError("days_per_month vide ou null")
+    str_keys: dict[str, int] = {}
+    for k, v in value.items():
+        sk = str(k)
+        if sk not in MONTHS:
+            raise ValueError(f"cle de mois invalide : {k!r}")
+        try:
+            iv = int(v)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"valeur non-entiere pour mois {sk}: {v!r}") from exc
+        if not (1 <= iv <= 365):
+            raise ValueError(f"every_n_days hors [1, 365] pour mois {sk}: {iv}")
+        str_keys[sk] = iv
+    if not str_keys:
+        raise ValueError("days_per_month vide apres normalisation")
+    # Si dict partiel, completer avec la moyenne arrondie des presents.
+    if len(str_keys) < 12:
+        avg = round(sum(str_keys.values()) / len(str_keys))
+        for m in MONTHS:
+            str_keys.setdefault(m, avg)
+    return {m: str_keys[m] for m in MONTHS}
+
+
+def average_per_month(votes: Iterable[dict[str, int]]) -> dict[str, int]:
+    """Moyenne arrondie par mois sur N votes (chacun deja en forme 12-mois)."""
+    sums = {m: 0 for m in MONTHS}
+    n = 0
+    for v in votes:
+        for m in MONTHS:
+            sums[m] += v[m]
+        n += 1
+    if n == 0:
+        # Devrait pas arriver (au moins 1 vote par tache recurrente).
+        return {m: 7 for m in MONTHS}
+    return {m: round(sums[m] / n) for m in MONTHS}
+
+
+def build_recurrence_rule(consensus: dict[str, int]) -> dict:
+    """Collapse-on-write : forme la plus simple possible du recurrence_rule.
+
+    - Si les 12 valeurs sont egales -> {type:"interval", every_n_days: N}
+    - Sinon -> {type:"monthly_variable", days_per_month: {...}}
+    """
+    values = [consensus[m] for m in MONTHS]
+    if all(v == values[0] for v in values):
+        return {"type": "interval", "every_n_days": int(values[0])}
+    return {"type": "monthly_variable", "days_per_month": dict(consensus)}
+
 
 async def upsert_vote_and_sync_consensus(
     session: AsyncSession,
     task: Task,
     user_id: UUID,
-    every_n_days: int,
+    days_per_month: dict[str, int],
     foyer_id: UUID | str | None = None,
-) -> tuple[int | None, int]:
-    """Upsert le vote frequence de l'user, recalcule le consensus (moyenne
-    arrondie des votes) et l'ecrit dans `task.recurrence_rule` (type=interval).
+) -> tuple[dict | None, dict]:
+    """Upsert le vote de l'user puis recalcule + ecrit le consensus dans
+    `task.recurrence_rule` (collapse-on-write).
 
-    Si `foyer_id` est fourni, logge aussi un `task_frequency_votes/VOTE` dans
-    change_log (necessaire pour la dedup vote/recurrence dans /api/history :
-    sans ce log, le tasks/UPDATE redondant ne peut pas etre identifie comme
-    accompagnant un vote). Les callers (set_frequency, create_task,
-    update_task retour-interval) doivent passer foyer_id pour que le vote
-    soit visible dans l'historique sous la bonne forme.
+    `days_per_month` doit etre normalise par le caller via
+    `normalize_days_per_month` (validation centralisee).
 
-    Retourne `(consensus_before, consensus_after)` pour alimenter le change_log.
-    Ne commit pas — le caller controle la transaction.
+    Si `foyer_id` est fourni, logge un `task_frequency_votes/VOTE` dans
+    change_log pour la dedup vote/recurrence cote /api/history.
+
+    Retourne `(rule_before, rule_after)`. Ne commit pas — caller controle.
     """
-    old_rule = dict(task.recurrence_rule) if task.recurrence_rule else None
-    consensus_before = None
-    if old_rule and isinstance(old_rule.get("every_n_days"), int):
-        consensus_before = old_rule["every_n_days"]
+    rule_before = dict(task.recurrence_rule) if task.recurrence_rule else None
 
+    # 1. Upsert le vote de l'user.
     vote_r = await session.execute(
         select(TaskFrequencyVote).where(
             TaskFrequencyVote.task_id == task.id,
@@ -53,38 +124,40 @@ async def upsert_vote_and_sync_consensus(
     )
     vote = vote_r.scalar_one_or_none()
     if vote:
-        vote.every_n_days = every_n_days
-        vote.updated_at = func.now()
+        vote.days_per_month = days_per_month
     else:
         session.add(
             TaskFrequencyVote(
-                task_id=task.id, user_id=user_id, every_n_days=every_n_days
+                task_id=task.id,
+                user_id=user_id,
+                days_per_month=days_per_month,
             )
         )
     await session.flush()
 
-    avg_r = await session.execute(
-        select(func.avg(TaskFrequencyVote.every_n_days)).where(
+    # 2. Charger tous les votes pour calcul du consensus par mois.
+    all_r = await session.execute(
+        select(TaskFrequencyVote.days_per_month).where(
             TaskFrequencyVote.task_id == task.id
         )
     )
-    avg = avg_r.scalar()
-    consensus_after = round(avg) if avg is not None else every_n_days
+    all_votes = [normalize_days_per_month(row[0]) for row in all_r.all()]
+    consensus = average_per_month(all_votes)
+    new_rule = build_recurrence_rule(consensus)
 
-    task.recurrence_rule = {"type": "interval", "every_n_days": consensus_after}
+    task.recurrence_rule = new_rule
     task.version += 1
 
-    # Log du vote individuel dans change_log si foyer_id fourni. Permet la
-    # dedup vote/recurrence cote /api/history (cf. _build_history dans stats).
+    # 3. Log change pour dedup historique.
     if foyer_id is not None:
         await record_change(
             session, "task_frequency_votes", task.id, "VOTE", str(user_id),
             foyer_id=str(foyer_id),
             new_data={
-                "every_n_days": every_n_days,
-                "consensus_before": consensus_before,
-                "consensus_after": consensus_after,
+                "days_per_month": days_per_month,
+                "rule_before": rule_before,
+                "rule_after": new_rule,
             },
         )
 
-    return consensus_before, consensus_after
+    return rule_before, new_rule

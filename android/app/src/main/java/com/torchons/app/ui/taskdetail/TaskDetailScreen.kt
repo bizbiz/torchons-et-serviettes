@@ -1228,17 +1228,17 @@ private fun formatDateTime(isoDateTime: String): String {
     }
 }
 
-/** Formate la regle de recurrence en texte lisible. */
+/**
+ * Formate la regle de recurrence en texte lisible (v0.27 — 3 types
+ * supportes : interval, monthly_variable, uncertain).
+ */
 private fun formatRecurrence(rule: com.torchons.app.data.model.RecurrenceRule): String {
     return when (rule.type) {
-        "interval" -> rule.everyNDays?.let { "Tous les ${DurationFormat.formatDaysHuman(it, long = true)}" } ?: "Tous les ? jours"
-        "weekdays" -> {
-            val dayNames = listOf("Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim")
-            val days = rule.days?.map { dayNames.getOrElse(it - 1) { "?" } }?.joinToString(", ")
-            "Jours : $days"
-        }
-        "monthly" -> "Mensuel (jour ${rule.dayOfMonth ?: "?"})"
-        "custom" -> "Toutes les ${rule.everyNWeeks ?: "?"} semaines (jour ${rule.day ?: "?"})"
+        "interval" -> rule.everyNDays?.let {
+            "Tous les ${DurationFormat.formatDaysHuman(it, long = true)}"
+        } ?: "Tous les ? jours"
+        "monthly_variable" -> "Variable selon le mois"
+        "uncertain" -> "Irreguliere"
         else -> rule.type
     }
 }

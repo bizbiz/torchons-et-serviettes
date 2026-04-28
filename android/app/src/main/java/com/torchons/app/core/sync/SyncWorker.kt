@@ -67,8 +67,17 @@ class SyncWorker(
                 @Suppress("UNCHECKED_CAST")
                 val payload = gson.fromJson(op.payloadJson, Map::class.java) as? Map<String, Any?>
                 val days = (payload?.get("every_n_days") as? Number)?.toInt()
-                if (days != null) {
-                    val resp = apiService.setFrequency(op.rowId, FrequencyRequest(days))
+                @Suppress("UNCHECKED_CAST")
+                val daysPerMonth = (payload?.get("days_per_month") as? Map<String, Any?>)
+                    ?.mapNotNull { (k, v) -> (v as? Number)?.toInt()?.let { k to it } }
+                    ?.toMap()
+                val request = when {
+                    daysPerMonth != null -> FrequencyRequest(daysPerMonth = daysPerMonth)
+                    days != null -> FrequencyRequest(everyNDays = days)
+                    else -> null
+                }
+                if (request != null) {
+                    val resp = apiService.setFrequency(op.rowId, request)
                     when {
                         resp.isSuccessful -> pendingDao.delete(op.clientOpId)
                         // 4xx = erreur permanente (payload invalide / tache supprimee /

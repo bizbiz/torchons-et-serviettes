@@ -531,16 +531,15 @@ private fun ResolutionItemBlock(
 }
 
 private fun recurrenceToLabel(rule: Map<String, Any>?): String {
-    if (rule == null) return "Ponctuelle"
+    if (rule == null) return "Une seule fois"
     val type = rule["type"] as? String ?: return "?"
     return when (type) {
         "interval" -> {
             val n = (rule["every_n_days"] as? Number)?.toInt() ?: 1
             "Tous les $n j"
         }
-        "monthly" -> "Tous les mois"
-        "weekdays" -> "Chaque semaine"
-        "custom" -> "Recurrent"
+        "monthly_variable" -> "Selon le mois"
+        "uncertain" -> "Irreguliere"
         else -> type
     }
 }

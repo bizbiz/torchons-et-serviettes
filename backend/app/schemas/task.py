@@ -10,33 +10,45 @@ from pydantic import BaseModel, Field, model_validator
 from app.models.enums import TaskTolerance
 
 
+_VALID_RECURRENCE_TYPES = {"interval", "monthly_variable", "uncertain"}
+
+
 class RecurrenceRule(BaseModel):
-    type: str  # interval, weekdays, monthly, custom, monthly_variable, uncertain
+    """Regle de recurrence d'une tache (v0.27 — types simplifies).
+
+    Seuls 3 types sont acceptes :
+    - `interval` : cadence reguliere, every_n_days obligatoire.
+    - `monthly_variable` : cadence variable selon le mois, days_per_month
+      obligatoire (12 entrees).
+    - `uncertain` : pas de cadence connue, aucun champ de cadence.
+
+    Les anciens types `weekdays`, `monthly`, `custom` ont ete supprimes en
+    v0.27. Les regles existantes en base ne portent que les types
+    autorises (verifie avant deploiement).
+    """
+    type: str
     every_n_days: int | None = None
-    days: list[int] | None = None  # ISO weekday (1=lundi)
-    day_of_month: int | None = None
-    every_n_weeks: int | None = None
-    day: int | None = None
     days_per_month: dict[str, int] | None = None
 
     @model_validator(mode="after")
-    def _validate_uncertain(self) -> "RecurrenceRule":
-        """Une recurrence 'uncertain' ne doit porter aucun parametre de cadence.
-        La frequence est inferee cote backend a partir de l'historique."""
+    def _validate_type(self) -> "RecurrenceRule":
+        if self.type not in _VALID_RECURRENCE_TYPES:
+            raise ValueError(
+                f"type de recurrence non supporte : {self.type!r}. "
+                f"Types valides : {sorted(_VALID_RECURRENCE_TYPES)}."
+            )
         if self.type == "uncertain":
-            extras = {
-                "every_n_days": self.every_n_days,
-                "days": self.days,
-                "day_of_month": self.day_of_month,
-                "every_n_weeks": self.every_n_weeks,
-                "day": self.day,
-                "days_per_month": self.days_per_month,
-            }
-            set_fields = [k for k, v in extras.items() if v is not None]
-            if set_fields:
+            if self.every_n_days is not None or self.days_per_month is not None:
                 raise ValueError(
-                    f"recurrence 'uncertain' ne doit pas porter de champs de cadence "
-                    f"(trouves : {set_fields})"
+                    "recurrence 'uncertain' ne doit pas porter de champs de cadence."
+                )
+        elif self.type == "interval":
+            if self.every_n_days is None:
+                raise ValueError("recurrence 'interval' doit fournir every_n_days.")
+        elif self.type == "monthly_variable":
+            if not self.days_per_month:
+                raise ValueError(
+                    "recurrence 'monthly_variable' doit fournir days_per_month."
                 )
         return self
 

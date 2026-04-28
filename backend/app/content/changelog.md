@@ -1,5 +1,13 @@
 # Notes de version
 
+## v0.27.0 — 2026-04-28
+
+### Frequence des taches : un vote, simple et clair
+- A la creation d'une tache, on parle desormais explicitement de "vote" : ta saisie est ton vote sur la frequence, pas une regle imposee. Si tu es seul a voter, c'est ton vote qui devient la frequence affichee.
+- Quatre choix de type de tache, en mots clairs : "Reguliere", "Selon le mois", "Irreguliere", "Une seule fois". Trois anciens types techniques (jours fixes de semaine, mensuel a jour fixe, toutes les N semaines) disparaissent — ils n'etaient pas utilises et compliquaient l'interface.
+- Le mini-dialog "Modifier mon vote" propose deux modes : "Reguliere" (un slider unique) ou "Selon le mois" (12 sliders mensuels). Pratique pour les taches saisonnieres : tondre la pelouse tous les 7 jours en ete et tous les 30 en hiver, par exemple.
+- Le slider de creation pose la bonne question : *"Selon toi, tous les combien faut-il faire cette tache ?"*
+
 ## v0.26.0 — 2026-04-27
 
 ### Filtres de la liste des taches en mots clairs

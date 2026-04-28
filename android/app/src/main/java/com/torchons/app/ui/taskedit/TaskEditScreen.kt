@@ -131,7 +131,7 @@ fun TaskEditScreen(
         FrequencyVoteDialog(
             taskTitle = uiState.title,
             state = freqVotes,
-            onSubmit = { everyNDays -> viewModel.submitFrequencyVote(taskId, everyNDays) },
+            onSubmit = { request -> viewModel.submitFrequencyVote(taskId, request) },
             onDismiss = { viewModel.dismissFrequencyVoteDialog() },
         )
     }
@@ -436,11 +436,16 @@ fun TaskEditScreen(
             // ajuster la cadence d'un interval, mais changer de type (ex. passer
             // d'interval a uncertain) se fait ici.
             var recurrenceExpanded by remember { mutableStateOf(false) }
+            // v0.27 — libelles ***REMOVED***-friendly :
+            // - interval -> Reguliere
+            // - monthly_variable -> Selon le mois
+            // - uncertain -> Irreguliere
+            // - none -> Une seule fois
             val recurrenceLabel = when (uiState.recurrenceType) {
-                "none" -> "Ponctuelle (pas de recurrence)"
-                "interval" -> "Recurrente (frequence fixe)"
-                "monthly_variable" -> "Variable par mois"
-                "uncertain" -> "Quand c'est necessaire"
+                "interval" -> "Reguliere"
+                "monthly_variable" -> "Selon le mois"
+                "uncertain" -> "Irreguliere"
+                "none" -> "Une seule fois"
                 else -> uiState.recurrenceType
             }
 
@@ -452,7 +457,7 @@ fun TaskEditScreen(
                     value = recurrenceLabel,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Recurrence") },
+                    label = { Text("Frequence") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = recurrenceExpanded) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -463,30 +468,30 @@ fun TaskEditScreen(
                     onDismissRequest = { recurrenceExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Ponctuelle (pas de recurrence)") },
-                        onClick = {
-                            viewModel.updateRecurrenceType("none")
-                            recurrenceExpanded = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Recurrente (frequence fixe)") },
+                        text = { Text("Reguliere") },
                         onClick = {
                             viewModel.updateRecurrenceType("interval")
                             recurrenceExpanded = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Variable par mois") },
+                        text = { Text("Selon le mois") },
                         onClick = {
                             viewModel.updateRecurrenceType("monthly_variable")
                             recurrenceExpanded = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Quand c'est necessaire") },
+                        text = { Text("Irreguliere") },
                         onClick = {
                             viewModel.updateRecurrenceType("uncertain")
+                            recurrenceExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Une seule fois") },
+                        onClick = {
+                            viewModel.updateRecurrenceType("none")
                             recurrenceExpanded = false
                         }
                     )
@@ -556,7 +561,7 @@ fun TaskEditScreen(
                             onClick = { viewModel.openFrequencyVoteDialog() },
                             modifier = Modifier.padding(top = 4.dp),
                         ) {
-                            Text("Modifier via le vote")
+                            Text("Modifier mon vote")
                         }
                     }
                 }

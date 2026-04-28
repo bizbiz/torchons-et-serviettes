@@ -411,25 +411,31 @@ class TaskRepository @Inject constructor(
      * l'op est mise en file d'attente (SyncWorker appellera setFrequency
      * directement — la table task_frequency_votes n'est pas geree par /sync).
      */
-    suspend fun voteFrequency(taskId: String, everyNDays: Int): Result<Unit> {
+    suspend fun voteFrequency(taskId: String, request: FrequencyRequest): Result<Unit> {
         return try {
-            val response = apiService.setFrequency(taskId, FrequencyRequest(everyNDays))
+            val response = apiService.setFrequency(taskId, request)
             if (response.isSuccessful) {
                 refreshTaskHistory(taskId)
                 Result.success(Unit)
             } else {
-                enqueueFrequencyVote(taskId, everyNDays)
+                enqueueFrequencyVote(taskId, request)
                 Result.success(Unit)
             }
         } catch (_: Exception) {
-            enqueueFrequencyVote(taskId, everyNDays)
+            enqueueFrequencyVote(taskId, request)
             Result.success(Unit)
         }
     }
 
-    private suspend fun enqueueFrequencyVote(taskId: String, everyNDays: Int) {
+    /** Helper raccourci interval (mode "Régulière" — 12 mois identiques). */
+    suspend fun voteFrequency(taskId: String, everyNDays: Int): Result<Unit> =
+        voteFrequency(taskId, FrequencyRequest(everyNDays = everyNDays))
+
+    private suspend fun enqueueFrequencyVote(taskId: String, request: FrequencyRequest) {
         val clientOpId = UUID.randomUUID().toString()
-        val payload = mapOf("every_n_days" to everyNDays)
+        val payload: MutableMap<String, Any> = mutableMapOf()
+        request.everyNDays?.let { payload["every_n_days"] = it }
+        request.daysPerMonth?.let { payload["days_per_month"] = it }
         enqueue(clientOpId, "task_frequency_votes", "VOTE", taskId, payload)
     }
 

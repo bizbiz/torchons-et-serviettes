@@ -35,33 +35,21 @@ object TaskUrgencyCalculator {
     val ROUGE = Color(0xFFEF4444)
 
     /**
-     * Intervalle nominal entier en jours d'une recurrence.
-     *
-     * Utilise pour dimensionner la fenetre orange. Pour les recurrences
-     * non-interval, on renvoie une constante par tache (predictible).
+     * Intervalle nominal entier en jours d'une recurrence (v0.27 : 3 types).
      *
      * - interval : every_n_days
-     * - weekdays : max(1, round(7 / nb_jours))
-     * - monthly : 30
-     * - custom : every_n_weeks * 7
      * - monthly_variable : moyenne des valeurs (fallback 30)
+     * - uncertain : 0 (etat toujours Vert)
      * - null (ponctuelle) : 0 -> pas de fenetre orange
      */
     fun nominalIntervalDays(rule: RecurrenceRule?): Int {
         if (rule == null) return 0
         return when (rule.type) {
             "interval" -> (rule.everyNDays ?: 1).coerceAtLeast(1)
-            "weekdays" -> {
-                val n = rule.days?.size ?: 0
-                if (n > 0) maxOf(1, round(7.0 / n).toInt()) else 0
-            }
-            "monthly" -> 30
-            "custom" -> ((rule.everyNWeeks ?: 1) * 7).coerceAtLeast(1)
             "monthly_variable" -> {
                 val vals = rule.daysPerMonth?.values?.filter { it > 0 } ?: emptyList()
                 if (vals.isNotEmpty()) maxOf(1, vals.sum() / vals.size) else 30
             }
-            // uncertain : pas de fenetre orange (v0.14, Q2 etat toujours Vert)
             "uncertain" -> 0
             else -> 0
         }
@@ -96,43 +84,13 @@ object TaskUrgencyCalculator {
         return when (rule.type) {
             "interval" -> lastDate.plusDays((rule.everyNDays ?: 1).toLong())
 
-            "weekdays" -> {
-                val days = rule.days ?: return null
-                if (days.isEmpty()) return null
-                var candidate = lastDate.plusDays(1)
-                for (i in 0..7) {
-                    if (days.contains(candidate.dayOfWeek.value)) return candidate
-                    candidate = candidate.plusDays(1)
-                }
-                null
-            }
-
-            "monthly" -> {
-                val dom = rule.dayOfMonth ?: 1
-                var year = lastDate.year
-                var month = lastDate.monthValue
-                if (lastDate.dayOfMonth >= dom) {
-                    month++
-                    if (month > 12) {
-                        month = 1
-                        year++
-                    }
-                }
-                val firstOfMonth = LocalDate.of(year, month, 1)
-                val maxDay = firstOfMonth.lengthOfMonth()
-                LocalDate.of(year, month, minOf(dom, maxDay))
-            }
-
-            "custom" -> {
-                val nWeeks = (rule.everyNWeeks ?: 1).coerceAtLeast(1)
-                val day = rule.day ?: 1
-                val target = lastDate.plusWeeks(nWeeks.toLong())
-                val diff = ((day - target.dayOfWeek.value) % 7 + 7) % 7
-                target.plusDays(diff.toLong())
-            }
-
             "monthly_variable" -> {
-                val n = nominalIntervalDays(rule)
+                // v0.27 : on utilise la valeur du mois courant si dispo,
+                // sinon la moyenne (via nominalIntervalDays). Plus precis
+                // que la moyenne pour les cadences saisonnieres.
+                val currentMonth = lastDate.monthValue.toString()
+                val n = rule.daysPerMonth?.get(currentMonth)
+                    ?: nominalIntervalDays(rule)
                 if (n > 0) lastDate.plusDays(n.toLong()) else null
             }
 

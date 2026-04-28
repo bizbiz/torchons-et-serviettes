@@ -474,15 +474,18 @@ class TaskEditViewModel @Inject constructor(
      * (converti dans l'unite courante) pour que le save() final ne renvoie
      * pas l'ancienne valeur au backend (sinon 409 FREQUENCY_VOTE_LOCKED).
      */
-    fun submitFrequencyVote(taskId: String, everyNDays: Int) {
+    fun submitFrequencyVote(taskId: String, request: com.torchons.app.data.model.FrequencyRequest) {
         viewModelScope.launch {
-            val result = taskRepository.voteFrequency(taskId, everyNDays)
+            val result = taskRepository.voteFrequency(taskId, request)
             result.fold(
                 onSuccess = {
                     val refreshed = taskRepository.getFrequencyVotes(taskId)
                     val state = _uiState.value
-                    val newConsensus = refreshed?.consensusEveryNDays ?: everyNDays
-                    val newFieldText = state.recurrenceUnit.fromDays(newConsensus).toString()
+                    val newAvg = refreshed?.consensusAverageDays
+                        ?: request.everyNDays
+                        ?: request.daysPerMonth?.values?.let { it.sum() / it.size }
+                        ?: 7
+                    val newFieldText = state.recurrenceUnit.fromDays(newAvg).toString()
                     _uiState.value = state.copy(
                         showFrequencyVoteDialog = false,
                         frequencyVotes = refreshed,

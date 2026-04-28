@@ -66,19 +66,19 @@ data class UpdateTaskRequest(
 )
 
 /**
- * Regle de recurrence pour une tache.
- * Types supportes : interval, weekdays, monthly, custom, monthly_variable,
- * uncertain (v0.14 — cadence libre inferee cote backend).
+ * Regle de recurrence pour une tache (v0.27 — types simplifies).
  *
- * @Immutable pour les memes raisons que Task (champs List/Map).
+ * Types supportes :
+ * - `interval` : cadence reguliere (every_n_days obligatoire).
+ * - `monthly_variable` : cadence variable selon le mois (days_per_month
+ *   obligatoire — 12 entrees "1".."12").
+ * - `uncertain` : cadence libre inferee cote backend (v0.14).
+ *
+ * @Immutable pour les memes raisons que Task (champs Map).
  */
 @Immutable
 data class RecurrenceRule(
     @SerializedName("type") val type: String,
     @SerializedName("every_n_days") val everyNDays: Int? = null,
-    @SerializedName("days") val days: List<Int>? = null,
-    @SerializedName("day_of_month") val dayOfMonth: Int? = null,
-    @SerializedName("every_n_weeks") val everyNWeeks: Int? = null,
-    @SerializedName("day") val day: Int? = null,
-    @SerializedName("days_per_month") val daysPerMonth: Map<String, Int>? = null
+    @SerializedName("days_per_month") val daysPerMonth: Map<String, Int>? = null,
 )
