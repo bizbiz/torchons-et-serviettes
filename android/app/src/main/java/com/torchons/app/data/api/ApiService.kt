@@ -295,6 +295,18 @@ interface ApiService {
         @Path("id") taskId: String
     ): Response<FrequencyVotesState>
 
+    /** Etat des votes d'effort pour une tache (v0.28 — parallele freq). */
+    @GET("tasks/{id}/effort-votes")
+    suspend fun getEffortVotes(
+        @Path("id") taskId: String
+    ): Response<com.torchons.app.data.model.EffortVotesState>
+
+    /** Demande explicite de (re)voter a un autre membre du foyer. v0.28. */
+    @POST("prompts/request-revote")
+    suspend fun requestRevote(
+        @Body body: com.torchons.app.data.model.RequestRevoteBody,
+    ): Response<Map<String, Any>>
+
     /** Historique de modification d'une tache (votes + modifs directes). */
     @GET("tasks/{id}/history")
     suspend fun getTaskHistory(

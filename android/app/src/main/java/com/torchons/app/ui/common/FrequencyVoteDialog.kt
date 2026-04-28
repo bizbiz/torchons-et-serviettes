@@ -78,6 +78,7 @@ fun FrequencyVoteDialog(
     state: FrequencyVotesState,
     onSubmit: (FrequencyRequest) -> Unit,
     onDismiss: () -> Unit,
+    requesterName: String? = null,
 ) {
     val consensusInt = state.consensusAverageDays ?: 7
     val initialIsVariable = isVariableDpm(state.myDaysPerMonth)
@@ -103,6 +104,14 @@ fun FrequencyVoteDialog(
                     .heightIn(max = 540.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
+                if (requesterName != null) {
+                    Text(
+                        text = "$requesterName t'a demande de revoter sur cette tache.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
                 Text(
                     text = taskTitle,
                     style = MaterialTheme.typography.bodyMedium,

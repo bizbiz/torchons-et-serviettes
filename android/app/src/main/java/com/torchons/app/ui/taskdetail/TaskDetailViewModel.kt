@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.Completion
+import com.torchons.app.data.model.EffortVotesState
+import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.PendingAffinity
+import com.torchons.app.data.model.RequestRevoteBody
 import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskHistoryEvent
@@ -62,6 +65,18 @@ data class TaskDetailUiState(
     /** Preview bonus/malus pour affichage dans le header urgence de la fiche.
      * null tant que le fetch n'a pas abouti ou si pas de recurrence. */
     val bonusPreview: com.torchons.app.data.model.CompletionPreview? = null,
+    /** v0.28 : etat des votes de frequence (consensus + others + pending). */
+    val frequencyVotes: FrequencyVotesState? = null,
+    /** v0.28 : etat des votes d'effort (consensus + others + pending). */
+    val effortVotes: EffortVotesState? = null,
+    /** v0.28 : modal "+ d'info" frequence ouvert. */
+    val showFrequencyInfo: Boolean = false,
+    /** v0.28 : modal "+ d'info" affinite ouvert. */
+    val showAffinityInfo: Boolean = false,
+    /** v0.28 : FrequencyVoteDialog ouvert (depuis le bandeau ou + d'info). */
+    val showFrequencyVoteDialog: Boolean = false,
+    /** v0.28 : EffortVoteDialog ouvert (depuis le bandeau ou + d'info). */
+    val showEffortVoteDialog: Boolean = false,
 )
 
 /**
@@ -195,6 +210,20 @@ class TaskDetailViewModel @Inject constructor(
                 val previewResp = apiService.getCompletionPreview(taskId)
                 if (previewResp.isSuccessful) {
                     _uiState.value = _uiState.value.copy(bonusPreview = previewResp.body())
+                }
+            } catch (_: Exception) {}
+
+            // v0.28 : votes frequence + effort (best-effort).
+            try {
+                val freq = apiService.getFrequencyVotes(taskId)
+                if (freq.isSuccessful) {
+                    _uiState.value = _uiState.value.copy(frequencyVotes = freq.body())
+                }
+            } catch (_: Exception) {}
+            try {
+                val effort = apiService.getEffortVotes(taskId)
+                if (effort.isSuccessful) {
+                    _uiState.value = _uiState.value.copy(effortVotes = effort.body())
                 }
             } catch (_: Exception) {}
 
@@ -389,6 +418,126 @@ class TaskDetailViewModel @Inject constructor(
 
     fun dismissRatingDialog() {
         _uiState.value = _uiState.value.copy(ratingContext = null)
+    }
+
+    // --- v0.28 : actions sur les modaux "+ d'info" et votes individuels ---
+
+    fun openFrequencyInfo() {
+        _uiState.value = _uiState.value.copy(showFrequencyInfo = true)
+    }
+    fun dismissFrequencyInfo() {
+        _uiState.value = _uiState.value.copy(showFrequencyInfo = false)
+    }
+    fun openAffinityInfo() {
+        _uiState.value = _uiState.value.copy(showAffinityInfo = true)
+    }
+    fun dismissAffinityInfo() {
+        _uiState.value = _uiState.value.copy(showAffinityInfo = false)
+    }
+    fun openFrequencyVoteDialog() {
+        _uiState.value = _uiState.value.copy(showFrequencyVoteDialog = true)
+    }
+    fun dismissFrequencyVoteDialog() {
+        _uiState.value = _uiState.value.copy(showFrequencyVoteDialog = false)
+    }
+    fun openEffortVoteDialog() {
+        _uiState.value = _uiState.value.copy(showEffortVoteDialog = true)
+    }
+    fun dismissEffortVoteDialog() {
+        _uiState.value = _uiState.value.copy(showEffortVoteDialog = false)
+    }
+
+    /** Soumet le vote de frequence (depuis FrequencyVoteDialog ouvert via "+ d'info"). */
+    fun submitFrequencyVote(request: com.torchons.app.data.model.FrequencyRequest) {
+        viewModelScope.launch {
+            taskRepository.voteFrequency(taskId, request).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        showFrequencyVoteDialog = false,
+                        completionMessage = "Vote enregistre",
+                    )
+                    // Refetch pour rafraichir le sous-texte et le modal "+ d'info".
+                    refreshFrequencyVotes()
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        showFrequencyVoteDialog = false,
+                        error = e.message ?: "Erreur lors du vote",
+                    )
+                },
+            )
+        }
+    }
+
+    /** Soumet le vote d'effort (depuis EffortVoteDialog). */
+    fun submitEffortVote(points: Int) {
+        viewModelScope.launch {
+            try {
+                val resp = apiService.setEffort(taskId, mapOf("points" to points))
+                if (resp.isSuccessful) {
+                    _uiState.value = _uiState.value.copy(
+                        showEffortVoteDialog = false,
+                        completionMessage = "Vote enregistre",
+                    )
+                    refreshEffortVotes()
+                    refresh()  // pour les ratings + scorePoints recalcule
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        showEffortVoteDialog = false,
+                        error = "Erreur ${resp.code()}",
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    showEffortVoteDialog = false,
+                    error = e.message ?: "Erreur reseau",
+                )
+            }
+        }
+    }
+
+    /** Demande a un autre membre de revoter (frequence ou effort). */
+    fun requestRevote(targetUserId: String, kind: String) {
+        viewModelScope.launch {
+            try {
+                val resp = apiService.requestRevote(
+                    RequestRevoteBody(targetUserId = targetUserId, taskId = taskId, kind = kind)
+                )
+                if (resp.isSuccessful || resp.code() == 409) {
+                    // 409 = deja en pending, on traite comme succes (idempotent).
+                    _uiState.value = _uiState.value.copy(
+                        completionMessage = "Demande envoyee",
+                    )
+                    if (kind == "frequency") refreshFrequencyVotes()
+                    else if (kind == "effort") refreshEffortVotes()
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        error = "Erreur ${resp.code()}",
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = e.message ?: "Erreur reseau",
+                )
+            }
+        }
+    }
+
+    private suspend fun refreshFrequencyVotes() {
+        try {
+            val freq = apiService.getFrequencyVotes(taskId)
+            if (freq.isSuccessful) {
+                _uiState.value = _uiState.value.copy(frequencyVotes = freq.body())
+            }
+        } catch (_: Exception) {}
+    }
+    private suspend fun refreshEffortVotes() {
+        try {
+            val effort = apiService.getEffortVotes(taskId)
+            if (effort.isSuccessful) {
+                _uiState.value = _uiState.value.copy(effortVotes = effort.body())
+            }
+        } catch (_: Exception) {}
     }
 
     fun submitRating(affinity: Int, effortPoints: Int, recurrence: RatingRecurrence?) {

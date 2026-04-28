@@ -55,6 +55,16 @@ import javax.inject.Inject
  *   un des sub-fetches). Combine avec hasCachedData = false, indique au UI
  *   qu'on est dans un etat "rien a afficher car backend injoignable".
  */
+/** Contexte d'un FrequencyVoteDialog / EffortVoteDialog ouvert via prompt (v0.28). */
+data class PromptVoteContext(
+    val promptId: String,
+    val taskId: String,
+    val taskTitle: String,
+    val requesterName: String,
+    val frequencyState: com.torchons.app.data.model.FrequencyVotesState? = null,
+    val effortState: com.torchons.app.data.model.EffortVotesState? = null,
+)
+
 data class HomeUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -110,8 +120,12 @@ data class HomeUiState(
      * parallele pour la mini-courbe Home (period=month, sans trim creation).
      */
     val retardTimelineMonth: com.torchons.app.data.model.RetardTimelineResponse? = null,
-    /** Prompt de la queue unifiee (BUMP_EFFORT / VOTE_RATING). null = rien a afficher. */
+    /** Prompt de la queue unifiee (BUMP_EFFORT / VOTE_RATING / VOTE_FREQUENCY / VOTE_EFFORT). */
     val currentPrompt: UserPrompt? = null,
+    /** v0.28 : si un VOTE_FREQUENCY est dispatche, contexte du dialog en cours. */
+    val pendingFrequencyVoteContext: PromptVoteContext? = null,
+    /** v0.28 : si un VOTE_EFFORT est dispatche, contexte du dialog en cours. */
+    val pendingEffortVoteContext: PromptVoteContext? = null,
     /** True quand le modal prompt est actif. */
     val showPromptModal: Boolean = false,
 )
@@ -737,6 +751,120 @@ class HomeViewModel @Inject constructor(
     /** User ferme le prompt (DISMISSED). */
     fun dismissCurrentPrompt() {
         resolveCurrentPrompt("DISMISSED")
+    }
+
+    // --- v0.28 : dispatch des prompts VOTE_FREQUENCY / VOTE_EFFORT ---
+
+    /**
+     * Ouvre le FrequencyVoteDialog en reponse a un prompt VOTE_FREQUENCY.
+     * Fetch le state a la volee, garde le promptId pour resolve apres submit.
+     */
+    fun openFrequencyVoteFromPrompt(taskId: String, requesterName: String) {
+        val prompt = _uiState.value.currentPrompt ?: return
+        viewModelScope.launch {
+            try {
+                val resp = apiService.getFrequencyVotes(taskId)
+                if (resp.isSuccessful) {
+                    val state = resp.body()
+                    val task = activeTasks.value.firstOrNull { it.id == taskId }
+                    if (state != null && task != null) {
+                        _uiState.value = _uiState.value.copy(
+                            pendingFrequencyVoteContext = PromptVoteContext(
+                                promptId = prompt.id,
+                                taskId = taskId,
+                                taskTitle = task.title,
+                                requesterName = requesterName,
+                                frequencyState = state,
+                            ),
+                            // On garde currentPrompt pour pouvoir resolve, mais on
+                            // cache le PromptModal de queue (le dialog vote prend la main).
+                            showPromptModal = false,
+                        )
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun openEffortVoteFromPrompt(taskId: String, requesterName: String) {
+        val prompt = _uiState.value.currentPrompt ?: return
+        viewModelScope.launch {
+            try {
+                val resp = apiService.getEffortVotes(taskId)
+                if (resp.isSuccessful) {
+                    val state = resp.body()
+                    val task = activeTasks.value.firstOrNull { it.id == taskId }
+                    if (state != null && task != null) {
+                        _uiState.value = _uiState.value.copy(
+                            pendingEffortVoteContext = PromptVoteContext(
+                                promptId = prompt.id,
+                                taskId = taskId,
+                                taskTitle = task.title,
+                                requesterName = requesterName,
+                                effortState = state,
+                            ),
+                            showPromptModal = false,
+                        )
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun submitPromptFrequencyVote(request: com.torchons.app.data.model.FrequencyRequest) {
+        val ctx = _uiState.value.pendingFrequencyVoteContext ?: return
+        viewModelScope.launch {
+            taskRepository.voteFrequency(ctx.taskId, request)
+            try {
+                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("ANSWERED"))
+            } catch (_: Exception) {}
+            _uiState.value = _uiState.value.copy(
+                pendingFrequencyVoteContext = null,
+                currentPrompt = null,
+            )
+            refresh()
+        }
+    }
+
+    fun submitPromptEffortVote(points: Int) {
+        val ctx = _uiState.value.pendingEffortVoteContext ?: return
+        viewModelScope.launch {
+            try {
+                apiService.setEffort(ctx.taskId, mapOf("points" to points))
+                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("ANSWERED"))
+            } catch (_: Exception) {}
+            _uiState.value = _uiState.value.copy(
+                pendingEffortVoteContext = null,
+                currentPrompt = null,
+            )
+            refresh()
+        }
+    }
+
+    fun dismissPromptFrequencyVote() {
+        val ctx = _uiState.value.pendingFrequencyVoteContext ?: return
+        viewModelScope.launch {
+            try {
+                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("DISMISSED"))
+            } catch (_: Exception) {}
+            _uiState.value = _uiState.value.copy(
+                pendingFrequencyVoteContext = null,
+                currentPrompt = null,
+            )
+        }
+    }
+
+    fun dismissPromptEffortVote() {
+        val ctx = _uiState.value.pendingEffortVoteContext ?: return
+        viewModelScope.launch {
+            try {
+                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("DISMISSED"))
+            } catch (_: Exception) {}
+            _uiState.value = _uiState.value.copy(
+                pendingEffortVoteContext = null,
+                currentPrompt = null,
+            )
+        }
     }
 
     /** Reouvrir le prompt RESOLVE_PRESENCE depuis le bandeau. */

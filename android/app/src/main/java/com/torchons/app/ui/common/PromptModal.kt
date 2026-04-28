@@ -27,15 +27,16 @@ import com.torchons.app.data.model.UserPrompt
 
 /**
  * Dispatcher de modal pour la queue unifiee user_prompts. Affiche le bon
- * composable selon le type du prompt : BUMP_EFFORT ou VOTE_RATING.
+ * composable selon le type du prompt.
  *
- * Pour VOTE_RATING, on renvoie vers le flow de notation existant (callback
- * onOpenRating). Pour BUMP_EFFORT, on affiche un modal dedie avec la liste
- * des completions recentes et un bouton +1 effort.
- *
- * @param onDismiss fermer le modal (resolution = DISMISSED)
- * @param onBumpEffort user accepte +1 effort (resolution = ANSWERED, action = "bump_effort")
- * @param onOpenRating ouvrir le popup de notation existant pour la tache
+ * Types :
+ * - BUMP_EFFORT : modal dedie avec liste completions + +1 effort.
+ * - VOTE_RATING : delegate au flow de notation existant (callback).
+ * - RESOLVE_PRESENCE : modal dedie de resolution presence.
+ * - VOTE_FREQUENCY (v0.28) : delegate au caller via onOpenFrequencyVote
+ *   qui doit fetch /frequency-votes et ouvrir FrequencyVoteDialog avec
+ *   le bandeau "X t'a demande de revoter" (requesterName du context).
+ * - VOTE_EFFORT (v0.28) : pareil avec EffortVoteDialog.
  */
 @Composable
 fun PromptModal(
@@ -45,6 +46,8 @@ fun PromptModal(
     onOpenRating: (taskId: String) -> Unit,
     onResolvePresence: (payload: Map<String, Any?>) -> Unit = {},
     onNavigateToFreezeSettings: () -> Unit = {},
+    onOpenFrequencyVote: (taskId: String, requesterName: String) -> Unit = { _, _ -> },
+    onOpenEffortVote: (taskId: String, requesterName: String) -> Unit = { _, _ -> },
 ) {
     when (prompt.type) {
         "BUMP_EFFORT" -> BumpEffortDialog(
@@ -65,6 +68,16 @@ fun PromptModal(
             onDismiss = onDismiss,
             onNavigateToSettings = onNavigateToFreezeSettings,
         )
+        "VOTE_FREQUENCY" -> {
+            val taskId = prompt.context["task_id"]?.toString().orEmpty()
+            val requester = prompt.context["requester_name"]?.toString() ?: "?"
+            onOpenFrequencyVote(taskId, requester)
+        }
+        "VOTE_EFFORT" -> {
+            val taskId = prompt.context["task_id"]?.toString().orEmpty()
+            val requester = prompt.context["requester_name"]?.toString() ?: "?"
+            onOpenEffortVote(taskId, requester)
+        }
         else -> onDismiss()  // type inconnu — fermer
     }
 }

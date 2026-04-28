@@ -544,6 +544,13 @@ async def get_frequency_votes(
     )
     can_vote = assign_r.scalar_one_or_none() is not None
 
+    # v0.28 : pending_revote_user_ids = users avec un VOTE_FREQUENCY actif sur
+    # cette tache. Permet a l'UI de griser le bouton "Demander revote" J1.
+    from app.models.enums import PromptType as _PT
+    pending_user_ids = await _pending_revote_users(
+        session, task_id, _PT.VOTE_FREQUENCY
+    )
+
     return {
         "task_id": str(task_id),
         "consensus_rule": task.recurrence_rule,
@@ -552,6 +559,111 @@ async def get_frequency_votes(
         "my_updated_at": my_updated_at,
         "can_vote": can_vote,
         "others": others,
+        "pending_revote_user_ids": pending_user_ids,
+    }
+
+
+async def _pending_revote_users(
+    session: AsyncSession, task_id: UUID, prompt_type
+) -> list[str]:
+    """User IDs ayant un prompt actif (non resolved, non expired) du type
+    donne pour la tache. Utilise par l'UI pour griser les boutons
+    "Demander revote" deja en file d'attente. Retourne `[]` si aucun.
+    """
+    from app.models.user_prompt import UserPrompt
+    now = datetime.now(timezone.utc)
+    r = await session.execute(
+        select(UserPrompt.user_id, UserPrompt.context).where(
+            UserPrompt.type == prompt_type,
+            UserPrompt.resolved_at.is_(None),
+            (UserPrompt.expires_at.is_(None)) | (UserPrompt.expires_at > now),
+        )
+    )
+    target_id = str(task_id)
+    return [
+        str(uid) for uid, ctx in r.all()
+        if isinstance(ctx, dict) and ctx.get("task_id") == target_id
+    ]
+
+
+@router.get("/tasks/{task_id}/effort-votes")
+async def get_effort_votes(
+    task_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Parallele de /frequency-votes pour l'effort (v0.28).
+
+    Effort = points (1pt = 5min). Votes individuels + consensus = moyenne
+    arrondie. Sert a alimenter EffortVoteDialog + le futur "+ d'info"
+    modal effort.
+    """
+    from app.models.user import User
+    from app.models.task_effort import TaskEffort
+
+    user_id = UUID(current["user_id"])
+    foyer_uuid = current_foyer_uuid(current)
+
+    task_r = await session.execute(
+        select(Task).where(
+            Task.id == task_id,
+            Task.foyer_id == foyer_uuid,
+            Task.deleted_at.is_(None),
+        )
+    )
+    task = task_r.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Tache introuvable")
+
+    votes_r = await session.execute(
+        select(TaskEffort, User)
+        .join(User, User.id == TaskEffort.user_id)
+        .where(TaskEffort.task_id == task_id)
+    )
+    rows = votes_r.all()
+
+    my_points: int | None = None
+    my_updated_at: str | None = None
+    others: list[dict] = []
+    total_points = 0
+    for vote, user in rows:
+        total_points += vote.points
+        if vote.user_id == user_id:
+            my_points = vote.points
+            my_updated_at = vote.updated_at.isoformat() if vote.updated_at else None
+        else:
+            others.append({
+                "user_id": str(vote.user_id),
+                "display_name": user.display_name,
+                "points": vote.points,
+                "updated_at": vote.updated_at.isoformat() if vote.updated_at else None,
+            })
+
+    consensus_points = round(total_points / len(rows)) if rows else None
+
+    assign_r = await session.execute(
+        select(TaskAssignment.task_id).where(
+            TaskAssignment.task_id == task_id,
+            TaskAssignment.user_id == user_id,
+        )
+    )
+    can_vote = assign_r.scalar_one_or_none() is not None
+
+    from app.models.enums import PromptType as _PT
+    pending_user_ids = await _pending_revote_users(
+        session, task_id, _PT.VOTE_EFFORT
+    )
+
+    return {
+        "task_id": str(task_id),
+        "consensus_points": consensus_points,
+        "consensus_minutes": (consensus_points or 0) * 5,
+        "votes_count": len(rows),
+        "my_points": my_points,
+        "my_updated_at": my_updated_at,
+        "can_vote": can_vote,
+        "others": others,
+        "pending_revote_user_ids": pending_user_ids,
     }
 
 

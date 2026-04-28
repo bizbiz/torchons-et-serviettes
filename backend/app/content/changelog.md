@@ -1,5 +1,19 @@
 # Notes de version
 
+## v0.28.0 — 2026-04-28
+
+### Bandeau "Tu n'as pas voté" sur le détail des tâches
+- Sur le detail d'une tache, un bandeau bleu apparait quand tu n'as pas encore exprime ton avis (frequence, affinite, ou effort). Cliquer dessus ouvre le formulaire de vote, pre-rempli avec les valeurs deja saisies. C'est purement une invitation : libre a toi de l'ignorer.
+- Le sous-texte sous la frequence change selon l'etat des votes : "Moyenne des votes de toi & Quentin", ou "Vote de Quentin · tu n'as pas vote", ou "Pas encore vote".
+
+### Modaux "+ d'info" sur la fréquence et l'affinité
+- Un lien "+ d'info" sous la frequence ouvre un modal qui explique le mecanisme de vote, montre la valeur de chacun avec sa date, et permet de modifier ton vote ou de demander a un autre membre de revoter.
+- Un modal equivalent sur l'affinite explique pourquoi c'est une preference perso (qui n'influence que tes propres suggestions), et te laisse modifier ton avis. Pas de bouton "demander a quelqu'un d'autre" pour l'affinite : c'est subjectif et personnel.
+
+### Demander à quelqu'un de revoter
+- Depuis le modal "+ d'info" frequence, un bouton "Demander revote" cote utilisateur envoie une demande dans sa file d'attente. Quand l'autre ouvre l'app, le formulaire de vote pop avec un message "Quentin t'a demande de revoter sur cette tache". Idem pour l'effort.
+- Une demande deja envoyee est visible (bouton grise "Demande envoyee") pour eviter d'envoyer 10 fois la meme.
+
 ## v0.27.0 — 2026-04-28
 
 ### Frequence des taches : un vote, simple et clair

@@ -56,6 +56,15 @@ class PromptResolveRequest(BaseModel):
     payload: dict | None = None
 
 
+class RequestRevoteBody(BaseModel):
+    """Demande explicite a un autre user de (re)voter sur la frequence ou
+    l'effort d'une tache. Le requester (user courant) doit etre membre du
+    meme foyer que le target_user_id et la tache doit etre dans ce foyer."""
+    target_user_id: UUID
+    task_id: UUID
+    kind: str   # "frequency" | "effort"
+
+
 # --- Endpoints ---
 
 @router.get("/prompts/next")
@@ -188,6 +197,120 @@ async def resolve_prompt(
 
     await session.commit()
     return {"ok": True}
+
+
+@router.post("/prompts/request-revote")
+async def request_revote(
+    body: RequestRevoteBody,
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Enqueue un VOTE_FREQUENCY / VOTE_EFFORT prompt pour `target_user_id`
+    sur `task_id`.
+
+    Idempotent : si un prompt actif (non resolved, non expired) du meme type
+    existe deja pour ce couple (user, task), on ne re-enqueue pas, on
+    retourne 409 avec l'existant. UI cote client (J1 du grilling) doit
+    desactiver le bouton "Demander revote" quand pending — le 409 est
+    une defense en profondeur.
+
+    Priority 6, expires None (decision M3 + N2 du grilling).
+    """
+    from uuid import UUID as _UUID
+    from app.models.task import Task
+    from app.models.user_foyer import UserFoyer
+    from app.models.user import User
+
+    foyer_uuid = current_foyer_uuid(current)
+    requester_id = _UUID(current["user_id"])
+
+    # 1. Validation : tache existe + appartient au foyer.
+    task_r = await session.execute(
+        select(Task).where(Task.id == body.task_id, Task.foyer_id == foyer_uuid)
+    )
+    task = task_r.scalar_one_or_none()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Tache introuvable")
+
+    # 2. Validation : target user appartient au foyer.
+    member_r = await session.execute(
+        select(UserFoyer).where(
+            UserFoyer.foyer_id == foyer_uuid,
+            UserFoyer.user_id == body.target_user_id,
+        )
+    )
+    if member_r.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Membre introuvable dans le foyer")
+
+    # 3. Pas de demande a soi-meme (UI ne devrait pas le proposer mais on protege).
+    if body.target_user_id == requester_id:
+        raise HTTPException(status_code=400, detail="Tu peux modifier ton propre vote directement")
+
+    # 4. Mapping kind -> PromptType.
+    if body.kind == "frequency":
+        prompt_type = PromptType.VOTE_FREQUENCY
+    elif body.kind == "effort":
+        prompt_type = PromptType.VOTE_EFFORT
+    else:
+        raise HTTPException(status_code=400, detail="kind must be 'frequency' or 'effort'")
+
+    # 5. Idempotence : prompt actif du meme type (user, task) existant ?
+    now = datetime.now(timezone.utc)
+    existing_r = await session.execute(
+        select(UserPrompt).where(
+            UserPrompt.user_id == body.target_user_id,
+            UserPrompt.type == prompt_type,
+            UserPrompt.resolved_at.is_(None),
+            (UserPrompt.expires_at.is_(None)) | (UserPrompt.expires_at > now),
+        )
+    )
+    for p in existing_r.scalars().all():
+        if p.context.get("task_id") == str(body.task_id):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "PROMPT_ALREADY_PENDING",
+                    "prompt_id": str(p.id),
+                    "created_at": p.created_at.isoformat(),
+                },
+            )
+
+    # 6. Snapshot du contexte fige : nom du requester + valeur courante.
+    requester_r = await session.execute(
+        select(User.display_name).where(User.id == requester_id)
+    )
+    requester_name = requester_r.scalar() or "?"
+
+    current_value: dict = {}
+    if prompt_type == PromptType.VOTE_FREQUENCY:
+        current_value = {"recurrence_rule": task.recurrence_rule}
+
+    context = {
+        "task_id": str(body.task_id),
+        "task_title": task.title,
+        "requester_user_id": str(requester_id),
+        "requester_name": requester_name,
+        "kind": body.kind,
+        **current_value,
+    }
+
+    new_prompt = UserPrompt(
+        user_id=body.target_user_id,
+        foyer_id=foyer_uuid,
+        type=prompt_type,
+        priority=6,             # M3 du grilling : un cran au-dessus de VOTE_RATING
+        context=context,
+        expires_at=None,        # N2 du grilling : pas d'expiration
+    )
+    session.add(new_prompt)
+    await session.flush()
+    await session.commit()
+
+    return {
+        "ok": True,
+        "prompt_id": str(new_prompt.id),
+        "type": prompt_type.value,
+    }
 
 
 async def _handle_resolve_presence(

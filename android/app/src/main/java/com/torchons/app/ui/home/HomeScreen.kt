@@ -220,8 +220,8 @@ fun HomeScreen(
         )
     }
 
-    // Queue unifiee des prompts (BUMP_EFFORT / VOTE_RATING / RESOLVE_PRESENCE).
-    // RESOLVE_PRESENCE a priority=10 (max) et bypass la tolerance 2h.
+    // Queue unifiee des prompts (BUMP_EFFORT / VOTE_RATING / RESOLVE_PRESENCE
+    // / VOTE_FREQUENCY / VOTE_EFFORT v0.28).
     if (uiState.showPromptModal && uiState.currentPrompt != null) {
         com.torchons.app.ui.common.PromptModal(
             prompt = uiState.currentPrompt!!,
@@ -236,7 +236,37 @@ fun HomeScreen(
                 viewModel.resolveCurrentPrompt("ANSWERED", payload)
             },
             onNavigateToFreezeSettings = onNavigateToSettings,
+            onOpenFrequencyVote = { taskId, requester ->
+                viewModel.openFrequencyVoteFromPrompt(taskId, requester)
+            },
+            onOpenEffortVote = { taskId, requester ->
+                viewModel.openEffortVoteFromPrompt(taskId, requester)
+            },
         )
+    }
+
+    // v0.28 — Dialogs declenches par les prompts VOTE_FREQUENCY/VOTE_EFFORT.
+    uiState.pendingFrequencyVoteContext?.let { ctx ->
+        ctx.frequencyState?.let { state ->
+            com.torchons.app.ui.common.FrequencyVoteDialog(
+                taskTitle = ctx.taskTitle,
+                state = state,
+                requesterName = ctx.requesterName,
+                onSubmit = { request -> viewModel.submitPromptFrequencyVote(request) },
+                onDismiss = { viewModel.dismissPromptFrequencyVote() },
+            )
+        }
+    }
+    uiState.pendingEffortVoteContext?.let { ctx ->
+        ctx.effortState?.let { state ->
+            com.torchons.app.ui.common.EffortVoteDialog(
+                taskTitle = ctx.taskTitle,
+                state = state,
+                requesterName = ctx.requesterName,
+                onSubmit = { points -> viewModel.submitPromptEffortVote(points) },
+                onDismiss = { viewModel.dismissPromptEffortVote() },
+            )
+        }
     }
 
     // Dialog partage "Deja fait" / "Fait ensemble" (v0.11 refonte completion).

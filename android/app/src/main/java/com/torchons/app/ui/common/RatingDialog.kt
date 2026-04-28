@@ -325,7 +325,10 @@ private fun UnitToggleRow(
     }
 }
 
-private fun effortPointsToTime(points: Int): String {
+// effortPointsToTime extrait dans EffortVoteDialog.kt (v0.28) — utilise ici via
+// l'import implicite (meme package). Conserve cette signature privee comme
+// fallback si jamais l'extraction est annulee.
+private fun ratingDialogEffortPointsToTime(points: Int): String {
     val minutes = points * 5
     return when {
         minutes >= 60 -> "${minutes / 60}h${if (minutes % 60 > 0) "%02d".format(minutes % 60) else ""}"

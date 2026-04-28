@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -72,6 +73,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -276,6 +278,62 @@ fun TaskDetailScreen(
             dismissButton = {
                 OutlinedButton(onClick = { viewModel.dismissEditCompletion() }) { Text("Annuler") }
             }
+        )
+    }
+
+    // v0.28 — Modaux "+ d'info" frequence / affinite, FrequencyVoteDialog
+    // et EffortVoteDialog ouverts depuis le bandeau ou les sous-textes.
+    if (uiState.showFrequencyInfo && uiState.frequencyVotes != null && uiState.task != null) {
+        val task = uiState.task!!
+        val members = task.assignedToIds.map { uid ->
+            uid to (uiState.userNames[uid] ?: "?")
+        }
+        com.torchons.app.ui.common.FrequencyInfoDialog(
+            state = uiState.frequencyVotes!!,
+            foyerMembers = members,
+            currentUserId = currentUserId,
+            onAskRevote = { uid -> viewModel.requestRevote(uid, "frequency") },
+            onEditMyVote = {
+                viewModel.dismissFrequencyInfo()
+                viewModel.openFrequencyVoteDialog()
+            },
+            onDismiss = { viewModel.dismissFrequencyInfo() },
+        )
+    }
+    if (uiState.showAffinityInfo) {
+        val rows = uiState.ratings.mapNotNull { r ->
+            r.userId?.let {
+                com.torchons.app.ui.common.AffinityRatingRow(
+                    userId = it,
+                    displayName = r.displayName,
+                    affinity = r.affinity,
+                )
+            }
+        }
+        com.torchons.app.ui.common.AffinityInfoDialog(
+            ratings = rows,
+            currentUserId = currentUserId,
+            onEditMyAffinity = {
+                viewModel.dismissAffinityInfo()
+                viewModel.openRatingDialog(currentUserId)
+            },
+            onDismiss = { viewModel.dismissAffinityInfo() },
+        )
+    }
+    if (uiState.showFrequencyVoteDialog && uiState.frequencyVotes != null && uiState.task != null) {
+        com.torchons.app.ui.common.FrequencyVoteDialog(
+            taskTitle = uiState.task!!.title,
+            state = uiState.frequencyVotes!!,
+            onSubmit = { req -> viewModel.submitFrequencyVote(req) },
+            onDismiss = { viewModel.dismissFrequencyVoteDialog() },
+        )
+    }
+    if (uiState.showEffortVoteDialog && uiState.effortVotes != null && uiState.task != null) {
+        com.torchons.app.ui.common.EffortVoteDialog(
+            taskTitle = uiState.task!!.title,
+            state = uiState.effortVotes!!,
+            onSubmit = { points -> viewModel.submitEffortVote(points) },
+            onDismiss = { viewModel.dismissEffortVoteDialog() },
         )
     }
 
@@ -521,6 +579,66 @@ fun TaskDetailScreen(
                         }
                     }
 
+                    // v0.28 — Bandeau "Tu n'as pas vote" (decisions /grill-me Q8).
+                    // Visible si user assigne ET au moins un des 3 votes manque.
+                    // Click ouvre RatingDialog (skip auto les sliders deja votes).
+                    val rule = task.recurrenceRule
+                    val isVotableType = rule != null && rule.type in setOf("interval", "monthly_variable")
+                    val freqMissing = isVotableType && uiState.frequencyVotes?.myDaysPerMonth == null
+                    val myRow = uiState.ratings.firstOrNull { it.userId == currentUserId }
+                    val affMissing = myRow?.affinity == null
+                    val effortMissing = uiState.effortVotes?.myPoints == null
+                    val anyMissing = freqMissing || affMissing || effortMissing
+                    val canVoteHere = currentUserId != null && currentUserId in assignedIds && uiState.task?.isActive == true
+                    if (anyMissing && canVoteHere) {
+                        item {
+                            val missing = buildList {
+                                if (freqMissing) add("la frequence")
+                                if (affMissing) add("ton affinite")
+                                if (effortMissing) add("l'effort")
+                            }
+                            val verb = if (missing.size > 1) "votes" else "vote"
+                            val label = if (missing.size == 1)
+                                "Tu n'as pas indique ${missing[0]} pour cette tache"
+                            else "Tu n'as pas encore vote pour cette tache"
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.openRatingDialog(currentUserId) },
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.QuestionMark,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        )
+                                        Text(
+                                            text = "Toucher pour $verb",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Section informations
                     item {
                         Card(
@@ -633,6 +751,26 @@ fun TaskDetailScreen(
                                     )
                                 }
 
+                                // v0.28 — sous-texte adaptatif affinite avec lien "+ d'info".
+                                if (uiState.ratings.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    androidx.compose.foundation.text.ClickableText(
+                                        text = androidx.compose.ui.text.buildAnnotatedString {
+                                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                                                append("Affinites perso · ")
+                                            }
+                                            withStyle(SpanStyle(
+                                                color = MaterialTheme.colorScheme.primary,
+                                                textDecoration = TextDecoration.Underline,
+                                            )) {
+                                                append("+ d'info")
+                                            }
+                                        },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        onClick = { viewModel.openAffinityInfo() },
+                                    )
+                                }
+
                                 Spacer(modifier = Modifier.height(12.dp))
                                 HorizontalDivider()
                                 Spacer(modifier = Modifier.height(12.dp))
@@ -640,7 +778,7 @@ fun TaskDetailScreen(
                                 // Recurrence
                                 if (task.recurrenceRule != null) {
                                     Text(
-                                        text = "Recurrence",
+                                        text = "Frequence",
                                         style = MaterialTheme.typography.labelLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -649,6 +787,48 @@ fun TaskDetailScreen(
                                         text = formatRecurrence(task.recurrenceRule),
                                         style = MaterialTheme.typography.bodyLarge
                                     )
+                                    // v0.28 — sous-texte adaptatif des votes + lien "+ d'info".
+                                    val freqVotes = uiState.frequencyVotes
+                                    val isVotableRule = task.recurrenceRule.type in setOf("interval", "monthly_variable")
+                                    if (freqVotes != null && isVotableRule) {
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        val voterNames = buildList<String> {
+                                            if (freqVotes.myDaysPerMonth != null) add("toi")
+                                            addAll(freqVotes.others.map { it.displayName })
+                                        }
+                                        val nonVoterNames = task.assignedToIds
+                                            .filterNot { it == currentUserId && freqVotes.myDaysPerMonth != null }
+                                            .filterNot { uid -> freqVotes.others.any { it.userId == uid } }
+                                            .map { uid ->
+                                                if (uid == currentUserId) "toi"
+                                                else (uiState.userNames[uid] ?: "?")
+                                            }
+                                        val summary = when {
+                                            voterNames.size == 1 -> "Vote de ${voterNames[0]}"
+                                            voterNames.size > 1 -> "Moyenne des votes de ${joinFr(voterNames)}"
+                                            else -> "Pas encore vote"
+                                        }
+                                        val nonVoteSuffix = if (nonVoterNames.isNotEmpty()) {
+                                            val verb = if (nonVoterNames.size > 1 || nonVoterNames.singleOrNull() == "toi") "n'avez pas vote"
+                                                       else "n'a pas vote"
+                                            " · ${joinFr(nonVoterNames)} $verb"
+                                        } else ""
+                                        androidx.compose.foundation.text.ClickableText(
+                                            text = androidx.compose.ui.text.buildAnnotatedString {
+                                                withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                                                    append("$summary$nonVoteSuffix · ")
+                                                }
+                                                withStyle(SpanStyle(
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    textDecoration = TextDecoration.Underline,
+                                                )) {
+                                                    append("+ d'info")
+                                                }
+                                            },
+                                            style = MaterialTheme.typography.labelSmall,
+                                            onClick = { viewModel.openFrequencyInfo() },
+                                        )
+                                    }
                                     Spacer(modifier = Modifier.height(12.dp))
                                     HorizontalDivider()
                                     Spacer(modifier = Modifier.height(12.dp))
@@ -1226,6 +1406,13 @@ private fun formatDateTime(isoDateTime: String): String {
     } catch (e: Exception) {
         isoDateTime
     }
+}
+
+/** Joint une liste de noms en francais : "A, B & C". */
+private fun joinFr(names: List<String>): String = when {
+    names.isEmpty() -> ""
+    names.size == 1 -> names[0]
+    else -> names.dropLast(1).joinToString(", ") + " & " + names.last()
 }
 
 /**

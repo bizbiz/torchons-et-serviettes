@@ -55,6 +55,8 @@ data class FrequencyVotesState(
     @SerializedName("my_updated_at") val myUpdatedAt: String? = null,
     @SerializedName("can_vote") val canVote: Boolean = false,
     @SerializedName("others") val others: List<OtherFrequencyVote> = emptyList(),
+    /** v0.28 — user_ids ayant un VOTE_FREQUENCY actif sur cette tache. */
+    @SerializedName("pending_revote_user_ids") val pendingRevoteUserIds: List<String> = emptyList(),
 ) {
     /**
      * Helper : valeur "interval" du consensus si la regle est uniforme,
@@ -76,6 +78,40 @@ data class FrequencyVotesState(
             }
         }
 }
+
+/** Vote individuel d'un autre membre sur l'effort (v0.28). */
+data class OtherEffortVote(
+    @SerializedName("user_id") val userId: String,
+    @SerializedName("display_name") val displayName: String,
+    @SerializedName("points") val points: Int,
+    @SerializedName("updated_at") val updatedAt: String? = null,
+)
+
+/**
+ * Etat des votes d'effort pour une tache (v0.28). Retourne par
+ * GET /tasks/{id}/effort-votes. Parallele a FrequencyVotesState.
+ *
+ * Effort = points (1pt = 5min). Points entre 1 et 18.
+ */
+data class EffortVotesState(
+    @SerializedName("task_id") val taskId: String,
+    @SerializedName("consensus_points") val consensusPoints: Int? = null,
+    @SerializedName("consensus_minutes") val consensusMinutes: Int = 0,
+    @SerializedName("votes_count") val votesCount: Int = 0,
+    @SerializedName("my_points") val myPoints: Int? = null,
+    @SerializedName("my_updated_at") val myUpdatedAt: String? = null,
+    @SerializedName("can_vote") val canVote: Boolean = false,
+    @SerializedName("others") val others: List<OtherEffortVote> = emptyList(),
+    @SerializedName("pending_revote_user_ids") val pendingRevoteUserIds: List<String> = emptyList(),
+)
+
+/** Body du POST /api/prompts/request-revote (v0.28). */
+data class RequestRevoteBody(
+    @SerializedName("target_user_id") val targetUserId: String,
+    @SerializedName("task_id") val taskId: String,
+    /** "frequency" ou "effort". */
+    @SerializedName("kind") val kind: String,
+)
 
 /**
  * Ligne brute d'un evenement d'historique de modification de tache
