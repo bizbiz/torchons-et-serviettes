@@ -1,8 +1,9 @@
 """Modele utilisateur. Multi-foyer via la table user_foyers."""
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,4 +25,18 @@ class User(Base, UUIDMixin, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("foyers.id", ondelete="SET NULL"),
         nullable=True,
+    )
+
+    # v0.30 : code de recuperation hashe argon2id. Genere a la creation du
+    # foyer (admin) ou au join (member). Renouvelable depuis Reglages.
+    recovery_code_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    recovery_code_last_used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # v0.30 : RGPD soft-delete. Endpoint DELETE /me met deleted_at = now() ;
+    # job daily purge les rows ou deleted_at + 30j < now(). Toutes les
+    # requetes lectures filtrent deleted_at IS NULL.
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )

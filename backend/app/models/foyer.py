@@ -8,7 +8,9 @@ Relation N:N avec users via la table user_foyers — un user peut appartenir
 a plusieurs foyers (ex: ma maison + la colloc d'amis).
 """
 
-from sqlalchemy import Boolean, String
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, UUIDMixin, TimestampMixin, SoftDeleteMixin
@@ -21,8 +23,26 @@ class Foyer(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
 
     # Code d'invitation pour rejoindre via QR (Feature 2 futur).
     # Genere a la demande via un bouton "Inviter quelqu'un" en Settings.
+    # NOTE v0.30 : remplace par la table pairing_tokens (ephemere). Champ
+    # conserve temporairement pour compat, sera retire apres migration des
+    # quelques foyers existants.
     invite_code: Mapped[str | None] = mapped_column(String(16), unique=True, nullable=True)
 
     # Toggle de la home presence freeze feature (v0.7.1).
     # False par defaut — le foyer doit explicitement l'activer.
     home_freeze_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # v0.30 : entitlement Premium par foyer. Pas de paywall actif a ce stade
+    # (plomberie pour la v2 post-launch). Tous les members heritent.
+    is_premium: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    premium_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # v0.30 : foyer fantome (>90j sans activite, tous members partis). Mis
+    # par job daily, purge complete apres 365j supplementaires.
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

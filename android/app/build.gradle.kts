@@ -124,4 +124,11 @@ dependencies {
     // Konfetti — animation de confetti pour les felicitations apres validation
     // d'une tache. Lib populaire et legere (~50ko), bien integree avec Compose.
     implementation("nl.dionsegijn:konfetti-compose:2.0.5")
+
+    // v0.30 — onboarding sans compte
+    // Quickie : scan QR via CameraX + ML Kit, API Compose-friendly
+    // (registerForActivityResult avec ScanQRCode contract).
+    implementation(libs.quickie.bundled)
+    // QRCode-Kotlin : generation de QR pure Kotlin pour l'ecran d'invitation.
+    implementation(libs.qrcode.kotlin)
 }

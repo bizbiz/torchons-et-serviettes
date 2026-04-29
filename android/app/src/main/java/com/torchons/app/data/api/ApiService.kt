@@ -529,6 +529,50 @@ interface ApiService {
     @POST("sync")
     suspend fun sync(@Body request: SyncRequest): Response<SyncResponse>
 
+    // --- Onboarding sans compte (v0.30) ---
+
+    /** Wizard "Creer un foyer" : cree User + Foyer + UserFoyer(admin) + recovery_code. Unauth. */
+    @POST("onboarding/create-foyer")
+    suspend fun onboardingCreateFoyer(
+        @Body body: com.torchons.app.data.model.OnboardingCreateFoyerRequest,
+    ): Response<com.torchons.app.data.model.OnboardingCreateFoyerResponse>
+
+    /** Owner genere un invite_token pour un QR (TTL 15min). Auth. */
+    @POST("pairing/init")
+    suspend fun pairingInit(): Response<com.torchons.app.data.model.PairingInitResponse>
+
+    /** Joiner consomme un invite_token et rejoint le foyer comme membre. Unauth. */
+    @POST("pairing/join")
+    suspend fun pairingJoin(
+        @Body body: com.torchons.app.data.model.PairingJoinRequest,
+    ): Response<com.torchons.app.data.model.PairingJoinResponse>
+
+    /** Etape 1 du flow restore : cherche l'user par recovery_code, retourne preview. Unauth. */
+    @POST("recovery/restore")
+    suspend fun recoveryRestore(
+        @Body body: com.torchons.app.data.model.RecoveryRestoreRequest,
+    ): Response<com.torchons.app.data.model.RecoveryRestoreResponse>
+
+    /** Etape 2 du flow restore : confirme avec le restore_token et emet le JWT. Unauth. */
+    @POST("recovery/restore/confirm")
+    suspend fun recoveryRestoreConfirm(
+        @Body body: com.torchons.app.data.model.RecoveryRestoreConfirmRequest,
+    ): Response<com.torchons.app.data.model.RecoveryRestoreConfirmResponse>
+
+    /** Regenere un nouveau recovery_code (invalide l'ancien). Auth. */
+    @POST("recovery/regenerate")
+    suspend fun recoveryRegenerate(): Response<com.torchons.app.data.model.RecoveryRegenerateResponse>
+
+    /** Self-leave d'un foyer (soft + auto-promote oldest member si dernier admin). Auth. */
+    @POST("foyers/{foyer_id}/leave")
+    suspend fun leaveFoyer(
+        @Path("foyer_id") foyerId: String,
+    ): Response<com.torchons.app.data.model.LeaveFoyerResponse>
+
+    /** RGPD : soft-delete du compte courant. Auth. */
+    @DELETE("me")
+    suspend fun deleteMe(): Response<Unit>
+
     // --- Sante ---
 
     /** Verification de l'etat du serveur. */

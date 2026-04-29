@@ -14,6 +14,7 @@ from app.models.foyer import Foyer
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
 from app.schemas.foyer import FoyerCreate, FoyerResponse, FoyerUpdate
+from app.services.lifecycle import soft_leave_foyer
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
 
@@ -180,4 +181,61 @@ async def switch_foyer(
     return {
         "token": token,
         "foyer_id": str(foyer_id),
+    }
+
+
+@router.post("/{foyer_id}/leave")
+async def leave_foyer(
+    foyer_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Self-leave : l'user courant quitte ce foyer (v0.30).
+
+    Soft-leave : `user_foyers.left_at = now()` + role -> 'former_member'.
+    Si l'user etait le dernier admin, auto-promote du plus ancien member
+    restant (cf. Q9 du grill-me, services/lifecycle.py).
+
+    Si le foyer quitte etait le foyer actif de l'user, son
+    `last_active_foyer_id` bascule sur le 1er foyer encore actif qu'il a,
+    ou null s'il n'en a plus. Un nouveau JWT est emis dans ce cas.
+    """
+    user_id = uuid.UUID(current["user_id"])
+
+    actually_left = await soft_leave_foyer(session, user_id, foyer_id)
+    if not actually_left:
+        raise HTTPException(
+            status_code=404,
+            detail="Tu n'es pas membre actif de ce foyer",
+        )
+
+    # Si c'etait le foyer actif, bascule last_active sur un autre foyer ou null
+    user_result = await session.execute(select(User).where(User.id == user_id))
+    user = user_result.scalar_one_or_none()
+    new_token: str | None = None
+    new_foyer_id: str | None = None
+    if user is not None and user.last_active_foyer_id == foyer_id:
+        next_foyer_result = await session.execute(
+            select(UserFoyer.foyer_id)
+            .where(
+                UserFoyer.user_id == user_id,
+                UserFoyer.left_at.is_(None),
+            )
+            .order_by(UserFoyer.joined_at)
+            .limit(1)
+        )
+        next_foyer = next_foyer_result.scalar_one_or_none()
+        user.last_active_foyer_id = next_foyer
+        if next_foyer is not None:
+            new_foyer_id = str(next_foyer)
+            new_token = create_token(
+                str(user_id), current["device_id"], foyer_id=new_foyer_id
+            )
+
+    await session.commit()
+
+    return {
+        "left_foyer_id": str(foyer_id),
+        "new_active_foyer_id": new_foyer_id,
+        "new_token": new_token,
     }

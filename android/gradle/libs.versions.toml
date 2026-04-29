@@ -16,6 +16,8 @@ datastore = "1.1.1"
 gson = "2.11.0"
 coroutines = "1.9.0"
 ksp = "2.1.20-1.0.32"
+quickie = "1.11.0"
+qrcodeKotlin = "4.5.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -58,6 +60,10 @@ gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 
 # Coroutines
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+
+# QR scan + generation (v0.30 onboarding sans compte)
+quickie-bundled = { group = "io.github.g00fy2.quickie", name = "quickie-bundled", version.ref = "quickie" }
+qrcode-kotlin = { group = "io.github.g0dkar", name = "qrcode-kotlin", version.ref = "qrcodeKotlin" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

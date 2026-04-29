@@ -45,3 +45,9 @@ class UserFoyer(Base):
     objective_display_unit: Mapped[str] = mapped_column(
         String(10), default="min", server_default="min", nullable=False
     )
+    # v0.30 : soft-leave. Quand un membre quitte le foyer, on positionne
+    # left_at = now() et role = 'former_member'. Historique (completions,
+    # votes) preserve. Les calculs de consensus excluent les former_members.
+    left_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
