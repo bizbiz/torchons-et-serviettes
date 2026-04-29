@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Icone de notification Torchons & Serviettes.
+  Silhouette monochrome blanche du chapeau de magicien (l'element le plus
+  reconnaissable de l'icone de l'app), avec 3 etoiles en cutout.
+  Android teinte automatiquement les icones de notif : on n'utilise que du
+  blanc plein sur fond transparent.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M12,4 L8,13 Q5,13.5 3,14 Q12,17 21,14 Q19,13.5 16,13 L12,4 Z M11,7.4 L11.6,8 L11,8.6 L10.4,8 Z M13.5,9.5 L14,10 L13.5,10.5 L13,10 Z M10.5,10.6 L10.9,11 L10.5,11.4 L10.1,11 Z" />
+</vector>

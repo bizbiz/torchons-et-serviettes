@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.28.2 — 2026-04-29
+
+### Icone de notification reconnaissable
+- Les notifications affichent desormais la silhouette du chapeau de magicien dans la barre de statut, au lieu d'un carre blanc generique. La pastille de fond reprend la couleur indigo de l'app sur Android 8+.
+
 ## v0.28.1 — 2026-04-28
 
 ### Notifications push enfin fiables
