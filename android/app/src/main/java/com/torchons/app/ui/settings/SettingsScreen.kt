@@ -819,6 +819,19 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // v0.30 — Securite du foyer (regenerer code, quitter foyer)
+        SecuritySection(
+            viewModel = viewModel,
+            onLoggedOut = onLogout,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // v0.30 — Soutenir / Discuter avec le dev (BMC + mailto)
+        SupportDevCard()
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // Deconnexion
         Button(
             onClick = {

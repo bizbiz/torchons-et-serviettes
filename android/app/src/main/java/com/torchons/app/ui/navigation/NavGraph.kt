@@ -217,7 +217,10 @@ fun NavGraph(
                     navController.navigate(Routes.INVITE_QR)
                 },
                 onLogout = {
-                    navController.navigate(Routes.LOGIN) {
+                    // v0.30 — bascule sur Welcome (les 3 boutons + tentative
+                    // Tailscale en arriere-plan). LOGIN reste un fallback
+                    // legacy mais n'est plus le point d'entree.
+                    navController.navigate(Routes.WELCOME) {
                         popUpTo(Routes.MAIN) { inclusive = true }
                     }
                 }

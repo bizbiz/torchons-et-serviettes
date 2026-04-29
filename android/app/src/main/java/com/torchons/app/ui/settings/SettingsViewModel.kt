@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -244,4 +245,109 @@ class SettingsViewModel @Inject constructor(
     }
 
     suspend fun logout() { authRepository.logout() }
+
+    // --- v0.30 : actions onboarding (regenerer code, quitter foyer) ---
+
+    /**
+     * Etat du flow "Regenerer mon code de recuperation".
+     * Idle -> Loading -> Success(code) ou Error.
+     */
+    sealed class RegenerateState {
+        data object Idle : RegenerateState()
+        data object Loading : RegenerateState()
+        data class Success(val recoveryCode: String) : RegenerateState()
+        data class Error(val message: String) : RegenerateState()
+    }
+
+    private val _regenerateState = MutableStateFlow<RegenerateState>(RegenerateState.Idle)
+    val regenerateState: StateFlow<RegenerateState> = _regenerateState.asStateFlow()
+
+    fun regenerateRecoveryCode() {
+        if (_regenerateState.value is RegenerateState.Loading) return
+        _regenerateState.value = RegenerateState.Loading
+        viewModelScope.launch {
+            try {
+                val resp = apiService.recoveryRegenerate()
+                if (resp.isSuccessful) {
+                    val body = resp.body()
+                    if (body != null) {
+                        _regenerateState.value = RegenerateState.Success(body.recoveryCode)
+                    } else {
+                        _regenerateState.value = RegenerateState.Error("Reponse vide")
+                    }
+                } else {
+                    _regenerateState.value =
+                        RegenerateState.Error("Erreur ${resp.code()}")
+                }
+            } catch (e: Exception) {
+                _regenerateState.value =
+                    RegenerateState.Error(e.message ?: "Erreur reseau")
+            }
+        }
+    }
+
+    fun dismissRegenerate() {
+        _regenerateState.value = RegenerateState.Idle
+    }
+
+    /**
+     * Etat du flow "Quitter le foyer".
+     * Idle -> Loading -> SwitchedFoyer (reste connecte sur un autre foyer)
+     *                ou LoggedOut (plus aucun foyer, on doit retourner a Welcome)
+     *                ou Error.
+     */
+    sealed class LeaveState {
+        data object Idle : LeaveState()
+        data object Loading : LeaveState()
+        data object SwitchedFoyer : LeaveState()
+        data object LoggedOut : LeaveState()
+        data class Error(val message: String) : LeaveState()
+    }
+
+    private val _leaveState = MutableStateFlow<LeaveState>(LeaveState.Idle)
+    val leaveState: StateFlow<LeaveState> = _leaveState.asStateFlow()
+
+    fun leaveFoyer() {
+        if (_leaveState.value is LeaveState.Loading) return
+        _leaveState.value = LeaveState.Loading
+        viewModelScope.launch {
+            try {
+                val foyerId = authRepository.foyerIdFlow.first()
+                if (foyerId.isNullOrEmpty()) {
+                    _leaveState.value = LeaveState.Error("Aucun foyer actif")
+                    return@launch
+                }
+                val resp = apiService.leaveFoyer(foyerId)
+                if (!resp.isSuccessful) {
+                    _leaveState.value = LeaveState.Error("Erreur ${resp.code()}")
+                    return@launch
+                }
+                val body = resp.body()
+                if (body == null) {
+                    _leaveState.value = LeaveState.Error("Reponse vide")
+                    return@launch
+                }
+                if (body.newToken != null && body.newActiveFoyerId != null) {
+                    // L'user est encore membre d'un autre foyer : on bascule
+                    // dessus sans logout.
+                    tokenManager.updateTokenAndFoyer(
+                        body.newToken,
+                        body.newActiveFoyerId,
+                    )
+                    _leaveState.value = LeaveState.SwitchedFoyer
+                } else {
+                    // Plus aucun foyer : logout complet.
+                    authRepository.logout()
+                    _leaveState.value = LeaveState.LoggedOut
+                }
+            } catch (e: Exception) {
+                _leaveState.value =
+                    LeaveState.Error(e.message ?: "Erreur reseau")
+            }
+        }
+    }
+
+    fun dismissLeave() {
+        _leaveState.value = LeaveState.Idle
+    }
 }
