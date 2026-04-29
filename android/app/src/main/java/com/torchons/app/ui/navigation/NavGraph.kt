@@ -40,6 +40,12 @@ import com.torchons.app.ui.stats.StatsScreen
 import com.torchons.app.ui.taskdetail.TaskDetailScreen
 import com.torchons.app.ui.taskedit.TaskEditScreen
 import com.torchons.app.ui.tasklist.TaskListScreen
+import com.torchons.app.ui.welcome.WelcomeScreen
+import com.torchons.app.ui.onboarding.CreateFoyerWizardScreen
+import com.torchons.app.ui.onboarding.InviteQrScreen
+import com.torchons.app.ui.onboarding.JoinFoyerScreen
+import com.torchons.app.ui.onboarding.OnboardingStubScreen
+import com.torchons.app.ui.onboarding.RestoreFoyerScreen
 import androidx.navigation.navArgument
 
 /**
@@ -61,6 +67,13 @@ object Routes {
     const val FOYERS = "foyers"
     const val CHANGELOG = "changelog"
     const val CATALOG = "catalog"
+
+    // v0.30 — onboarding sans compte
+    const val WELCOME = "welcome"
+    const val CREATE_FOYER_WIZARD = "create_foyer_wizard"
+    const val JOIN_FOYER = "join_foyer"
+    const val RESTORE_FOYER = "restore_foyer"
+    const val INVITE_QR = "invite_qr"
 
     fun taskDetail(taskId: String) = "task_detail/$taskId"
     fun taskEdit(taskId: String) = "task_edit/$taskId"
@@ -95,7 +108,74 @@ fun NavGraph(
         navController = navController,
         startDestination = startDestination
     ) {
-        // Ecran de connexion
+        // v0.30 — Ecran d'accueil onboarding sans compte. Tente Tailscale
+        // auto-login en arriere-plan (fast-path dogfood) puis offre
+        // 3 entrees : Creer / Rejoindre / Retrouver.
+        composable(Routes.WELCOME) {
+            WelcomeScreen(
+                onAutoLoginSuccess = {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.WELCOME) { inclusive = true }
+                    }
+                },
+                onCreateFoyerClick = {
+                    navController.navigate(Routes.CREATE_FOYER_WIZARD)
+                },
+                onJoinFoyerClick = {
+                    navController.navigate(Routes.JOIN_FOYER)
+                },
+                onRestoreFoyerClick = {
+                    navController.navigate(Routes.RESTORE_FOYER)
+                },
+            )
+        }
+
+        // v0.30 — Wizard "Creer un foyer" en 5 etapes (Toi/Foyer/Pieces/
+        // Taches/Recovery). Au succes, navigue vers MAIN en effacant tout
+        // le backstack (welcome + wizard ne doivent pas etre re-accessibles
+        // via back).
+        composable(Routes.CREATE_FOYER_WIZARD) {
+            CreateFoyerWizardScreen(
+                onSuccess = {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.WELCOME) { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // v0.30 — Scanner QR pour rejoindre un foyer.
+        composable(Routes.JOIN_FOYER) {
+            JoinFoyerScreen(
+                onSuccess = {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.WELCOME) { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // v0.30 — Saisie recovery code + verif step + restauration JWT.
+        composable(Routes.RESTORE_FOYER) {
+            RestoreFoyerScreen(
+                onSuccess = {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.WELCOME) { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // v0.30 — QR code d'invitation pour rejoindre le foyer actif.
+        composable(Routes.INVITE_QR) {
+            InviteQrScreen(onBack = { navController.popBackStack() })
+        }
+
+        // Ecran de connexion (legacy : conserve pour le dogfood Tailscale).
+        // Sera retire a la bascule publique cf. design-onboarding-public.md §6.
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
@@ -132,6 +212,9 @@ fun NavGraph(
                 },
                 onNavigateToCatalog = {
                     navController.navigate(Routes.CATALOG)
+                },
+                onNavigateToInviteSomeone = {
+                    navController.navigate(Routes.INVITE_QR)
                 },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
@@ -279,6 +362,7 @@ fun MainScreen(
     onNavigateToFoyers: () -> Unit,
     onNavigateToChangelog: () -> Unit,
     onNavigateToCatalog: () -> Unit,
+    onNavigateToInviteSomeone: () -> Unit,
     onLogout: () -> Unit
 ) {
     val innerNavController = androidx.navigation.compose.rememberNavController()
@@ -343,7 +427,8 @@ fun MainScreen(
                         onManageCategories = onNavigateToCategories,
                         onManageRooms = onNavigateToRooms,
                         onManageFoyers = onNavigateToFoyers,
-                        onOpenChangelog = onNavigateToChangelog
+                        onOpenChangelog = onNavigateToChangelog,
+                        onInviteSomeone = onNavigateToInviteSomeone,
                     )
                 }
             }

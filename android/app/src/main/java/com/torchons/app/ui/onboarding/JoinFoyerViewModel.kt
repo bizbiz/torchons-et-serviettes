@@ -1,0 +1,119 @@
+package com.torchons.app.ui.onboarding
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.local.TokenManager
+import com.torchons.app.data.model.PairingJoinRequest
+import com.torchons.app.data.repository.AuthRepository
+import com.torchons.app.service.TokenRegistrar
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+/**
+ * ViewModel du flow "Rejoindre un foyer" (v0.30).
+ *
+ * Etapes :
+ *  - Scan : QR scanne via Quickie -> invite_token capture en state
+ *  - Form : saisie display_name + bouton "Rejoindre"
+ *  - Submitting : appel /api/pairing/join
+ *  - Done  : recovery_code affiche, bouton "Continuer" -> navigate MAIN
+ *
+ * Cf. docs/design-onboarding-public.md §3 (protocole pairing).
+ */
+
+data class JoinState(
+    val inviteToken: String? = null,
+    val displayName: String = "",
+    val isSubmitting: Boolean = false,
+    val recoveryCode: String? = null,
+    val foyerName: String? = null,
+    val error: String? = null,
+    val done: Boolean = false,
+)
+
+@HiltViewModel
+class JoinFoyerViewModel @Inject constructor(
+    private val apiService: ApiService,
+    private val authRepository: AuthRepository,
+    private val tokenManager: TokenManager,
+    private val tokenRegistrar: TokenRegistrar,
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(JoinState())
+    val uiState: StateFlow<JoinState> = _uiState.asStateFlow()
+
+    fun setInviteToken(value: String) {
+        _uiState.update { it.copy(inviteToken = value, error = null) }
+    }
+
+    fun setDisplayName(value: String) {
+        _uiState.update { it.copy(displayName = value) }
+    }
+
+    fun finish() {
+        _uiState.update { it.copy(done = true) }
+    }
+
+    fun submit() {
+        val s = _uiState.value
+        val token = s.inviteToken ?: return
+        if (s.isSubmitting || s.recoveryCode != null) return
+        if (s.displayName.isBlank()) {
+            _uiState.update { it.copy(error = "Renseigne ton prenom") }
+            return
+        }
+        _uiState.update { it.copy(isSubmitting = true, error = null) }
+        viewModelScope.launch {
+            try {
+                val resp = apiService.pairingJoin(
+                    PairingJoinRequest(
+                        inviteToken = token,
+                        displayName = s.displayName.trim(),
+                    )
+                )
+                if (!resp.isSuccessful) {
+                    val msg = when (resp.code()) {
+                        404 -> "Code d'invitation invalide"
+                        409 -> "Code d'invitation deja utilise"
+                        410 -> "Code d'invitation expire"
+                        else -> "Erreur ${resp.code()}"
+                    }
+                    _uiState.update { it.copy(isSubmitting = false, error = msg) }
+                    return@launch
+                }
+                val body = resp.body()
+                if (body == null) {
+                    _uiState.update {
+                        it.copy(isSubmitting = false, error = "Reponse vide")
+                    }
+                    return@launch
+                }
+                authRepository.saveAuthDirect(
+                    token = body.token,
+                    userId = body.userId,
+                    username = "",
+                    displayName = s.displayName.trim(),
+                    foyerId = body.foyerId,
+                )
+                tokenRegistrar.registerFcmToken()
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        recoveryCode = body.recoveryCode,
+                        foyerName = body.foyerName,
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(isSubmitting = false, error = e.message ?: "Erreur reseau")
+                }
+            }
+        }
+    }
+}

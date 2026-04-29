@@ -114,10 +114,12 @@ class MainActivity : ComponentActivity() {
 private fun TorchonsApp(initialToken: String?) {
     val navController = rememberNavController()
 
-    // Si un token est present, demarrer sur la liste des taches
-    // Sinon, demarrer sur l'ecran de connexion
+    // Si un token est present, demarrer sur la liste des taches.
+    // Sinon, demarrer sur l'ecran de bienvenue (v0.30) qui tente
+    // l'auto-login Tailscale en arriere-plan puis offre Creer/Rejoindre/
+    // Retrouver si echec.
     val startDestination = if (initialToken.isNullOrEmpty()) {
-        Routes.LOGIN
+        Routes.WELCOME
     } else {
         Routes.MAIN
     }
