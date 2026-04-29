@@ -1,5 +1,32 @@
 # Notes de version
 
+## v0.30.0 — 2026-04-29
+
+### Inviter quelqu'un dans le foyer
+- Une nouvelle card "Inviter quelqu'un" dans les Reglages permet
+  de generer un QR code d'invitation valide 15 minutes. La personne
+  invitee installe l'app, choisit "Rejoindre un foyer" et scanne le
+  QR pour devenir membre du foyer.
+
+### Onboarding sans compte
+- A la 1re ouverture de l'app (ou apres une desinstallation), un
+  ecran d'accueil propose trois choix : "Creer un foyer",
+  "Rejoindre un foyer" (scan QR), ou "Retrouver mon foyer" (code de
+  recuperation). Plus besoin de creer un compte avec username.
+- Le parcours "Creer un foyer" guide en 5 etapes : ton prenom, le
+  nom du foyer, les pieces de chez toi, les taches que tu veux
+  suivre (tirees du catalogue), puis ton code de recuperation.
+- Pour l'instant le reseau Tailscale maison continue de te connecter
+  automatiquement comme avant — tu ne verras le nouvel accueil que
+  si tu reinstalles l'app.
+
+### Code de recuperation
+- A la creation ou a la jonction d'un foyer, un code unique de 8
+  caracteres (XXXX-XXXX) est affiche. Note-le : il te permet de
+  retrouver ton foyer + tes droits d'admin si tu perds ton telephone.
+  Affiche une seule fois, partageable par mail/messagerie via un
+  bouton dedie.
+
 ## v0.29.0 — 2026-04-29
 
 ### Modal "+ d'info" sur l'effort
