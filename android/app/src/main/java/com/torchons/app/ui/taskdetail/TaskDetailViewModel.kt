@@ -71,6 +71,8 @@ data class TaskDetailUiState(
     val effortVotes: EffortVotesState? = null,
     /** v0.28 : modal "+ d'info" frequence ouvert. */
     val showFrequencyInfo: Boolean = false,
+    /** v0.29 : modal "+ d'info" effort ouvert. */
+    val showEffortInfo: Boolean = false,
     /** v0.28 : modal "+ d'info" affinite ouvert. */
     val showAffinityInfo: Boolean = false,
     /** v0.28 : FrequencyVoteDialog ouvert (depuis le bandeau ou + d'info). */
@@ -427,6 +429,12 @@ class TaskDetailViewModel @Inject constructor(
     }
     fun dismissFrequencyInfo() {
         _uiState.value = _uiState.value.copy(showFrequencyInfo = false)
+    }
+    fun openEffortInfo() {
+        _uiState.value = _uiState.value.copy(showEffortInfo = true)
+    }
+    fun dismissEffortInfo() {
+        _uiState.value = _uiState.value.copy(showEffortInfo = false)
     }
     fun openAffinityInfo() {
         _uiState.value = _uiState.value.copy(showAffinityInfo = true)

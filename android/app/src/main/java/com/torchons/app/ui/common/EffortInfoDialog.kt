@@ -1,0 +1,203 @@
+package com.torchons.app.ui.common
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.torchons.app.data.model.EffortVotesState
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+
+/**
+ * Modal "+ d'info" sur l'effort d'une tache (v0.29).
+ *
+ * Symetrique a FrequencyInfoDialog : pedago courte sur le mecanisme du
+ * vote effort (points, fair-share, retard foyer), liste par voteur avec
+ * "Modifier mon vote" / "Demander revote", section non-votants avec
+ * "Demander a voter".
+ *
+ * @param foyerMembers liste des (user_id, display_name) du foyer assignes
+ *   a la tache. Permet de calculer les non-votants.
+ * @param currentUserId id de l'user courant pour distinguer "ma ligne".
+ * @param onAskRevote callback pour demander a un user de revoter (kind=effort).
+ * @param onEditMyVote callback pour ouvrir EffortVoteDialog.
+ */
+@Composable
+fun EffortInfoDialog(
+    state: EffortVotesState,
+    foyerMembers: List<Pair<String, String>>,
+    currentUserId: String?,
+    onAskRevote: (targetUserId: String) -> Unit,
+    onEditMyVote: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    // Set des user_ids ayant vote (moi inclus si myPoints != null).
+    val voterIds = buildSet {
+        state.myPoints?.let { currentUserId?.let { id -> add(id) } }
+        addAll(state.others.map { it.userId })
+    }
+    val nonVoters = foyerMembers.filter { it.first !in voterIds }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Effort : comment ca marche ?") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 540.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                // Pedago : explique a quoi sert le vote (points, fair-share, retard foyer).
+                Text(
+                    text = "L'effort est le temps moyen que prend la tache, vote par chaque membre du foyer. Il sert a calculer les points gagnes quand la tache est validee — ces points alimentent le partage equitable (fair-share) entre vous et le retard global du foyer. Plus il y a de votes, plus l'estimation est juste. Tu peux ajuster ton vote ou demander a un autre membre de revoter.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(12.dp))
+
+                // Mon vote (si vote)
+                if (state.myPoints != null && currentUserId != null) {
+                    EffortVoteRow(
+                        name = "Toi",
+                        points = state.myPoints,
+                        updatedAt = state.myUpdatedAt,
+                        isMe = true,
+                        actionButton = {
+                            OutlinedButton(onClick = onEditMyVote) {
+                                Text("Modifier mon vote", style = MaterialTheme.typography.labelSmall)
+                            }
+                        },
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(6.dp))
+                }
+
+                // Autres votes
+                state.others.forEach { other ->
+                    val isPending = other.userId in state.pendingRevoteUserIds
+                    EffortVoteRow(
+                        name = other.displayName,
+                        points = other.points,
+                        updatedAt = other.updatedAt,
+                        isMe = false,
+                        actionButton = {
+                            OutlinedButton(
+                                onClick = { onAskRevote(other.userId) },
+                                enabled = !isPending,
+                            ) {
+                                Text(
+                                    text = if (isPending) "Demande envoyee" else "Demander revote",
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
+                        },
+                    )
+                    Spacer(Modifier.height(6.dp))
+                }
+
+                // Non-votants
+                if (nonVoters.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Pas encore vote",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    nonVoters.forEach { (uid, name) ->
+                        val isPending = uid in state.pendingRevoteUserIds
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(end = 8.dp),
+                            )
+                            Box(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.weight(1f))
+                            OutlinedButton(
+                                onClick = { onAskRevote(uid) },
+                                enabled = !isPending,
+                            ) {
+                                Text(
+                                    text = if (isPending) "Demande envoyee" else "Demander a voter",
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Fermer") }
+        },
+    )
+}
+
+@Composable
+private fun EffortVoteRow(
+    name: String,
+    points: Int,
+    updatedAt: String?,
+    isMe: Boolean,
+    actionButton: @Composable () -> Unit,
+) {
+    val summary = effortPointsToTime(points)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isMe) FontWeight.Bold else FontWeight.Medium,
+            )
+            Text(
+                text = summary + (formatVoteDate(updatedAt)?.let { " · $it" } ?: ""),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        actionButton()
+    }
+}
+
+private val DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+
+private fun formatVoteDate(iso: String?): String? {
+    if (iso.isNullOrBlank()) return null
+    return try {
+        val odt = OffsetDateTime.parse(iso)
+        "vote le ${odt.format(DATE_FMT)}"
+    } catch (_: Exception) {
+        null
+    }
+}

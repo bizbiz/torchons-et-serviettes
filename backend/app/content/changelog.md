@@ -1,5 +1,19 @@
 # Notes de version
 
+## v0.29.0 — 2026-04-29
+
+### Modal "+ d'info" sur l'effort
+- Sur la fiche d'une tache, dans la section "Effort & Affinite", un
+  nouveau lien "Effort & points · + d'info" ouvre un modal qui
+  explique a quoi sert le vote effort : calcul des points gagnes
+  quand la tache est validee, partage equitable (fair-share) entre
+  membres, et retard global du foyer.
+- Le modal liste les votes effort de chaque membre avec la date du
+  vote. Boutons "Modifier mon vote" sur ta ligne, "Demander revote"
+  sur celle des autres, et "Demander a voter" pour les membres
+  assignes qui n'ont pas encore vote.
+- Symetrique du modal "+ d'info" deja existant pour la frequence.
+
 ## v0.28.2 — 2026-04-29
 
 ### Icone de notification reconnaissable

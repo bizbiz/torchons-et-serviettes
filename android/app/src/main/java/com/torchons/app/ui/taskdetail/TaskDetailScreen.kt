@@ -300,6 +300,23 @@ fun TaskDetailScreen(
             onDismiss = { viewModel.dismissFrequencyInfo() },
         )
     }
+    if (uiState.showEffortInfo && uiState.effortVotes != null && uiState.task != null) {
+        val task = uiState.task!!
+        val members = task.assignedToIds.map { uid ->
+            uid to (uiState.userNames[uid] ?: "?")
+        }
+        com.torchons.app.ui.common.EffortInfoDialog(
+            state = uiState.effortVotes!!,
+            foyerMembers = members,
+            currentUserId = currentUserId,
+            onAskRevote = { uid -> viewModel.requestRevote(uid, "effort") },
+            onEditMyVote = {
+                viewModel.dismissEffortInfo()
+                viewModel.openEffortVoteDialog()
+            },
+            onDismiss = { viewModel.dismissEffortInfo() },
+        )
+    }
     if (uiState.showAffinityInfo) {
         val rows = uiState.ratings.mapNotNull { r ->
             r.userId?.let {
@@ -748,6 +765,26 @@ fun TaskDetailScreen(
                                         text = "Moyenne : $avgLabel → ${uiState.scorePoints ?: "?"} pts",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                // v0.29 — sous-texte adaptatif effort avec lien "+ d'info".
+                                if (uiState.effortVotes != null && uiState.effortVotes!!.votesCount > 0) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    androidx.compose.foundation.text.ClickableText(
+                                        text = androidx.compose.ui.text.buildAnnotatedString {
+                                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                                                append("Effort & points · ")
+                                            }
+                                            withStyle(SpanStyle(
+                                                color = MaterialTheme.colorScheme.primary,
+                                                textDecoration = TextDecoration.Underline,
+                                            )) {
+                                                append("+ d'info")
+                                            }
+                                        },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        onClick = { viewModel.openEffortInfo() },
                                     )
                                 }
 
