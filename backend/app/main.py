@@ -15,6 +15,7 @@ from sqlalchemy import text
 
 from app.database import engine
 from app.services.archiving import daily_archive_job
+from app.services.cleanup import daily_cleanup_job
 from app.services.retard_history import daily_retard_job
 
 logger = structlog.get_logger()
@@ -49,10 +50,22 @@ async def lifespan(app: FastAPI):
         id="daily_retard_snapshot",
         replace_existing=True,
     )
+    # v0.30 — cleanup quotidien : tokens pairing expires, foyers fantomes
+    # archives, foyers archives >365j purges, users supprimes >30j (RGPD).
+    _scheduler.add_job(
+        daily_cleanup_job,
+        CronTrigger(hour=3, minute=30),
+        id="daily_cleanup",
+        replace_existing=True,
+    )
     _scheduler.start()
     logger.info(
         "scheduler_started",
-        jobs=["daily_archive@03:00 UTC", "daily_retard_snapshot@03:15 UTC"],
+        jobs=[
+            "daily_archive@03:00 UTC",
+            "daily_retard_snapshot@03:15 UTC",
+            "daily_cleanup@03:30 UTC",
+        ],
     )
 
     yield
