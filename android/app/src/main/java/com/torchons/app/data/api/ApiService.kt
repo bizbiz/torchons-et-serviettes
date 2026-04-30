@@ -413,6 +413,15 @@ interface ApiService {
     @GET("stats/couple-totals")
     suspend fun getCoupleTotals(): Response<com.torchons.app.data.model.CoupleTotalsResponse>
 
+    /**
+     * Stats long-terme par dimension (v0.31, item roadmap "Stats long-terme
+     * et par dimension"). period = month / quarter / year.
+     */
+    @GET("stats/long-term")
+    suspend fun getLongTermStats(
+        @Query("period") period: String = "quarter",
+    ): Response<com.torchons.app.data.model.LongTermResponse>
+
     // --- Settings ---
 
     /** Recuperer les reglages utilisateur. */

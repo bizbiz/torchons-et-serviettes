@@ -13,6 +13,31 @@ data class UserStats(
     @SerializedName("tasks_total") val tasksTotal: Int = 0
 )
 
+// --- Stats long-terme (v0.31, item roadmap "Stats long-terme et par dimension") ---
+
+data class LongTermDay(
+    /** ISO date YYYY-MM-DD. */
+    @SerializedName("day") val day: String,
+    @SerializedName("completions") val completions: Int,
+    @SerializedName("points") val points: Int,
+    @SerializedName("estimated_minutes") val estimatedMinutes: Int,
+)
+
+data class LongTermRoom(
+    @SerializedName("room_id") val roomId: String?,
+    @SerializedName("room_name") val roomName: String,
+    @SerializedName("completions") val completions: Int,
+    @SerializedName("points") val points: Int,
+    @SerializedName("estimated_minutes") val estimatedMinutes: Int,
+)
+
+data class LongTermResponse(
+    @SerializedName("period") val period: String, // 'month' | 'quarter' | 'year'
+    @SerializedName("days") val days: Int,
+    @SerializedName("completions_per_day") val completionsPerDay: List<LongTermDay>,
+    @SerializedName("by_room") val byRoom: List<LongTermRoom>,
+)
+
 // --- Totaux du couple (v0.31, item roadmap "Stats globales du couple") ---
 
 data class CoupleTotalsResponse(

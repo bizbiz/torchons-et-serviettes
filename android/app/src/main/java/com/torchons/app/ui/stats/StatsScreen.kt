@@ -226,6 +226,9 @@ private fun ResumeTab(
         // (charge sa data en interne via /api/stats/weekly-summary).
         item { WeeklySummaryCard() }
 
+        // v0.31 — Stats long-terme (repartition par piece + temps cumule).
+        item { LongTermCard() }
+
         // Message fair-share sur-performance (deplace depuis HomeScreen v0.8.0)
         if (showOverPerformingCard) {
             item {

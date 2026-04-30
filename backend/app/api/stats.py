@@ -1631,6 +1631,133 @@ async def user_history(
     )
 
 
+# --- Stats long-terme (v0.31, item roadmap "Stats long-terme et par dimension") ---
+
+
+class LongTermDay(BaseModel):
+    """Aggregat journalier : completions + points + minutes estimees."""
+    day: date
+    completions: int
+    points: int
+    estimated_minutes: int
+
+
+class LongTermRoom(BaseModel):
+    """Aggregat par piece sur la periode demandee. room_id null = taches
+    sans piece rattachee."""
+    room_id: UUID | None
+    room_name: str
+    completions: int
+    points: int
+    estimated_minutes: int
+
+
+class LongTermResponse(BaseModel):
+    period: str  # 'month' | 'quarter' | 'year'
+    days: int    # taille de la fenetre en jours
+    completions_per_day: list[LongTermDay]
+    by_room: list[LongTermRoom]
+
+
+@router.get("/stats/long-term", response_model=LongTermResponse)
+async def long_term_stats(
+    period: str = Query(default="quarter", pattern="^(month|quarter|year)$"),
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Aggregate stats sur une fenetre longue : evolution journaliere +
+    repartition par piece. Utilise pour les graphiques analytiques de la
+    roadmap "Stats long-terme et par dimension".
+
+    Le `estimated_minutes` est calcule a partir du consensus effort (avg
+    de task_efforts.points * 5min). Tasks sans vote effort comptent 0
+    minute (on ne devine pas).
+    """
+    from app.models.room import Room
+    from app.models.task_effort import TaskEffort
+
+    foyer_uuid = current_foyer_uuid(current)
+    days_window = {"month": 30, "quarter": 90, "year": 365}[period]
+    since = datetime.now(timezone.utc) - timedelta(days=days_window)
+
+    # Subquery : effort moyen par task (en minutes : avg points * 5).
+    effort_subq = (
+        select(
+            TaskEffort.task_id.label("task_id"),
+            (func.avg(TaskEffort.points) * 5).label("avg_minutes"),
+        )
+        .group_by(TaskEffort.task_id)
+        .subquery()
+    )
+
+    # 1. Completions per day.
+    days_result = await session.execute(
+        select(
+            func.date(TaskCompletion.completed_at).label("day"),
+            func.count(TaskCompletion.id),
+            func.coalesce(func.sum(TaskCompletion.points_earned), 0),
+            func.coalesce(func.sum(effort_subq.c.avg_minutes), 0),
+        )
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .outerjoin(effort_subq, effort_subq.c.task_id == Task.id)
+        .where(
+            Task.foyer_id == foyer_uuid,
+            TaskCompletion.deleted_at.is_(None),
+            TaskCompletion.completed_at >= since,
+        )
+        .group_by("day")
+        .order_by("day")
+    )
+    completions_per_day = [
+        LongTermDay(
+            day=row[0],
+            completions=int(row[1] or 0),
+            points=int(row[2] or 0),
+            estimated_minutes=int(row[3] or 0),
+        )
+        for row in days_result.all()
+    ]
+
+    # 2. By room (LEFT JOIN pour inclure les taches sans room_id).
+    rooms_result = await session.execute(
+        select(
+            Room.id,
+            Room.name,
+            func.count(TaskCompletion.id),
+            func.coalesce(func.sum(TaskCompletion.points_earned), 0),
+            func.coalesce(func.sum(effort_subq.c.avg_minutes), 0),
+        )
+        .select_from(TaskCompletion)
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .outerjoin(Room, Room.id == Task.room_id)
+        .outerjoin(effort_subq, effort_subq.c.task_id == Task.id)
+        .where(
+            Task.foyer_id == foyer_uuid,
+            TaskCompletion.deleted_at.is_(None),
+            TaskCompletion.completed_at >= since,
+        )
+        .group_by(Room.id, Room.name)
+        .order_by(func.count(TaskCompletion.id).desc())
+    )
+    by_room = [
+        LongTermRoom(
+            room_id=row[0],
+            room_name=row[1] or "Sans piece",
+            completions=int(row[2] or 0),
+            points=int(row[3] or 0),
+            estimated_minutes=int(row[4] or 0),
+        )
+        for row in rooms_result.all()
+    ]
+
+    return LongTermResponse(
+        period=period,
+        days=days_window,
+        completions_per_day=completions_per_day,
+        by_room=by_room,
+    )
+
+
 # --- Totaux du couple (v0.31, item roadmap "Stats globales du couple") ---
 
 
