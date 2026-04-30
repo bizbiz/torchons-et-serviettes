@@ -58,10 +58,13 @@ fun InviteQrScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
+    val titleText = if (state.kind == "add_device") "Ajouter un appareil"
+    else "Inviter quelqu'un"
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Inviter quelqu'un") },
+                title = { Text(titleText) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -92,8 +95,12 @@ fun InviteQrScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top,
         ) {
+            val helpText = if (state.kind == "add_device")
+                "Sur ton autre appareil, installe l'app et choisis \"Rejoindre un foyer\" pour scanner ce QR. Tu seras connecte avec ton compte actuel — pas de nouveau membre cree."
+            else
+                "Demande a la personne d'installer l'app et de choisir \"Rejoindre un foyer\". Elle pourra ensuite scanner ce QR."
             Text(
-                text = "Demande a la personne d'installer l'app et de choisir \"Rejoindre un foyer\". Elle pourra ensuite scanner ce QR.",
+                text = helpText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

@@ -41,11 +41,22 @@ data class PairingInitResponse(
     /** ISO 8601, UTC. */
     @SerializedName("expires_at") val expiresAt: String,
     @SerializedName("foyer_name") val foyerName: String,
+    /** v0.31 : "foyer_join" (defaut) ou "add_device". */
+    @SerializedName("kind") val kind: String = "foyer_join",
 )
 
 data class PairingJoinRequest(
     @SerializedName("invite_token") val inviteToken: String,
-    @SerializedName("display_name") val displayName: String,
+    @SerializedName("display_name") val displayName: String = "",
+    /** v0.31 : device_id du joiner pour le binding JWT. */
+    @SerializedName("device_id") val deviceId: String? = null,
+)
+
+/** v0.31 — probe sans consommation, pour que le joiner adapte son UI. */
+data class PairingInfoResponse(
+    @SerializedName("kind") val kind: String,
+    @SerializedName("foyer_name") val foyerName: String,
+    @SerializedName("expires_at") val expiresAt: String,
 )
 
 data class PairingJoinResponse(
@@ -53,7 +64,11 @@ data class PairingJoinResponse(
     @SerializedName("user_id") val userId: String,
     @SerializedName("foyer_id") val foyerId: String,
     @SerializedName("foyer_name") val foyerName: String,
-    @SerializedName("recovery_code") val recoveryCode: String,
+    @SerializedName("kind") val kind: String = "foyer_join",
+    /** Null pour kind=add_device (l'user existant garde son code). */
+    @SerializedName("recovery_code") val recoveryCode: String? = null,
+    /** v0.31 : display_name du user (existant pour add_device, fourni pour foyer_join). */
+    @SerializedName("display_name") val displayName: String = "",
 )
 
 // --- Recovery ---

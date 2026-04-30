@@ -550,6 +550,16 @@ interface ApiService {
     @POST("pairing/init")
     suspend fun pairingInit(): Response<com.torchons.app.data.model.PairingInitResponse>
 
+    /** v0.31 — Owner genere un token pour ajouter un de ses propres appareils. Auth. */
+    @POST("pairing/init-add-device")
+    suspend fun pairingInitAddDevice(): Response<com.torchons.app.data.model.PairingInitResponse>
+
+    /** v0.31 — Probe le kind d'un invite_token (sans le consommer). Unauth. */
+    @GET("pairing/info/{token}")
+    suspend fun pairingInfo(
+        @Path("token") token: String,
+    ): Response<com.torchons.app.data.model.PairingInfoResponse>
+
     /** Joiner consomme un invite_token et rejoint le foyer comme membre. Unauth. */
     @POST("pairing/join")
     suspend fun pairingJoin(

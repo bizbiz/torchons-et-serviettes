@@ -53,3 +53,9 @@ class PairingToken(Base):
     consumed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # v0.31 : 'foyer_join' (defaut, nouveau member) vs 'add_device' (ajouter
+    # un de mes propres appareils -> meme user_id, nouveau device).
+    kind: Mapped[str] = mapped_column(
+        String(20), default="foyer_join",
+        server_default="foyer_join", nullable=False,
+    )

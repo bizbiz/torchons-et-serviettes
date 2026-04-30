@@ -1,5 +1,6 @@
 package com.torchons.app.ui.onboarding
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
@@ -12,18 +13,24 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * ViewModel pour l'ecran "Inviter quelqu'un" (v0.30, Phase B6).
+ * ViewModel pour l'ecran "Inviter quelqu'un" (v0.30 Phase B6) et "Ajouter
+ * un de mes appareils" (v0.31).
  *
- * Genere un invite_token via /api/pairing/init au mount + bouton refresh
- * pour generer un nouveau (apres expiration ou si le QR a ete photographie).
+ * Le mode est determine par l'argument de nav `addDevice` :
+ *  - false (defaut) -> POST /api/pairing/init pour creer un QR foyer_join
+ *    qui ajoutera un nouveau membre.
+ *  - true -> POST /api/pairing/init-add-device pour creer un QR add_device
+ *    qui ajoutera un nouvel appareil au compte de l'user courant.
  *
- * Cf. docs/design-onboarding-public.md §3.
+ * Cf. docs/design-onboarding-public.md §3 et §2 cas (B).
  */
 
 data class InviteQrState(
     val inviteToken: String? = null,
     val expiresAt: String? = null,
     val foyerName: String? = null,
+    /** Mode actuel : "foyer_join" ou "add_device" (echo du backend). */
+    val kind: String = "foyer_join",
     val isLoading: Boolean = false,
     val error: String? = null,
 )
@@ -31,7 +38,15 @@ data class InviteQrState(
 @HiltViewModel
 class InviteQrViewModel @Inject constructor(
     private val apiService: ApiService,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    /**
+     * Lu depuis l'argument de nav route. Vrai si on est en mode "ajouter
+     * un de mes appareils". False (defaut) pour "inviter quelqu'un".
+     */
+    private val addDevice: Boolean =
+        savedStateHandle.get<Boolean>("addDevice") ?: false
 
     private val _uiState = MutableStateFlow(InviteQrState())
     val uiState: StateFlow<InviteQrState> = _uiState.asStateFlow()
@@ -45,7 +60,8 @@ class InviteQrViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             try {
-                val resp = apiService.pairingInit()
+                val resp = if (addDevice) apiService.pairingInitAddDevice()
+                else apiService.pairingInit()
                 if (!resp.isSuccessful) {
                     _uiState.update {
                         it.copy(
@@ -68,6 +84,7 @@ class InviteQrViewModel @Inject constructor(
                         inviteToken = body.inviteToken,
                         expiresAt = body.expiresAt,
                         foyerName = body.foyerName,
+                        kind = body.kind,
                     )
                 }
             } catch (e: Exception) {

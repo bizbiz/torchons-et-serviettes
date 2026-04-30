@@ -117,6 +117,10 @@ fun JoinFoyerScreen(
                     onScanClick = { scanLauncher.launch(null) },
                 )
 
+                state.kind == "add_device" -> AddingDevice(
+                    foyerName = state.foyerName,
+                )
+
                 else -> EnterDisplayName(
                     foyerHint = "Demande la personne qui t'a montre le QR",
                     displayName = state.displayName,
@@ -197,6 +201,31 @@ private fun EnterDisplayName(
         } else {
             Text("Rejoindre le foyer")
         }
+    }
+}
+
+@Composable
+private fun AddingDevice(foyerName: String?) {
+    Text(
+        text = "Connexion a ton compte...",
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
+    )
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = if (foyerName != null)
+            "Cet appareil sera connecte au foyer \"$foyerName\" avec ton compte existant."
+        else
+            "Cet appareil sera connecte avec ton compte existant.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(32.dp))
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = androidx.compose.ui.Alignment.Center,
+    ) {
+        CircularProgressIndicator()
     }
 }
 

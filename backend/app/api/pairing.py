@@ -37,38 +37,42 @@ class PairingInitResponse(BaseModel):
     invite_token: str
     expires_at: datetime
     foyer_name: str  # affiche dans l'UI owner pour confirmation visuelle
+    kind: str  # 'foyer_join' (defaut) ou 'add_device' (v0.31)
 
 
 class PairingJoinRequest(BaseModel):
     invite_token: str
-    display_name: str = Field(min_length=1, max_length=100)
+    # display_name requis uniquement pour kind=foyer_join. Ignore pour
+    # kind=add_device (le user existe deja, on ne change pas son nom).
+    display_name: str = Field(default="", max_length=100)
+    # device_id du device qui rejoint. Pour foyer_join, le backend en genere
+    # un aleatoire si non fourni. Pour add_device, le client doit fournir
+    # son device_id stable pour que le JWT soit lie au bon device.
+    device_id: str | None = None
 
 
 class PairingJoinResponse(BaseModel):
-    """Reponse au join. Inclut le recovery_code en clair UNE SEULE FOIS pour
-    l'afficher au joiner — il sera ensuite seulement stocke en hash."""
+    """Reponse au join. Pour foyer_join, recovery_code est present (a
+    afficher une seule fois). Pour add_device, recovery_code est null
+    (l'user a deja le sien)."""
     token: str
     user_id: str
     foyer_id: str
     foyer_name: str
-    recovery_code: str
+    kind: str  # echo du kind du token consomme
+    # Inclus uniquement pour kind=foyer_join (nouveau User cree).
+    recovery_code: str | None = None
+    # display_name du user ; pour add_device c'est l'existant, pour
+    # foyer_join c'est celui fourni dans la requete.
+    display_name: str
 
 
-@router.post("/init", response_model=PairingInitResponse)
-async def init_pairing(
-    session: AsyncSession = Depends(get_session),
-    current: dict = Depends(get_current_user),
-):
-    """Owner genere un nouveau token pour inviter quelqu'un dans son foyer
-    actif. Token aleatoire 32 chars hex (16 octets), TTL 15 min, single-use.
-
-    L'owner peut en generer plusieurs successivement (chacun usage unique).
-    Pas de revocation explicite — on attend l'expiration ou la consommation.
-    """
-    user_id = uuid.UUID(current["user_id"])
-    foyer_id = uuid.UUID(current["foyer_id"])
-
-    # Verifie que le user est bien membre actif du foyer (pas de left_at).
+async def _create_pairing_token(
+    session: AsyncSession, user_id: uuid.UUID, foyer_id: uuid.UUID, kind: str,
+) -> tuple[PairingToken, Foyer]:
+    """Helper partage entre /init et /init-add-device. Verifie membership
+    active + cree le token + retourne aussi le Foyer pour /init-add-device
+    qui voudra son nom."""
     membership = await session.execute(
         select(UserFoyer).where(
             UserFoyer.user_id == user_id,
@@ -95,14 +99,105 @@ async def init_pairing(
         foyer_id=foyer_id,
         created_by_user_id=user_id,
         expires_at=expires_at,
+        kind=kind,
     )
     session.add(pt)
     await session.commit()
+    return pt, foyer
 
+
+@router.post("/init", response_model=PairingInitResponse)
+async def init_pairing(
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Owner genere un nouveau token pour inviter quelqu'un dans son foyer
+    actif. Token aleatoire 32 chars hex (16 octets), TTL 15 min, single-use.
+
+    Cree un token kind='foyer_join' : le scan creera un nouveau User dans
+    le foyer. Pour ajouter un de ses propres appareils, voir
+    /init-add-device.
+    """
+    user_id = uuid.UUID(current["user_id"])
+    foyer_id = uuid.UUID(current["foyer_id"])
+    pt, foyer = await _create_pairing_token(session, user_id, foyer_id, "foyer_join")
     return PairingInitResponse(
-        invite_token=token_value,
-        expires_at=expires_at,
+        invite_token=pt.token,
+        expires_at=pt.expires_at,
         foyer_name=foyer.name,
+        kind=pt.kind,
+    )
+
+
+@router.post("/init-add-device", response_model=PairingInitResponse)
+async def init_add_device(
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """v0.31 — Owner genere un token pour ajouter un de ses propres
+    appareils (tablette, 2nd tel) a son compte. Le scan emettra un JWT
+    pour le MEME user_id, sans creer de nouveau User ni UserFoyer.
+
+    Cf. design-onboarding-public.md §2 cas (B).
+    """
+    user_id = uuid.UUID(current["user_id"])
+    foyer_id = uuid.UUID(current["foyer_id"])
+    pt, foyer = await _create_pairing_token(session, user_id, foyer_id, "add_device")
+    return PairingInitResponse(
+        invite_token=pt.token,
+        expires_at=pt.expires_at,
+        foyer_name=foyer.name,
+        kind=pt.kind,
+    )
+
+
+class PairingInfoResponse(BaseModel):
+    """Probe sans consommation : permet au joiner de connaitre le kind du QR
+    avant de soumettre /join, pour adapter l'UI (afficher la saisie
+    display_name pour foyer_join, la sauter pour add_device)."""
+    kind: str
+    foyer_name: str
+    expires_at: datetime
+
+
+@router.get("/info/{invite_token}", response_model=PairingInfoResponse)
+async def pairing_info(
+    invite_token: str,
+    session: AsyncSession = Depends(get_session),
+):
+    """Inspecte un invite_token sans le consommer. Unauth.
+
+    Retourne le kind ('foyer_join' / 'add_device') + le nom du foyer + la
+    date d'expiration. Le joiner appelle ca apres avoir scanne pour savoir
+    s'il doit demander un display_name (foyer_join) ou non (add_device).
+    """
+    token_result = await session.execute(
+        select(PairingToken).where(PairingToken.token == invite_token)
+    )
+    pt = token_result.scalar_one_or_none()
+    if pt is None:
+        raise HTTPException(status_code=404, detail="Code d'invitation invalide")
+    if pt.consumed_at is not None:
+        raise HTTPException(
+            status_code=409, detail="Ce code d'invitation a deja ete utilise"
+        )
+    now = datetime.now(timezone.utc)
+    if pt.expires_at < now:
+        raise HTTPException(
+            status_code=410, detail="Ce code d'invitation a expire"
+        )
+
+    foyer_result = await session.execute(select(Foyer).where(Foyer.id == pt.foyer_id))
+    foyer = foyer_result.scalar_one_or_none()
+    if foyer is None or foyer.deleted_at is not None:
+        raise HTTPException(
+            status_code=410, detail="Le foyer associe a ce code n'existe plus"
+        )
+
+    return PairingInfoResponse(
+        kind=pt.kind,
+        foyer_name=foyer.name,
+        expires_at=pt.expires_at,
     )
 
 
@@ -111,15 +206,17 @@ async def join_pairing(
     body: PairingJoinRequest,
     session: AsyncSession = Depends(get_session),
 ):
-    """Joiner consomme un invite_token et rejoint le foyer comme nouveau
-    membre. Cree User + UserFoyer(role=member) + recovery_code.
+    """Joiner consomme un invite_token et rejoint le foyer.
 
-    Endpoint unauthenticated : le joiner n'a pas encore de JWT (il vient
-    d'installer l'app). Le invite_token tient lieu d'autorisation.
+    Comportement selon le `kind` du token :
+    - `foyer_join` (defaut) : cree un nouveau User + UserFoyer(member) +
+      recovery_code. `display_name` requis. Renvoie le recovery_code en
+      clair une seule fois.
+    - `add_device` (v0.31) : retourne un JWT pour le MEME user_id que le
+      `created_by_user_id` du token. Pas de nouveau User, pas de
+      recovery_code. `display_name` ignore (l'existant est conserve).
 
-    Le device_id du joiner n'est pas requis ici : le backend le genere
-    dans le JWT cote token-emit. Le client peut ensuite re-emettre via
-    auth/me s'il prefere son propre device_id stable.
+    Endpoint unauthenticated : le joiner n'a pas encore de JWT.
     """
     # Lookup token
     token_result = await session.execute(
@@ -135,7 +232,6 @@ async def join_pairing(
         raise HTTPException(
             status_code=409, detail="Ce code d'invitation a deja ete utilise"
         )
-    # `expires_at` est timezone-aware (DateTime(timezone=True)).
     if pt.expires_at < now:
         raise HTTPException(
             status_code=410, detail="Ce code d'invitation a expire"
@@ -149,8 +245,43 @@ async def join_pairing(
             status_code=410, detail="Le foyer associe a ce code n'existe plus"
         )
 
-    # Cree le User (username auto-genere — le display_name est ce qui compte
-    # cote UI, le username sera retire a la bascule publique cf. design doc).
+    device_id = body.device_id or str(uuid.uuid4())
+
+    if pt.kind == "add_device":
+        # Cas v0.31 : on retourne un JWT pour l'user existant. Pas de nouveau
+        # User. Verifie que l'user existant est encore valide (pas RGPD-supp).
+        user_result = await session.execute(
+            select(User).where(User.id == pt.created_by_user_id)
+        )
+        existing_user = user_result.scalar_one_or_none()
+        if existing_user is None or existing_user.deleted_at is not None:
+            raise HTTPException(
+                status_code=410,
+                detail="Le compte associe a ce code n'existe plus",
+            )
+        pt.consumed_at = now
+        await session.commit()
+
+        jwt_token = create_token(
+            str(existing_user.id), device_id, foyer_id=str(pt.foyer_id)
+        )
+        return PairingJoinResponse(
+            token=jwt_token,
+            user_id=str(existing_user.id),
+            foyer_id=str(pt.foyer_id),
+            foyer_name=foyer.name,
+            kind=pt.kind,
+            recovery_code=None,
+            display_name=existing_user.display_name,
+        )
+
+    # Cas defaut foyer_join (existant v0.30)
+    if not body.display_name.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="display_name est requis pour rejoindre un foyer",
+        )
+
     auto_username = f"u_{secrets.token_hex(6)}"
     new_user = User(
         username=auto_username,
@@ -160,7 +291,6 @@ async def join_pairing(
     session.add(new_user)
     await session.flush()
 
-    # Cree la membership
     session.add(
         UserFoyer(
             user_id=new_user.id,
@@ -169,19 +299,13 @@ async def join_pairing(
         )
     )
 
-    # Genere le recovery code (Q5 du grill-me)
     recovery_code = generate_code()
     new_user.recovery_code_hash = hash_code(recovery_code)
-
-    # Marque le token consomme
     pt.consumed_at = now
 
     await session.commit()
     await session.refresh(new_user)
 
-    # Genere un JWT. Pas de device_id stable cote backend — on en met un
-    # aleatoire ; le client peut le remplacer via son propre flow d'install.
-    device_id = str(uuid.uuid4())
     jwt_token = create_token(
         str(new_user.id), device_id, foyer_id=str(pt.foyer_id)
     )
@@ -191,5 +315,7 @@ async def join_pairing(
         user_id=str(new_user.id),
         foyer_id=str(pt.foyer_id),
         foyer_name=foyer.name,
+        kind=pt.kind,
         recovery_code=recovery_code,
+        display_name=new_user.display_name,
     )

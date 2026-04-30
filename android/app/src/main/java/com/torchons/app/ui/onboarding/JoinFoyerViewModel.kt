@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.PairingJoinRequest
+import kotlinx.coroutines.flow.first
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.service.TokenRegistrar
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,6 +36,9 @@ data class JoinState(
     val foyerName: String? = null,
     val error: String? = null,
     val done: Boolean = false,
+    /** v0.31 : "foyer_join" (par defaut) ou "add_device" — connu apres
+     * le probe /pairing/info qui suit le scan QR. */
+    val kind: String? = null,
 )
 
 @HiltViewModel
@@ -50,6 +54,40 @@ class JoinFoyerViewModel @Inject constructor(
 
     fun setInviteToken(value: String) {
         _uiState.update { it.copy(inviteToken = value, error = null) }
+        // v0.31 : probe le kind pour adapter l'UI (et auto-submit si add_device).
+        probeKind(value)
+    }
+
+    private fun probeKind(token: String) {
+        viewModelScope.launch {
+            try {
+                val resp = apiService.pairingInfo(token)
+                if (!resp.isSuccessful) {
+                    val msg = when (resp.code()) {
+                        404 -> "Code d'invitation invalide"
+                        409 -> "Code d'invitation deja utilise"
+                        410 -> "Code d'invitation expire"
+                        else -> "Erreur ${resp.code()}"
+                    }
+                    _uiState.update {
+                        it.copy(error = msg, inviteToken = null)
+                    }
+                    return@launch
+                }
+                val info = resp.body() ?: return@launch
+                _uiState.update {
+                    it.copy(kind = info.kind, foyerName = info.foyerName)
+                }
+                // Pour add_device, on peut soumettre directement : pas besoin
+                // de display_name, le user existe deja cote backend.
+                if (info.kind == "add_device") {
+                    submit()
+                }
+            } catch (_: Exception) {
+                // Probe echoue silencieusement : on retombe sur le flow
+                // foyer_join classique (display_name demande).
+            }
+        }
     }
 
     fun setDisplayName(value: String) {
@@ -63,22 +101,27 @@ class JoinFoyerViewModel @Inject constructor(
     fun submit() {
         val s = _uiState.value
         val token = s.inviteToken ?: return
-        if (s.isSubmitting || s.recoveryCode != null) return
-        if (s.displayName.isBlank()) {
+        if (s.isSubmitting || s.done) return
+        // Pour foyer_join : display_name requis ; pour add_device : pas requis.
+        val isAddDevice = s.kind == "add_device"
+        if (!isAddDevice && s.displayName.isBlank()) {
             _uiState.update { it.copy(error = "Renseigne ton prenom") }
             return
         }
         _uiState.update { it.copy(isSubmitting = true, error = null) }
         viewModelScope.launch {
             try {
+                val deviceId = tokenManager.getOrCreateDeviceId()
                 val resp = apiService.pairingJoin(
                     PairingJoinRequest(
                         inviteToken = token,
                         displayName = s.displayName.trim(),
+                        deviceId = deviceId,
                     )
                 )
                 if (!resp.isSuccessful) {
                     val msg = when (resp.code()) {
+                        400 -> "Donnees manquantes ou invalides"
                         404 -> "Code d'invitation invalide"
                         409 -> "Code d'invitation deja utilise"
                         410 -> "Code d'invitation expire"
@@ -98,16 +141,22 @@ class JoinFoyerViewModel @Inject constructor(
                     token = body.token,
                     userId = body.userId,
                     username = "",
-                    displayName = s.displayName.trim(),
+                    displayName = body.displayName.ifBlank { s.displayName.trim() },
                     foyerId = body.foyerId,
                 )
                 tokenRegistrar.registerFcmToken()
-                _uiState.update {
-                    it.copy(
-                        isSubmitting = false,
-                        recoveryCode = body.recoveryCode,
-                        foyerName = body.foyerName,
-                    )
+                if (body.kind == "add_device") {
+                    // Pas de recovery code a afficher : on passe directement
+                    // a l'ecran principal.
+                    _uiState.update { it.copy(isSubmitting = false, done = true) }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            recoveryCode = body.recoveryCode,
+                            foyerName = body.foyerName,
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update {

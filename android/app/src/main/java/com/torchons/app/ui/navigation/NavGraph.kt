@@ -73,11 +73,18 @@ object Routes {
     const val CREATE_FOYER_WIZARD = "create_foyer_wizard"
     const val JOIN_FOYER = "join_foyer"
     const val RESTORE_FOYER = "restore_foyer"
-    const val INVITE_QR = "invite_qr"
+    /**
+     * Route INVITE_QR avec un parametre optionnel `addDevice` (v0.31) :
+     *  - "invite_qr/false" -> QR foyer_join (inviter quelqu'un)
+     *  - "invite_qr/true"  -> QR add_device (ajouter un de mes appareils)
+     * Utiliser [inviteQr] pour construire l'URL.
+     */
+    const val INVITE_QR = "invite_qr/{addDevice}"
 
     fun taskDetail(taskId: String) = "task_detail/$taskId"
     fun taskEdit(taskId: String) = "task_edit/$taskId"
     fun taskClone(cloneFromId: String) = "task_clone/$cloneFromId"
+    fun inviteQr(addDevice: Boolean = false) = "invite_qr/$addDevice"
 }
 
 /**
@@ -169,8 +176,18 @@ fun NavGraph(
             )
         }
 
-        // v0.30 — QR code d'invitation pour rejoindre le foyer actif.
-        composable(Routes.INVITE_QR) {
+        // v0.30 — QR code d'invitation. v0.31 ajoute le param `addDevice`
+        // pour basculer entre "inviter quelqu'un" (false) et "ajouter un de
+        // mes appareils" (true). Lu par InviteQrViewModel via SavedStateHandle.
+        composable(
+            route = Routes.INVITE_QR,
+            arguments = listOf(
+                navArgument("addDevice") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+            ),
+        ) {
             InviteQrScreen(onBack = { navController.popBackStack() })
         }
 
@@ -214,7 +231,10 @@ fun NavGraph(
                     navController.navigate(Routes.CATALOG)
                 },
                 onNavigateToInviteSomeone = {
-                    navController.navigate(Routes.INVITE_QR)
+                    navController.navigate(Routes.inviteQr(addDevice = false))
+                },
+                onNavigateToAddDevice = {
+                    navController.navigate(Routes.inviteQr(addDevice = true))
                 },
                 onLogout = {
                     // v0.30 — bascule sur Welcome (les 3 boutons + tentative
@@ -366,6 +386,7 @@ fun MainScreen(
     onNavigateToChangelog: () -> Unit,
     onNavigateToCatalog: () -> Unit,
     onNavigateToInviteSomeone: () -> Unit,
+    onNavigateToAddDevice: () -> Unit,
     onLogout: () -> Unit
 ) {
     val innerNavController = androidx.navigation.compose.rememberNavController()
@@ -432,6 +453,7 @@ fun MainScreen(
                         onManageFoyers = onNavigateToFoyers,
                         onOpenChangelog = onNavigateToChangelog,
                         onInviteSomeone = onNavigateToInviteSomeone,
+                        onAddDevice = onNavigateToAddDevice,
                     )
                 }
             }
