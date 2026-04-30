@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.compose.rememberNavController
+import com.torchons.app.data.billing.BillingService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.service.TokenRegistrar
 import com.torchons.app.ui.navigation.NavGraph
@@ -43,6 +44,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var tokenRegistrar: TokenRegistrar
+
+    @Inject
+    lateinit var billingService: BillingService
 
     // Note : le PresenceTrigger (worker periodique 6h) a ete supprime car
     // les restrictions Android 12+ (Doze, background limits) empechaient
@@ -97,6 +101,11 @@ class MainActivity : ComponentActivity() {
                 tokenRegistrar.registerFcmToken()
             }
         }
+
+        // v0.30.x — Plomberie Play Billing : init au cold start, restoration
+        // silencieuse des achats existants si JWT present. Aucun paywall
+        // actif a ce stade (cf. roadmap-dev §C).
+        billingService.start()
 
         setContent {
             TorchonsServiettesTheme {

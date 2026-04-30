@@ -131,4 +131,9 @@ dependencies {
     implementation(libs.quickie.bundled)
     // QRCode-Kotlin : generation de QR pure Kotlin pour l'ecran d'invitation.
     implementation(libs.qrcode.kotlin)
+
+    // v0.30.x — Google Play Billing (plomberie premium, pas de paywall).
+    // Usage : restoration silencieuse des achats existants au cold start +
+    // hook pour lancer le flow d'achat plus tard.
+    implementation(libs.billing.ktx)
 }

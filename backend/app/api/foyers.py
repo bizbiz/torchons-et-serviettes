@@ -48,6 +48,8 @@ async def list_my_foyers(
             created_at=f.created_at,
             role=role,
             is_current=(f.id == current_foyer_id),
+            is_premium=f.is_premium,
+            premium_until=f.premium_until,
         )
         for f, role in rows
     ]
@@ -82,6 +84,8 @@ async def create_foyer(
         created_at=foyer.created_at,
         role="admin",
         is_current=False,  # pas encore switche dessus
+        is_premium=foyer.is_premium,
+        premium_until=foyer.premium_until,
     )
 
 
@@ -129,6 +133,8 @@ async def update_foyer(
         created_at=foyer.created_at,
         role=uf.role,
         is_current=(foyer_id == current_foyer_uuid(current)),
+        is_premium=foyer.is_premium,
+        premium_until=foyer.premium_until,
     )
 
 

@@ -573,6 +573,14 @@ interface ApiService {
     @DELETE("me")
     suspend fun deleteMe(): Response<Unit>
 
+    // --- Billing (v0.30.x plomberie premium, pas de paywall actif) ---
+
+    /** Verifie un purchase_token Google Play et flippe foyer.is_premium. Auth admin. */
+    @POST("billing/verify")
+    suspend fun billingVerify(
+        @Body body: com.torchons.app.data.model.BillingVerifyRequest,
+    ): Response<com.torchons.app.data.model.BillingVerifyResponse>
+
     // --- Sante ---
 
     /** Verification de l'etat du serveur. */

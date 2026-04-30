@@ -24,5 +24,8 @@ class FoyerResponse(BaseModel):
     created_at: datetime
     role: str  # role du user courant dans ce foyer (admin/member)
     is_current: bool  # true si c'est le foyer actif
+    # v0.30 — entitlement Premium par foyer (plomberie, paywall non actif).
+    is_premium: bool = False
+    premium_until: datetime | None = None
 
     model_config = {"from_attributes": True}

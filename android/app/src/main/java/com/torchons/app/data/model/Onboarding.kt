@@ -95,3 +95,17 @@ data class LeaveFoyerResponse(
     /** JWT regenere si le foyer quitte etait l'actif. Null si l'user n'a plus aucun foyer. */
     @SerializedName("new_token") val newToken: String?,
 )
+
+// --- Billing (v0.30.x — plomberie premium) ---
+
+data class BillingVerifyRequest(
+    @SerializedName("purchase_token") val purchaseToken: String,
+    @SerializedName("product_id") val productId: String,
+    @SerializedName("device_id") val deviceId: String? = null,
+)
+
+data class BillingVerifyResponse(
+    @SerializedName("is_premium") val isPremium: Boolean,
+    /** ISO 8601 ou null si pas premium. */
+    @SerializedName("premium_until") val premiumUntil: String? = null,
+)

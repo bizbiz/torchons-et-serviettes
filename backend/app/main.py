@@ -111,6 +111,7 @@ from app.api.onboarding import router as onboarding_router
 from app.api.pairing import router as pairing_router
 from app.api.recovery import router as recovery_router
 from app.api.me import router as me_router
+from app.api.billing import router as billing_router
 
 app.include_router(auth_router)
 app.include_router(tasks_router)
@@ -134,6 +135,7 @@ app.include_router(onboarding_router)
 app.include_router(pairing_router)
 app.include_router(recovery_router)
 app.include_router(me_router)
+app.include_router(billing_router)
 
 
 @app.get("/api/health")
