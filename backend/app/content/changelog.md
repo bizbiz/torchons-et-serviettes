@@ -1,5 +1,25 @@
 # Notes de version
 
+## v0.30.1 — 2026-04-30
+
+### Securite du foyer (Reglages)
+- Nouvelle section "Securite du foyer" dans les Reglages avec deux
+  actions :
+  - "Regenerer mon code de recuperation" : remplace ton ancien code
+    par un nouveau, affiche une seule fois avec boutons Copier et
+    Partager. Utile si tu n'avais pas encore de code, ou si tu
+    soupconnes que l'ancien a fuite.
+  - "Quitter le foyer" : tu sors du foyer en preservant ton historique
+    cote serveur. Si tu es membre d'un autre foyer, tu y bascules
+    automatiquement ; sinon tu retombes sur l'ecran d'accueil.
+
+### Soutenir / Discuter avec le dev
+- Nouvelle card en bas des Reglages avec un mot du dev (Quentin,
+  solo). Deux boutons : "Payer un cafe" (ouvre la page Buy Me a
+  Coffee dans le navigateur) et "M'ecrire" (ouvre l'app mail avec
+  un brouillon vers le dev). Les retours, idees et bugs sont les
+  bienvenus.
+
 ## v0.30.0 — 2026-04-29
 
 ### Inviter quelqu'un dans le foyer
