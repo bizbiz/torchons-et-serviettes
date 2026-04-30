@@ -27,7 +27,6 @@ import com.torchons.app.data.model.SyncRequest
 import com.torchons.app.data.model.SyncResponse
 import com.torchons.app.data.model.UserStats
 import com.torchons.app.data.model.Task
-import com.torchons.app.data.model.TaskInProgress
 import com.torchons.app.data.model.UpdateTaskRequest
 import com.torchons.app.data.model.User
 import retrofit2.Response
@@ -313,18 +312,6 @@ interface ApiService {
         @Path("id") taskId: String,
         @Query("limit") limit: Int = 100
     ): Response<List<TaskHistoryDto>>
-
-    /** Marquer une tache comme en cours. */
-    @POST("tasks/{id}/start")
-    suspend fun startTask(@Path("id") taskId: String): Response<TaskInProgress>
-
-    /** Annuler une tache en cours. */
-    @DELETE("tasks/{id}/start")
-    suspend fun cancelTaskInProgress(@Path("id") taskId: String): Response<Map<String, Any>>
-
-    /** Taches en cours de l'utilisateur. */
-    @GET("in-progress")
-    suspend fun getInProgress(): Response<List<TaskInProgress>>
 
     /** Statut fair-share. */
     @GET("fair-share/status")

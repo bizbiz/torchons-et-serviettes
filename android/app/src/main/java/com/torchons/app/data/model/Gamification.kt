@@ -39,14 +39,6 @@ data class DismissRequest(
     @SerializedName("tier") val tier: String,
 )
 
-/** Tache en cours. */
-data class TaskInProgress(
-    @SerializedName("task_id") val taskId: String,
-    @SerializedName("title") val title: String,
-    @SerializedName("user_id") val userId: String,
-    @SerializedName("started_at") val startedAt: String
-)
-
 /** Tache en attente de notation d'affinite/effort. */
 data class PendingAffinity(
     @SerializedName("task_id") val taskId: String,

@@ -22,7 +22,6 @@ from app.models.task_affinity import TaskAffinity
 from app.models.task_assignment import TaskAssignment
 from app.models.task_effort import TaskEffort
 from app.models.task_frequency_vote import TaskFrequencyVote
-from app.models.task_in_progress import TaskInProgress
 from app.services.frequency_vote import upsert_vote_and_sync_consensus
 from app.services.presence import get_absent_days_map
 from app.services.recurrence import (
@@ -39,8 +38,6 @@ from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api", tags=["gamification"])
-
-TIMEOUT_HOURS = 6
 
 
 async def _ensure_user_assigned(
@@ -130,12 +127,6 @@ class DismissRequest(BaseModel):
     task_id: UUID
     tier: str = Field(pattern="^(urgent|affinity|uncertain)$")
 
-
-class InProgressResponse(BaseModel):
-    task_id: UUID
-    title: str
-    user_id: UUID
-    started_at: datetime
 
 
 class FairShareStatus(BaseModel):
@@ -839,73 +830,6 @@ async def _build_pending_payload(session: AsyncSession, task: Task, user_id: UUI
     }
 
 
-# --- Taches en cours ---
-
-@router.post("/tasks/{task_id}/start", response_model=InProgressResponse)
-async def start_task(
-    task_id: UUID,
-    session: AsyncSession = Depends(get_session),
-    current: dict = Depends(get_current_user),
-):
-    """Marque une tache comme en cours par l'utilisateur."""
-    user_id = UUID(current["user_id"])
-
-    # Verifier que la tache existe
-    result = await session.execute(
-        select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
-    )
-    task = result.scalar_one_or_none()
-    if not task:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
-
-    # Supprimer l'ancien en cours si existant
-    await session.execute(delete(TaskInProgress).where(TaskInProgress.task_id == task_id))
-
-    tip = TaskInProgress(task_id=task_id, user_id=user_id)
-    session.add(tip)
-    await session.commit()
-    await session.refresh(tip)
-    return {"task_id": task_id, "title": task.title, "user_id": user_id, "started_at": tip.started_at}
-
-
-@router.delete("/tasks/{task_id}/start")
-async def cancel_task_in_progress(
-    task_id: UUID,
-    session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
-):
-    """Annule la tache en cours."""
-    await session.execute(delete(TaskInProgress).where(TaskInProgress.task_id == task_id))
-    await session.commit()
-    return {"ok": True}
-
-
-@router.get("/in-progress", response_model=list[InProgressResponse])
-async def list_in_progress(
-    session: AsyncSession = Depends(get_session),
-    current: dict = Depends(get_current_user),
-):
-    """Liste les taches en cours de l'utilisateur (avec nettoyage timeout 6h)."""
-    user_id = UUID(current["user_id"])
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=TIMEOUT_HOURS)
-
-    # Supprimer les expirees
-    await session.execute(
-        delete(TaskInProgress).where(TaskInProgress.started_at < cutoff)
-    )
-    await session.commit()
-
-    result = await session.execute(
-        select(TaskInProgress, Task.title).join(
-            Task, Task.id == TaskInProgress.task_id
-        ).where(TaskInProgress.user_id == user_id)
-    )
-    return [
-        {"task_id": row[0].task_id, "title": row[1], "user_id": row[0].user_id, "started_at": row[0].started_at}
-        for row in result.all()
-    ]
-
-
 # --- Suggestions ---
 
 def _build_suggestion(scored: dict, reason: str) -> SuggestionResponse:
@@ -996,11 +920,6 @@ async def get_suggestions(
         TaskAssignment.user_id == user_id
     ).scalar_subquery()
 
-    # Exclure les taches en cours par d'autres
-    in_progress_ids = select(TaskInProgress.task_id).where(
-        TaskInProgress.user_id != user_id
-    ).scalar_subquery()
-
     # On ne filtre PAS sur exclude_ids ici : on a besoin du pool complet
     # pour calculer remaining_by_tier (combien de candidats existent au
     # total par tier, hors dismiss) apres le scoring. L'application du
@@ -1008,7 +927,6 @@ async def get_suggestions(
     result = await session.execute(
         select(Task).where(
             Task.id.in_(assigned),
-            Task.id.notin_(in_progress_ids),
             Task.foyer_id == current_foyer_uuid(current),
             Task.deleted_at.is_(None),
             Task.is_active.is_(True),

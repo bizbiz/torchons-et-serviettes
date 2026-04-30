@@ -9,7 +9,6 @@ import com.torchons.app.data.model.DismissRequest
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.Suggestion
-import com.torchons.app.data.model.TaskInProgress
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -100,36 +99,6 @@ class HomeRepository @Inject constructor(
             apiService.logSuggestionDismiss(DismissRequest(taskId = taskId, tier = tier))
         } catch (_: Exception) {
             // drop silencieux
-        }
-    }
-
-    // -------------------------------------------------------------------
-    // In-progress
-    // -------------------------------------------------------------------
-
-    fun observeInProgress(): Flow<List<TaskInProgress>?> =
-        snapshotDao.observe(ViewSnapshotEntity.KEY_HOME_IN_PROGRESS).map { entity ->
-            entity?.let { decode<List<TaskInProgress>>(it.jsonContent) }
-        }
-
-    suspend fun refreshInProgress(): Boolean {
-        return try {
-            val response = apiService.getInProgress()
-            if (response.isSuccessful) {
-                val data = response.body() ?: emptyList()
-                snapshotDao.upsert(
-                    ViewSnapshotEntity(
-                        key = ViewSnapshotEntity.KEY_HOME_IN_PROGRESS,
-                        jsonContent = gson.toJson(data),
-                        updatedAt = System.currentTimeMillis(),
-                    )
-                )
-                true
-            } else {
-                false
-            }
-        } catch (_: Exception) {
-            false
         }
     }
 
@@ -229,14 +198,13 @@ class HomeRepository @Inject constructor(
 
     /**
      * Retourne le timestamp ms du plus ancien snapshot home (suggestions,
-     * in-progress, fair-share, pending-affinity). Permet d'afficher
+     * fair-share, pending-affinity). Permet d'afficher
      * "donnees du JJ/MM HH:mm" dans le bandeau.
      */
     suspend fun getHomeSnapshotAge(): Long? {
         return snapshotDao.getOldestUpdatedAt(
             listOf(
                 ViewSnapshotEntity.KEY_HOME_SUGGESTIONS,
-                ViewSnapshotEntity.KEY_HOME_IN_PROGRESS,
                 ViewSnapshotEntity.KEY_HOME_FAIR_SHARE,
                 ViewSnapshotEntity.KEY_HOME_PENDING_AFFINITY,
             )

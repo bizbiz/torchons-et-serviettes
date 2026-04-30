@@ -24,7 +24,6 @@ data class ViewSnapshotEntity(
 ) {
     companion object {
         const val KEY_HOME_SUGGESTIONS = "home_suggestions"
-        const val KEY_HOME_IN_PROGRESS = "home_in_progress"
         const val KEY_HOME_FAIR_SHARE = "home_fair_share"
         const val KEY_HOME_PENDING_AFFINITY = "home_pending_affinity"
         const val KEY_USER_SETTINGS = "user_settings"

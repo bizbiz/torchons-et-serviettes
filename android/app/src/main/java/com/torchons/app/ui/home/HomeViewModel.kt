@@ -278,7 +278,6 @@ class HomeViewModel @Inject constructor(
                 homeRepository.refreshSuggestions(excludeIds = currentDismissed)
             }
             val otherResults = listOf(
-                async { homeRepository.refreshInProgress() },
                 async { homeRepository.refreshFairShare() },
                 async { homeRepository.refreshPendingAffinity(6) },
                 async { taskRepository.refreshRooms() },

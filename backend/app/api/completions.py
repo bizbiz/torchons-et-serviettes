@@ -19,7 +19,6 @@ from app.models.fair_share import FairShareConfig
 from app.models.foyer import Foyer
 from app.models.presence_day import PresenceDay
 from app.models.task import Task
-from app.models.task_in_progress import TaskInProgress
 from app.models.user_foyer import UserFoyer
 from app.schemas.completion import (
     CollectiveCompletionCreate,
@@ -217,12 +216,6 @@ async def complete_task(
     session.add(completion)
     await session.flush()
 
-    # Supprimer la tache "en cours" si elle existe
-    from sqlalchemy import delete
-    await session.execute(
-        delete(TaskInProgress).where(TaskInProgress.task_id == task_id)
-    )
-
     # Auto-desactiver les taches ponctuelles (sans recurrence)
     if task.recurrence_rule is None:
         task.is_active = False
@@ -380,12 +373,7 @@ async def complete_task_collective(
         created.append(comp)
     await session.flush()
 
-    # 7. Supprimer la tache "en cours" si elle existe (meme si la UI "en cours"
-    # a ete retiree en v0.11, des entrees legacy peuvent subsister cote DB).
-    from sqlalchemy import delete
-    await session.execute(
-        delete(TaskInProgress).where(TaskInProgress.task_id == task_id)
-    )
+    # 7. (legacy task_in_progress cleanup retire en v0.31, table droppee).
 
     # 8. Auto-desactiver les taches ponctuelles (une seule fois).
     if task.recurrence_rule is None:
