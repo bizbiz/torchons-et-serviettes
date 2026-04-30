@@ -112,6 +112,7 @@ from app.api.pairing import router as pairing_router
 from app.api.recovery import router as recovery_router
 from app.api.me import router as me_router
 from app.api.billing import router as billing_router
+from app.api.objectives import router as objectives_router
 
 app.include_router(auth_router)
 app.include_router(tasks_router)
@@ -136,6 +137,7 @@ app.include_router(pairing_router)
 app.include_router(recovery_router)
 app.include_router(me_router)
 app.include_router(billing_router)
+app.include_router(objectives_router)
 
 
 @app.get("/api/health")

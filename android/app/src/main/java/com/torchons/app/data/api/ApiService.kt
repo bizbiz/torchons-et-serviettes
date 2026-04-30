@@ -422,6 +422,21 @@ interface ApiService {
         @Query("period") period: String = "quarter",
     ): Response<com.torchons.app.data.model.LongTermResponse>
 
+    // --- Objectifs (v0.31, item roadmap "Objectifs personnels et partages") ---
+
+    @GET("objectives")
+    suspend fun listObjectives(): Response<List<com.torchons.app.data.model.Objective>>
+
+    @POST("objectives")
+    suspend fun createObjective(
+        @Body body: com.torchons.app.data.model.ObjectiveCreateRequest,
+    ): Response<com.torchons.app.data.model.Objective>
+
+    @DELETE("objectives/{id}")
+    suspend fun deleteObjective(
+        @Path("id") objectiveId: String,
+    ): Response<Unit>
+
     // --- Settings ---
 
     /** Recuperer les reglages utilisateur. */

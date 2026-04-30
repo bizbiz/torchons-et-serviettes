@@ -229,6 +229,9 @@ private fun ResumeTab(
         // v0.31 — Stats long-terme (repartition par piece + temps cumule).
         item { LongTermCard() }
 
+        // v0.31 — Objectifs personnels et partages.
+        item { ObjectivesCard() }
+
         // Message fair-share sur-performance (deplace depuis HomeScreen v0.8.0)
         if (showOverPerformingCard) {
             item {

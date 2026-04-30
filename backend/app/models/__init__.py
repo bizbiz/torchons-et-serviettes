@@ -24,6 +24,7 @@ from app.models.presence_day import PresenceDay
 from app.models.suggestion_dismissal import SuggestionDismissal
 from app.models.foyer_retard_snapshot import FoyerRetardSnapshot
 from app.models.pairing_token import PairingToken
+from app.models.objective import Objective
 
 __all__ = [
     "Base", "User", "Foyer", "UserFoyer", "Category", "Room", "Task",
@@ -36,4 +37,5 @@ __all__ = [
     "SuggestionDismissal",
     "FoyerRetardSnapshot",
     "PairingToken",
+    "Objective",
 ]
