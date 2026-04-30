@@ -396,6 +396,15 @@ interface ApiService {
         @Query("period") period: String = "all",
     ): Response<com.torchons.app.data.model.RetardTimelineResponse>
 
+    /**
+     * Resume de fin de semaine (v0.31, item roadmap "Stats hebdomadaires").
+     * `week_offset` : 0 = semaine en cours, -1 = derniere, ... -52 = il y a un an.
+     */
+    @GET("stats/weekly-summary")
+    suspend fun getWeeklySummary(
+        @Query("week_offset") weekOffset: Int = 0,
+    ): Response<com.torchons.app.data.model.WeeklySummaryResponse>
+
     // --- Settings ---
 
     /** Recuperer les reglages utilisateur. */

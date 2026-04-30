@@ -13,6 +13,32 @@ data class UserStats(
     @SerializedName("tasks_total") val tasksTotal: Int = 0
 )
 
+// --- Resume hebdomadaire (v0.31, item roadmap "Statistiques hebdomadaires") ---
+
+data class WeeklySummaryUser(
+    @SerializedName("user_id") val userId: String,
+    @SerializedName("display_name") val displayName: String,
+    @SerializedName("completions_count") val completionsCount: Int,
+    @SerializedName("points_earned") val pointsEarned: Int,
+)
+
+data class WeeklySummaryTopTask(
+    @SerializedName("task_id") val taskId: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("count") val count: Int,
+)
+
+data class WeeklySummaryResponse(
+    /** Lundi de la semaine, ISO date (YYYY-MM-DD). */
+    @SerializedName("week_start") val weekStart: String,
+    @SerializedName("week_end") val weekEnd: String,
+    @SerializedName("week_offset") val weekOffset: Int,
+    @SerializedName("per_user") val perUser: List<WeeklySummaryUser>,
+    @SerializedName("top_tasks") val topTasks: List<WeeklySummaryTopTask>,
+    @SerializedName("foyer_total_completions") val foyerTotalCompletions: Int,
+    @SerializedName("foyer_total_points") val foyerTotalPoints: Int,
+)
+
 data class LeaderboardEntry(
     @SerializedName("user_id") val userId: String,
     @SerializedName("display_name") val displayName: String,

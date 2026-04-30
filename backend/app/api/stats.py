@@ -1629,3 +1629,143 @@ async def user_history(
         before=before,
         actor_id=user_id,
     )
+
+
+# --- Resume hebdomadaire (v0.31, item roadmap "Statistiques hebdomadaires") ---
+
+
+class WeeklySummaryUser(BaseModel):
+    user_id: UUID
+    display_name: str
+    completions_count: int
+    points_earned: int
+
+
+class WeeklySummaryTopTask(BaseModel):
+    task_id: UUID
+    title: str
+    count: int
+
+
+class WeeklySummaryResponse(BaseModel):
+    """Resume de fin de semaine : un foyer + N users sur la fenetre lundi-
+    dimanche (UTC). Permet de presenter un bilan court a l'app le dimanche
+    soir / lundi matin.
+    """
+    week_start: date  # lundi 00:00 UTC
+    week_end: date    # dimanche 23:59 UTC
+    week_offset: int  # 0 = semaine en cours, -1 = semaine derniere, etc.
+    per_user: list[WeeklySummaryUser]
+    top_tasks: list[WeeklySummaryTopTask]
+    foyer_total_completions: int
+    foyer_total_points: int
+
+
+@router.get("/stats/weekly-summary", response_model=WeeklySummaryResponse)
+async def weekly_summary(
+    week_offset: int = Query(default=0, ge=-52, le=0),
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Resume per-user + foyer pour une semaine UTC (lundi -> dimanche).
+
+    week_offset = 0 (defaut) : semaine en cours
+    week_offset = -1         : semaine derniere
+    week_offset jusqu'a -52  : il y a un an
+
+    Ne retourne pas de week_offset > 0 (futur) — les bornes Query l'empechent.
+    """
+    from app.models.user_foyer import UserFoyer
+
+    foyer_uuid = current_foyer_uuid(current)
+
+    # Calcul des bornes de la semaine demandee (UTC, ISO 8601 : lundi=0).
+    today = datetime.now(timezone.utc).date()
+    monday_of_week = today - timedelta(days=today.weekday())
+    target_monday = monday_of_week + timedelta(weeks=week_offset)
+    target_sunday = target_monday + timedelta(days=6)
+
+    week_start_dt = datetime.combine(target_monday, datetime.min.time(), tzinfo=timezone.utc)
+    week_end_dt = datetime.combine(target_sunday, datetime.max.time(), tzinfo=timezone.utc)
+
+    # Per-user : completions + points sur la fenetre, scope foyer.
+    # On part de la liste users du foyer (left join sur completions pour
+    # inclure les users a 0).
+    per_user_result = await session.execute(
+        select(
+            User.id,
+            User.display_name,
+            func.count(TaskCompletion.id),
+            func.coalesce(func.sum(TaskCompletion.points_earned), 0),
+        )
+        .join(UserFoyer, UserFoyer.user_id == User.id)
+        .outerjoin(
+            TaskCompletion,
+            (TaskCompletion.completed_by == User.id)
+            & (TaskCompletion.deleted_at.is_(None))
+            & (TaskCompletion.completed_at >= week_start_dt)
+            & (TaskCompletion.completed_at <= week_end_dt),
+        )
+        .outerjoin(
+            Task,
+            (Task.id == TaskCompletion.task_id)
+            & (Task.foyer_id == foyer_uuid),
+        )
+        .where(
+            UserFoyer.foyer_id == foyer_uuid,
+            UserFoyer.left_at.is_(None),
+            User.deleted_at.is_(None),
+        )
+        .group_by(User.id, User.display_name)
+        .order_by(func.count(TaskCompletion.id).desc(), User.display_name)
+    )
+    per_user = [
+        WeeklySummaryUser(
+            user_id=row[0],
+            display_name=row[1],
+            completions_count=row[2] or 0,
+            points_earned=row[3] or 0,
+        )
+        for row in per_user_result.all()
+    ]
+
+    # Top tasks (par nombre de completions) sur la fenetre.
+    top_tasks_result = await session.execute(
+        select(
+            Task.id,
+            Task.title,
+            func.count(TaskCompletion.id),
+        )
+        .join(TaskCompletion, TaskCompletion.task_id == Task.id)
+        .where(
+            Task.foyer_id == foyer_uuid,
+            TaskCompletion.deleted_at.is_(None),
+            TaskCompletion.completed_at >= week_start_dt,
+            TaskCompletion.completed_at <= week_end_dt,
+        )
+        .group_by(Task.id, Task.title)
+        .order_by(func.count(TaskCompletion.id).desc())
+        .limit(5)
+    )
+    top_tasks = [
+        WeeklySummaryTopTask(
+            task_id=row[0],
+            title=row[1],
+            count=row[2] or 0,
+        )
+        for row in top_tasks_result.all()
+    ]
+
+    # Totaux foyer = somme des per_user (deja scope foyer).
+    total_completions = sum(u.completions_count for u in per_user)
+    total_points = sum(u.points_earned for u in per_user)
+
+    return WeeklySummaryResponse(
+        week_start=target_monday,
+        week_end=target_sunday,
+        week_offset=week_offset,
+        per_user=per_user,
+        top_tasks=top_tasks,
+        foyer_total_completions=total_completions,
+        foyer_total_points=total_points,
+    )

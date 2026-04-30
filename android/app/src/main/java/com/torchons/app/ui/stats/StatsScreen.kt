@@ -222,6 +222,10 @@ private fun ResumeTab(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // v0.31 — Resume hebdomadaire en haut de Stats. Self-contained
+        // (charge sa data en interne via /api/stats/weekly-summary).
+        item { WeeklySummaryCard() }
+
         // Message fair-share sur-performance (deplace depuis HomeScreen v0.8.0)
         if (showOverPerformingCard) {
             item {
