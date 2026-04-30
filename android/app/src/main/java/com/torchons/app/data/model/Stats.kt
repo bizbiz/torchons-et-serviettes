@@ -13,6 +13,18 @@ data class UserStats(
     @SerializedName("tasks_total") val tasksTotal: Int = 0
 )
 
+// --- Totaux du couple (v0.31, item roadmap "Stats globales du couple") ---
+
+data class CoupleTotalsResponse(
+    @SerializedName("foyer_total_completions") val foyerTotalCompletions: Int,
+    @SerializedName("foyer_total_points") val foyerTotalPoints: Int,
+    @SerializedName("foyer_month_completions") val foyerMonthCompletions: Int,
+    @SerializedName("foyer_month_points") val foyerMonthPoints: Int,
+    @SerializedName("foyer_week_completions") val foyerWeekCompletions: Int,
+    @SerializedName("foyer_week_points") val foyerWeekPoints: Int,
+    @SerializedName("couple_streak_days") val coupleStreakDays: Int,
+)
+
 // --- Resume hebdomadaire (v0.31, item roadmap "Statistiques hebdomadaires") ---
 
 data class WeeklySummaryUser(

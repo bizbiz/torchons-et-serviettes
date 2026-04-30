@@ -1631,6 +1631,103 @@ async def user_history(
     )
 
 
+# --- Totaux du couple (v0.31, item roadmap "Stats globales du couple") ---
+
+
+class CoupleTotalsResponse(BaseModel):
+    """Totaux foyer-level (somme de tous les members) sur 3 fenetres +
+    streak collectif. Affiche dans UserProfileDialog en complement des
+    stats personnelles. Item roadmap : "combien le foyer a fait au total".
+    """
+    foyer_total_completions: int
+    foyer_total_points: int
+    foyer_month_completions: int
+    foyer_month_points: int
+    foyer_week_completions: int
+    foyer_week_points: int
+    # Nombre de jours consecutifs (jusqu'a aujourd'hui ou hier inclus)
+    # avec >=1 completion par n'importe quel member. 0 si rien aujourd'hui
+    # ni hier.
+    couple_streak_days: int
+
+
+@router.get("/stats/couple-totals", response_model=CoupleTotalsResponse)
+async def couple_totals(
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Totaux foyer cumules (week/month/all) + streak couple."""
+    foyer_uuid = current_foyer_uuid(current)
+    now = datetime.now(timezone.utc)
+    week_ago = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
+
+    # Helper : sum + count de completions sur une periode (None = pas de
+    # filtre temporel = "tout").
+    async def _agg(since: datetime | None) -> tuple[int, int]:
+        stmt = (
+            select(
+                func.count(TaskCompletion.id),
+                func.coalesce(func.sum(TaskCompletion.points_earned), 0),
+            )
+            .join(Task, Task.id == TaskCompletion.task_id)
+            .where(
+                Task.foyer_id == foyer_uuid,
+                TaskCompletion.deleted_at.is_(None),
+            )
+        )
+        if since is not None:
+            stmt = stmt.where(TaskCompletion.completed_at >= since)
+        result = await session.execute(stmt)
+        c, p = result.one()
+        return int(c or 0), int(p or 0)
+
+    total_c, total_p = await _agg(None)
+    month_c, month_p = await _agg(month_ago)
+    week_c, week_p = await _agg(week_ago)
+
+    # Couple streak : jours consecutifs avec >=1 completion par n'importe
+    # quel member. On prend les dates distinctes (UTC) descendant et on
+    # compte tant que la difference avec la precedente est <=1j.
+    distinct_days_result = await session.execute(
+        select(func.date(TaskCompletion.completed_at).label("d"))
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
+            Task.foyer_id == foyer_uuid,
+            TaskCompletion.deleted_at.is_(None),
+        )
+        .group_by("d")
+        .order_by(func.date(TaskCompletion.completed_at).desc())
+        .limit(400)  # ~1 an max, suffisant pour un streak realiste
+    )
+    days_desc: list[date] = [r[0] for r in distinct_days_result.all()]
+    today = now.date()
+    yesterday = today - timedelta(days=1)
+    streak = 0
+    if days_desc:
+        # Acceptable de partir d'aujourd'hui OU d'hier (pour ne pas casser
+        # le streak juste parce qu'on n'a pas encore fait de tache aujourd'hui).
+        if days_desc[0] == today or days_desc[0] == yesterday:
+            streak = 1
+            prev = days_desc[0]
+            for d in days_desc[1:]:
+                if (prev - d).days == 1:
+                    streak += 1
+                    prev = d
+                else:
+                    break
+
+    return CoupleTotalsResponse(
+        foyer_total_completions=total_c,
+        foyer_total_points=total_p,
+        foyer_month_completions=month_c,
+        foyer_month_points=month_p,
+        foyer_week_completions=week_c,
+        foyer_week_points=week_p,
+        couple_streak_days=streak,
+    )
+
+
 # --- Resume hebdomadaire (v0.31, item roadmap "Statistiques hebdomadaires") ---
 
 

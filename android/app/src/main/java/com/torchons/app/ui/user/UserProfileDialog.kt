@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.model.CoupleTotalsResponse
 import com.torchons.app.data.model.LeaderboardEntry
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -90,6 +91,8 @@ fun UserProfileDialog(
     // Pas bloquant : la dialog s'affiche meme si ces fetch echouent.
     var leaderboardWeek by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
     var leaderboardAll by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
+    // v0.31 — totaux foyer + couple_streak (item roadmap "Stats globales du couple").
+    var coupleTotals by remember { mutableStateOf<CoupleTotalsResponse?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(request.userId) {
@@ -112,6 +115,11 @@ fun UserProfileDialog(
             try {
                 val a = withContext(Dispatchers.IO) { apiService.getLeaderboard("all") }
                 if (a.isSuccessful) leaderboardAll = a.body() ?: emptyList()
+            } catch (_: Exception) { /* silencieux */ }
+            // v0.31 — totaux foyer + couple_streak.
+            try {
+                val ct = withContext(Dispatchers.IO) { apiService.getCoupleTotals() }
+                if (ct.isSuccessful) coupleTotals = ct.body()
             } catch (_: Exception) { /* silencieux */ }
         } catch (e: Exception) {
             error = e.message ?: "Erreur reseau"
@@ -170,13 +178,20 @@ fun UserProfileDialog(
                     StatPill(label = "Points", value = "+$totalPoints")
                 }
 
+                // v0.31 — Section "Total du foyer" : numbers absolus +
+                // streak couple. Item roadmap "Stats globales du couple".
+                coupleTotals?.let { totals ->
+                    Spacer(Modifier.height(12.dp))
+                    CoupleTotalsCard(totals = totals)
+                }
+
                 // Section "Stats du couple" : repartition Quentin vs ***REMOVED***
                 // sur la semaine et sur tout le temps. Affichee uniquement si
                 // au moins un des leaderboards a ete charge avec >= 2 entrees.
                 if (leaderboardWeek.size >= 2 || leaderboardAll.size >= 2) {
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "Stats du foyer",
+                        text = "Repartition",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -402,6 +417,88 @@ private fun HistoryRow(
                 )
             }
         }
+    }
+}
+
+/**
+ * Card "Total du foyer" affichee dans UserProfileDialog (v0.31).
+ *
+ * Item roadmap "Stats globales du couple" : numbers absolus du foyer
+ * (sum de tous les members) + streak couple (jours consecutifs avec >=1
+ * completion par n'importe qui).
+ */
+@Composable
+private fun CoupleTotalsCard(totals: com.torchons.app.data.model.CoupleTotalsResponse) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Total du foyer",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (totals.coupleStreakDays > 0) {
+                    Text(
+                        text = "🔥 ${totals.coupleStreakDays}j d'affilee",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                CoupleStatColumn(
+                    title = "Cette semaine",
+                    completions = totals.foyerWeekCompletions,
+                    points = totals.foyerWeekPoints,
+                )
+                CoupleStatColumn(
+                    title = "Ce mois",
+                    completions = totals.foyerMonthCompletions,
+                    points = totals.foyerMonthPoints,
+                )
+                CoupleStatColumn(
+                    title = "Au total",
+                    completions = totals.foyerTotalCompletions,
+                    points = totals.foyerTotalPoints,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CoupleStatColumn(title: String, completions: Int, points: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = completions.toString(),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = "$points pts",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

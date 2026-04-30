@@ -405,6 +405,14 @@ interface ApiService {
         @Query("week_offset") weekOffset: Int = 0,
     ): Response<com.torchons.app.data.model.WeeklySummaryResponse>
 
+    /**
+     * Totaux foyer + streak couple (v0.31, item roadmap "Stats globales du
+     * couple"). Affiche en complement des stats personnelles dans le
+     * UserProfileDialog.
+     */
+    @GET("stats/couple-totals")
+    suspend fun getCoupleTotals(): Response<com.torchons.app.data.model.CoupleTotalsResponse>
+
     // --- Settings ---
 
     /** Recuperer les reglages utilisateur. */
