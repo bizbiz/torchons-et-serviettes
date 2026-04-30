@@ -1,5 +1,39 @@
 # Notes de version
 
+## v0.31.0 — 2026-04-30
+
+### Statistiques hebdomadaires
+- Une nouvelle card "Cette semaine" en haut de l'onglet Stats resume ta
+  semaine du foyer : nombre de taches, points cumules, classement par
+  membre avec emoji 🏆 sur le top, et top 3 des taches les plus faites.
+  Fleches gauche/droite pour naviguer dans les semaines passees.
+
+### Statistiques globales du couple
+- Le modal de profil utilisateur (cliquer sur un nom dans Stats) affiche
+  desormais une card "Total du foyer" avec 3 colonnes (cette semaine /
+  ce mois / au total). Si le foyer enchaine plusieurs jours d'affilee
+  avec >=1 tache faite par n'importe qui, un compteur "🔥 N jours
+  d'affilee" apparait. La section "Repartition" (barres Quentin/***REMOVED***)
+  est conservee en complement.
+
+### Stats long-terme par pieces
+- Nouvelle card "Repartition par pieces" sur Stats : barres horizontales
+  pour visualiser quelle piece concentre le plus de taches sur la
+  periode (Mois / Trimestre / Annee). Affiche aussi le temps cumule
+  estime (deduit du consensus effort de chaque tache, 1pt = 5min).
+
+### Objectifs personnels et partages
+- Nouvelle card "Mes objectifs" sur Stats. Tape sur + pour creer un
+  objectif (ex: 3 taches par semaine), avec choix de periode (par jour/
+  semaine/mois) et de la cible (1 a 30). La progression est calculee
+  automatiquement et affichee avec une barre de progression par
+  objectif. Long-press pour supprimer.
+
+### Ajouter un de mes appareils
+- Une nouvelle card "Ajouter un de mes appareils" dans les Reglages
+  permet de generer un QR pour connecter une tablette ou un 2eme
+  telephone a ton compte sans creer de nouveau membre dans le foyer.
+
 ## v0.30.1 — 2026-04-30
 
 ### Securite du foyer (Reglages)
