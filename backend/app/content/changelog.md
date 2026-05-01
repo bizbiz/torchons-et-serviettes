@@ -1,5 +1,16 @@
 # Notes de version
 
+## v0.31.1 — 2026-05-01
+
+### Sous le capot
+- Mise en place d'un export CSV de l'historique cote serveur
+  (completions + taches). Accessible uniquement via curl avec le
+  JWT pour l'instant ; un ecran "Mes donnees" dans les Reglages
+  suivra dans une iteration ulterieure.
+- Cette release embarque aussi v0.31.0 (stats hebdo + globales
+  couple + long-terme + objectifs + add-device) qui n'avait jamais
+  ete installee sur le device.
+
 ## v0.31.0 — 2026-04-30
 
 ### Statistiques hebdomadaires
