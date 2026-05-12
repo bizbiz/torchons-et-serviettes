@@ -1,5 +1,14 @@
 # Notes de version
 
+## v0.32.0 — 2026-05-12
+
+### Gamification — desactivation possible
+- Nouveau switch "Activer la gamification pour mon compte" en haut des Reglages. Si desactive, tu ne vois plus les points, les bonus, les stats, le leaderboard, les badges, les streaks et le fair-share dans aucun de tes foyers. La tab Stats disparait de la barre de navigation pour rendre l'app plus epuree.
+- Nouveau switch "Gamification dans ce foyer" dans Reglages > Options avancees. N'importe quel membre peut le toggler — un dialog de confirmation rappelle que l'autre membre sera aussi affecte avant validation.
+- Quand la gamification est desactivee, la celebration apres une tache validee reste (confetti + emoji + message d'encouragement) mais sans le "+X pts".
+- Nouveau lien "Pourquoi je n'ai pas de points pour certaines taches ?" dans les Reglages — visible uniquement si tu es dans un etat sans gamification (toi-meme OU au moins un de tes foyers). Il explique la cause precise (toi, un foyer, plusieurs causes cumulees, multi-foyer mixte) et propose un bouton pour reactiver directement.
+- Les textes du popup d'info sur l'effort de la tache adaptent leur formulation : si la gamification est desactivee, on ne mentionne plus les points ni le fair-share, on parle uniquement d'estimation de temps.
+
 ## v0.31.3 — 2026-05-12
 
 ### Gamification — lisibilite des points

@@ -93,6 +93,7 @@ class TaskDetailViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val apiService: ApiService,
     authRepository: AuthRepository,
+    tokenManager: com.torchons.app.data.local.TokenManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -105,6 +106,10 @@ class TaskDetailViewModel @Inject constructor(
     /** Id de l'utilisateur courant — utilise pour identifier sa notation. */
     val currentUserId: StateFlow<String?> = authRepository.userIdFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** v0.32 : visibilite UI gamif (user-level AND foyer-level). */
+    val gamificationVisible: StateFlow<Boolean> = tokenManager.gamificationVisibleFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     init {
         observeCache()

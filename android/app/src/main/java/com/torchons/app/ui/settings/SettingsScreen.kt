@@ -57,7 +57,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedButton
+import com.torchons.app.ui.common.FoyerGamifState
 import com.torchons.app.ui.common.InfoTooltip
+import com.torchons.app.ui.common.WhyNoPointsDialog
 import com.torchons.app.util.WifiHelper
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -107,6 +109,19 @@ fun SettingsScreen(
     val users by viewModel.users.collectAsState()
     val backendConnected by viewModel.backendConnected.collectAsState()
 
+    // v0.32 : etat gamification (user-level + foyer courant + liste de tous
+    // les foyers pour le dialog "Pourquoi pas de points"). Visible via le
+    // toggle prominent en haut, et via le help link conditionnel.
+    val gamifUser = s.gamificationEnabled
+    val currentFoyer by viewModel.currentFoyer.collectAsState()
+    val allFoyers by viewModel.allFoyers.collectAsState()
+    val gamifFoyer = currentFoyer?.gamificationEnabled ?: true
+    val anyFoyerOff = allFoyers.any { !it.gamificationEnabled }
+    val helpLinkVisible = !gamifUser || anyFoyerOff
+
+    var showFoyerConfirmDialog by remember { mutableStateOf(false) }
+    var showWhyNoPointsDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         viewModel.checkBackend()
     }
@@ -154,6 +169,71 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+        }
+
+        // v0.32 : Gamification user-level + help link conditionnel.
+        // Carte prominente juste apres Profil pour decouvrabilite max
+        // (cf grill-me Q7 choix C : user toggle haut, foyer toggle dans
+        // Options avancees plus bas, help link en haut user settings).
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "🎯", style = MaterialTheme.typography.titleLarge)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Gamification",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Activer la gamification pour mon compte",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = "Si desactivee, tu ne verras plus les points, stats et bonus dans aucun de tes foyers.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = gamifUser,
+                        onCheckedChange = { viewModel.setGamificationEnabled(it) },
+                    )
+                }
+
+                if (helpLinkVisible) {
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showWhyNoPointsDialog = true }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Pourquoi je n'ai pas de points pour certaines taches ?",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            text = "›",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
         }
@@ -677,6 +757,41 @@ fun SettingsScreen(
                 if (showAdvanced) {
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    // v0.32 : toggle gamification du foyer courant. Tout
+                    // membre peut toggler — dialog de confirmation pour
+                    // rendre l'impact explicite (cf grill-me Q4).
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Gamification dans ce foyer",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Text(
+                                text = if (gamifFoyer)
+                                    "Activee — tous les membres voient les points dans ce foyer."
+                                else
+                                    "Desactivee — personne ne voit les points dans ce foyer.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = gamifFoyer,
+                            onCheckedChange = { newValue ->
+                                if (!newValue) {
+                                    // Confirmation avant desactivation —
+                                    // l'autre membre va perdre la gamif sans
+                                    // l'avoir demande.
+                                    showFoyerConfirmDialog = true
+                                } else {
+                                    viewModel.setCurrentFoyerGamificationEnabled(true)
+                                }
+                            },
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
                     // Duree de persistance affinites/efforts
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -899,6 +1014,80 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+    }
+
+    // v0.32 : dialog de confirmation pour desactiver la gamif du foyer.
+    // Mention explicite de l'autre membre pour rendre l'impact tangible
+    // (cf grill-me Q4).
+    if (showFoyerConfirmDialog) {
+        val foyer = currentFoyer
+        val otherMemberName = users
+            .firstOrNull { it.displayName != displayName }
+            ?.displayName
+            ?: "l'autre membre du foyer"
+        AlertDialog(
+            onDismissRequest = { showFoyerConfirmDialog = false },
+            title = { Text("Desactiver la gamification du foyer ?") },
+            text = {
+                Column {
+                    Text(
+                        text = "Tu vas desactiver la gamification du foyer \"${foyer?.name ?: ""}\".",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "$otherMemberName et toi ne verrez plus les points, les stats ni les bonus dans ce foyer. Vous pourrez le reactiver a tout moment.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.setCurrentFoyerGamificationEnabled(false)
+                        showFoyerConfirmDialog = false
+                    },
+                ) { Text("Desactiver") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showFoyerConfirmDialog = false }) { Text("Annuler") }
+            },
+        )
+    }
+
+    // v0.32 : help dialog "Pourquoi pas de points ?" (dynamique selon
+    // l'etat user-level + foyer-level + multi-foyer).
+    if (showWhyNoPointsDialog) {
+        val foyerStates = allFoyers.map { f ->
+            FoyerGamifState(
+                id = f.id,
+                name = f.name,
+                gamificationEnabled = f.gamificationEnabled,
+                isCurrent = f.isCurrent,
+            )
+        }
+        WhyNoPointsDialog(
+            userOff = !gamifUser,
+            foyers = foyerStates,
+            onReactivateUser = {
+                viewModel.setGamificationEnabled(true)
+                showWhyNoPointsDialog = false
+            },
+            onReactivateFoyer = { foyerId ->
+                // Si c'est le foyer courant, on toggle directement. Sinon
+                // l'user doit switcher dessus d'abord — on ferme le dialog
+                // et on l'oriente vers Mes foyers.
+                if (currentFoyer?.id == foyerId) {
+                    viewModel.setCurrentFoyerGamificationEnabled(true)
+                    showWhyNoPointsDialog = false
+                } else {
+                    showWhyNoPointsDialog = false
+                    onManageFoyers()
+                }
+            },
+            onDismiss = { showWhyNoPointsDialog = false },
+        )
     }
 }
 

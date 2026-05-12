@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,6 +51,7 @@ async def list_my_foyers(
             is_current=(f.id == current_foyer_id),
             is_premium=f.is_premium,
             premium_until=f.premium_until,
+            gamification_enabled=f.gamification_enabled,
         )
         for f, role in rows
     ]
@@ -86,6 +88,7 @@ async def create_foyer(
         is_current=False,  # pas encore switche dessus
         is_premium=foyer.is_premium,
         premium_until=foyer.premium_until,
+        gamification_enabled=foyer.gamification_enabled,
     )
 
 
@@ -135,6 +138,70 @@ async def update_foyer(
         is_current=(foyer_id == current_foyer_uuid(current)),
         is_premium=foyer.is_premium,
         premium_until=foyer.premium_until,
+        gamification_enabled=foyer.gamification_enabled,
+    )
+
+
+class GamificationToggle(BaseModel):
+    """Payload pour PUT /api/foyers/{foyer_id}/gamification (v0.32)."""
+
+    enabled: bool
+
+
+@router.put("/{foyer_id}/gamification", response_model=FoyerResponse)
+async def update_foyer_gamification(
+    foyer_id: uuid.UUID,
+    body: GamificationToggle,
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Toggle gamification du foyer — accessible a tout membre (pas admin-only).
+
+    Cf grill-me Q4 : la decision de couper la gamification est collective au
+    sens "tous les membres sont affectes" mais peut etre prise par n'importe
+    quel membre. La friction est cote UI (dialog de confirmation mentionnant
+    l'impact sur l'autre).
+    """
+    user_id = uuid.UUID(current["user_id"])
+
+    membership = await session.execute(
+        select(UserFoyer).where(
+            UserFoyer.user_id == user_id,
+            UserFoyer.foyer_id == foyer_id,
+        )
+    )
+    uf = membership.scalar_one_or_none()
+    if uf is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Tu n'es pas membre de ce foyer",
+        )
+
+    foyer_result = await session.execute(select(Foyer).where(Foyer.id == foyer_id))
+    foyer = foyer_result.scalar_one_or_none()
+    if foyer is None:
+        raise HTTPException(status_code=404, detail="Foyer introuvable")
+
+    foyer.gamification_enabled = body.enabled
+    foyer.version += 1
+    await record_change(
+        session, "foyers", foyer.id, "UPDATE", current["user_id"],
+        foyer_id=str(foyer.id),
+        new_data={"gamification_enabled": body.enabled},
+    )
+    await session.commit()
+    await session.refresh(foyer)
+
+    return FoyerResponse(
+        id=foyer.id,
+        name=foyer.name,
+        home_freeze_enabled=foyer.home_freeze_enabled,
+        created_at=foyer.created_at,
+        role=uf.role,
+        is_current=(foyer_id == current_foyer_uuid(current)),
+        is_premium=foyer.is_premium,
+        premium_until=foyer.premium_until,
+        gamification_enabled=foyer.gamification_enabled,
     )
 
 

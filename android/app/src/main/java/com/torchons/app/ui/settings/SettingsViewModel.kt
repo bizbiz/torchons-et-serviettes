@@ -8,6 +8,7 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.BonusConfig
 import com.torchons.app.data.model.FairShareStatus
+import com.torchons.app.data.model.Foyer
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.worker.DailyNotificationWorker
@@ -37,6 +38,9 @@ data class UserSettingsState(
     // Nb de membres du foyer actif : utilise pour cacher le toggle
     // "without_me" quand <= 2.
     val foyerMemberCount: Int = 2,
+    // v0.32 : toggle gamification user-level (global, s'applique a tous
+    // les foyers de l'user). Combine en OR avec foyer-level cote UI.
+    val gamificationEnabled: Boolean = true,
     val isLoaded: Boolean = false
 )
 
@@ -68,6 +72,15 @@ class SettingsViewModel @Inject constructor(
 
     private val _bonusConfig = MutableStateFlow<BonusConfig?>(null)
     val bonusConfig: StateFlow<BonusConfig?> = _bonusConfig.asStateFlow()
+
+    // v0.32 : foyer courant + nom (pour les labels des dialogs gamif).
+    private val _currentFoyer = MutableStateFlow<Foyer?>(null)
+    val currentFoyer: StateFlow<Foyer?> = _currentFoyer.asStateFlow()
+
+    // v0.32 : tous les foyers de l'user (pour le dialog "Pourquoi pas de
+    // points" en mode multi-foyer).
+    private val _allFoyers = MutableStateFlow<List<Foyer>>(emptyList())
+    val allFoyers: StateFlow<List<Foyer>> = _allFoyers.asStateFlow()
 
     init {
         loadAll()
@@ -104,6 +117,7 @@ class SettingsViewModel @Inject constructor(
                         fairShareTolerance = (data["fair_share_tolerance_percent"] as? Double)?.toInt() ?: 30,
                         homeSsids = (data["home_ssids"] as? List<*>)?.map { it.toString() } ?: emptyList(),
                         foyerMemberCount = (data["foyer_member_count"] as? Double)?.toInt() ?: 2,
+                        gamificationEnabled = data["gamification_enabled"] as? Boolean ?: true,
                         isLoaded = true,
                     )
                     // Sync tous les reglages vers TokenManager local
@@ -139,6 +153,24 @@ class SettingsViewModel @Inject constructor(
                     _bonusConfig.value = bcResp.body()
                 }
             } catch (_: Exception) {}
+
+            // v0.32 : liste des foyers de l'user + identification du foyer
+            // courant (pour le toggle gamif foyer-level et le dialog
+            // explicatif "Pourquoi pas de points"). Synchronise aussi le
+            // flag local du foyer courant pour que tous les composants UI
+            // qui observent gamificationVisibleFlow soient a jour.
+            try {
+                val fResp = apiService.getMyFoyers()
+                if (fResp.isSuccessful) {
+                    val foyers = fResp.body() ?: emptyList()
+                    _allFoyers.value = foyers
+                    val current = foyers.find { it.isCurrent }
+                    _currentFoyer.value = current
+                    if (current != null) {
+                        tokenManager.setCurrentFoyerGamificationEnabled(current.gamificationEnabled)
+                    }
+                }
+            } catch (_: Exception) {}
         }
     }
 
@@ -168,6 +200,10 @@ class SettingsViewModel @Inject constructor(
         tokenManager.setAffinityExpiry(s.affinityExpiry)
         // home_ssids : remplacer entierement (clear + re-add)
         tokenManager.setHomeSsids(s.homeSsids)
+        // v0.32 : flag gamification user-level. Resync local pour que tous
+        // les composants UI qui observent gamificationVisibleFlow soient
+        // a jour sans devoir recharger /api/settings.
+        tokenManager.setUserGamificationEnabled(s.gamificationEnabled)
     }
 
     fun setNotifDaily(v: Boolean) {
@@ -200,6 +236,41 @@ class SettingsViewModel @Inject constructor(
         )
     }
     fun setAffinityPopup(v: Boolean) { _settings.value = _settings.value.copy(affinityPopup = v); updateSetting("affinity_popup_enabled", v) }
+
+    /** v0.32 : toggle user-level. Effet immediat sur l'UI via TokenManager. */
+    fun setGamificationEnabled(v: Boolean) {
+        _settings.value = _settings.value.copy(gamificationEnabled = v)
+        updateSetting("gamification_enabled", v)
+    }
+
+    /** v0.32 : toggle gamification du foyer courant. Tout membre peut
+     *  toggler (cf grill-me Q4) — friction cote UI via dialog de
+     *  confirmation mentionnant l'impact sur l'autre membre. */
+    fun setCurrentFoyerGamificationEnabled(enabled: Boolean) {
+        val foyer = _currentFoyer.value ?: return
+        // Optimistic update : on flip le local d'abord pour reactivite UI.
+        _currentFoyer.value = foyer.copy(gamificationEnabled = enabled)
+        _allFoyers.value = _allFoyers.value.map {
+            if (it.id == foyer.id) it.copy(gamificationEnabled = enabled) else it
+        }
+        viewModelScope.launch {
+            tokenManager.setCurrentFoyerGamificationEnabled(enabled)
+            try {
+                val resp = apiService.updateFoyerGamification(
+                    foyer.id,
+                    mapOf("enabled" to enabled),
+                )
+                if (resp.isSuccessful) {
+                    val updated = resp.body()
+                    if (updated != null) {
+                        _currentFoyer.value = updated
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("SettingsVM", "setCurrentFoyerGamificationEnabled failed", e)
+            }
+        }
+    }
     fun setAffinityExpiry(v: Int) { _settings.value = _settings.value.copy(affinityExpiry = v); updateSetting("affinity_expiry_months", v) }
     fun setFairShareTolerance(v: Int) { _settings.value = _settings.value.copy(fairShareTolerance = v); updateSetting("fair_share_tolerance_percent", v) }
 

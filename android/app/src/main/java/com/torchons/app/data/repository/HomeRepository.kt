@@ -3,6 +3,7 @@ package com.torchons.app.data.repository
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.local.dao.ViewSnapshotDao
 import com.torchons.app.data.local.entities.ViewSnapshotEntity
 import com.torchons.app.data.model.DismissRequest
@@ -29,6 +30,7 @@ import javax.inject.Singleton
 class HomeRepository @Inject constructor(
     private val apiService: ApiService,
     private val snapshotDao: ViewSnapshotDao,
+    private val tokenManager: TokenManager,
 ) {
 
     private val gson = Gson()
@@ -183,6 +185,32 @@ class HomeRepository @Inject constructor(
                         updatedAt = System.currentTimeMillis(),
                     )
                 )
+                // v0.32 : push le flag gamif user-level vers TokenManager pour
+                // que tous les composants qui observent gamificationVisibleFlow
+                // (Home, completion dialog, nav tabs, notifs) soient a jour.
+                val gamifEnabled = data["gamification_enabled"] as? Boolean ?: true
+                tokenManager.setUserGamificationEnabled(gamifEnabled)
+                true
+            } else {
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /** v0.32 : fetch /api/foyers et synchronise le flag gamif du foyer
+     *  courant vers TokenManager. Appele a chaque refresh home pour garder
+     *  le flag a jour si l'autre membre du foyer a toggle de son cote. */
+    suspend fun refreshCurrentFoyerGamification(): Boolean {
+        return try {
+            val response = apiService.getMyFoyers()
+            if (response.isSuccessful) {
+                val foyers = response.body() ?: emptyList()
+                val current = foyers.find { it.isCurrent }
+                if (current != null) {
+                    tokenManager.setCurrentFoyerGamificationEnabled(current.gamificationEnabled)
+                }
                 true
             } else {
                 false

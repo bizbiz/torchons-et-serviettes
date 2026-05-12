@@ -34,6 +34,8 @@ class SettingsResponse(BaseModel):
     # Nb de membres du foyer actif : permet a l'app de cacher le toggle
     # "without_me" quand <= 2 (l'option n'a pas de sens a deux).
     foyer_member_count: int
+    # v0.32 : toggle global gamification (user-level). Filtrage cote front.
+    gamification_enabled: bool
 
 
 class SettingsUpdate(BaseModel):
@@ -47,6 +49,7 @@ class SettingsUpdate(BaseModel):
     affinity_expiry_months: int | None = Field(default=None, ge=1, le=24)
     fair_share_tolerance_percent: int | None = Field(default=None, ge=0, le=100)
     home_ssids: list[str] | None = None
+    gamification_enabled: bool | None = None
 
 
 async def _load_or_create_user_foyer(
@@ -116,6 +119,7 @@ async def get_settings(
         fair_share_tolerance_percent=settings.fair_share_tolerance_percent,
         home_ssids=_ssids_to_list(uf.home_ssids),
         foyer_member_count=member_count,
+        gamification_enabled=settings.gamification_enabled,
     )
 
 
@@ -175,4 +179,5 @@ async def update_settings(
         fair_share_tolerance_percent=settings.fair_share_tolerance_percent,
         home_ssids=_ssids_to_list(uf.home_ssids),
         foyer_member_count=member_count,
+        gamification_enabled=settings.gamification_enabled,
     )

@@ -89,6 +89,10 @@ fun CompletionDialog(
      * de date ou de nombre de participants.
      */
     previewProvider: (suspend (isoDate: String, numParticipants: Int) -> CompletionPreview?)? = null,
+    /** v0.32 : si false, masque la ligne "Tu gagneras X pts" (l'user n'a pas
+     *  de gamification pour ce foyer). La preview est quand meme calculee
+     *  cote backend mais non affichee — re-toggler la rend visible. */
+    gamificationVisible: Boolean = true,
 ) {
     // Date selectionnee (defaut = maintenant).
     var selectedDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -277,7 +281,8 @@ fun CompletionDialog(
                 }
 
                 // --- Preview points (bonus/malus) ---
-                if (previewProvider != null) {
+                // v0.32 : ligne points cachee si gamification desactivee.
+                if (previewProvider != null && gamificationVisible) {
                     Spacer(modifier = Modifier.height(12.dp))
                     PreviewPointsLine(preview = preview, failed = previewFailed)
                 }

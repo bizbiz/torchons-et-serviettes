@@ -31,8 +31,8 @@ android {
         applicationId = "com.torchons.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 68
-        versionName = "0.31.3"
+        versionCode = 69
+        versionName = "0.32.0"
 
         // URL de base de l'API — voir tsApiBaseUrl ci-dessus.
         buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrl\"")

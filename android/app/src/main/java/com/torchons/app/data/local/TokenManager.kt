@@ -57,6 +57,11 @@ class TokenManager @Inject constructor(
         private val LAST_SEEN_VERSION_CODE_KEY = intPreferencesKey("last_seen_version_code")
         // Tolerance 2h : timestamp millis du dernier prompt affiche
         private val LAST_PROMPT_SHOWN_AT_KEY = longPreferencesKey("last_prompt_shown_at")
+        // v0.32 : toggle gamification user-level (global cross-foyers).
+        private val GAMIF_USER_KEY = booleanPreferencesKey("gamification_enabled_user")
+        // v0.32 : toggle gamification du foyer courant. Resynchro via
+        // `setCurrentFoyerGamification` apres chaque load /api/foyers.
+        private val GAMIF_FOYER_KEY = booleanPreferencesKey("gamification_enabled_current_foyer")
     }
 
     /** Flow du token JWT. Emet null si aucun token stocke. */
@@ -115,6 +120,26 @@ class TokenManager @Inject constructor(
         context.dataStore.edit { it[LAST_PROMPT_SHOWN_AT_KEY] = millis }
     }
     suspend fun setAffinityExpiry(months: Int) { context.dataStore.edit { it[AFFINITY_EXPIRY_KEY] = months } }
+
+    // v0.32 : flags gamification (cf. SKILL design v0.32.0).
+    val userGamificationEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[GAMIF_USER_KEY] ?: true }
+    val currentFoyerGamificationEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[GAMIF_FOYER_KEY] ?: true }
+
+    /** Vrai si l'UI gamif doit etre visible : user_gamif AND current_foyer_gamif.
+     *  Source de verite branchee sur tous les composants gamif (Home, completion,
+     *  navigation tabs stats/leaderboard/streaks/badges/fair-share, celebration,
+     *  notifs, dialog affinity/effort). */
+    val gamificationVisibleFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        (prefs[GAMIF_USER_KEY] ?: true) && (prefs[GAMIF_FOYER_KEY] ?: true)
+    }
+
+    suspend fun setUserGamificationEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[GAMIF_USER_KEY] = enabled }
+    }
+
+    suspend fun setCurrentFoyerGamificationEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[GAMIF_FOYER_KEY] = enabled }
+    }
 
     suspend fun setHomeSsids(ssids: List<String>) {
         context.dataStore.edit { prefs ->

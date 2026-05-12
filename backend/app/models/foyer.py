@@ -32,6 +32,14 @@ class Foyer(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     # False par defaut — le foyer doit explicitement l'activer.
     home_freeze_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # v0.32 : toggle gamification du foyer (points, bonus, stats, etc.).
+    # Quand False, le front masque tout l'UI gamif pour les taches de ce
+    # foyer pour TOUS ses membres. Combinaison OR avec
+    # UserSettings.gamification_enabled cote frontend.
+    gamification_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False
+    )
+
     # v0.30 : entitlement Premium par foyer. Pas de paywall actif a ce stade
     # (plomberie pour la v2 post-launch). Tous les members heritent.
     is_premium: Mapped[bool] = mapped_column(

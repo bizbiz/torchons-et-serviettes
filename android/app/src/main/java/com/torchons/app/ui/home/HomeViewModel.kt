@@ -204,6 +204,13 @@ class HomeViewModel @Inject constructor(
     private val _affinityPopupEnabled = MutableStateFlow(true)
     val affinityPopupEnabled: StateFlow<Boolean> = _affinityPopupEnabled.asStateFlow()
 
+    /** v0.32 : visibilite UI gamif (points/bonus/celebration/stats) — combine
+     *  user-level (UserSettings.gamification_enabled) AND foyer-level
+     *  (Foyer.gamification_enabled) cf. design grill-me. La home cache la
+     *  ligne points, la pastille bonus, et "+X pts" sur la celebration. */
+    val gamificationVisible: StateFlow<Boolean> = tokenManager.gamificationVisibleFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     init {
         observeCache()
         refresh()
@@ -283,6 +290,9 @@ class HomeViewModel @Inject constructor(
                 async { taskRepository.refreshRooms() },
                 async { taskRepository.refreshCategories() },
                 async { taskRepository.refreshTasks() },
+                // v0.32 : flag gamif du foyer courant (pour que l'UI gamif
+                // disparaisse instantanement si l'autre membre a toggle).
+                async { homeRepository.refreshCurrentFoyerGamification() },
             ).awaitAll()
             val suggestionsResult = suggestionsDeferred.await()
             if (suggestionsResult.success) {

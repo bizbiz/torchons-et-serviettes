@@ -48,6 +48,9 @@ fun EffortInfoDialog(
     onAskRevote: (targetUserId: String) -> Unit,
     onEditMyVote: () -> Unit,
     onDismiss: () -> Unit,
+    /** v0.32 : si false (gamif desactivee user OU foyer), retire les mentions
+     *  de points / fair-share du texte pedago — focus sur "temps moyen". */
+    gamificationVisible: Boolean = true,
 ) {
     // Set des user_ids ayant vote (moi inclus si myPoints != null).
     val voterIds = buildSet {
@@ -66,9 +69,16 @@ fun EffortInfoDialog(
                     .heightIn(max = 540.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
-                // Pedago : explique a quoi sert le vote (points, fair-share, retard foyer).
+                // Pedago : explique a quoi sert le vote. Texte different
+                // selon que la gamification est activee ou non (v0.32) — si
+                // l'user n'a pas de points, le pedago "points/fair-share" est
+                // dissonant. On garde le pedago "temps moyen" qui reste valide.
                 Text(
-                    text = "L'effort est le temps moyen que prend la tache, vote par chaque membre du foyer. Il sert a calculer les points gagnes quand la tache est validee — ces points alimentent le partage equitable (fair-share) entre vous et le retard global du foyer. Plus il y a de votes, plus l'estimation est juste. Tu peux ajuster ton vote ou demander a un autre membre de revoter.",
+                    text = if (gamificationVisible) {
+                        "L'effort est le temps moyen que prend la tache, vote par chaque membre du foyer. Il sert a calculer les points gagnes quand la tache est validee — ces points alimentent le partage equitable (fair-share) entre vous et le retard global du foyer. Plus il y a de votes, plus l'estimation est juste. Tu peux ajuster ton vote ou demander a un autre membre de revoter."
+                    } else {
+                        "L'effort est le temps moyen que prend la tache, vote par chaque membre du foyer. Il sert a mieux estimer le temps requis et a prioriser entre taches courtes et longues. Plus il y a de votes, plus l'estimation est juste. Tu peux ajuster ton vote ou demander a un autre membre de revoter."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

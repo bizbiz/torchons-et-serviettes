@@ -110,6 +110,7 @@ fun TaskDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currentUserId by viewModel.currentUserId.collectAsState()
+    val gamificationVisible by viewModel.gamificationVisible.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Etat du modal de profil utilisateur (ouvert au clic sur un nom).
@@ -155,6 +156,7 @@ fun TaskDetailScreen(
                     viewModel.fetchCompletionPreview(t.id, isoDate, numParticipants)
                 }
             },
+            gamificationVisible = gamificationVisible,
         )
     }
 
@@ -315,6 +317,7 @@ fun TaskDetailScreen(
                 viewModel.openEffortVoteDialog()
             },
             onDismiss = { viewModel.dismissEffortInfo() },
+            gamificationVisible = gamificationVisible,
         )
     }
     if (uiState.showAffinityInfo) {

@@ -27,5 +27,8 @@ class FoyerResponse(BaseModel):
     # v0.30 — entitlement Premium par foyer (plomberie, paywall non actif).
     is_premium: bool = False
     premium_until: datetime | None = None
+    # v0.32 : toggle gamification du foyer (per-foyer, applique a tous les
+    # membres). Toggle accessible a tout membre via PUT /foyers/{id}/gamification.
+    gamification_enabled: bool = True
 
     model_config = {"from_attributes": True}

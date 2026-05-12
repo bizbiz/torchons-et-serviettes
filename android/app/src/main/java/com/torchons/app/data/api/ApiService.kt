@@ -212,6 +212,13 @@ interface ApiService {
         @Body body: Map<String, @JvmSuppressWildcards Any?>,
     ): Response<com.torchons.app.data.model.Foyer>
 
+    /** Toggle gamification du foyer — tout membre (pas admin-only). v0.32. */
+    @PUT("foyers/{id}/gamification")
+    suspend fun updateFoyerGamification(
+        @Path("id") foyerId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any?>,
+    ): Response<com.torchons.app.data.model.Foyer>
+
     // --- Presence (v2 home freeze — checkin WiFi positif uniquement) ---
 
     /** Checkin presence : signal positif "je suis a la maison". */

@@ -90,6 +90,7 @@ fun TaskListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val users by viewModel.allUsers.collectAsState()
     val currentUserId by viewModel.userId.collectAsState()
+    val gamificationVisible by viewModel.gamificationVisible.collectAsState()
 
     // Dialog unifie "Deja fait" (Single) / "Fait ensemble" (Multi).
     // Releve au niveau TaskListScreen pour etre partage entre toutes les cards.
@@ -126,6 +127,7 @@ fun TaskListScreen(
             previewProvider = { isoDate, numParticipants ->
                 viewModel.fetchCompletionPreview(ds.taskId, isoDate, numParticipants)
             },
+            gamificationVisible = gamificationVisible,
         )
     }
 

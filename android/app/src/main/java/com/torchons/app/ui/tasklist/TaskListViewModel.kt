@@ -189,6 +189,10 @@ class TaskListViewModel @Inject constructor(
     val allUsers: StateFlow<List<User>> = taskRepository.observeUsers()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** v0.32 : visibilite UI gamif (user-level AND foyer-level). */
+    val gamificationVisible: StateFlow<Boolean> = tokenManager.gamificationVisibleFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     private val filtersFlow = MutableStateFlow(TaskListFilters())
 
     init {

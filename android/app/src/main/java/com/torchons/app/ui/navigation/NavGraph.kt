@@ -14,7 +14,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.torchons.app.ui.components.OfflineBanner
@@ -24,10 +26,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.local.TokenManager
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
 import com.torchons.app.ui.catalog.CatalogScreen
 import com.torchons.app.ui.changelog.ChangelogScreen
 import com.torchons.app.ui.home.HomeScreen
@@ -393,10 +398,39 @@ fun MainScreen(
     val navBackStackEntry by innerNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // v0.32 : tab Stats cachee quand gamification desactivee (user OR foyer
+    // courant). Le filtrage UI reactif est observe via TokenManager —
+    // toggler dans Reglages fait disparaitre la tab instantanement.
+    val context = LocalContext.current
+    val tokenManager = remember(context) {
+        EntryPointAccessors
+            .fromApplication(context.applicationContext, TokenManagerEntryPoint::class.java)
+            .tokenManager()
+    }
+    val gamificationVisible by tokenManager.gamificationVisibleFlow
+        .collectAsState(initial = true)
+    val visibleNavItems = if (gamificationVisible) {
+        bottomNavItems
+    } else {
+        bottomNavItems.filter { it.route != Routes.STATS }
+    }
+
+    // Si l'user est sur la tab Stats et que la gamif se desactive (toggle
+    // distant par l'autre membre, ou auto-toggle), on rebascule sur Home —
+    // sinon il reste coince sur un ecran sans tab visible dans la nav.
+    LaunchedEffect(gamificationVisible, currentRoute) {
+        if (!gamificationVisible && currentRoute == Routes.STATS) {
+            innerNavController.navigate(Routes.HOME) {
+                popUpTo(Routes.HOME) { saveState = true }
+                launchSingleTop = true
+            }
+        }
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar {
-                bottomNavItems.forEach { item ->
+                visibleNavItems.forEach { item ->
                     NavigationBarItem(
                         selected = currentRoute == item.route,
                         onClick = {
@@ -459,6 +493,14 @@ fun MainScreen(
             }
         }
     }
+}
+
+/** EntryPoint Hilt pour acceder a TokenManager depuis les composables sans ViewModel
+ *  (utilise par MainScreen pour observer gamificationVisibleFlow). v0.32. */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface TokenManagerEntryPoint {
+    fun tokenManager(): TokenManager
 }
 
 /** EntryPoint Hilt pour acceder a ApiService depuis les composables sans ViewModel. */

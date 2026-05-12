@@ -97,6 +97,7 @@ fun HomeScreen(
     val categories by viewModel.categories.collectAsState()
     val activeTasks by viewModel.activeTasks.collectAsState()
     val lastCompletionsByTask by viewModel.lastCompletionsByTask.collectAsState()
+    val gamificationVisible by viewModel.gamificationVisible.collectAsState()
     val toastContext = LocalContext.current
 
     // Maps de lookup memoisees pour pouvoir resolver task -> room/category sans
@@ -314,6 +315,7 @@ fun HomeScreen(
             previewProvider = { isoDate, numParticipants ->
                 viewModel.fetchCompletionPreview(ds.taskId, isoDate, numParticipants)
             },
+            gamificationVisible = gamificationVisible,
         )
     }
 
@@ -446,8 +448,9 @@ fun HomeScreen(
                     category = category,
                     lastCompletedAt = lastCompletionsByTask[suggestion.taskId],
                     isCelebrating = uiState.celebratingTaskId == suggestion.taskId,
-                    celebrationPoints = if (uiState.celebratingTaskId == suggestion.taskId) uiState.celebrationPoints else null,
+                    celebrationPoints = if (uiState.celebratingTaskId == suggestion.taskId && gamificationVisible) uiState.celebrationPoints else null,
                     celebrationReason = if (uiState.celebratingTaskId == suggestion.taskId) uiState.celebrationReason else null,
+                    gamificationVisible = gamificationVisible,
                     onClick = { onTaskClick(suggestion.taskId) },
                     onComplete = { viewModel.completeTask(suggestion.taskId) },
                     onDejaFait = {
@@ -629,6 +632,10 @@ private fun SuggestionCard(
     isCelebrating: Boolean,
     celebrationPoints: Int? = null,
     celebrationReason: String? = null,
+    /** v0.32 : si false, masque la pastille bonus, la ligne "💰 N pts" et
+     *  le "+X pts" dans la celebration. Le reste (titre, countdown, piece,
+     *  bouton "Fait !") reste inchange. */
+    gamificationVisible: Boolean = true,
     onClick: () -> Unit,
     onComplete: () -> Unit,
     onDejaFait: () -> Unit,
@@ -689,7 +696,7 @@ private fun SuggestionCard(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                if (suggestion.bonusEligible && suggestion.bonusPct > 0f) {
+                if (gamificationVisible && suggestion.bonusEligible && suggestion.bonusPct > 0f) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
@@ -762,9 +769,11 @@ private fun SuggestionCard(
             // Ligne points predits : "💰 N pts" (+ delta bonus si applicable).
             // Pour les taches solo (predicted = 0) : "💰 0 pt" + icone (i)
             // cliquable qui ouvre SoloPointsInfoDialog (pedago "pourquoi 0 ?").
-            SuggestionPointsLine(suggestion = suggestion)
-
-            Spacer(modifier = Modifier.height(8.dp))
+            // Cachee en mode opt-out (v0.32).
+            if (gamificationVisible) {
+                SuggestionPointsLine(suggestion = suggestion)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             // Bouton principal "Fait !" pleine largeur
             Button(

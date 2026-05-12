@@ -16,6 +16,10 @@ data class Foyer(
     @SerializedName("created_at") val createdAt: String = "",
     @SerializedName("role") val role: String = "member",
     @SerializedName("is_current") val isCurrent: Boolean = false,
+    /** v0.32 : toggle gamification du foyer. Combinaison OR cote frontend
+     *  avec UserSettings.gamificationEnabled — si l'un OU l'autre est false,
+     *  l'UI gamif est masquee. */
+    @SerializedName("gamification_enabled") val gamificationEnabled: Boolean = true,
 )
 
 /** Corps de la requete pour creer un foyer. */
