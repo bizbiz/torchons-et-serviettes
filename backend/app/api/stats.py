@@ -14,6 +14,7 @@ from app.auth import get_current_user
 from app.database import get_session
 from app.models.badge import Badge
 from app.models.completion import TaskCompletion
+from app.models.foyer import Foyer
 from app.models.streak import Streak
 from app.models.task import Task
 from app.models.user import User
@@ -139,18 +140,49 @@ async def update_completion(
 
 # --- Stats ---
 
+async def _load_foyer_absent_dates(
+    session: AsyncSession,
+    foyer_uuid: UUID,
+    today: date,
+) -> set[date]:
+    """Home freeze v2 : retourne les dates `confirmed_absent` du foyer si
+    `home_freeze_enabled = True`, sinon set vide. Utilise par les stats pour
+    exclure les completions tombant sur des jours d'absence — coherent avec
+    le freeze (un user qui declare absent puis logue une completion ne doit
+    pas la voir comptee dans ses stats hebdo/mensuelles/totales).
+    """
+    foyer_r = await session.execute(
+        select(Foyer.home_freeze_enabled).where(Foyer.id == foyer_uuid)
+    )
+    if not bool(foyer_r.scalar() or False):
+        return set()
+    # Charge tout l'historique des absences confirmees (table petite : 1 ligne
+    # par jour foyer-level).
+    return await get_absent_dates(session, foyer_uuid, date(2000, 1, 1), today)
+
+
 @router.get("/stats", response_model=list[UserStats])
 async def get_stats(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Statistiques par utilisateur : points et taches (semaine/mois/total). Scope foyer via JOIN tasks."""
+    """Statistiques par utilisateur : points et taches (semaine/mois/total). Scope foyer via JOIN tasks.
+
+    Home freeze v2 : exclut les completions tombant sur un jour
+    `confirmed_absent` du foyer (si freeze actif).
+    """
     from app.models.user_foyer import UserFoyer
 
     now = datetime.now(timezone.utc)
     week_ago = now - timedelta(days=7)
     month_ago = now - timedelta(days=30)
     foyer_uuid = current_foyer_uuid(current)
+
+    absent_dates = await _load_foyer_absent_dates(session, foyer_uuid, now.date())
+    absent_filter = (
+        [func.date(TaskCompletion.completed_at).notin_(list(absent_dates))]
+        if absent_dates else []
+    )
 
     # Users du foyer actif uniquement (via UserFoyer join)
     users_result = await session.execute(
@@ -174,6 +206,7 @@ async def get_stats(
                 TaskCompletion.completed_by == user.id,
                 TaskCompletion.deleted_at.is_(None),
                 Task.foyer_id == foyer_uuid,
+                *absent_filter,
             )
         )
         total_row = total_result.one()
@@ -190,6 +223,7 @@ async def get_stats(
                 TaskCompletion.deleted_at.is_(None),
                 TaskCompletion.completed_at >= week_ago,
                 Task.foyer_id == foyer_uuid,
+                *absent_filter,
             )
         )
         week_row = week_result.one()
@@ -206,6 +240,7 @@ async def get_stats(
                 TaskCompletion.deleted_at.is_(None),
                 TaskCompletion.completed_at >= month_ago,
                 Task.foyer_id == foyer_uuid,
+                *absent_filter,
             )
         )
         month_row = month_result.one()
@@ -232,7 +267,11 @@ async def get_leaderboard(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Leaderboard par periode : week, month, all. Scope foyer via JOIN tasks."""
+    """Leaderboard par periode : week, month, all. Scope foyer via JOIN tasks.
+
+    Home freeze v2 : exclut les completions tombant sur un jour
+    `confirmed_absent` du foyer (si freeze actif).
+    """
     now = datetime.now(timezone.utc)
     foyer_uuid = current_foyer_uuid(current)
     if period == "week":
@@ -241,6 +280,12 @@ async def get_leaderboard(
         cutoff = now - timedelta(days=30)
     else:
         cutoff = datetime(2000, 1, 1, tzinfo=timezone.utc)
+
+    absent_dates = await _load_foyer_absent_dates(session, foyer_uuid, now.date())
+    absent_filter = (
+        [func.date(TaskCompletion.completed_at).notin_(list(absent_dates))]
+        if absent_dates else []
+    )
 
     result = await session.execute(
         select(
@@ -253,6 +298,7 @@ async def get_leaderboard(
             TaskCompletion.deleted_at.is_(None),
             TaskCompletion.completed_at >= cutoff,
             Task.foyer_id == foyer_uuid,
+            *absent_filter,
         ).group_by(TaskCompletion.completed_by).order_by(
             func.sum(TaskCompletion.points_earned).desc()
         )
@@ -1678,7 +1724,15 @@ async def long_term_stats(
 
     foyer_uuid = current_foyer_uuid(current)
     days_window = {"month": 30, "quarter": 90, "year": 365}[period]
-    since = datetime.now(timezone.utc) - timedelta(days=days_window)
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(days=days_window)
+
+    # Home freeze v2 : exclure les completions tombant sur jours absents.
+    absent_dates = await _load_foyer_absent_dates(session, foyer_uuid, now.date())
+    absent_filter = (
+        [func.date(TaskCompletion.completed_at).notin_(list(absent_dates))]
+        if absent_dates else []
+    )
 
     # Subquery : effort moyen par task (en minutes : avg points * 5).
     effort_subq = (
@@ -1704,6 +1758,7 @@ async def long_term_stats(
             Task.foyer_id == foyer_uuid,
             TaskCompletion.deleted_at.is_(None),
             TaskCompletion.completed_at >= since,
+            *absent_filter,
         )
         .group_by("day")
         .order_by("day")
@@ -1735,6 +1790,7 @@ async def long_term_stats(
             Task.foyer_id == foyer_uuid,
             TaskCompletion.deleted_at.is_(None),
             TaskCompletion.completed_at >= since,
+            *absent_filter,
         )
         .group_by(Room.id, Room.name)
         .order_by(func.count(TaskCompletion.id).desc())
@@ -1783,11 +1839,21 @@ async def couple_totals(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Totaux foyer cumules (week/month/all) + streak couple."""
+    """Totaux foyer cumules (week/month/all) + streak couple.
+
+    Home freeze v2 : exclut les completions tombant sur un jour
+    `confirmed_absent` du foyer (si freeze actif).
+    """
     foyer_uuid = current_foyer_uuid(current)
     now = datetime.now(timezone.utc)
     week_ago = now - timedelta(days=7)
     month_ago = now - timedelta(days=30)
+
+    absent_dates = await _load_foyer_absent_dates(session, foyer_uuid, now.date())
+    absent_filter = (
+        [func.date(TaskCompletion.completed_at).notin_(list(absent_dates))]
+        if absent_dates else []
+    )
 
     # Helper : sum + count de completions sur une periode (None = pas de
     # filtre temporel = "tout").
@@ -1801,6 +1867,7 @@ async def couple_totals(
             .where(
                 Task.foyer_id == foyer_uuid,
                 TaskCompletion.deleted_at.is_(None),
+                *absent_filter,
             )
         )
         if since is not None:
@@ -1898,6 +1965,9 @@ async def weekly_summary(
     week_offset jusqu'a -52  : il y a un an
 
     Ne retourne pas de week_offset > 0 (futur) — les bornes Query l'empechent.
+
+    Home freeze v2 : exclut les completions tombant sur un jour
+    `confirmed_absent` du foyer (si freeze actif).
     """
     from app.models.user_foyer import UserFoyer
 
@@ -1911,6 +1981,12 @@ async def weekly_summary(
 
     week_start_dt = datetime.combine(target_monday, datetime.min.time(), tzinfo=timezone.utc)
     week_end_dt = datetime.combine(target_sunday, datetime.max.time(), tzinfo=timezone.utc)
+
+    absent_dates = await _load_foyer_absent_dates(session, foyer_uuid, today)
+    absent_filter = (
+        [func.date(TaskCompletion.completed_at).notin_(list(absent_dates))]
+        if absent_dates else []
+    )
 
     # Per-user : completions + points sur la fenetre, scope foyer.
     # On part de la liste users du foyer (left join sur completions pour
@@ -1928,7 +2004,11 @@ async def weekly_summary(
             (TaskCompletion.completed_by == User.id)
             & (TaskCompletion.deleted_at.is_(None))
             & (TaskCompletion.completed_at >= week_start_dt)
-            & (TaskCompletion.completed_at <= week_end_dt),
+            & (TaskCompletion.completed_at <= week_end_dt)
+            & (
+                func.date(TaskCompletion.completed_at).notin_(list(absent_dates))
+                if absent_dates else True
+            ),
         )
         .outerjoin(
             Task,
@@ -1966,6 +2046,7 @@ async def weekly_summary(
             TaskCompletion.deleted_at.is_(None),
             TaskCompletion.completed_at >= week_start_dt,
             TaskCompletion.completed_at <= week_end_dt,
+            *absent_filter,
         )
         .group_by(Task.id, Task.title)
         .order_by(func.count(TaskCompletion.id).desc())

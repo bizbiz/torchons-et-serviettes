@@ -599,9 +599,10 @@ class TaskListViewModel @Inject constructor(
                 rule = task.recurrenceRule,
                 createdAt = task.createdAt,
             )
-            val state = TaskUrgencyCalculator.computeState(dueDate, today, nominal)
-            val daysUntilDue = TaskUrgencyCalculator.daysUntilDue(dueDate, today)
-            val countdownLabel = TaskUrgencyCalculator.countdownLabel(dueDate, today)
+            val absentDays = task.absentDaysSinceLastCompletion
+            val state = TaskUrgencyCalculator.computeState(dueDate, today, nominal, absentDays)
+            val daysUntilDue = TaskUrgencyCalculator.daysUntilDue(dueDate, today, absentDays)
+            val countdownLabel = TaskUrgencyCalculator.countdownLabel(dueDate, today, absentDays)
             val category = task.categoryId?.let { categoriesById[it] }
             val room = task.roomId?.let { roomsById[it] }
 

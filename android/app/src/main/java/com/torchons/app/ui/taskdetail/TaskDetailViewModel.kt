@@ -139,9 +139,10 @@ class TaskDetailViewModel @Inject constructor(
                     rule = cached.task?.recurrenceRule,
                     createdAt = cached.task?.createdAt,
                 )
-                val state = TaskUrgencyCalculator.computeState(dueDate, today, nominal)
-                val daysUntilDue = TaskUrgencyCalculator.daysUntilDue(dueDate, today)
-                val countdownLabel = TaskUrgencyCalculator.countdownLabel(dueDate, today)
+                val absentDays = cached.task?.absentDaysSinceLastCompletion ?: 0
+                val state = TaskUrgencyCalculator.computeState(dueDate, today, nominal, absentDays)
+                val daysUntilDue = TaskUrgencyCalculator.daysUntilDue(dueDate, today, absentDays)
+                val countdownLabel = TaskUrgencyCalculator.countdownLabel(dueDate, today, absentDays)
 
                 // Resolve la piece de la tache (si elle a un roomId).
                 val room = cached.task?.roomId?.let { rid ->

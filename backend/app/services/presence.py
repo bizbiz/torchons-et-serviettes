@@ -9,11 +9,16 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, timedelta
+from typing import Iterable
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.category import Category
+from app.models.completion import TaskCompletion
+from app.models.foyer import Foyer
 from app.models.presence_day import PresenceDay
+from app.models.task import Task
 
 
 async def count_absent_days_since(
@@ -103,6 +108,96 @@ async def get_absent_days_map(
         absent_map[task_id] = total - present
 
     return absent_map
+
+
+async def compute_absent_days_for_tasks(
+    session: AsyncSession,
+    foyer_id: uuid.UUID,
+    tasks: Iterable[Task],
+    until_date: date | None = None,
+) -> dict[uuid.UUID, int]:
+    """Calcule en batch le nombre de jours absents par tache pour la
+    propagation du home freeze v2 cote client.
+
+    Pour chaque tache :
+    - Renvoie 0 si foyer.home_freeze_enabled = False
+    - Renvoie 0 si task.category.requires_home != True
+    - Sinon, compte les jours non-presents entre la derniere completion (ou
+      created_at si jamais faite) et `until_date` (exclus). Les jours sans
+      ligne presence_day comptent comme absents (comportement freeze).
+
+    Utilise pour exposer `absent_days_since_last_completion` sur les reponses
+    GET /api/tasks afin que le frontend Android decale `today` localement
+    dans TaskUrgencyCalculator.
+    """
+    if until_date is None:
+        from datetime import datetime, timezone
+        until_date = datetime.now(timezone.utc).date()
+
+    task_list = list(tasks)
+    result_map: dict[uuid.UUID, int] = {t.id: 0 for t in task_list}
+    if not task_list:
+        return result_map
+
+    # 1. Foyer freeze activated ?
+    foyer_r = await session.execute(
+        select(Foyer.home_freeze_enabled).where(Foyer.id == foyer_id)
+    )
+    if not bool(foyer_r.scalar() or False):
+        return result_map
+
+    # 2. Categories requires_home : filter
+    cat_ids = {t.category_id for t in task_list if t.category_id is not None}
+    if not cat_ids:
+        return result_map
+    cat_r = await session.execute(
+        select(Category.id, Category.requires_home).where(Category.id.in_(cat_ids))
+    )
+    requires_home_by_cat: dict[uuid.UUID, bool] = {
+        row[0]: bool(row[1]) for row in cat_r.all()
+    }
+    eligible_tasks = [
+        t for t in task_list
+        if t.category_id is not None
+        and requires_home_by_cat.get(t.category_id, False)
+    ]
+    if not eligible_tasks:
+        return result_map
+
+    # 3. Last completion date per task (fallback: created_at.date())
+    task_ids = [t.id for t in eligible_tasks]
+    comp_r = await session.execute(
+        select(
+            TaskCompletion.task_id,
+            func.max(TaskCompletion.completed_at).label("last_at"),
+        )
+        .where(
+            TaskCompletion.task_id.in_(task_ids),
+            TaskCompletion.deleted_at.is_(None),
+        )
+        .group_by(TaskCompletion.task_id)
+    )
+    last_completion_by_task: dict[uuid.UUID, date] = {}
+    for row in comp_r.all():
+        last_completion_by_task[row[0]] = row[1].date()
+
+    since_dates: dict[uuid.UUID, date] = {}
+    for t in eligible_tasks:
+        since = last_completion_by_task.get(t.id)
+        if since is None:
+            # Jamais faite : on part de created_at.date()
+            since = t.created_at.date() if t.created_at else until_date
+        since_dates[t.id] = since
+
+    # 4. Batch absent count via get_absent_days_map
+    absent_map = await get_absent_days_map(
+        session, foyer_id, since_dates, until_date
+    )
+    for tid, n in absent_map.items():
+        if n > 0:
+            result_map[tid] = n
+
+    return result_map
 
 
 async def get_absent_dates(

@@ -18,8 +18,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
+from app.models.category import Category
 from app.models.enums import PromptResolution, PromptType
 from app.models.presence_day import PresenceDay
+from app.models.task import Task
 from app.models.task_effort import TaskEffort
 from app.models.user_prompt import UserPrompt
 from app.utils.scoping import current_foyer_uuid
@@ -349,6 +351,14 @@ async def _handle_resolve_presence(
 
     await session.flush()
 
+    # Invalidation : les tâches `requires_home` du foyer ont peut-etre leur
+    # `inferred_interval_days` obsolete (uncertain) et leur urgence affichee
+    # cote client doit etre re-calculee. On bump task.version pour signaler le
+    # changement (le client refait un GET /api/tasks au prochain refresh et
+    # recupere `absent_days_since_last_completion` recalcule a la volee).
+    # On recalcule aussi `inferred_interval_days` pour les `uncertain`.
+    await _recompute_after_presence_change(session, foyer_id)
+
     # Auto-resoudre les prompts RESOLVE_PRESENCE des autres users du foyer
     other_prompts_result = await session.execute(
         select(UserPrompt).where(
@@ -361,6 +371,42 @@ async def _handle_resolve_presence(
     for other_prompt in other_prompts_result.scalars().all():
         other_prompt.resolved_at = datetime.now(timezone.utc)
         other_prompt.resolution = PromptResolution.ANSWERED
+
+
+async def _recompute_after_presence_change(
+    session: AsyncSession,
+    foyer_id: UUID,
+) -> None:
+    """Apres modification des `presence_days`, recalcule l'etat des taches
+    `requires_home` du foyer :
+
+    1. Bump `task.version` sur toutes les taches `requires_home` (signal pour
+       le client qu'un refresh est utile).
+    2. Recalcule `inferred_interval_days` pour les taches `uncertain` —
+       reutilise `_recompute_inferred_interval` (completions.py).
+
+    Idempotent : safe a appeler plusieurs fois pour le meme foyer.
+    """
+    # Charger toutes les taches `requires_home` actives du foyer
+    result = await session.execute(
+        select(Task).join(Category, Task.category_id == Category.id).where(
+            Task.foyer_id == foyer_id,
+            Task.deleted_at.is_(None),
+            Category.requires_home.is_(True),
+        )
+    )
+    tasks = result.scalars().all()
+    if not tasks:
+        return
+
+    # Import tardif pour eviter une boucle d'import (completions.py importe deja
+    # services qui peuvent eux-memes importer schemas/api).
+    from app.api.completions import _recompute_inferred_interval
+
+    for task in tasks:
+        task.version += 1
+        await _recompute_inferred_interval(session, task, foyer_id)
+    await session.flush()
 
 
 async def _upsert_presence_day(

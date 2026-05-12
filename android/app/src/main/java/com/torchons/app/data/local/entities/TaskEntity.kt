@@ -30,6 +30,10 @@ data class TaskEntity(
     val sortOrder: Int,
     val createdAt: String,
     val updatedAt: String,
+    // Home freeze v2 : nombre de jours absents du foyer depuis la derniere
+    // completion. Persiste en local pour que l'UI reste coherente offline.
+    // Refresh sur GET /api/tasks ou apres resolution de RESOLVE_PRESENCE.
+    val absentDaysSinceLastCompletion: Int = 0,
 )
 
 /** Conversion DTO -> Entite (pour upsert depuis l'API). */
@@ -49,6 +53,7 @@ fun Task.toEntity(): TaskEntity = TaskEntity(
     sortOrder = sortOrder,
     createdAt = createdAt,
     updatedAt = updatedAt,
+    absentDaysSinceLastCompletion = absentDaysSinceLastCompletion,
 )
 
 /** Conversion Entite -> DTO (pour exposer aux ViewModels). */
@@ -68,4 +73,5 @@ fun TaskEntity.toDomain(): Task = Task(
     sortOrder = sortOrder,
     createdAt = createdAt,
     updatedAt = updatedAt,
+    absentDaysSinceLastCompletion = absentDaysSinceLastCompletion,
 )

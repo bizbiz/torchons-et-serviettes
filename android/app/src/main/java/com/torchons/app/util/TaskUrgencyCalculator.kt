@@ -99,6 +99,18 @@ object TaskUrgencyCalculator {
     }
 
     /**
+     * Date effective utilisee pour evaluer l'urgence : `today - absentDays`.
+     *
+     * Home freeze v2 : si la tache appartient a une categorie `requires_home`
+     * et que `home_freeze_enabled` est actif au niveau foyer, le backend
+     * renseigne `absent_days_since_last_completion` sur la tache. On recule
+     * `today` du meme nombre de jours pour que les absences ne consomment
+     * pas l'intervalle de la tache. Sinon, `absentDays=0` => no-op.
+     */
+    fun effectiveToday(today: LocalDate, absentDays: Int): LocalDate =
+        if (absentDays > 0) today.minusDays(absentDays.toLong()) else today
+
+    /**
      * Etat d'urgence (GREEN / ORANGE / RED) selon today <-> due_date.
      *
      * - today > due_date : RED
@@ -107,29 +119,39 @@ object TaskUrgencyCalculator {
      *
      * window = floor(nominalInterval * 0.10), min 0.
      * Si dueDate est null (ponctuelle deja faite) -> GREEN.
+     *
+     * `absentDays` (home freeze v2) decale `today` en arriere : utile pour les
+     * categories `requires_home` quand le foyer a confirme des jours absents.
      */
     fun computeState(
         dueDate: LocalDate?,
         today: LocalDate,
         nominalInterval: Int,
+        absentDays: Int = 0,
     ): State {
         if (dueDate == null) return State.GREEN
-        if (today.isAfter(dueDate)) return State.RED
+        val effToday = effectiveToday(today, absentDays)
+        if (effToday.isAfter(dueDate)) return State.RED
         val window = floor(nominalInterval * 0.10).toInt().coerceAtLeast(0)
         val orangeStart = dueDate.minusDays(window.toLong())
-        return if (!today.isBefore(orangeStart)) State.ORANGE else State.GREEN
+        return if (!effToday.isBefore(orangeStart)) State.ORANGE else State.GREEN
     }
 
-    /** Nombre de jours d'ici a l'echeance (negatif si en retard, 0 si aujourd'hui). */
-    fun daysUntilDue(dueDate: LocalDate?, today: LocalDate): Int {
+    /**
+     * Nombre de jours d'ici a l'echeance (negatif si en retard, 0 si aujourd'hui).
+     *
+     * `absentDays` (home freeze v2) decale `today` en arriere.
+     */
+    fun daysUntilDue(dueDate: LocalDate?, today: LocalDate, absentDays: Int = 0): Int {
         if (dueDate == null) return 0
-        return (dueDate.toEpochDay() - today.toEpochDay()).toInt()
+        val effToday = effectiveToday(today, absentDays)
+        return (dueDate.toEpochDay() - effToday.toEpochDay()).toInt()
     }
 
     /** Libelle FR humain du countdown ("dans 3 j", "à faire aujourd'hui", etc.). */
-    fun countdownLabel(dueDate: LocalDate?, today: LocalDate): String {
+    fun countdownLabel(dueDate: LocalDate?, today: LocalDate, absentDays: Int = 0): String {
         if (dueDate == null) return ""
-        return countdownLabelFromDays(daysUntilDue(dueDate, today))
+        return countdownLabelFromDays(daysUntilDue(dueDate, today, absentDays))
     }
 
     /** Variante prenant directement le delta en jours (utile pour SuggestionCard). */

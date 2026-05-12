@@ -103,10 +103,13 @@ private fun CalendarModeDialog(
     val uncertainDays = (prompt.context["uncertain_days"] as? List<*>)
         ?.mapNotNull { it?.toString() } ?: emptyList()
 
-    // Etat : chaque jour est pre-coche "present" par defaut
+    // Etat : chaque jour est pre-coche "absent" par defaut. Le prompt
+    // n'apparait que si on suspecte une absence (trou de presence) — autant
+    // demander de confirmer la minorite des jours presents plutot que toggle
+    // tous les jours d'une longue absence.
     val dayStates = remember {
         mutableStateMapOf<String, Boolean>().apply {
-            uncertainDays.forEach { put(it, true) } // true = present
+            uncertainDays.forEach { put(it, false) } // false = absent
         }
     }
     var showInfo by remember { mutableStateOf(false) }
@@ -130,8 +133,8 @@ private fun CalendarModeDialog(
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
                     "Ces jours n'ont pas ete detectes automatiquement. " +
-                    "Les jours marques \"present\" sont en vert, ceux " +
-                    "\"absent\" en gris. Appuie sur un jour pour changer.",
+                    "Par defaut ils sont marques \"absent\" (gris). " +
+                    "Appuie sur un jour pour le passer en \"present\" (vert).",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

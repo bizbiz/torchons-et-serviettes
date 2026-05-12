@@ -33,7 +33,13 @@ data class Task(
     @SerializedName("is_archived") val isArchived: Boolean = false,
     @SerializedName("sort_order") val sortOrder: Int = 0,
     @SerializedName("created_at") val createdAt: String = "",
-    @SerializedName("updated_at") val updatedAt: String = ""
+    @SerializedName("updated_at") val updatedAt: String = "",
+    // Home freeze v2 : nombre de jours absents du foyer entre la derniere
+    // completion (ou createdAt) et today. 0 si non-applicable (categorie
+    // non requires_home ou home_freeze_enabled=false). Le frontend decale
+    // `today` de ce delta dans TaskUrgencyCalculator pour rendre l'urgence.
+    @SerializedName("absent_days_since_last_completion")
+    val absentDaysSinceLastCompletion: Int = 0,
 )
 
 /**

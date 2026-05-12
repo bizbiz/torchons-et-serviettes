@@ -116,6 +116,17 @@ private val migration7to8 = object : Migration(7, 8) {
     }
 }
 
+private val migration8to9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Home freeze v2 : nb de jours absents du foyer depuis la derniere
+        // completion. Decalage applique cote client par TaskUrgencyCalculator
+        // pour ne pas afficher en retard les taches "requires_home" pendant
+        // les absences confirmees. Defaut 0 : un GET /api/tasks rempliera la
+        // vraie valeur au prochain refresh.
+        db.execSQL("ALTER TABLE tasks ADD COLUMN absentDaysSinceLastCompletion INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -128,7 +139,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8)
+            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8, migration8to9)
             .build()
     }
 

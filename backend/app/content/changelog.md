@@ -1,5 +1,20 @@
 # Notes de version
 
+## v0.31.2 — 2026-05-12
+
+### Absences (gel a la maison)
+- Le dialog "Jours a confirmer" pre-coche desormais tous les jours en
+  absent par defaut. Plus besoin de tout toggler apres une longue absence
+  — il suffit de marquer les quelques jours ou tu etais reellement la.
+- Les taches "a la maison" ne s'affichent plus comme en retard pendant
+  les jours d'absence confirmes. Le retard est gele et reprend a ton
+  retour, sans cumul de "dette" injuste.
+- Les stats (hebdo, mensuel, total, leaderboard, long-terme, totaux du
+  couple, resume hebdo) ignorent maintenant les completions tombant sur
+  un jour absent — coherent avec le gel applique aux taches.
+- Apres avoir resolu un prompt d'absence, les taches sont automatiquement
+  recalculees : l'affichage est toujours bon, plus d'incoherence visuelle.
+
 ## v0.31.1 — 2026-05-01
 
 ### Sous le capot

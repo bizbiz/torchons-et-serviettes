@@ -22,6 +22,7 @@ from app.services.frequency_vote import (
     normalize_days_per_month,
     upsert_vote_and_sync_consensus,
 )
+from app.services.presence import compute_absent_days_for_tasks
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid, scoped
 
@@ -36,8 +37,17 @@ async def _get_assigned_ids(session: AsyncSession, task_id: UUID) -> list[UUID]:
     return [row[0] for row in result.all()]
 
 
-async def _task_to_response(session: AsyncSession, task: Task) -> dict:
-    """Construit la reponse d'une tache avec ses assignments."""
+async def _task_to_response(
+    session: AsyncSession,
+    task: Task,
+    absent_days: int = 0,
+) -> dict:
+    """Construit la reponse d'une tache avec ses assignments.
+
+    `absent_days` = home freeze v2 : nombre de jours absents du foyer entre la
+    derniere completion (ou created_at) et today, 0 si non-applicable. Calcule
+    en batch par le caller via compute_absent_days_for_tasks pour eviter N+1.
+    """
     assigned_ids = await _get_assigned_ids(session, task.id)
     return {
         "id": task.id,
@@ -55,6 +65,7 @@ async def _task_to_response(session: AsyncSession, task: Task) -> dict:
         "sort_order": task.sort_order,
         "created_at": task.created_at,
         "updated_at": task.updated_at,
+        "absent_days_since_last_completion": absent_days,
     }
 
 
@@ -94,7 +105,16 @@ async def list_tasks(
     result = await session.execute(q)
     tasks = result.scalars().all()
 
-    return [await _task_to_response(session, t) for t in tasks]
+    # Batch home freeze v2 : nombre de jours absents par tache (0 si
+    # categorie non requires_home ou freeze desactive au niveau foyer).
+    absent_map = await compute_absent_days_for_tasks(
+        session, current_foyer_uuid(current), tasks
+    )
+
+    return [
+        await _task_to_response(session, t, absent_days=absent_map.get(t.id, 0))
+        for t in tasks
+    ]
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
@@ -109,7 +129,12 @@ async def get_task(
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Tache introuvable")
-    return await _task_to_response(session, task)
+    absent_map = await compute_absent_days_for_tasks(
+        session, current_foyer_uuid(current), [task]
+    )
+    return await _task_to_response(
+        session, task, absent_days=absent_map.get(task.id, 0)
+    )
 
 
 @router.post("", response_model=TaskResponse, status_code=201)

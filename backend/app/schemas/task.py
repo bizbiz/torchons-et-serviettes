@@ -95,3 +95,8 @@ class TaskResponse(BaseModel):
     sort_order: int
     created_at: datetime
     updated_at: datetime
+    # Home freeze v2 : nombre de jours absents du foyer depuis la derniere
+    # completion (ou created_at si jamais faite) jusqu'a aujourd'hui. Vaut 0
+    # si la categorie n'est pas requires_home ou si home_freeze_enabled=false.
+    # Le client Android decale `today` de ce delta pour le calcul d'urgence.
+    absent_days_since_last_completion: int = 0
