@@ -46,8 +46,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
  * 2 phases :
  *  1. Saisie du code (8 chars XXXX-XXXX) -> /api/recovery/restore retourne
  *     un preview de l'identite + restore_token (TTL 5 min).
- *  2. Verification visuelle ("C'est bien toi, Quentin (admin de Chez
- *     Quentin, 318 taches faites) ?") avec Oui/Non. Oui -> /restore/confirm
+ *  2. Verification visuelle ("C'est bien toi, X (admin de Chez Y,
+ *     N taches faites) ?") avec Oui/Non. Oui -> /restore/confirm
  *     emet le JWT, save auth, navigation MAIN.
  *
  * Cf. docs/design-onboarding-public.md §5 (Q5e du grill-me).

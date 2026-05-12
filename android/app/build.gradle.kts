@@ -23,6 +23,20 @@ val tsApiBaseUrl: String = run {
         ?: "http://10.0.2.2:8002/api")
 }
 
+// v0.32.1 : Email de contact dev — pareil que tsApiBaseUrl, lu depuis
+// local.properties via la cle `ts.support.email`. Permet de garder l'email
+// reel du dev hors du repo public. Fallback placeholder.
+val tsSupportEmail: String = run {
+    val props = Properties()
+    val localProps = rootProject.file("local.properties")
+    if (localProps.exists()) {
+        localProps.inputStream().use { props.load(it) }
+    }
+    (props.getProperty("ts.support.email")
+        ?: providers.gradleProperty("ts.support.email").orNull
+        ?: "contact@torchonsetserviettes.app")
+}
+
 android {
     namespace = "com.torchons.app"
     compileSdk = 35
@@ -36,6 +50,8 @@ android {
 
         // URL de base de l'API — voir tsApiBaseUrl ci-dessus.
         buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrl\"")
+        // Email de contact dev — voir tsSupportEmail ci-dessus.
+        buildConfigField("String", "SUPPORT_EMAIL", "\"$tsSupportEmail\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

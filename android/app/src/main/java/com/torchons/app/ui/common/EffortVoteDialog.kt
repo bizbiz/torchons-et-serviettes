@@ -35,7 +35,7 @@ import kotlin.math.roundToInt
  *
  * Le dialog est ouvert :
  *   - Depuis le bandeau / "+ d'info" du detail tache (mode vote spontane).
- *   - Depuis un prompt VOTE_EFFORT (mode "Quentin t'a demande"). Dans ce
+ *   - Depuis un prompt VOTE_EFFORT (mode "X t'a demande"). Dans ce
  *     dernier cas, `requesterName` non-null affiche un bandeau d'intro.
  */
 @Composable

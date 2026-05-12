@@ -1631,8 +1631,8 @@ async def global_history(
     - `family` : multi-valued. Un ou plusieurs parmi {completions, votes,
       modifications}. Defaut vide = toutes les familles. Les familles sont
       mappees vers les `event_type` cibles via `HISTORY_FAMILY_TYPES`.
-    - `actor_id` : ne retourne que les events de cet utilisateur (Quentin
-      ou ***REMOVED***). Defaut = tous.
+    - `actor_id` : ne retourne que les events de cet utilisateur (filtre
+      par membre du foyer). Defaut = tous.
     - `q` : recherche dans le titre de tache (ILIKE %q%, case-insensitive).
       Les events sans tache (category_changed) sont exclus quand `q` est
       fourni.

@@ -248,8 +248,8 @@ async def get_task_ratings(
 
     Motivation : on ne demande pas l'affinite a un user qui n'est pas concerne
     (cf /api/pending-affinity qui filtre par TaskAssignment). Afficher une ligne
-    vide "Affinite de ***REMOVED*** : -" pour une tache attribuee a Quentin seulement
-    est trompeur et suggere un oubli.
+    vide "Affinite de X : -" pour une tache attribuee a Y seulement est
+    trompeur et suggere un oubli.
     """
     from app.models.user import User
 

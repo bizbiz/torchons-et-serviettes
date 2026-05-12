@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from tests.conftest import USER_ID_QUENTIN
+from tests.conftest import TEST_USER_ID
 
 
 def _make_op(
@@ -51,7 +51,7 @@ async def test_sync_insert_task_idempotent(client, auth_headers, device_a):
         client_op_id=op_id,
         data={
             "title": "Test idempotent",
-            "assigned_to_ids": [USER_ID_QUENTIN],
+            "assigned_to_ids": [TEST_USER_ID],
         },
     )
 
@@ -88,7 +88,7 @@ async def test_sync_insert_with_client_supplied_id(client, auth_headers, device_
         row_id=chosen_id,
         data={
             "title": "Task avec ID client",
-            "assigned_to_ids": [USER_ID_QUENTIN],
+            "assigned_to_ids": [TEST_USER_ID],
         },
     )
 
@@ -122,7 +122,7 @@ async def test_sync_update_stale_conflict(client, auth_headers, device_a):
         row_id=row_id,
         data={
             "title": "Stale test",
-            "assigned_to_ids": [USER_ID_QUENTIN],
+            "assigned_to_ids": [TEST_USER_ID],
         },
     )
     await client.post("/api/sync", json=_sync_body(device_a, [insert_op]), headers=auth_headers)
@@ -168,7 +168,7 @@ async def test_sync_pull_excludes_own_device(client, auth_headers, auth_headers_
         row_id=row_id,
         data={
             "title": "Device filter test",
-            "assigned_to_ids": [USER_ID_QUENTIN],
+            "assigned_to_ids": [TEST_USER_ID],
         },
     )
 
@@ -217,7 +217,7 @@ async def test_sync_delete_visible_in_pull(client, auth_headers, auth_headers_de
         row_id=row_id,
         data={
             "title": "To be deleted",
-            "assigned_to_ids": [USER_ID_QUENTIN],
+            "assigned_to_ids": [TEST_USER_ID],
         },
     )
     r1 = await client.post("/api/sync", json=_sync_body(device_a, [insert_op]), headers=auth_headers)

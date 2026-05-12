@@ -185,7 +185,7 @@ fun UserProfileDialog(
                     CoupleTotalsCard(totals = totals)
                 }
 
-                // Section "Stats du couple" : repartition Quentin vs ***REMOVED***
+                // Section "Stats du couple" : repartition entre les 2 membres
                 // sur la semaine et sur tout le temps. Affichee uniquement si
                 // au moins un des leaderboards a ete charge avec >= 2 entrees.
                 if (leaderboardWeek.size >= 2 || leaderboardAll.size >= 2) {
@@ -506,7 +506,7 @@ private fun CoupleStatColumn(title: String, completions: Int, points: Int) {
  * Composable helper : affiche un nom d'utilisateur cliquable qui ouvre le
  * modal [UserProfileDialog] au tap. Usage :
  * ```
- * ClickableUserName(userId = "...", userName = "Quentin", onTaskClick = ...)
+ * ClickableUserName(userId = "...", userName = "Alice", onTaskClick = ...)
  * ```
  */
 @Composable

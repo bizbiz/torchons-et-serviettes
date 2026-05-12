@@ -56,8 +56,11 @@ import androidx.compose.ui.unit.dp
  */
 private const val BMC_URL = "https://buymeacoffee.com/<account>"
 
-/** Email de contact du dev pour le bouton "M'ecrire". */
-private const val SUPPORT_EMAIL = "contact@torchonsetserviettes.app"
+/** Email de contact du dev pour le bouton "M'ecrire". Source = BuildConfig
+ *  (cf. build.gradle.kts > `tsSupportEmail`). Configurable via
+ *  `ts.support.email=...` dans `local.properties` (gitignored) pour ne
+ *  pas exposer un email perso dans le repo public. */
+private val SUPPORT_EMAIL: String = com.torchons.app.BuildConfig.SUPPORT_EMAIL
 
 /**
  * Card "Securite du foyer" affichant 2 actions critiques (v0.30) :
@@ -373,10 +376,10 @@ fun SupportDevCard() {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Salut, je suis Quentin, dev solo. Je fais cette app sur " +
-                    "mon temps libre. Le serveur + le domaine me coutent ~10€/mois. " +
-                    "Si l'app te plait, ou si tu as une idee, un bug, une remarque, " +
-                    "fais-moi signe !",
+                text = "Cette app est faite par un dev solo, sur du temps libre. " +
+                    "Le serveur et le domaine ont un cout mensuel. Si l'app te plait, " +
+                    "ou si tu as une idee, un bug, une remarque, n'hesite pas a " +
+                    "ecrire !",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

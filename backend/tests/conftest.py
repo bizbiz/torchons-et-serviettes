@@ -11,7 +11,7 @@ import pytest_asyncio
 from app.auth import create_token
 from app.main import app
 
-USER_ID_QUENTIN = "***REMOVED***"
+TEST_USER_ID = "***REMOVED***"
 DEVICE_A = str(uuid.uuid4())
 DEVICE_B = str(uuid.uuid4())
 
@@ -26,8 +26,8 @@ async def client():
 
 @pytest.fixture(scope="session")
 def auth_headers() -> dict:
-    """Headers Authorization avec un token valide pour Quentin."""
-    token = create_token(USER_ID_QUENTIN, DEVICE_A)
+    """Headers Authorization avec un token valide pour le user de test."""
+    token = create_token(TEST_USER_ID, DEVICE_A)
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -44,5 +44,5 @@ def device_b() -> str:
 @pytest.fixture(scope="session")
 def auth_headers_device_b() -> dict:
     """Headers avec un device_id different (pour tester le filtrage self-device)."""
-    token = create_token(USER_ID_QUENTIN, DEVICE_B)
+    token = create_token(TEST_USER_ID, DEVICE_B)
     return {"Authorization": f"Bearer {token}"}

@@ -436,7 +436,7 @@ fun TaskEditScreen(
             // ajuster la cadence d'un interval, mais changer de type (ex. passer
             // d'interval a uncertain) se fait ici.
             var recurrenceExpanded by remember { mutableStateOf(false) }
-            // v0.27 — libelles ***REMOVED***-friendly :
+            // v0.27 — libelles plus lisibles (UX tests internes) :
             // - interval -> Reguliere
             // - monthly_variable -> Selon le mois
             // - uncertain -> Irreguliere

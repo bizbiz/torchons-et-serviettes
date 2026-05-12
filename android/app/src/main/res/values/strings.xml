@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Torchons &amp; Serviettes</string>
-    <string name="login_title">Qui es-tu ?</string>
-    <string name="login_alice">Quentin</string>
-    <string name="login_bob">***REMOVED***</string>
     <string name="login_loading">Connexion en cours…</string>
     <string name="login_error">Erreur de connexion</string>
     <string name="task_list_title">Mes tâches</string>

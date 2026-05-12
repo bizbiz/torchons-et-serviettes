@@ -297,8 +297,8 @@ fun TaskListScreen(
                     singleLine = true,
                 )
             } else {
-                // Chips de filtres avances en texte tri-state (v0.26 — UX
-                // pour ***REMOVED*** qui confondait les icones). Carrousel a defilement
+                // Chips de filtres avances en texte tri-state (v0.26 — feedback
+                // UX, les icones seules etaient ambigues). Carrousel a defilement
                 // horizontal pour gagner de la place ; loupe fixee a droite.
                 Row(
                     modifier = Modifier
@@ -612,8 +612,8 @@ private data class TaskListCompletionDialogState(
  *  - LOW  : libelle LOW, fond vert plein. Filtre actif inverse.
  *
  * Le passage HIGH -> LOW change donc a la fois le fond ET le libelle,
- * pour que l'utilisateur (testeur ***REMOVED***) lise directement ce qu'il
- * filtre, sans a avoir a memoriser un code couleur d'icone.
+ * pour que l'utilisateur lise directement ce qu'il filtre, sans avoir
+ * a memoriser un code couleur d'icone.
  */
 @Composable
 private fun FilterTextChip(

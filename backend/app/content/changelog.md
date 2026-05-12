@@ -55,7 +55,7 @@
   desormais une card "Total du foyer" avec 3 colonnes (cette semaine /
   ce mois / au total). Si le foyer enchaine plusieurs jours d'affilee
   avec >=1 tache faite par n'importe qui, un compteur "🔥 N jours
-  d'affilee" apparait. La section "Repartition" (barres Quentin/***REMOVED***)
+  d'affilee" apparait. La section "Repartition" (barres par membre)
   est conservee en complement.
 
 ### Stats long-terme par pieces
@@ -90,7 +90,7 @@
     automatiquement ; sinon tu retombes sur l'ecran d'accueil.
 
 ### Soutenir / Discuter avec le dev
-- Nouvelle card en bas des Reglages avec un mot du dev (Quentin,
+- Nouvelle card en bas des Reglages avec un mot du dev (auteur solo,
   solo). Deux boutons : "Payer un cafe" (ouvre la page Buy Me a
   Coffee dans le navigateur) et "M'ecrire" (ouvre l'app mail avec
   un brouillon vers le dev). Les retours, idees et bugs sont les
@@ -151,14 +151,14 @@
 
 ### Bandeau "Tu n'as pas voté" sur le détail des tâches
 - Sur le detail d'une tache, un bandeau bleu apparait quand tu n'as pas encore exprime ton avis (frequence, affinite, ou effort). Cliquer dessus ouvre le formulaire de vote, pre-rempli avec les valeurs deja saisies. C'est purement une invitation : libre a toi de l'ignorer.
-- Le sous-texte sous la frequence change selon l'etat des votes : "Moyenne des votes de toi & Quentin", ou "Vote de Quentin · tu n'as pas vote", ou "Pas encore vote".
+- Le sous-texte sous la frequence change selon l'etat des votes : "Moyenne des votes de toi & l'autre membre", ou "Vote de l'autre membre · tu n'as pas vote", ou "Pas encore vote".
 
 ### Modaux "+ d'info" sur la fréquence et l'affinité
 - Un lien "+ d'info" sous la frequence ouvre un modal qui explique le mecanisme de vote, montre la valeur de chacun avec sa date, et permet de modifier ton vote ou de demander a un autre membre de revoter.
 - Un modal equivalent sur l'affinite explique pourquoi c'est une preference perso (qui n'influence que tes propres suggestions), et te laisse modifier ton avis. Pas de bouton "demander a quelqu'un d'autre" pour l'affinite : c'est subjectif et personnel.
 
 ### Demander à quelqu'un de revoter
-- Depuis le modal "+ d'info" frequence, un bouton "Demander revote" cote utilisateur envoie une demande dans sa file d'attente. Quand l'autre ouvre l'app, le formulaire de vote pop avec un message "Quentin t'a demande de revoter sur cette tache". Idem pour l'effort.
+- Depuis le modal "+ d'info" frequence, un bouton "Demander revote" cote utilisateur envoie une demande dans sa file d'attente. Quand l'autre ouvre l'app, le formulaire de vote pop avec un message "X t'a demande de revoter sur cette tache". Idem pour l'effort.
 - Une demande deja envoyee est visible (bouton grise "Demande envoyee") pour eviter d'envoyer 10 fois la meme.
 
 ## v0.27.0 — 2026-04-28
@@ -198,7 +198,7 @@
 - Carte automatiquement masquee si rien a afficher (foyer tout neuf ou debut de semaine).
 
 ### Stats du foyer dans le profil utilisateur
-- Quand on clique sur le nom de quelqu'un (dans une carte d'historique, un classement, etc.), la modal de profil affiche desormais aussi la repartition Quentin / ***REMOVED*** sur la semaine et au total, avec une barre coloree.
+- Quand on clique sur le nom de quelqu'un (dans une carte d'historique, un classement, etc.), la modal de profil affiche desormais aussi la repartition entre les membres sur la semaine et au total, avec une barre coloree.
 - Le nom de l'utilisateur ouvert est en gras dans la legende pour le reperage immediat.
 
 ## v0.23.0 — 2026-04-27
@@ -216,7 +216,7 @@
 
 ### Notifications affinees pour les completions
 - Trois reglages independants remplacent l'ancien "Taches completees" : "Quand quelqu'un fait une tache seul", "Quand on fait une tache ensemble (avec moi)", et "Quand une tache est faite a plusieurs sans moi" (visible uniquement a 3+ membres dans le foyer).
-- Les notifs collectives sont personnalisees : "Quentin a fait la vaisselle avec toi", "Quentin, ***REMOVED*** & toi avez fait …", ou "Quentin & ***REMOVED*** ont fait …" selon que tu participes ou non.
+- Les notifs collectives sont personnalisees : "Alex a fait la vaisselle avec toi", "Alex, Sam & toi avez fait …", ou "Alex & Sam ont fait …" selon que tu participes ou non.
 
 ### Historique des taches repense pour les collectifs
 - Un evenement "fait ensemble" apparait comme une seule carte avec tous les participants ("A, B & C") au lieu d'une ligne par personne.
@@ -259,7 +259,7 @@
 - Une barre de recherche permet de filtrer l'historique par titre de tache. Tape "lavabo" et tu ne verras que ce qui touche a la tache "Nettoyer le lavabo".
 - Un bouton "Filtres" ouvre un panneau pliable avec :
   - Type d'evenement (3 chips multi-select : Completions, Votes, Modifications) pour ne voir qu'une famille a la fois.
-  - Acteur (Tous, Quentin, ***REMOVED***) pour filtrer par personne.
+  - Acteur (Tous, par membre du foyer) pour filtrer par personne.
   - Periode (Cette semaine, Ce mois, 3 derniers mois, Tout) pour scoper la fenetre temporelle.
 - Les filtres sont combinables et un compteur sur le bouton "Filtres" indique combien sont actifs. Un bouton "Effacer" remet tout a zero.
 
@@ -277,7 +277,7 @@
 
 ### Cadence des taches : enfin pilotee 100% par les votes
 - Tu ne peux plus ecraser la cadence d'une tache (champ "tous les X jours") en l'editant directement dans la fiche : le champ devient grise et affiche "Consensus : 7 j (2 votes)". Pour modifier la cadence, un bouton "Modifier via le vote" ouvre un mini-dialog dedie ou tu peux poser ton vote, qui rentre dans le calcul du consensus avec ceux des autres membres du foyer.
-- Le mini-dialog affiche le consensus actuel et les votes des autres membres ("Quentin : 7 j") pour que tu voies pourquoi la cadence est ce qu'elle est avant de voter.
+- Le mini-dialog affiche le consensus actuel et les votes des autres membres ("Alex : 7 j") pour que tu voies pourquoi la cadence est ce qu'elle est avant de voter.
 - A la creation d'une tache recurrente "tous les X jours", la valeur que tu saisis devient automatiquement ton vote initial — plus de cadence "fantome" qui ne correspond a aucun vote.
 - Si tu changes le type de recurrence (ex : passer de "tous les 7 jours" a "variable par mois"), tes votes sont conserves en sommeil. Si tu reviens a "tous les X jours" plus tard, ils reprennent vie automatiquement et la cadence est recalculee.
 
@@ -354,7 +354,7 @@
 - Le gel des vacances continue de s'appliquer (les jours d'absence ne comptent pas).
 
 ### Detail de tache : respect des attributions
-- Sur une tache attribuee a une seule personne, l'ecran detail affiche maintenant un bandeau "Pour Quentin uniquement" (ou ***REMOVED***) en haut.
+- Sur une tache attribuee a une seule personne, l'ecran detail affiche maintenant un bandeau "Pour un membre uniquement" (avec son prenom) en haut.
 - L'autre personne ne voit plus son propre encart "Effort & Affinite" pour cette tache (il etait trompeur : noter une tache qu'on ne fait pas n'a pas de sens).
 - Le bouton "Modifier" de la note d'affinite/effort est masque pour qui n'est pas attribue.
 
@@ -509,7 +509,7 @@
 ### Multi-foyer (refonte invisible mais fondamentale)
 - L'app est maintenant prete a gerer plusieurs foyers : tu peux creer un nouveau foyer (par exemple pour une colloc d'amis) et basculer entre tes foyers sans perdre les donnees de l'autre.
 - Nouvel ecran **Reglages → Mes foyers** : tu vois la liste des foyers auxquels tu appartiens, tu peux en creer un nouveau via le bouton + et basculer en cliquant dessus. Au basculement, l'app vide son cache local et recharge les donnees du nouveau foyer (quelques secondes).
-- Pour l'instant Quentin et ***REMOVED*** partagent un seul foyer "Maison" — toutes les taches, categories et pieces existantes y ont ete migrees automatiquement.
+- Pour l'instant les membres existants partagent un seul foyer "Maison" — toutes les taches, categories et pieces existantes y ont ete migrees automatiquement.
 - L'invitation d'amis par QR code pour creer un foyer commun sera ajoutee dans une prochaine version (ca necessite une infra de deploiement publique).
 
 ### Taches ponctuelles visibles
@@ -601,7 +601,7 @@
 
 ### Historique des modifications
 - Nouvelle section « Historique des modifications » dans la fiche detail d'une tache, sous l'historique des completions : affiche qui a vote quoi et comment le consensus a evolue (affinite, effort, frequence).
-- Chaque vote s'affiche avec son impact sur la moyenne : par exemple « ***REMOVED*** a vote 7j frequence → consensus 6j » ou « Quentin a vote 3/10 affinite → consensus 4/10 ».
+- Chaque vote s'affiche avec son impact sur la moyenne : par exemple « Alex a vote 7j frequence → consensus 6j » ou « Sam a vote 3/10 affinite → consensus 4/10 ».
 - Les modifications directes de la tache (changement de titre, recurrence, categorie, tolerance, affectations) apparaissent aussi dans cette timeline.
 
 ### Frequence votable
@@ -677,11 +677,11 @@
 - Pour une tache deja recurrente, tu peux ajuster sa frequence (de 50 % a 200 % de la valeur actuelle).
 
 ### "Qui a fait cette tache ?"
-- Quand tu valides une tache en mode "deja fait" (date passee), un nouveau selecteur te demande qui (Quentin ou ***REMOVED***) l'a faite, en plus de la date.
+- Quand tu valides une tache en mode "deja fait" (date passee), un nouveau selecteur te demande qui (parmi les membres) l'a faite, en plus de la date.
 - Le selecteur est skippe automatiquement si une seule personne est assignee a la tache.
 
 ### Profil utilisateur cliquable partout
-- Tu peux maintenant cliquer sur le nom de Quentin ou ***REMOVED*** n'importe ou dans l'app : feed historique, classement, resume stats, streaks, completions de taches.
+- Tu peux maintenant cliquer sur le nom de n'importe quel membre n'importe ou dans l'app : feed historique, classement, resume stats, streaks, completions de taches.
 - Un modal s'ouvre avec son historique personnel, son nombre de completions et son total de points.
 - Les taches dans cet historique sont elles-memes cliquables pour aller a leur detail.
 

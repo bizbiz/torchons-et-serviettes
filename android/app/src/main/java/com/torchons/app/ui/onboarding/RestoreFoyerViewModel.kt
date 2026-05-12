@@ -21,7 +21,7 @@ import javax.inject.Inject
  *
  * Etapes :
  *  - Form     : saisie code de recuperation
- *  - Preview  : confirmation visuelle ("C'est bien toi, Quentin ?")
+ *  - Preview  : confirmation visuelle ("C'est bien toi, X ?")
  *  - Done     : JWT recu, navigation vers MAIN
  *
  * Cf. docs/design-onboarding-public.md §5.

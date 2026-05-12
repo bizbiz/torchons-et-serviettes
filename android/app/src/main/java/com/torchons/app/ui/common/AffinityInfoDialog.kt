@@ -34,8 +34,9 @@ data class AffinityRatingRow(
  *
  * Decisions /grill-me Q11 :
  * - Pedago courte qui rappelle que l'affinite est PERSO (n'influence que
- *   les suggestions du user, pas celles des autres). ***REMOVED*** comprend
- *   pourquoi on ne peut pas demander a quelqu'un de revoter son affinite.
+ *   les suggestions du user, pas celles des autres). L'autre membre du
+ *   foyer comprend pourquoi on ne peut pas demander a quelqu'un de
+ *   revoter son affinite.
  * - Liste des affinites par user (etoiles 1-10 -> texte resume).
  * - Bouton "Modifier mon affinite" -> ouvre le RatingDialog en mode
  *   affinite seule (parent gere l'ouverture).
