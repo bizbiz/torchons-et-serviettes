@@ -108,6 +108,12 @@ class SuggestionResponse(BaseModel):
     # Alimente la pastille +X% sur la SuggestionCard.
     bonus_eligible: bool = False
     bonus_pct: float = 0.0  # pct de bonus (ex 0.5 pour +50%)
+    # v0.32 : points predits affiches sur la carte home AVANT completion.
+    # predicted_base_points = base sans multiplicateur (0 si tache solo).
+    # predicted_final_points = base * multiplicateur bonus, min 1 si base > 0,
+    # 0 si tache solo (perso).
+    predicted_base_points: int = 0
+    predicted_final_points: int = 0
 
 
 class SuggestionsResponse(BaseModel):
@@ -845,6 +851,8 @@ def _build_suggestion(scored: dict, reason: str) -> SuggestionResponse:
         reason=reason,
         bonus_eligible=scored.get("bonus_eligible", False),
         bonus_pct=scored.get("bonus_pct", 0.0),
+        predicted_base_points=scored.get("predicted_base_points", 0),
+        predicted_final_points=scored.get("predicted_final_points", 0),
     )
 
 
@@ -866,6 +874,8 @@ def _build_uncertain_suggestion(scored: dict) -> SuggestionResponse:
         reason="uncertain",
         bonus_eligible=False,
         bonus_pct=0.0,
+        predicted_base_points=scored.get("predicted_base_points", 0),
+        predicted_final_points=scored.get("predicted_final_points", 0),
     )
 
 
@@ -1007,6 +1017,43 @@ async def get_suggestions(
     )
     affinities = {row[0]: row[1] for row in aff_result.all()}
 
+    # v0.32 : batch-load des assignations et efforts pour calculer les points
+    # predits inline (eviter N+1 queries via compute_base_points_for_task).
+    assign_count_result = await session.execute(
+        select(TaskAssignment.task_id, func.count(TaskAssignment.user_id)).where(
+            TaskAssignment.task_id.in_(task_ids)
+        ).group_by(TaskAssignment.task_id)
+    )
+    assign_counts: dict[UUID, int] = {row[0]: row[1] for row in assign_count_result.all()}
+    effort_avg_result = await session.execute(
+        select(TaskEffort.task_id, func.avg(TaskEffort.points)).where(
+            TaskEffort.task_id.in_(task_ids)
+        ).group_by(TaskEffort.task_id)
+    )
+    effort_avgs: dict[UUID, float] = {row[0]: row[1] for row in effort_avg_result.all() if row[1] is not None}
+
+    def _predict_points(task: Task, bonus_eligible: bool) -> tuple[int, int]:
+        """Retourne (base, final) pour l'affichage carte home avant completion.
+
+        Replique compute_base_points_for_task + apply_multiplier_to_points
+        en mode synchrone sur les maps batch-loadees. Le multiplicateur en
+        retard n'est applique que si bonus_eligible (= seuil franchi + au
+        moins une completion passee). Sinon multiplicateur neutre 1.0.
+        """
+        num_assigned = assign_counts.get(task.id, 0)
+        if num_assigned <= 1:
+            return 0, 0
+        avg_effort = effort_avgs.get(task.id)
+        base = int(round(avg_effort)) if avg_effort else task.weight
+        if base <= 0:
+            return 0, 0
+        if bonus_eligible:
+            mult = 1.0 + bonus_config.bonus_pct
+            final = max(1, int(round(base * mult)))
+        else:
+            final = base
+        return base, final
+
     # Affinites normalisees (pour le classement affinite cross-taches)
     aff_scores = [affinities.get(t.id, 5) for t in tasks]
     mean_aff = sum(aff_scores) / len(aff_scores) if aff_scores else 5.0
@@ -1031,11 +1078,15 @@ async def get_suggestions(
             else:
                 d = (today - last_comp.date()).days
                 score = min(d / interval, UNCERTAIN_SCORE_CAP)
+            # Uncertain : pas de bonus retard possible, multiplicateur neutre.
+            base_pts, final_pts = _predict_points(task, bonus_eligible=False)
             uncertain_scored.append({
                 "task": task,
                 "score": score,
                 "days_since_last": d,
                 "affinity_score": affinities.get(task.id, 5),
+                "predicted_base_points": base_pts,
+                "predicted_final_points": final_pts,
             })
             continue
 
@@ -1077,6 +1128,7 @@ async def get_suggestions(
             if pct_retard >= seuil and completion_counts.get(task.id, 0) >= 1:
                 bonus_eligible = True
 
+        base_pts, final_pts = _predict_points(task, bonus_eligible=bonus_eligible)
         scored_tasks.append({
             "task": task,
             "due_date": due_date,
@@ -1087,6 +1139,8 @@ async def get_suggestions(
             "norm_affinity": norm_aff,
             "bonus_eligible": bonus_eligible,
             "bonus_pct": bonus_config.bonus_pct if bonus_eligible else 0.0,
+            "predicted_base_points": base_pts,
+            "predicted_final_points": final_pts,
         })
 
     # Buckets par tier pour la cascade "la plus urgente".

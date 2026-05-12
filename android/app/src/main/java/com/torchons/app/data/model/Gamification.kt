@@ -18,6 +18,10 @@ data class Suggestion(
     @SerializedName("bonus_eligible") val bonusEligible: Boolean = false,
     /** Pct de bonus (ex 0.5 = +50%). */
     @SerializedName("bonus_pct") val bonusPct: Float = 0.0f,
+    /** Points de base predits (sans multiplicateur). 0 si tache solo (1 assignee). */
+    @SerializedName("predicted_base_points") val predictedBasePoints: Int = 0,
+    /** Points finaux predits (base * multiplicateur bonus). 0 si solo. */
+    @SerializedName("predicted_final_points") val predictedFinalPoints: Int = 0,
 )
 
 /**

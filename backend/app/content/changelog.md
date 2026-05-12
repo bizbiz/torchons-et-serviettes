@@ -1,5 +1,12 @@
 # Notes de version
 
+## v0.31.3 — 2026-05-12
+
+### Gamification — lisibilite des points
+- Affichage des points prevus sur chaque carte de la page d'accueil ("💰 N pts"), avec mention du bonus retard quand applicable ("🔥 +M pts bonus retard")
+- Icone (i) cliquable a cote des taches solo (0 point) qui ouvre une pop-up explicative : pourquoi un seul participant = pas de points, et pourquoi valider la tache reste utile
+- Meme pop-up disponible dans le dialog "Fait !" quand la tache ne rapportera pas de points
+
 ## v0.31.2 — 2026-05-12
 
 ### Absences (gel a la maison)

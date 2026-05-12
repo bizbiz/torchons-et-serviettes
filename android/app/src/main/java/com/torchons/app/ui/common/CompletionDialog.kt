@@ -15,6 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -354,6 +356,9 @@ private fun PreviewPointsLine(
         else -> Triple(null, null, MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
+    var showSoloInfo by remember { mutableStateOf(false) }
+    val isSolo = preview.reason == "PERSO" || preview.finalPoints == 0
+
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -366,6 +371,18 @@ private fun PreviewPointsLine(
                 fontWeight = FontWeight.Bold,
                 color = reasonColor,
             )
+            // Icone (i) cliquable pour expliquer le 0 pt des taches solo.
+            if (isSolo) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "Pourquoi 0 point ?",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clickable { showSoloInfo = true },
+                )
+            }
         }
         if (reasonLabel != null) {
             Spacer(modifier = Modifier.height(2.dp))
@@ -387,5 +404,9 @@ private fun PreviewPointsLine(
                 )
             }
         }
+    }
+
+    if (showSoloInfo) {
+        SoloPointsInfoDialog(onDismiss = { showSoloInfo = false })
     }
 }

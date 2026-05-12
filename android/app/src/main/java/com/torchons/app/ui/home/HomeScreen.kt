@@ -1,6 +1,7 @@
 package com.torchons.app.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -75,6 +77,7 @@ import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.CompletionDialog
 import com.torchons.app.ui.common.CompletionDialogMode
 import com.torchons.app.ui.common.RatingDialog
+import com.torchons.app.ui.common.SoloPointsInfoDialog
 import com.torchons.app.ui.common.RatingRecurrence
 import com.torchons.app.ui.common.randomCelebration
 import com.torchons.app.util.TaskUrgencyCalculator
@@ -756,6 +759,13 @@ private fun SuggestionCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Ligne points predits : "💰 N pts" (+ delta bonus si applicable).
+            // Pour les taches solo (predicted = 0) : "💰 0 pt" + icone (i)
+            // cliquable qui ouvre SoloPointsInfoDialog (pedago "pourquoi 0 ?").
+            SuggestionPointsLine(suggestion = suggestion)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Bouton principal "Fait !" pleine largeur
             Button(
                 onClick = onComplete,
@@ -832,6 +842,70 @@ private fun DatePickerDialog(
         }
     ) {
         DatePicker(state = datePickerState)
+    }
+}
+
+/**
+ * Ligne "💰 N pts" sous la card home, juste au-dessus du bouton "Fait !".
+ *
+ * Affiche les points predits par /api/suggestions (predicted_final_points)
+ * pour rendre la gamification lisible AVANT la completion (l'utilisateur
+ * sait combien il va gagner avant de cliquer).
+ *
+ * Trois cas visuels :
+ *  - Solo (predicted = 0) : "💰 0 pt" en gris + icone (i) qui ouvre
+ *    SoloPointsInfoDialog (pedago "pourquoi 0 ?").
+ *  - Bonus retard eligible (bonusEligible) : "💰 N pts" en vert avec un
+ *    suffixe "+M pts bonus retard" pour rendre le bonus tangible.
+ *  - Cas standard : "💰 N pts" neutre.
+ */
+@Composable
+private fun SuggestionPointsLine(suggestion: Suggestion) {
+    var showInfo by remember { mutableStateOf(false) }
+    val finalPts = suggestion.predictedFinalPoints
+    val basePts = suggestion.predictedBasePoints
+    val delta = finalPts - basePts
+    val isSolo = finalPts == 0
+    val color = when {
+        isSolo -> MaterialTheme.colorScheme.onSurfaceVariant
+        suggestion.bonusEligible && delta > 0 -> Color(0xFF2E7D32)
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "💰 ",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            text = "$finalPts pt${if (finalPts > 1) "s" else ""}",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = color,
+        )
+        if (!isSolo && suggestion.bonusEligible && delta > 0) {
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "🔥 +$delta pt${if (delta > 1) "s" else ""} bonus retard",
+                style = MaterialTheme.typography.labelSmall,
+                color = color,
+            )
+        }
+        if (isSolo) {
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Outlined.Info,
+                contentDescription = "Pourquoi 0 point ?",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier
+                    .size(18.dp)
+                    .clickable { showInfo = true },
+            )
+        }
+    }
+
+    if (showInfo) {
+        SoloPointsInfoDialog(onDismiss = { showInfo = false })
     }
 }
 
