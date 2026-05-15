@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Politique de confidentialité — Torchons &amp; Serviettes</title>
+<meta name="description" content="Politique de confidentialité de Torchons & Serviettes : données collectées, finalités, durées, droits RGPD.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>Torchons &amp; Serviettes</a>
+    <nav class="site">
+      <a href="about.html">À propos</a>
+      <a href="privacy.html">Confidentialité</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Politique de confidentialité</h1>
+    <p class="meta">Dernière mise à jour : 15 mai 2026</p>
+    <p class="lead">
+      Torchons &amp; Serviettes est conçue pour collecter le strict minimum.
+      Pas d'e-mail, pas de mot de passe, pas de numéro de téléphone, pas de
+      géolocalisation, pas de publicité, pas de pistage, pas de statistiques
+      tierces.
+    </p>
+
+    <div class="todo">
+      <strong>À renseigner par l'éditeur (obligatoire légalement) :</strong>
+      identité du responsable de traitement —
+      <code>[Nom / structure de l'éditeur]</code>,
+      <code>[adresse / pays]</code>. Le présent document est un gabarit
+      aligné sur les recommandations de la CNIL ; il doit être relu et
+      validé par l'éditeur (et, idéalement, un tiers compétent). Ce n'est
+      pas un avis juridique.
+    </div>
+
+    <h2>1. Responsable du traitement</h2>
+    <p>
+      Le responsable du traitement des données est l'éditeur de
+      l'application Torchons &amp; Serviettes
+      (<code>[Nom / structure de l'éditeur]</code>). Contact :
+      <a href="mailto:contact@torchonsetserviettes.app">contact@torchonsetserviettes.app</a>.
+    </p>
+
+    <h2>2. Données collectées, finalités et base légale</h2>
+    <p>
+      L'inscription se fait sans compte classique : aucun e-mail ni mot de
+      passe n'est demandé. Les données ci-dessous sont les seules traitées,
+      toutes nécessaires au fonctionnement du service (base légale :
+      exécution du service demandé / intérêt légitime au bon fonctionnement
+      de l'application).
+    </p>
+    <table>
+      <thead>
+        <tr><th>Donnée</th><th>Origine</th><th>Finalité</th><th>Conservation</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Pseudonyme (nom affiché)</td>
+          <td>Saisi par l'utilisateur</td>
+          <td>Identifier les membres au sein d'un foyer</td>
+          <td>Tant que le compte/foyer est actif</td>
+        </tr>
+        <tr>
+          <td>Tâches, complétions, votes, évaluations</td>
+          <td>Générées par l'usage</td>
+          <td>Gérer et répartir les tâches du foyer, historique partagé</td>
+          <td>Tant que le compte/foyer est actif</td>
+        </tr>
+        <tr>
+          <td>Identifiant d'appareil (UUID technique)</td>
+          <td>Généré à l'installation</td>
+          <td>Authentification et synchronisation hors-ligne</td>
+          <td>Tant que le compte est actif</td>
+        </tr>
+        <tr>
+          <td>Jeton de notification (Firebase Cloud Messaging)</td>
+          <td>Généré par le système</td>
+          <td>Envoyer les notifications/rappels de tâches</td>
+          <td>Jusqu'à désinstallation ou désactivation des notifications</td>
+        </tr>
+        <tr>
+          <td>Code de récupération (haché)</td>
+          <td>Généré à la création/jonction d'un foyer</td>
+          <td>Permettre de retrouver son foyer en cas de perte du téléphone</td>
+          <td>Stocké sous forme de hachage <code>argon2id</code> ; jamais en clair</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      <strong>Ne sont pas collectés :</strong> e-mail, mot de passe, numéro
+      de téléphone, géolocalisation, photos, carnet de contacts, données
+      bancaires ou de paiement.
+    </p>
+
+    <h2>3. Absence de pistage et de cookies</h2>
+    <p>
+      L'application n'intègre aucun outil d'analyse d'audience, aucun
+      rapport de plantage tiers, aucun traqueur publicitaire. Ce site web
+      ne dépose aucun cookie et ne charge aucune ressource externe (polices,
+      scripts, CDN).
+    </p>
+
+    <h2>4. Destinataires et sous-traitants</h2>
+    <p>
+      Les données ne sont ni vendues, ni louées, ni partagées à des fins
+      publicitaires. Elles sont traitées par les sous-traitants techniques
+      strictement nécessaires :
+    </p>
+    <table>
+      <thead><tr><th>Sous-traitant</th><th>Rôle</th><th>Localisation</th></tr></thead>
+      <tbody>
+        <tr><td>Scaleway</td><td>Hébergement du serveur et de la base de données</td><td>France (Union européenne)</td></tr>
+        <tr><td>Google (Firebase Cloud Messaging)</td><td>Acheminement des notifications push</td><td>États-Unis</td></tr>
+      </tbody>
+    </table>
+    <p>
+      Le service de dons « Buy Me a Coffee » est un service tiers externe :
+      si vous choisissez d'y faire un don, les données de cette transaction
+      sont traitées par ce tiers selon sa propre politique, en dehors de
+      l'application.
+    </p>
+
+    <h2>5. Transferts hors Union européenne</h2>
+    <p>
+      L'hébergement des données reste en France (Scaleway). Le seul
+      transfert hors UE concerne l'acheminement des notifications push via
+      Google Firebase Cloud Messaging (États-Unis). Ce transfert est
+      encadré par les Clauses Contractuelles Types de la Commission
+      européenne. Le contenu transmis se limite au strict nécessaire à
+      l'affichage d'une notification.
+    </p>
+
+    <h2>6. Durée de conservation et suppression</h2>
+    <p>
+      Vous pouvez supprimer votre compte directement depuis l'application
+      (Réglages → Sécurité du foyer). La suppression entraîne un effacement
+      logique immédiat, puis une purge définitive des données associées
+      sous <strong>30 jours</strong>. Un foyer laissé totalement inactif est
+      archivé après 90 jours d'inactivité, puis purgé après 365 jours.
+    </p>
+
+    <h2>7. Vos droits</h2>
+    <p>
+      Conformément au RGPD, vous disposez des droits d'accès, de
+      rectification, d'effacement, de limitation, d'opposition et de
+      portabilité concernant vos données.
+    </p>
+    <ul>
+      <li>
+        <strong>Effacement</strong> : réalisable immédiatement et de
+        manière autonome depuis l'application (suppression du compte).
+      </li>
+      <li>
+        <strong>Autres droits</strong> : exercez-les en écrivant à
+        <a href="mailto:contact@torchonsetserviettes.app">contact@torchonsetserviettes.app</a>.
+        Une réponse vous sera apportée dans les délais légaux.
+      </li>
+    </ul>
+    <p>
+      Vous pouvez également introduire une réclamation auprès de la CNIL
+      (<a href="https://www.cnil.fr" rel="noopener noreferrer" target="_blank">www.cnil.fr</a>)
+      si vous estimez que le traitement n'est pas conforme.
+    </p>
+
+    <h2>8. Sécurité</h2>
+    <p>
+      Aucun mot de passe n'est stocké (l'application n'en utilise pas). Le
+      code de récupération est conservé uniquement sous forme de hachage
+      <code>argon2id</code>, jamais en clair. Les communications entre
+      l'application et le serveur sont chiffrées (HTTPS/TLS).
+    </p>
+
+    <h2>9. Âge minimum</h2>
+    <p>
+      L'application est destinée aux personnes de <strong>13 ans ou
+      plus</strong>. Elle n'est pas conçue pour les enfants en dessous de
+      cet âge et ne collecte pas sciemment leurs données.
+    </p>
+
+    <h2>10. Modifications</h2>
+    <p>
+      Cette politique peut évoluer (nouvelle fonctionnalité, changement de
+      sous-traitant). En cas de modification substantielle, la date de
+      « dernière mise à jour » en tête de page est actualisée. Les
+      changements importants pourront être signalés dans l'application.
+    </p>
+
+    <h2>11. Contact</h2>
+    <p>
+      Pour toute question relative à cette politique ou à vos données :
+      <a href="mailto:contact@torchonsetserviettes.app">contact@torchonsetserviettes.app</a>.
+    </p>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <span>© <span id="y">2026</span> Torchons &amp; Serviettes</span>
+    <span>
+      <a href="about.html">À propos</a> ·
+      <a href="privacy.html">Confidentialité</a> ·
+      <a href="contact.html">Contact</a>
+    </span>
+  </div>
+</footer>
+<script>document.getElementById('y').textContent=new Date().getFullYear();</script>
+</body>
+</html>
