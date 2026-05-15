@@ -35,6 +35,12 @@ android/local.properties
 *.jks
 *.keystore
 
+# Assets Play exportés (captures/feature graphic) : atelier local, peuvent
+# contenir des données — uploadés direct dans la Play Console, pas versionnés.
+docs/play-assets/*.png
+docs/play-assets/*.jpg
+docs/play-assets/*.jpeg
+
 # Firebase
 backend/firebase-key.json
 android/app/google-services.json
