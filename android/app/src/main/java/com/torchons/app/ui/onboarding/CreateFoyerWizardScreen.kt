@@ -133,9 +133,11 @@ fun CreateFoyerWizardScreen(
                         rooms = state.rooms,
                         selectedKeys = state.selectedRoomKeys,
                         customRooms = state.customRooms,
+                        catalogStatus = state.catalogStatus,
                         onToggle = viewModel::toggleRoom,
                         onAddCustomRoom = viewModel::addCustomRoom,
                         onRemoveCustomRoom = viewModel::removeCustomRoom,
+                        onRetry = viewModel::retryCatalog,
                         onNext = viewModel::nextStep,
                     )
 
@@ -143,7 +145,9 @@ fun CreateFoyerWizardScreen(
                         tasks = viewModel.visibleTasks(state),
                         selectedKeys = state.selectedTaskKeys,
                         isSubmitting = state.isSubmitting,
+                        catalogStatus = state.catalogStatus,
                         onToggle = viewModel::toggleTask,
+                        onRetry = viewModel::retryCatalog,
                         onNext = viewModel::nextStep,
                     )
 
@@ -237,9 +241,11 @@ private fun StepPieces(
     rooms: List<CatalogRoomView>,
     selectedKeys: Set<String>,
     customRooms: List<String>,
+    catalogStatus: CatalogStatus,
     onToggle: (String) -> Unit,
     onAddCustomRoom: (String) -> Unit,
     onRemoveCustomRoom: (String) -> Unit,
+    onRetry: () -> Unit,
     onNext: () -> Unit,
 ) {
     Text(
@@ -255,12 +261,15 @@ private fun StepPieces(
     )
     Spacer(Modifier.height(20.dp))
 
-    if (rooms.isEmpty()) {
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else {
-        FlowRow(
+    when (catalogStatus) {
+        CatalogStatus.LOADING -> Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) { CircularProgressIndicator() }
+
+        CatalogStatus.ERROR -> CatalogErrorBox(onRetry = onRetry)
+
+        CatalogStatus.OK -> FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -341,7 +350,9 @@ private fun StepTaches(
     tasks: List<CatalogTaskView>,
     selectedKeys: Set<String>,
     isSubmitting: Boolean,
+    catalogStatus: CatalogStatus,
     onToggle: (String) -> Unit,
+    onRetry: () -> Unit,
     onNext: () -> Unit,
 ) {
     Text(
@@ -357,24 +368,33 @@ private fun StepTaches(
     )
     Spacer(Modifier.height(20.dp))
 
-    if (tasks.isEmpty()) {
-        Text(
-            text = "Aucune tache disponible pour les pieces selectionnees. Tu pourras les ajouter manuellement plus tard.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    } else {
-        FlowRow(
+    when (catalogStatus) {
+        CatalogStatus.LOADING -> Box(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            tasks.forEach { task ->
-                FilterChip(
-                    selected = task.key in selectedKeys,
-                    onClick = { onToggle(task.key) },
-                    label = { Text(task.title) },
-                )
+            contentAlignment = Alignment.Center,
+        ) { CircularProgressIndicator() }
+
+        CatalogStatus.ERROR -> CatalogErrorBox(onRetry = onRetry)
+
+        CatalogStatus.OK -> if (tasks.isEmpty()) {
+            Text(
+                text = "Aucune tache disponible pour les pieces selectionnees. Tu pourras les ajouter manuellement plus tard.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                tasks.forEach { task ->
+                    FilterChip(
+                        selected = task.key in selectedKeys,
+                        onClick = { onToggle(task.key) },
+                        label = { Text(task.title) },
+                    )
+                }
             }
         }
     }
@@ -404,6 +424,28 @@ private fun StepTaches(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text("Sauter cette etape")
+    }
+}
+
+/** Encart d'erreur reseau partage (steps Pieces/Taches) : message clair +
+ *  bouton Reessayer. L'user peut aussi continuer sans (skip) ou ajouter des
+ *  pieces custom — pas de spinner infini. */
+@Composable
+private fun CatalogErrorBox(onRetry: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Impossible de charger les suggestions (probleme de connexion ?). Tu peux reessayer, ou continuer sans : tout reste ajoutable plus tard depuis les Reglages.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(onClick = onRetry) { Text("Reessayer") }
+        }
     }
 }
 

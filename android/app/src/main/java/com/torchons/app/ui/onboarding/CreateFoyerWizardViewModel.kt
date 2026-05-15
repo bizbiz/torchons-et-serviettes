@@ -41,6 +41,9 @@ import javax.inject.Inject
  * de foyer wizard)" du DTOs.
  */
 
+/** Etat du chargement du catalogue (pieces/taches proposees). */
+enum class CatalogStatus { LOADING, OK, ERROR }
+
 data class WizardState(
     val step: Int = 1,  // 1..5 inclus
     val displayName: String = "",
@@ -52,6 +55,7 @@ data class WizardState(
     val customRooms: List<String> = emptyList(),
     val tasks: List<CatalogTaskView> = emptyList(),
     val selectedTaskKeys: Set<String> = emptySet(),
+    val catalogStatus: CatalogStatus = CatalogStatus.LOADING,
     val recoveryCode: String? = null,
     val isSubmitting: Boolean = false,
     val error: String? = null,
@@ -75,23 +79,30 @@ class CreateFoyerWizardViewModel @Inject constructor(
 
     private fun loadCatalog() {
         viewModelScope.launch {
+            _uiState.update { it.copy(catalogStatus = CatalogStatus.LOADING) }
             try {
                 val resp = apiService.getCatalog()
-                if (resp.isSuccessful) {
-                    val body = resp.body()
-                    if (body != null) {
-                        _uiState.update {
-                            it.copy(rooms = body.rooms, tasks = body.tasks)
-                        }
+                val body = resp.body()
+                if (resp.isSuccessful && body != null) {
+                    _uiState.update {
+                        it.copy(
+                            rooms = body.rooms,
+                            tasks = body.tasks,
+                            catalogStatus = CatalogStatus.OK,
+                        )
                     }
+                } else {
+                    _uiState.update { it.copy(catalogStatus = CatalogStatus.ERROR) }
                 }
-                // En echec on n'affiche pas d'erreur : les etapes pieces/taches
-                // resteront vides, l'user peut skip.
             } catch (_: Exception) {
-                // Idem, silently best-effort.
+                _uiState.update { it.copy(catalogStatus = CatalogStatus.ERROR) }
             }
         }
     }
+
+    /** Re-tente le chargement du catalogue (bouton "Reessayer" en cas
+     *  d'echec reseau). */
+    fun retryCatalog() = loadCatalog()
 
     fun setDisplayName(value: String) {
         _uiState.update { it.copy(displayName = value) }
