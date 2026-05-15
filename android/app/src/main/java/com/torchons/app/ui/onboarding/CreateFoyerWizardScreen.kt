@@ -43,7 +43,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -130,7 +132,10 @@ fun CreateFoyerWizardScreen(
                     3 -> StepPieces(
                         rooms = state.rooms,
                         selectedKeys = state.selectedRoomKeys,
+                        customRooms = state.customRooms,
                         onToggle = viewModel::toggleRoom,
+                        onAddCustomRoom = viewModel::addCustomRoom,
+                        onRemoveCustomRoom = viewModel::removeCustomRoom,
                         onNext = viewModel::nextStep,
                     )
 
@@ -231,7 +236,10 @@ private fun StepFoyer(
 private fun StepPieces(
     rooms: List<CatalogRoomView>,
     selectedKeys: Set<String>,
+    customRooms: List<String>,
     onToggle: (String) -> Unit,
+    onAddCustomRoom: (String) -> Unit,
+    onRemoveCustomRoom: (String) -> Unit,
     onNext: () -> Unit,
 ) {
     Text(
@@ -266,6 +274,51 @@ private fun StepPieces(
                             text = if (room.emoji != null) "${room.emoji} ${room.name}" else room.name,
                         )
                     },
+                )
+            }
+        }
+    }
+
+    Spacer(Modifier.height(20.dp))
+    Text(
+        text = "Une piece qui n'est pas dans la liste ? Ajoute-la :",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(8.dp))
+    var newRoom by remember { mutableStateOf("") }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedTextField(
+            value = newRoom,
+            onValueChange = { newRoom = it },
+            label = { Text("Autre piece") },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        Button(
+            onClick = {
+                onAddCustomRoom(newRoom)
+                newRoom = ""
+            },
+            enabled = newRoom.isNotBlank(),
+        ) { Text("Ajouter") }
+    }
+    if (customRooms.isNotEmpty()) {
+        Spacer(Modifier.height(12.dp))
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            customRooms.forEach { name ->
+                FilterChip(
+                    selected = true,
+                    onClick = { onRemoveCustomRoom(name) },
+                    label = { Text("$name  ✕") },
                 )
             }
         }

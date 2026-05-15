@@ -10,6 +10,7 @@ import com.torchons.app.data.model.ImportApplyRequest
 import com.torchons.app.data.model.ImportDecision
 import com.torchons.app.data.model.ImportResolveRequest
 import com.torchons.app.data.model.OnboardingCreateFoyerRequest
+import com.torchons.app.data.model.RoomCreateRequest
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.service.TokenRegistrar
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,6 +47,9 @@ data class WizardState(
     val foyerName: String = "",
     val rooms: List<CatalogRoomView> = emptyList(),
     val selectedRoomKeys: Set<String> = emptySet(),
+    // Pieces saisies librement par l'user (hors catalogue), creees via l'API
+    // rooms a la finalisation du wizard.
+    val customRooms: List<String> = emptyList(),
     val tasks: List<CatalogTaskView> = emptyList(),
     val selectedTaskKeys: Set<String> = emptySet(),
     val recoveryCode: String? = null,
@@ -102,6 +106,22 @@ class CreateFoyerWizardViewModel @Inject constructor(
             val s = it.selectedRoomKeys.toMutableSet()
             if (key in s) s.remove(key) else s.add(key)
             it.copy(selectedRoomKeys = s)
+        }
+    }
+
+    /** Ajoute une piece custom (texte libre). Trim + dedup insensible casse. */
+    fun addCustomRoom(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        _uiState.update {
+            if (it.customRooms.any { r -> r.equals(trimmed, ignoreCase = true) }) it
+            else it.copy(customRooms = it.customRooms + trimmed)
+        }
+    }
+
+    fun removeCustomRoom(name: String) {
+        _uiState.update {
+            it.copy(customRooms = it.customRooms.filterNot { r -> r == name })
         }
     }
 
@@ -208,6 +228,18 @@ class CreateFoyerWizardViewModel @Inject constructor(
                 )
                 // Push token FCM (best-effort silent)
                 tokenRegistrar.registerFcmToken()
+
+                // Pieces custom (texte libre) creees via l'API rooms apres
+                // creation du foyer (JWT en place). Best-effort : si une
+                // echoue, le foyer existe deja, l'user pourra reessayer
+                // depuis Reglages > Pieces.
+                if (s.customRooms.isNotEmpty()) {
+                    runCatching {
+                        for (name in s.customRooms) {
+                            apiService.createRoom(RoomCreateRequest(name = name))
+                        }
+                    }
+                }
 
                 // Import catalogue si pieces ou taches selectionnees
                 if (s.selectedRoomKeys.isNotEmpty() || s.selectedTaskKeys.isNotEmpty()) {
