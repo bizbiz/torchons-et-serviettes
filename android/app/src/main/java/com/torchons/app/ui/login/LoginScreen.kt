@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.BuildConfig
 
 @Composable
 fun LoginScreen(
@@ -39,7 +40,10 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(Unit) { viewModel.autoLogin() }
+    // Ecran legacy Tailscale (fallback dogfood). En build public (flavor
+    // prod, TAILSCALE_AUTOLOGIN=false) il n'est pas le point d'entree et
+    // ne tente pas l'auto-login.
+    LaunchedEffect(Unit) { if (BuildConfig.TAILSCALE_AUTOLOGIN) viewModel.autoLogin() }
 
     LaunchedEffect(uiState) {
         when (uiState) {

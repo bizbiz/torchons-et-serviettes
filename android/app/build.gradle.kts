@@ -9,33 +9,32 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-// URL de base de l'API : lue depuis local.properties (gitignore) via la cle
-// `ts.api.base.url`. Fallback sur l'emulateur Android (10.0.2.2 = host machine)
-// pour les contributeurs sans Tailscale.
-val tsApiBaseUrl: String = run {
-    val props = Properties()
-    val localProps = rootProject.file("local.properties")
-    if (localProps.exists()) {
-        localProps.inputStream().use { props.load(it) }
-    }
-    (props.getProperty("ts.api.base.url")
-        ?: providers.gradleProperty("ts.api.base.url").orNull
-        ?: "http://10.0.2.2:8002/api")
+// Config lue depuis local.properties (gitignore) avec fallback gradle
+// property puis defaut. Helper unique pour toutes les cles `ts.*`.
+val tsLocalProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
 }
+fun tsProp(key: String, fallback: String): String =
+    tsLocalProps.getProperty(key)
+        ?: providers.gradleProperty(key).orNull
+        ?: fallback
 
-// v0.32.1 : Email de contact dev — pareil que tsApiBaseUrl, lu depuis
-// local.properties via la cle `ts.support.email`. Permet de garder l'email
-// reel du dev hors du repo public. Fallback placeholder.
-val tsSupportEmail: String = run {
-    val props = Properties()
-    val localProps = rootProject.file("local.properties")
-    if (localProps.exists()) {
-        localProps.inputStream().use { props.load(it) }
-    }
-    (props.getProperty("ts.support.email")
-        ?: providers.gradleProperty("ts.support.email").orNull
-        ?: "contact@torchonsetserviettes.app")
-}
+// Deux backends : `prod` = serveur public, `beta` = serveur de TEST separe
+// (backend + DB distincts, cf. docs/audit-roadmap-vs-code.md). Les cles
+// `ts.api.base.url.prod` / `.beta` priment ; sinon fallback sur la cle
+// legacy `ts.api.base.url` (le poste dogfood l'utilise encore) ; sinon
+// defaut. Pas de gating user-level : l'appli beta est un APK separe
+// (applicationId .beta) installe a cote de la prod.
+val tsApiBaseUrlProd: String =
+    tsProp("ts.api.base.url.prod",
+        tsProp("ts.api.base.url", "https://api.torchonsetserviettes.app/api"))
+val tsApiBaseUrlBeta: String =
+    tsProp("ts.api.base.url.beta",
+        tsProp("ts.api.base.url", "http://10.0.2.2:8002/api"))
+
+// Email de contact dev — garde l'email reel hors du repo public.
+val tsSupportEmail: String = tsProp("ts.support.email", "contact@torchonsetserviettes.app")
 
 android {
     namespace = "com.torchons.app"
@@ -48,12 +47,35 @@ android {
         versionCode = 69
         versionName = "0.32.0"
 
-        // URL de base de l'API — voir tsApiBaseUrl ci-dessus.
-        buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrl\"")
-        // Email de contact dev — voir tsSupportEmail ci-dessus.
+        // SUPPORT_EMAIL commun aux flavors. API_BASE_URL + TAILSCALE_AUTOLOGIN
+        // sont definis PAR FLAVOR (prod = public sans Tailscale, beta = test).
         buildConfigField("String", "SUPPORT_EMAIL", "\"$tsSupportEmail\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Deux canaux installables cote a cote (applicationId distinct).
+    // `prod` : APK public unique (cf. design-onboarding-public.md §6) —
+    //          Tailscale auto-login DESACTIVE.
+    // `beta` : canal de test (.beta), backend de test separe, Tailscale
+    //          auto-login ACTIF pour le dogfood. « Certains users » = ceux
+    //          qui installent l'APK beta / sont dans le canal Closed Testing.
+    flavorDimensions += "channel"
+    productFlavors {
+        create("prod") {
+            dimension = "channel"
+            resValue("string", "app_name", "Torchons &amp; Serviettes")
+            buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrlProd\"")
+            buildConfigField("boolean", "TAILSCALE_AUTOLOGIN", "false")
+        }
+        create("beta") {
+            dimension = "channel"
+            applicationIdSuffix = ".beta"
+            versionNameSuffix = "-beta"
+            resValue("string", "app_name", "T&amp;S Beta")
+            buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrlBeta\"")
+            buildConfigField("boolean", "TAILSCALE_AUTOLOGIN", "true")
+        }
     }
 
     buildTypes {

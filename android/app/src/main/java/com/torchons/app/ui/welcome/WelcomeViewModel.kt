@@ -2,6 +2,7 @@ package com.torchons.app.ui.welcome
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.torchons.app.BuildConfig
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.service.TokenRegistrar
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -49,6 +50,14 @@ class WelcomeViewModel @Inject constructor(
      * d'onboarding s'affichent).
      */
     fun probe() {
+        // Build public (flavor prod) : pas d'auto-login Tailscale. On affiche
+        // directement les 3 entrees d'onboarding. Le flavor beta (dogfood)
+        // garde le fast-path Tailscale. Regle aussi l'item roadmap Phase D
+        // « drop Tailscale auto-login en build public ».
+        if (!BuildConfig.TAILSCALE_AUTOLOGIN) {
+            _uiState.value = WelcomeUiState.NoSession
+            return
+        }
         viewModelScope.launch {
             _uiState.value = WelcomeUiState.Probing
             val result = authRepository.autoLogin()

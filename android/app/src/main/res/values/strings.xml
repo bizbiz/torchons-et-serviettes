@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Torchons &amp; Serviettes</string>
+    <!-- app_name est defini par flavor (resValue dans build.gradle.kts) :
+         prod = "Torchons & Serviettes", beta = "T&S Beta" (installe a cote). -->
     <string name="login_loading">Connexion en cours…</string>
     <string name="login_error">Erreur de connexion</string>
     <string name="task_list_title">Mes tâches</string>
