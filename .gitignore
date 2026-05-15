@@ -31,6 +31,9 @@ android/app/build/
 android/local.properties
 *.apk
 *.aab
+# Clés de signature — JAMAIS dans le repo (keystore vit hors repo + ici en filet)
+*.jks
+*.keystore
 
 # Firebase
 backend/firebase-key.json

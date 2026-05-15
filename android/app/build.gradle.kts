@@ -36,6 +36,17 @@ val tsApiBaseUrlBeta: String =
 // Email de contact dev — garde l'email reel hors du repo public.
 val tsSupportEmail: String = tsProp("ts.support.email", "contact@torchonsetserviettes.app")
 
+// Release signing (upload key Play). Lu depuis local.properties (gitignored) ;
+// le .jks vit HORS du repo. Si absent (contributeurs / CI sans cle), les
+// builds release sont NON signes (OK pour debug et builds non publies ;
+// requis seulement pour uploader sur le Play Store).
+val tsUploadKeystore: String = tsProp("ts.upload.keystore", "")
+val tsUploadStorePw: String = tsProp("ts.upload.keystore.password", "")
+val tsUploadKeyAlias: String = tsProp("ts.upload.key.alias", "upload")
+val tsUploadKeyPw: String = tsProp("ts.upload.key.password", "")
+val tsHasUploadKeystore: Boolean =
+    tsUploadKeystore.isNotEmpty() && file(tsUploadKeystore).exists()
+
 android {
     namespace = "com.torchons.app"
     compileSdk = 35
@@ -78,8 +89,25 @@ android {
         }
     }
 
+    signingConfigs {
+        // Upload key Play : creds dans local.properties (gitignored), keystore
+        // hors repo. Cree seulement si le keystore est present, pour ne pas
+        // casser les builds des contributeurs / la CI sans la cle.
+        if (tsHasUploadKeystore) {
+            create("release") {
+                storeFile = file(tsUploadKeystore)
+                storePassword = tsUploadStorePw
+                keyAlias = tsUploadKeyAlias
+                keyPassword = tsUploadKeyPw
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (tsHasUploadKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
