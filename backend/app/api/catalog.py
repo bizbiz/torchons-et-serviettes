@@ -238,10 +238,16 @@ def _resolve_category(
 
 
 @router.get("", response_model=CatalogView)
-async def get_catalog_endpoint(
-    current: dict = Depends(get_current_user),
-):
-    """Retourne le catalogue curate (rooms + categories + tasks) en locale fr."""
+async def get_catalog_endpoint():
+    """Retourne le catalogue curate (rooms + categories + tasks) en locale fr.
+
+    **Public (pas d'auth)** : ce sont des donnees template globales, non
+    sensibles, identiques pour tout le monde. Et surtout le wizard
+    "Creer un foyer" sans compte doit lire le catalogue AVANT la creation
+    du foyer (donc avant l'emission du JWT). Exiger l'auth ici cassait
+    l'onboarding public (etape Pieces en chargement infini sur 401) —
+    bug remonte par la beta dogfood Scaleway le 2026-05-15. Les endpoints
+    /import/* restent authentifies (ils ecrivent dans un foyer)."""
     catalog = get_catalog()
     return CatalogView(
         rooms=[
