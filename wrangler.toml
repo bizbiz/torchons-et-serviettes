@@ -1,0 +1,16 @@
+# Déploiement du site statique public via Cloudflare Workers (Static Assets).
+# La nouvelle UI Cloudflare ne propose plus "Pages — Connect to Git" : on
+# passe par un Worker assets-only (aucun code Worker, juste le dossier site/).
+#
+# Workers Builds (connexion Git) lance `npx wrangler deploy` à la racine,
+# lit ce fichier, et publie le contenu de ./site.
+#
+# `html_handling = auto-trailing-slash` (défaut) sert privacy.html à /privacy.
+# `not_found_handling = 404-page` sert site/404.html sur une route inconnue.
+
+name = "torchons-serviettes"
+compatibility_date = "2026-05-15"
+
+[assets]
+directory = "./site"
+not_found_handling = "404-page"
