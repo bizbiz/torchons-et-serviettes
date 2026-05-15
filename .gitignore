@@ -7,7 +7,9 @@ backend/.venv/
 
 # Environment
 .env
+.env.*
 !.env.example
+!.env.prod.example
 
 # IDE
 .idea/

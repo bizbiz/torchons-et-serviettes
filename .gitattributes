@@ -1,0 +1,23 @@
+# Normalisation fins de ligne. Le repo est édité sous Windows
+# (core.autocrlf=true) mais déployé en conteneur Linux : tout fichier
+# exécuté/interprété côté Linux DOIT rester en LF, sinon erreurs cryptiques
+# (ex: `#!/usr/bin/env sh\r` -> "no such file or directory" au démarrage
+# du conteneur api).
+
+* text=auto
+
+# Scripts & config conteneur : LF forcé, jamais CRLF.
+*.sh            text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+Dockerfile      text eol=lf
+.dockerignore   text eol=lf
+Caddyfile       text eol=lf
+*.py            text eol=lf
+
+# Binaires : pas de conversion.
+*.png           binary
+*.jpg           binary
+*.apk           binary
+*.aab           binary
+*.dump          binary

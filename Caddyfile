@@ -1,0 +1,48 @@
+# Caddy reverse proxy + TLS Let's Encrypt automatique.
+# Monte read-only dans le conteneur caddy (cf. docker-compose.prod.yml).
+#
+# Caddy obtient/renouvelle seul le certificat des que :
+#   - le DNS api.torchonsetserviettes.app pointe sur l'IP du serveur
+#   - les ports 80 + 443 sont ouverts et mappes sur le conteneur caddy
+#
+# Smoke test post-up :
+#   curl https://api.torchonsetserviettes.app/api/health
+#   -> {"status":"ok","database":"ok","version":"vX.Y.Z"}
+
+{
+	# Email ACME (notifications expiration certificat). Injecte depuis
+	# .env.prod via l'environnement du conteneur caddy.
+	email {$ACME_EMAIL}
+}
+
+api.torchonsetserviettes.app {
+	encode zstd gzip
+
+	# `api` = nom du service FastAPI dans le reseau docker-compose.
+	reverse_proxy api:8002
+
+	header {
+		# Durcissement minimal (API consommee par l'app Android).
+		-Server
+		Strict-Transport-Security "max-age=31536000;"
+		X-Content-Type-Options "nosniff"
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
+
+# --- BETA (decommenter dans la stack beta : docker-compose.beta.yml) ---
+# Backend + DB SEPARES de la prod (cf. docs/audit-roadmap-vs-code.md).
+# Le service s'appelle `api` aussi dans le projet compose beta isole ; si
+# prod et beta tournent sur la MEME VM, utiliser des projets compose
+# distincts (`-p ts` / `-p ts-beta`) et un Caddy unique avec deux blocs :
+#
+# beta-api.torchonsetserviettes.app {
+# 	encode zstd gzip
+# 	reverse_proxy ts-beta-api:8002
+# 	header { -Server X-Content-Type-Options "nosniff" }
+# 	log { output stdout; format console }
+# }

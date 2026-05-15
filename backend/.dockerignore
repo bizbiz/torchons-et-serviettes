@@ -1,0 +1,16 @@
+# Exclu de l'image prod : env local, caches, tests, fixtures privees.
+.venv/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+tests/
+# Fixtures liees a un foyer reel — JAMAIS dans l'image publique.
+seeds/personal/
+# Cle Firebase : fournie au runtime via volume/secret docker-compose,
+# pas baked dans l'image.
+firebase-key.json
+# Fichiers env locaux (les vars prod viennent de .env.prod via compose).
+.env
+.env.*
+!.env.prod.example
