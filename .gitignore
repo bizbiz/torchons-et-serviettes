@@ -54,3 +54,6 @@ backend/seeds/personal/
 
 # Base Room rapatriee du device pour debug (donnees reelles, jamais commitee)
 .devdb/
+
+# Captures Play Store rapatriees du device (assets, hors repo)
+.captures/
