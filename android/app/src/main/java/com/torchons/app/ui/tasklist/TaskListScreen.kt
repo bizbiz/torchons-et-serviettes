@@ -314,14 +314,14 @@ fun TaskListScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         FilterTextChip(
-                            highLabel = "A faire",
-                            lowLabel = "Pas a faire",
+                            highLabel = "À faire",
+                            lowLabel = "Pas à faire",
                             state = uiState.filterTodo,
                             onClick = { viewModel.toggleFilterTodo() },
                         )
                         FilterTextChip(
-                            highLabel = "Aimees",
-                            lowLabel = "Detestees",
+                            highLabel = "Aimées",
+                            lowLabel = "Détestées",
                             state = uiState.filterAffinity,
                             onClick = { viewModel.toggleFilterAffinity() },
                         )
@@ -332,7 +332,7 @@ fun TaskListScreen(
                             onClick = { viewModel.toggleFilterEffort() },
                         )
                         FilterTextChip(
-                            highLabel = "Recurrentes",
+                            highLabel = "Récurrentes",
                             lowLabel = "Ponctuelles",
                             state = uiState.filterRecurrence,
                             onClick = { viewModel.toggleFilterRecurrence() },

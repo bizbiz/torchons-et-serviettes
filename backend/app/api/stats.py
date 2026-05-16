@@ -72,18 +72,18 @@ class BadgeInfo(BaseModel):
 # --- Catalogue de badges ---
 
 BADGE_CATALOG = {
-    "first_task": ("Premiere tache", "Completer sa premiere tache"),
-    "tasks_10": ("Debutant", "Completer 10 taches"),
-    "tasks_50": ("Habitue", "Completer 50 taches"),
-    "tasks_100": ("Expert", "Completer 100 taches"),
-    "tasks_500": ("Legende", "Completer 500 taches"),
-    "streak_3": ("Regulier", "3 jours consecutifs"),
-    "streak_7": ("Semaine parfaite", "7 jours consecutifs"),
-    "streak_14": ("Deux semaines", "14 jours consecutifs"),
-    "streak_30": ("Mois parfait", "30 jours consecutifs"),
-    "weight_king": ("Roi de la penibilite", "Completer une tache de poids 10"),
-    "early_bird": ("Matinal", "Completer une tache avant 8h"),
-    "night_owl": ("Noctambule", "Completer une tache apres 22h"),
+    "first_task": ("Première tâche", "Compléter sa première tâche"),
+    "tasks_10": ("Débutant", "Compléter 10 tâches"),
+    "tasks_50": ("Habitué", "Compléter 50 tâches"),
+    "tasks_100": ("Expert", "Compléter 100 tâches"),
+    "tasks_500": ("Légende", "Compléter 500 tâches"),
+    "streak_3": ("Régulier", "3 jours consécutifs"),
+    "streak_7": ("Semaine parfaite", "7 jours consécutifs"),
+    "streak_14": ("Deux semaines", "14 jours consécutifs"),
+    "streak_30": ("Mois parfait", "30 jours consécutifs"),
+    "weight_king": ("Roi de la pénibilité", "Compléter une tâche de poids 10"),
+    "early_bird": ("Matinal", "Compléter une tâche avant 8h"),
+    "night_owl": ("Noctambule", "Compléter une tâche après 22h"),
 }
 
 
