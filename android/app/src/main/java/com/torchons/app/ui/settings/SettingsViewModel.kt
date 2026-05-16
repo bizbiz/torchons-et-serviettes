@@ -47,6 +47,10 @@ data class UserSettingsState(
     // v0.32 : toggle gamification user-level (global, s'applique a tous
     // les foyers de l'user). Combine en OR avec foyer-level cote UI.
     val gamificationEnabled: Boolean = true,
+    // Masquer les taches maison de la liste quand pas sur WiFi maison.
+    // Defaut true = comportement historique (avant ce reglage etait
+    // implicite et toujours actif).
+    val hideHomeTasksOffWifi: Boolean = true,
     val isLoaded: Boolean = false
 )
 
@@ -125,6 +129,7 @@ class SettingsViewModel @Inject constructor(
                         homeSsids = (data["home_ssids"] as? List<*>)?.map { it.toString() } ?: emptyList(),
                         foyerMemberCount = (data["foyer_member_count"] as? Double)?.toInt() ?: 2,
                         gamificationEnabled = data["gamification_enabled"] as? Boolean ?: true,
+                        hideHomeTasksOffWifi = data["hide_home_tasks_off_wifi"] as? Boolean ?: true,
                         isLoaded = true,
                     )
                     // Sync tous les reglages vers TokenManager local
@@ -211,6 +216,9 @@ class SettingsViewModel @Inject constructor(
         // les composants UI qui observent gamificationVisibleFlow soient
         // a jour sans devoir recharger /api/settings.
         tokenManager.setUserGamificationEnabled(s.gamificationEnabled)
+        // Masquer taches maison hors WiFi : lu par TaskListViewModel via
+        // tokenManager.hideHomeTasksOffWifiFlow (memes raisons que homeSsids).
+        tokenManager.setHideHomeTasksOffWifi(s.hideHomeTasksOffWifi)
     }
 
     fun setNotifDaily(v: Boolean) {
@@ -248,6 +256,13 @@ class SettingsViewModel @Inject constructor(
     fun setGamificationEnabled(v: Boolean) {
         _settings.value = _settings.value.copy(gamificationEnabled = v)
         updateSetting("gamification_enabled", v)
+    }
+
+    /** Toggle "masquer taches maison hors WiFi" (user-level). updateSetting
+     *  resync vers TokenManager -> TaskListViewModel recalcule les filtres. */
+    fun setHideHomeTasksOffWifi(v: Boolean) {
+        _settings.value = _settings.value.copy(hideHomeTasksOffWifi = v)
+        updateSetting("hide_home_tasks_off_wifi", v)
     }
 
     /** v0.32 : toggle gamification du foyer courant. Tout membre peut

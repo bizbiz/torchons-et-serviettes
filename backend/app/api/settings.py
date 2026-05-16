@@ -36,6 +36,8 @@ class SettingsResponse(BaseModel):
     foyer_member_count: int
     # v0.32 : toggle global gamification (user-level). Filtrage cote front.
     gamification_enabled: bool
+    # Masquer les taches maison de la liste hors WiFi maison (user-level).
+    hide_home_tasks_off_wifi: bool
 
 
 class SettingsUpdate(BaseModel):
@@ -50,6 +52,7 @@ class SettingsUpdate(BaseModel):
     fair_share_tolerance_percent: int | None = Field(default=None, ge=0, le=100)
     home_ssids: list[str] | None = None
     gamification_enabled: bool | None = None
+    hide_home_tasks_off_wifi: bool | None = None
 
 
 async def _load_or_create_user_foyer(
@@ -120,6 +123,7 @@ async def get_settings(
         home_ssids=_ssids_to_list(uf.home_ssids),
         foyer_member_count=member_count,
         gamification_enabled=settings.gamification_enabled,
+        hide_home_tasks_off_wifi=settings.hide_home_tasks_off_wifi,
     )
 
 
@@ -180,4 +184,5 @@ async def update_settings(
         home_ssids=_ssids_to_list(uf.home_ssids),
         foyer_member_count=member_count,
         gamification_enabled=settings.gamification_enabled,
+        hide_home_tasks_off_wifi=settings.hide_home_tasks_off_wifi,
     )

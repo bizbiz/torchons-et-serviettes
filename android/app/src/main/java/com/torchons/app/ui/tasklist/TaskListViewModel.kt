@@ -221,7 +221,11 @@ class TaskListViewModel @Inject constructor(
                 val homeSsids = tokenManager.homeSsidsFlow.first()
                 val isAtHome = WifiHelper.isAtHome(context, homeSsids)
                 val currentUserId = tokenManager.userIdFlow.first()
-                val filtered = applyFilters(tasks, categories, rooms, completions, filters, isAtHome, currentUserId)
+                val hideHomeTasksOffWifi = tokenManager.hideHomeTasksOffWifiFlow.first()
+                val filtered = applyFilters(
+                    tasks, categories, rooms, completions, filters,
+                    isAtHome, currentUserId, hideHomeTasksOffWifi,
+                )
                 ProcessedTaskList(
                     filtered = filtered,
                     hasCache = tasks.isNotEmpty() || categories.isNotEmpty(),
@@ -516,6 +520,7 @@ class TaskListViewModel @Inject constructor(
         filters: TaskListFilters,
         isAtHome: Boolean,
         currentUserId: String?,
+        hideHomeTasksOffWifi: Boolean,
     ): FilteredResult {
         val homeCategoryIds = categories.filter { it.requiresHome }.map { it.id }.toSet()
         val roomsById = rooms.associateBy { it.id }
@@ -573,8 +578,14 @@ class TaskListViewModel @Inject constructor(
             }
         }
 
+        // Masquage taches maison hors WiFi : actif uniquement si le reglage
+        // user-level hideHomeTasksOffWifi est ON (defaut true = comportement
+        // historique). Si OFF, on ne masque rien -> homeTasksHidden reste 0
+        // -> banniere non affichee (correct).
         var homeTasksHidden = 0
-        if (applyUiFilters && !isAtHome && !filters.showAllTasks && homeCategoryIds.isNotEmpty()) {
+        if (applyUiFilters && !isAtHome && !filters.showAllTasks &&
+            homeCategoryIds.isNotEmpty() && hideHomeTasksOffWifi
+        ) {
             val before = filteredTasks.size
             filteredTasks = filteredTasks.filter { it.categoryId !in homeCategoryIds }
             homeTasksHidden = before - filteredTasks.size

@@ -491,7 +491,8 @@ fun MainScreen(
                         onTaskClick = onNavigateToTaskDetail,
                         onCreateTask = onNavigateToCreateTask,
                         onOpenCatalog = onNavigateToCatalog,
-                        onLogout = onLogout
+                        onLogout = onLogout,
+                        onNavigateToFoyerSettings = onNavigateToFoyerSettings,
                     )
                 }
                 composable(Routes.STATS) {

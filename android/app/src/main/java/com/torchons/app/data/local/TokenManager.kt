@@ -62,6 +62,9 @@ class TokenManager @Inject constructor(
         // v0.32 : toggle gamification du foyer courant. Resynchro via
         // `setCurrentFoyerGamification` apres chaque load /api/foyers.
         private val GAMIF_FOYER_KEY = booleanPreferencesKey("gamification_enabled_current_foyer")
+        // Masquer les taches maison de la liste hors WiFi maison (user-level).
+        // Defaut true = comportement historique.
+        private val HIDE_HOME_OFF_WIFI_KEY = booleanPreferencesKey("hide_home_tasks_off_wifi")
     }
 
     /** Flow du token JWT. Emet null si aucun token stocke. */
@@ -145,6 +148,15 @@ class TokenManager @Inject constructor(
         context.dataStore.edit { prefs ->
             prefs[HOME_SSIDS_KEY] = ssids.filter { it.isNotBlank() }.joinToString("|")
         }
+    }
+
+    /** Masquer les taches maison hors WiFi maison (user-level). Defaut true
+     *  = comportement historique. Lu par TaskListViewModel.applyFilters. */
+    val hideHomeTasksOffWifiFlow: Flow<Boolean> =
+        context.dataStore.data.map { it[HIDE_HOME_OFF_WIFI_KEY] ?: true }
+
+    suspend fun setHideHomeTasksOffWifi(enabled: Boolean) {
+        context.dataStore.edit { it[HIDE_HOME_OFF_WIFI_KEY] = enabled }
     }
 
     suspend fun removeHomeSsid(ssid: String) {

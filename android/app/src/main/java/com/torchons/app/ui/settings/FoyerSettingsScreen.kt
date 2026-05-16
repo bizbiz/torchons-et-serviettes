@@ -301,6 +301,33 @@ fun FoyerSettingsScreen(
                     onCheckedChange = { viewModel.setCurrentFoyerHomeFreezeEnabled(it) },
                 )
 
+                // Toggle perso : masquer les taches maison de SA liste hors
+                // WiFi maison. Per-user (l'autre membre a son propre reglage).
+                // (i) precise la portee + le no-op si pas de WiFi configure.
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Masquer hors WiFi",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    InfoTooltip(
+                        title = "Masquer hors WiFi",
+                        description = "S'applique a TOI sur ce foyer (l'autre " +
+                            "membre a son propre reglage). Sans WiFi maison " +
+                            "configure ci-dessous, ce reglage n'a aucun effet — " +
+                            "tout reste visible.",
+                    )
+                }
+                SettingSwitch(
+                    title = "Masquer les taches maison hors WiFi",
+                    subtitle = "Les taches \"a la maison\" sont cachees de la " +
+                        "liste quand tu n'es pas connecte a ton WiFi maison.",
+                    checked = s.hideHomeTasksOffWifi,
+                    onCheckedChange = { viewModel.setHideHomeTasksOffWifi(it) },
+                )
+
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 // WiFi maison (deplace tel quel depuis SettingsScreen)

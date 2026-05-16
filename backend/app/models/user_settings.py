@@ -46,6 +46,12 @@ class UserSettings(Base):
     gamification_enabled: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true", nullable=False
     )
+    # Masquer les taches de categorie requires_home de la liste quand le
+    # device n'est pas sur un WiFi maison. Per-user (s'applique a tous ses
+    # foyers via le flow TokenManager). Defaut True = comportement historique.
+    hide_home_tasks_off_wifi: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False
+    )
     # NOTE : home_ssids a ete deplace sur user_foyers (per-foyer) dans la
     # migration h6c7d8e9f0a1 v0.7.2+. Un user dans 2 foyers a 2 lieux physiques
     # differents donc 2 listes de WiFi distinctes.

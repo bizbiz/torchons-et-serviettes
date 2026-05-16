@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.FilterListOff
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -68,6 +69,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.CompletionDialog
 import com.torchons.app.ui.common.CompletionDialogMode
+import com.torchons.app.ui.common.InfoTooltip
 
 /**
  * Ecran principal affichant la liste des taches.
@@ -84,6 +86,7 @@ fun TaskListScreen(
     onCreateTask: () -> Unit,
     onOpenCatalog: () -> Unit = {},
     onLogout: () -> Unit,
+    onNavigateToFoyerSettings: () -> Unit = {},
     viewModel: TaskListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -248,8 +251,32 @@ fun TaskListScreen(
                         Text(
                             text = "Pas a la maison — ${uiState.homeTasksHidden} tache(s) masquee(s)",
                             style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
+                        InfoTooltip(
+                            title = "Pourquoi des taches sont masquees ?",
+                            description = "Les taches des categories \"a la " +
+                                "maison\" sont cachees parce que l'app ne te " +
+                                "detecte pas sur ton WiFi maison : soit tu es " +
+                                "absent, soit aucun WiFi maison n'est configure / " +
+                                "la permission de localisation necessaire pour " +
+                                "lire le nom du WiFi manque.\n\nTu peux quand " +
+                                "meme les afficher avec \"Tout afficher\", " +
+                                "configurer ton WiFi maison dans les reglages du " +
+                                "foyer, ou desactiver ce comportement la-bas.",
+                        )
+                        IconButton(
+                            onClick = onNavigateToFoyerSettings,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = "Reglages du foyer",
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                         androidx.compose.material3.TextButton(
                             onClick = { viewModel.toggleShowAll() }
                         ) {
