@@ -27,6 +27,7 @@ from app.database import get_session
 from app.models.foyer import Foyer
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
+from app.services.presence import seed_initial_presence
 from app.utils.recovery_code import generate_code, hash_code
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
@@ -75,6 +76,11 @@ async def create_foyer_bootstrap(
     new_foyer = Foyer(name=body.foyer_name.strip())
     session.add(new_foyer)
     await session.flush()
+
+    # Presence confirmee par defaut sur l'annee ecoulee : sinon le
+    # Home-freeze v2 gele l'urgence des taches requires_home tant que
+    # l'user n'a pas confirme sa presence (cf seed_initial_presence).
+    await seed_initial_presence(session, new_foyer.id)
 
     session.add(
         UserFoyer(user_id=new_user.id, foyer_id=new_foyer.id, role="admin")

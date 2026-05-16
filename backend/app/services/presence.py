@@ -225,3 +225,58 @@ async def get_absent_dates(
         )
     )
     return {row[0] for row in result.all()}
+
+
+async def seed_initial_presence(
+    session: AsyncSession,
+    foyer_id: uuid.UUID,
+    days: int = 360,
+    today: date | None = None,
+) -> int:
+    """Pre-remplit `presence_days` avec `days` jours confirmed_present a la
+    creation d'un foyer (today inclus, en remontant).
+
+    Sans ca, le Home-freeze v2 compte tout jour sans ligne presence comme
+    absent ("freeze par defaut tant que non confirme present") : sur un
+    foyer neuf qui n'a jamais fait de check-in WiFi, les taches
+    requires_home avec historique backdate (import catalogue, completions
+    seedees) paraissent jamais en retard (today decale en arriere). Friction
+    vecue au dogfood 2026-05-16 ("Aspirateur dans 6j"). On part donc d'une
+    presence confirmee par defaut sur l'annee ecoulee ; les jours futurs
+    sans check-in restent geres par le freeze normal.
+
+    Source dediee "foyer_init" (vs "manual"/"auto_wifi") pour l'audit.
+    Idempotent : n'insere pas un (foyer, date) deja present.
+    Retourne le nombre de lignes inserees.
+    """
+    if days <= 0:
+        return 0
+    ref = today or date.today()
+    start = ref - timedelta(days=days - 1)
+    existing = {
+        row[0]
+        for row in (
+            await session.execute(
+                select(PresenceDay.date).where(
+                    PresenceDay.foyer_id == foyer_id,
+                    PresenceDay.date >= start,
+                    PresenceDay.date <= ref,
+                )
+            )
+        ).all()
+    }
+    inserted = 0
+    for offset in range(days):
+        d = ref - timedelta(days=offset)
+        if d in existing:
+            continue
+        session.add(
+            PresenceDay(
+                foyer_id=foyer_id,
+                date=d,
+                status="confirmed_present",
+                source="foyer_init",
+            )
+        )
+        inserted += 1
+    return inserted

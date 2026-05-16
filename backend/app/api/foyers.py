@@ -16,6 +16,7 @@ from app.models.user import User
 from app.models.user_foyer import UserFoyer
 from app.schemas.foyer import FoyerCreate, FoyerResponse, FoyerUpdate
 from app.services.lifecycle import soft_leave_foyer
+from app.services.presence import seed_initial_presence
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
 
@@ -74,6 +75,10 @@ async def create_foyer(
     foyer = Foyer(name=body.name)
     session.add(foyer)
     await session.flush()
+
+    # Presence confirmee par defaut sur l'annee ecoulee (cf
+    # seed_initial_presence : evite le gel Home-freeze sur foyer neuf).
+    await seed_initial_presence(session, foyer.id)
 
     session.add(UserFoyer(user_id=user_id, foyer_id=foyer.id, role="admin"))
     await session.commit()
