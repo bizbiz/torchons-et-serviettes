@@ -1,3 +1,5 @@
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Properties
 
 plugins {
@@ -50,8 +52,7 @@ fun tsGitShortSha(): String = try {
     "nogit"
 }
 val tsBuildStamp: String =
-    java.time.LocalDateTime.now()
-        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) +
+    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) +
         " · " + tsGitShortSha()
 
 // Release signing (upload key Play). Lu depuis local.properties (gitignored) ;
