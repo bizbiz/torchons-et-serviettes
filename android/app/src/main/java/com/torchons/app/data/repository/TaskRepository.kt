@@ -204,10 +204,17 @@ class TaskRepository @Inject constructor(
             val response = apiService.getCompletions(userId, taskId, effectiveLimit)
             if (response.isSuccessful) {
                 val completions = response.body() ?: emptyList()
-                if (taskId == null && userId == null) {
-                    completionDao.replaceAll(completions.map { it.toEntity() })
-                } else {
-                    completionDao.upsertAll(completions.map { it.toEntity() })
+                // En ligne = serveur autoritaire : REMPLACE le scope (full
+                // ou par tache) pour propager suppressions/edits serveur ;
+                // upsert-only seulement pour le scope userId. Cf
+                // docs/cache-conventions.md.
+                when {
+                    taskId == null && userId == null ->
+                        completionDao.replaceAll(completions.map { it.toEntity() })
+                    taskId != null ->
+                        completionDao.replaceForTask(taskId, completions.map { it.toEntity() })
+                    else ->
+                        completionDao.upsertAll(completions.map { it.toEntity() })
                 }
                 true
             } else {
@@ -336,6 +343,23 @@ class TaskRepository @Inject constructor(
         enqueue(clientOpId, "task_completions", "INSERT", rowId, payload)
 
         return Result.success(optimistic)
+    }
+
+    /**
+     * Supprime une completion en offline-first : delete local OPTIMISTE
+     * immediat (l'urgence de la tache se recalcule aussitot depuis le cache
+     * — offline = on fait confiance au front) + enqueue d'une op DELETE
+     * (le serveur reconcilie quand en ligne ; SyncWorker propage aussi les
+     * DELETE serveur via change_log). Remplace l'ancien chemin
+     * apiService.deleteCompletion (REST online-only, sans delete local, qui
+     * laissait une completion fantome -> lastCompletedAt perime).
+     * Cf docs/cache-conventions.md.
+     */
+    suspend fun deleteCompletion(completionId: String): Result<Unit> {
+        val clientOpId = UUID.randomUUID().toString()
+        completionDao.deleteById(completionId)
+        enqueue(clientOpId, "task_completions", "DELETE", completionId, null)
+        return Result.success(Unit)
     }
 
     /**
@@ -520,10 +544,13 @@ class TaskRepository @Inject constructor(
             val response = apiService.getCompletions(userId, taskId, limit)
             if (response.isSuccessful) {
                 val completions = response.body() ?: emptyList()
-                if (taskId == null && userId == null) {
-                    completionDao.replaceAll(completions.map { it.toEntity() })
-                } else {
-                    completionDao.upsertAll(completions.map { it.toEntity() })
+                when {
+                    taskId == null && userId == null ->
+                        completionDao.replaceAll(completions.map { it.toEntity() })
+                    taskId != null ->
+                        completionDao.replaceForTask(taskId, completions.map { it.toEntity() })
+                    else ->
+                        completionDao.upsertAll(completions.map { it.toEntity() })
                 }
                 Result.success(completions)
             } else {

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
+from app.models.completion import TaskCompletion
 from app.models.sync import ChangeLog
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
@@ -49,6 +50,17 @@ async def _task_to_response(
     en batch par le caller via compute_absent_days_for_tasks pour eviter N+1.
     """
     assigned_ids = await _get_assigned_ids(session, task.id)
+    # last_completed_at calcule serveur = source de verite quand le client
+    # est en ligne (offline il retombe sur le max local). Cf
+    # docs/cache-conventions.md (recalcul derive a chaque mutation).
+    last_completed_at = (
+        await session.execute(
+            select(func.max(TaskCompletion.completed_at)).where(
+                TaskCompletion.task_id == task.id,
+                TaskCompletion.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
     return {
         "id": task.id,
         "title": task.title,
@@ -66,6 +78,7 @@ async def _task_to_response(
         "created_at": task.created_at,
         "updated_at": task.updated_at,
         "absent_days_since_last_completion": absent_days,
+        "last_completed_at": last_completed_at,
     }
 
 

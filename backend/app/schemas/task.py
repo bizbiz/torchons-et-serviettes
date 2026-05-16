@@ -100,3 +100,8 @@ class TaskResponse(BaseModel):
     # si la categorie n'est pas requires_home ou si home_freeze_enabled=false.
     # Le client Android decale `today` de ce delta pour le calcul d'urgence.
     absent_days_since_last_completion: int = 0
+    # Date de derniere completion non supprimee, calculee serveur (autoritaire
+    # quand le client est en ligne). null = jamais completee. Le client
+    # Android l'utilise comme source de verite online ; offline il retombe
+    # sur le max local du cache des completions. Cf docs/cache-conventions.md.
+    last_completed_at: datetime | None = None

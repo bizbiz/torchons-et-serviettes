@@ -319,14 +319,17 @@ class TaskDetailViewModel @Inject constructor(
 
     fun deleteCompletion(completionId: String) {
         viewModelScope.launch {
-            try {
-                apiService.deleteCompletion(taskId, completionId)
-                taskRepository.refreshCompletions(taskId = taskId)
-                _uiState.value = _uiState.value.copy(completionMessage = "Completion supprimee")
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = e.message ?: "Erreur lors de la suppression"
-                )
+            // Offline-first : delete local OPTIMISTE + enqueue DELETE (le
+            // serveur reconcilie via /sync ; SyncWorker propage aussi les
+            // DELETE serveur). Pas de refresh immediat : l'op DELETE est en
+            // file, un refetch re-ajouterait la completion fantome tant
+            // qu'elle n'est pas poussee. L'urgence se recalcule aussitot
+            // depuis le cache. Cf docs/cache-conventions.md.
+            val res = taskRepository.deleteCompletion(completionId)
+            _uiState.value = if (res.isSuccess) {
+                _uiState.value.copy(completionMessage = "Completion supprimee")
+            } else {
+                _uiState.value.copy(error = "Erreur lors de la suppression")
             }
         }
     }

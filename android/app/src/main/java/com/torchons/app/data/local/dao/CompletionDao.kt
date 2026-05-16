@@ -23,8 +23,23 @@ interface CompletionDao {
     @Query("DELETE FROM completions WHERE id = :id")
     suspend fun deleteById(id: String)
 
+    @Query("DELETE FROM completions WHERE taskId = :taskId")
+    suspend fun deleteByTask(taskId: String)
+
     @Query("DELETE FROM completions")
     suspend fun deleteAll()
+
+    /**
+     * Remplace les completions d'UNE tache (refresh scope tache = autoritaire
+     * quand en ligne : les suppressions/edits serveur se propagent, pas
+     * d'upsert-only qui laisserait des lignes fantomes). Cf
+     * docs/cache-conventions.md.
+     */
+    @Transaction
+    suspend fun replaceForTask(taskId: String, completions: List<CompletionEntity>) {
+        deleteByTask(taskId)
+        upsertAll(completions)
+    }
 
     /**
      * Remplace l'integralite des completions recentes (utilise par les
