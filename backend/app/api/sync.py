@@ -34,6 +34,7 @@ from app.services.bonus_malus import (
     compute_bonus_malus_for_completion,
     resolve_stored_reason_and_mult,
 )
+from app.services.recurrence import normalize_recurrence_rule
 from app.utils.changelog import record_change
 
 router = APIRouter(prefix="/api", tags=["sync"])
@@ -215,7 +216,7 @@ async def _handle_task(
             description=data.get("description"),
             category_id=uuid.UUID(data["category_id"]) if data.get("category_id") else None,
             room_id=uuid.UUID(data["room_id"]) if data.get("room_id") else None,
-            recurrence_rule=data.get("recurrence_rule"),
+            recurrence_rule=normalize_recurrence_rule(data.get("recurrence_rule")),
             weight=data.get("weight", 1),
             tolerance=data.get("tolerance", "NORMAL"),
         )
@@ -250,6 +251,8 @@ async def _handle_task(
                 )
                 for uid in val:
                     session.add(TaskAssignment(task_id=op.row_id, user_id=uuid.UUID(uid)))
+            elif key == "recurrence_rule":
+                setattr(row, key, normalize_recurrence_rule(val))
             elif hasattr(row, key):
                 setattr(row, key, val)
         row.version += 1

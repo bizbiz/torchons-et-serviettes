@@ -36,6 +36,24 @@ val tsApiBaseUrlBeta: String =
 // Email de contact dev — garde l'email reel hors du repo public.
 val tsSupportEmail: String = tsProp("ts.support.email", "contact@torchonsetserviettes.app")
 
+// Marqueur de build (beta uniquement) : SHA git court + date de build,
+// affiche dans Reglages > "Note de version". Permet de verifier de visu
+// QUEL build est installe (versionName seul ne bouge pas entre 2 builds
+// dev sur la meme version). Fallback "nogit"/"" si git indisponible.
+fun tsGitShortSha(): String = try {
+    val p = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+        .directory(rootProject.projectDir)
+        .redirectErrorStream(true)
+        .start()
+    p.inputStream.bufferedReader().readText().trim().ifEmpty { "nogit" }
+} catch (e: Exception) {
+    "nogit"
+}
+val tsBuildStamp: String =
+    java.time.LocalDateTime.now()
+        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) +
+        " · " + tsGitShortSha()
+
 // Release signing (upload key Play). Lu depuis local.properties (gitignored) ;
 // le .jks vit HORS du repo. Si absent (contributeurs / CI sans cle), les
 // builds release sont NON signes (OK pour debug et builds non publies ;
@@ -78,6 +96,8 @@ android {
             resValue("string", "app_name", "Torchons &amp; Serviettes")
             buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrlProd\"")
             buildConfigField("boolean", "TAILSCALE_AUTOLOGIN", "false")
+            // Pas de marqueur de build en prod public (release reproductible).
+            buildConfigField("String", "BUILD_INFO", "\"\"")
         }
         create("beta") {
             dimension = "channel"
@@ -86,6 +106,7 @@ android {
             resValue("string", "app_name", "T&amp;S Beta")
             buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrlBeta\"")
             buildConfigField("boolean", "TAILSCALE_AUTOLOGIN", "true")
+            buildConfigField("String", "BUILD_INFO", "\"$tsBuildStamp\"")
         }
     }
 

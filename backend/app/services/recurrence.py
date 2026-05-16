@@ -40,6 +40,43 @@ def is_uncertain(rule: dict | None) -> bool:
     return isinstance(rule, dict) and rule.get("type") == "uncertain"
 
 
+def _to_int(value: object, default: int | None = None) -> int | None:
+    """Coerce une valeur numerique en int (tolere 7.0, '7', 7). None -> default."""
+    if value is None:
+        return default
+    try:
+        return int(round(float(value)))
+    except (TypeError, ValueError):
+        return default
+
+
+def normalize_recurrence_rule(rule: dict | None) -> dict | None:
+    """Force les champs numeriques d'une regle de recurrence en int.
+
+    Le client Android (Gson) parse `every_n_days` comme un Int strict : une
+    valeur float persistee en JSONB (ex. `7.0`, vu via /sync qui bypass
+    Pydantic) casse le parsing -> recurrence ignoree -> urgence fausse
+    ("dans 6j" au lieu de Rouge). On normalise donc a l'ecriture, cote
+    serveur, quel que soit le chemin (REST ou /sync). Cf docs/cache-conventions.md.
+    """
+    if not isinstance(rule, dict):
+        return rule
+    out = dict(rule)
+    rtype = out.get("type")
+    if rtype == "interval" and "every_n_days" in out:
+        out["every_n_days"] = _to_int(out["every_n_days"], 1)
+    elif rtype == "weekdays" and isinstance(out.get("days"), list):
+        out["days"] = [_to_int(d) for d in out["days"] if _to_int(d) is not None]
+    elif rtype == "monthly" and "day_of_month" in out:
+        out["day_of_month"] = _to_int(out["day_of_month"], 1)
+    elif rtype == "custom":
+        if "every_n_weeks" in out:
+            out["every_n_weeks"] = _to_int(out["every_n_weeks"], 1)
+        if "day" in out:
+            out["day"] = _to_int(out["day"], 0)
+    return out
+
+
 def next_due(rule: dict | None, last_completed: datetime | None) -> datetime | None:
     """Calcule la prochaine echeance d'une tache recurrente."""
     if rule is None:

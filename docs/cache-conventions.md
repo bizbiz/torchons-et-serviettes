@@ -56,6 +56,23 @@ réconcilier.
   servir comme source de vérité online, sinon il dérive du cache local
   (offline). Cf `backend/app/api/tasks.py:_task_to_response`.
 
+### Typage des champs numériques JSONB (recurrence_rule)
+
+Le client Android (Gson) parse `every_n_days` (et `day_of_month`,
+`every_n_weeks`, `days[]`) comme des **Int stricts**. Un float persisté en
+JSONB (`7.0`) casse le parsing → recurrence ignorée → urgence fausse
+(« dans 6j » au lieu de Rouge). Le chemin REST passe par Pydantic
+(`every_n_days: int`, coercé), **mais `/sync` bypass Pydantic** et stocke
+`op.data` brut.
+
+➡️ **Règle : toute écriture serveur de `recurrence_rule` issue du client
+passe par `normalize_recurrence_rule()`** (`app/services/recurrence.py`) qui
+force les champs numériques en int. Appliqué dans `sync.py:_handle_task`
+(INSERT + UPDATE). ❌ Ne jamais faire `setattr(row, "recurrence_rule",
+op.data[...])` brut. Tout nouveau chemin d'écriture (import catalogue,
+migration, script) qui pose un `recurrence_rule` doit passer par ce helper
+ou garantir des int.
+
 ### État dérivé
 
 - `lastCompletedAt` n'est **pas** stocké sur `TaskEntity` : il est dérivé

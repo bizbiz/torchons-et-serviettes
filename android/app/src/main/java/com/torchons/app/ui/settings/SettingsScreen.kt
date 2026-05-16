@@ -943,6 +943,27 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    // Marqueur de build (beta uniquement : BUILD_INFO vide en
+                    // prod). Permet de verifier de visu QUEL build est installe
+                    // (date + SHA git court), le versionName ne bougeant pas
+                    // entre 2 builds dev sur la meme version.
+                    if (com.torchons.app.BuildConfig.BUILD_INFO.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Build",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = com.torchons.app.BuildConfig.BUILD_INFO,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { viewModel.checkBackend() },
                         verticalAlignment = Alignment.CenterVertically
