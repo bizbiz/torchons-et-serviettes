@@ -52,9 +52,20 @@ réconcilier.
 - Plein (`taskId==null && userId==null`) → `replaceAll`.
 - Par tâche (`taskId!=null`) → `replaceForTask(taskId, …)`.
 - Le backend expose les valeurs autoritaires utiles (ex.
-  `TaskResponse.last_completed_at` calculé serveur) ; le client peut s'en
-  servir comme source de vérité online, sinon il dérive du cache local
-  (offline). Cf `backend/app/api/tasks.py:_task_to_response`.
+  `TaskResponse.last_completed_at` calculé serveur). **C'est câblé** :
+  `Task` DTO + `TaskEntity.lastCompletedAt` (migration Room 9→10) →
+  `TaskUrgencyCalculator.latestCompletedAt(server, local)` réconcilie par
+  `max()` (online = serveur autoritaire ; offline = complétion optimiste
+  locale plus récente gagne) → `TaskListViewModel`. Cf
+  `backend/app/api/tasks.py:_task_to_response`.
+
+  ❌ **Anti-pattern (bug réel « Aspirateur dans 6j »)** : alimenter
+  `computeDueDate` uniquement avec le `max` du cache Room des complétions.
+  Si ce cache est vide pour la tâche (ex. écran liste rafraîchi via
+  `/tasks` sans `/completions`, ou Home dont le refresh n'appelle pas
+  `refreshCompletions`), `computeDueDate` retombe sur `created_at` →
+  échéance = `created_at + N` → « dans Nj » au lieu de Rouge. Toujours
+  passer par `latestCompletedAt(task.lastCompletedAt, cacheMax)`.
 
 ### Typage des champs numériques JSONB (recurrence_rule)
 
