@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FAQ — Torchons &amp; Serviettes</title>
-<meta name="description" content="Questions fréquentes sur Torchons & Serviettes : absences, autorisations, compte, gratuité, hors-ligne, données.">
+<meta name="description" content="Comment fonctionne Torchons & Serviettes : affinités, récurrence, urgence, part équitable, absences, multi-appareils, vie privée.">
 <meta name="theme-color" content="#0f766e">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Torchons & Serviettes">
 <meta property="og:title" content="FAQ — Torchons & Serviettes">
-<meta property="og:description" content="Absences, autorisations, compte, gratuité, hors-ligne, données : les réponses.">
+<meta property="og:description" content="Comment l'app fonctionne en détail : affinités, récurrence, urgence, équité, absences, multi-appareils, données.">
 <meta property="og:url" content="https://torchonsetserviettes.app/faq">
 <meta name="twitter:card" content="summary">
 <link rel="stylesheet" href="styles.css">
@@ -31,8 +31,152 @@
   <div class="wrap">
     <h1>Questions fréquentes</h1>
     <p class="lead">
-      Quelques réponses aux questions qui reviennent. Une autre question ?
-      Écrivez-moi via la page <a href="contact.html">Contact</a>.
+      Tout ce que fait l'application, expliqué simplement. Une question qui
+      manque ? Écrivez-moi via la page <a href="contact.html">Contact</a>.
+    </p>
+
+    <h2>Faut-il créer un compte ?</h2>
+    <p>
+      Non. Pas d'e-mail, pas de mot de passe, pas de numéro de téléphone. On
+      crée un foyer (ou on en rejoint un), on choisit un prénom affiché, et
+      c'est tout. Un <strong>code de récupération</strong> permet de
+      retrouver son foyer en cas de changement de téléphone.
+    </p>
+
+    <h2>Comment rejoindre le foyer de quelqu'un ?</h2>
+    <p>
+      Un membre du foyer affiche un <strong>QR code</strong> depuis
+      l'application ; vous le scannez et vous rejoignez le foyer. Le code est
+      à usage unique et valable <strong>15 minutes</strong> — passé ce délai
+      ou après utilisation, il faut en générer un nouveau. C'est volontaire :
+      ça évite qu'un lien d'invitation traîne indéfiniment.
+    </p>
+
+    <h2>J'ai plusieurs téléphones, ou je change de téléphone ?</h2>
+    <p>
+      Deux cas. Pour <strong>ajouter un de vos appareils</strong> (2ᵉ
+      téléphone, tablette) à votre profil existant : un QR « ajouter un
+      appareil » dédié, sans recréer de membre. Pour
+      <strong>récupérer un foyer après une perte/réinitialisation</strong> :
+      le code de récupération. Ce code n'est jamais stocké en clair (haché en
+      <code>argon2id</code>) — gardez-le de côté à la création du foyer.
+    </p>
+
+    <h2>C'est quoi les « affinités » ?</h2>
+    <p>
+      Chaque personne peut dire à quel point elle aime (ou déteste) une
+      tâche, sur une échelle de <strong>1 à 10</strong> (1 = je déteste,
+      5 = neutre par défaut, 10 = j'adore). L'un préfère passer l'aspirateur,
+      l'autre préfère la vaisselle : l'application s'en sert pour
+      <strong>suggérer en priorité les tâches que vous aimez</strong>, à
+      urgence comparable, et pour mettre en avant votre tâche « préférée ».
+      Ça n'enferme personne : l'urgence reste prioritaire sur le confort.
+    </p>
+
+    <h2>Comment l'app choisit la tâche qu'elle me propose ?</h2>
+    <p>
+      D'abord par <strong>urgence</strong> (le plus en retard / le plus
+      pressant d'abord), en respectant le niveau de tolérance de la tâche.
+      À urgence équivalente, elle départage par vos
+      <strong>affinités</strong> puis par l'<strong>équité</strong> (qui en a
+      le moins fait). L'idée : ne jamais avoir à se demander « qu'est-ce que
+      je fais maintenant ? ».
+    </p>
+
+    <h2>Comment règle-t-on la fréquence d'une tâche ?</h2>
+    <p>
+      Chaque membre peut <strong>voter</strong> la fréquence qu'il estime
+      juste ; l'application en fait la <strong>moyenne</strong> (consensus),
+      pas besoin de se mettre d'accord à la voix. Trois formes de cadence :
+    </p>
+    <ul>
+      <li><strong>Intervalle fixe</strong> — tous les N jours (ex. tous les
+        7&nbsp;jours).</li>
+      <li><strong>Variable selon le mois</strong> — par ex. arroser les
+        plantes plus souvent l'été que l'hiver.</li>
+      <li><strong>Sans rythme fixe</strong> — voir la question suivante.</li>
+    </ul>
+
+    <h2>Et les tâches qu'on fait « de temps en temps », sans rythme ?</h2>
+    <p>
+      Certaines tâches n'ont pas de cadence claire. L'application peut les
+      gérer en mode « <strong>sans cadence</strong> » : plutôt que d'imposer
+      une fréquence, elle <strong>apprend</strong> votre rythme réel à partir
+      de l'historique des fois où vous l'avez faite, et reste discrète tant
+      qu'il n'y a pas matière à alerter.
+    </p>
+
+    <h2>Comment marchent les tâches ponctuelles (une seule fois) ?</h2>
+    <p>
+      Une tâche sans récurrence est « à faire » jusqu'à ce qu'elle soit
+      faite, puis considérée comme réglée — plus d'échéance. Elle
+      <strong>disparaît des listes au bout d'environ une semaine</strong>
+      après avoir été terminée, mais reste dans l'historique (statistiques,
+      points). Rien n'est supprimé, juste rangé.
+    </p>
+
+    <h2>Que veulent dire les couleurs vert / orange / rouge ?</h2>
+    <p>
+      C'est l'urgence, calculée de façon déterministe par rapport à
+      l'échéance (dernière fois faite + cadence) :
+    </p>
+    <ul>
+      <li><strong>Rouge</strong> — l'échéance est dépassée, c'est en retard.</li>
+      <li><strong>Orange</strong> — l'échéance approche (une petite fenêtre
+        avant la date, proportionnelle à la cadence : quasi le jour même
+        pour une tâche hebdo, quelques jours avant pour une tâche
+        mensuelle).</li>
+      <li><strong>Vert</strong> — il reste du temps, rien à signaler.</li>
+    </ul>
+
+    <h2>C'est quoi la tolérance Stricte / Normale / Souple ?</h2>
+    <p>
+      C'est le « caractère » d'une tâche : à quel point être en retard est
+      grave. Important : la tolérance <strong>ne change pas la couleur</strong>
+      ni la date d'échéance. Elle sert uniquement à
+      <strong>départager les priorités</strong> quand l'app choisit « la
+      plus urgente » à vous proposer : une tâche stricte en retard passe
+      avant une tâche souple en retard.
+    </p>
+
+    <h2>Comment l'app rend le partage « équitable » et pas juste « égal » ?</h2>
+    <p>
+      Chaque membre a une <strong>part cible</strong> configurable (50&nbsp;%
+      chacun par défaut, mais ajustable : un enfant ou une personne très
+      occupée peut avoir une part plus faible). L'application suit l'écart
+      entre la part <em>réellement</em> faite et la part visée, avec une
+      marge de tolérance, et rééquilibre ses suggestions en conséquence.
+      Équitable, donc — pas forcément égal.
+    </p>
+
+    <h2>C'est quoi la « pénibilité » / l'effort d'une tâche ?</h2>
+    <p>
+      Toutes les tâches ne se valent pas : 5 minutes de vaisselle ≠ un grand
+      ménage. Chaque tâche a un <strong>effort</strong> (voté par les
+      membres, en moyenne), où <strong>1 point ≈ 5 minutes</strong>. C'est
+      ce qui permet à l'équité et aux points de compter le <em>vrai</em>
+      poids des tâches, pas juste leur nombre.
+    </p>
+
+    <h2>Comment marche le côté « ludique » (points) ?</h2>
+    <p>
+      Faire une tâche rapporte des points proportionnels à son effort. Le
+      système encourage à faire les choses <strong>à la bonne cadence</strong> :
+      un bonus si une tâche est systématiquement faite en retard (elle est
+      visiblement sous-estimée — autant la valoriser), une légère décote si
+      elle est systématiquement faite trop tôt. Il y a aussi des séries
+      (streaks), un classement du foyer, un objectif quotidien en minutes, et
+      une « simulation de rattrapage » qui montre en combien de temps le
+      foyer revient à zéro retard.
+    </p>
+
+    <h2>Je n'aime pas le côté jeu : je peux le désactiver ?</h2>
+    <p>
+      Oui, complètement. La gamification se désactive <strong>par personne</strong>
+      (vous seul) <strong>ou pour tout le foyer</strong>. Désactivée, elle
+      masque les points, bonus, classement, séries et statistiques —
+      l'application reste pleinement utilisable comme simple gestionnaire de
+      tâches.
     </p>
 
     <h2>Comment l'application sait-elle que je suis absent 15 jours ?</h2>
@@ -40,27 +184,37 @@
       En réalité, elle ne le sait pas vraiment. Elle sait seulement quand
       vous <em>êtes</em> là. Si elle ne vous « voit » pas, elle ne suppose
       rien et ne vous oublie pas : elle vous pose simplement la question —
-      « Étiez-vous absent ? ». Vous répondez, et les tâches concernées sont
-      mises en pause ou non en conséquence, pour éviter de rentrer de
-      vacances avec tout en retard. Cette fonctionnalité est
-      <strong>entièrement désactivable</strong>.
+      « Étiez-vous absent ? ». Vous répondez, et les tâches concernées
+      (celles qui exigent d'être à la maison) sont mises en pause ou non en
+      conséquence, pour éviter de rentrer de vacances avec tout en retard.
+      Fonctionnalité <strong>entièrement désactivable</strong>.
     </p>
 
-    <h2>Pourquoi l'application demande l'autorisation de localisation et de Wi-Fi ?</h2>
+    <h2>Pourquoi l'app demande l'autorisation de localisation et de Wi-Fi ?</h2>
     <p>
       Uniquement pour la <strong>détection automatique de présence</strong>
-      (savoir si vous êtes à la maison, ce qui sert à la mise en pause des
-      tâches pendant les absences). C'est <strong>entièrement
-      facultatif</strong> : vous pouvez refuser ces autorisations,
-      l'application fonctionne très bien sans — vous confirmez alors votre
-      présence à la main quand elle vous le demande.
+      (reconnaître votre Wi-Fi maison pour savoir si vous êtes là, ce qui
+      sert à la mise en pause des tâches pendant les absences). C'est
+      <strong>entièrement facultatif</strong> : vous pouvez refuser ces
+      autorisations, l'application fonctionne très bien sans — vous confirmez
+      alors votre présence à la main quand elle vous le demande.
     </p>
 
-    <h2>Faut-il créer un compte ?</h2>
+    <h2>Ça marche sans connexion ? Et si deux personnes modifient en même temps ?</h2>
     <p>
-      Non. Pas d'e-mail, pas de mot de passe, pas de numéro de téléphone. Un
-      code de récupération vous permet de retrouver votre foyer si vous
-      changez de téléphone.
+      L'application est <strong>« hors-ligne d'abord »</strong> : tout
+      fonctionne sans réseau, les changements sont enregistrés localement et
+      se synchronisent dès que la connexion revient. En cas de modification
+      concurrente, la dernière écriture l'emporte et les vrais conflits sont
+      détectés (pas de perte silencieuse). Vos appareils restent cohérents.
+    </p>
+
+    <h2>Y a-t-il des notifications ?</h2>
+    <p>
+      Oui : des rappels pour les tâches qui arrivent à échéance ou sont en
+      retard, et quelques sollicitations utiles (voter l'effort/fréquence,
+      confirmer une présence). Elles passent par le service de notifications
+      d'Android. Vous pouvez les désactiver.
     </p>
 
     <h2>Est-ce vraiment gratuit ?</h2>
@@ -74,17 +228,21 @@
       <a href="about.html">À propos</a>).
     </p>
 
-    <h2>Est-ce que ça marche sans connexion ?</h2>
-    <p>
-      Oui. L'application fonctionne hors-ligne et se synchronise toute
-      seule dès que le réseau revient.
-    </p>
-
     <h2>Que deviennent mes données si je supprime mon compte ?</h2>
     <p>
       La suppression (Réglages → Sécurité du foyer) entraîne un effacement
-      logique immédiat, puis une purge définitive sous 30 jours. Détails
-      dans la <a href="privacy.html">politique de confidentialité</a>.
+      logique immédiat, puis une purge définitive sous <strong>30 jours</strong>.
+      Un foyer laissé totalement inactif est archivé après 90 jours puis
+      purgé après un an. Détails dans la
+      <a href="privacy.html">politique de confidentialité</a>.
+    </p>
+
+    <h2>Où voir les nouveautés et la feuille de route ?</h2>
+    <p>
+      Dans l'application : <strong>Réglages → Nouveautés</strong> (notes de
+      version) et la feuille de route. Je prévois de les publier aussi sur ce
+      site, depuis <em>exactement la même source</em> que l'application, pour
+      qu'il n'y ait jamais de décalage entre les deux.
     </p>
   </div>
 </main>
