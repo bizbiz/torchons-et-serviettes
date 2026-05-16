@@ -51,3 +51,6 @@ ts_pgdata/
 # Seeds personnels : bootstrap dogfood, imports HA, fixtures liees a
 # un foyer reel. Ne jamais commit la data d'un foyer particulier.
 backend/seeds/personal/
+
+# Base Room rapatriee du device pour debug (donnees reelles, jamais commitee)
+.devdb/
