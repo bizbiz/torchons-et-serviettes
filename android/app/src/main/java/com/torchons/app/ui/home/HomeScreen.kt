@@ -87,6 +87,9 @@ fun HomeScreen(
     onTaskClick: (String) -> Unit = {},
     onEditTask: (String) -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    /** P1 refonte — tap sur la card "Foyer" : navigue vers l'ecran Foyer
+     *  (design decision 7). La card "Moi" garde le dialog de simulation. */
+    onFoyerClick: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -413,7 +416,8 @@ fun HomeScreen(
             retard = uiState.retard,
             maintenance = uiState.maintenance,
             currentUserId = userId,
-            onCardClick = { showProjectionDialog = true },
+            onMoiClick = { showProjectionDialog = true },
+            onFoyerClick = onFoyerClick,
         )
 
         // Suggestions (titre retire v0.8.0 — evident que c'est des suggestions)

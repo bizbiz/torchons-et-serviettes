@@ -49,7 +49,9 @@ import kotlin.math.ceil
  * - Card "Foyer" : retard actuel du foyer, rythme combine, date
  *   previsionnelle de rattrapage, maintien post-rattrapage.
  *
- * Tap sur l'une ou l'autre -> popup simulation (ProjectionSimulationDialog).
+ * Tap "Moi" -> popup simulation (ProjectionSimulationDialog, outil objectif
+ * perso, inchange). Tap "Foyer" -> navigue vers l'ecran Foyer (P1 refonte,
+ * design decision 7).
  */
 
 @Composable
@@ -58,7 +60,8 @@ fun ProjectionCardsRow(
     retard: RetardResponse?,
     maintenance: MaintenanceRateResponse?,
     currentUserId: String?,
-    onCardClick: () -> Unit,
+    onMoiClick: () -> Unit,
+    onFoyerClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val me = pace?.users?.find { it.userId == currentUserId }
@@ -70,14 +73,14 @@ fun ProjectionCardsRow(
             me = me,
             retard = retard,
             maintenance = maintenance,
-            onClick = onCardClick,
+            onClick = onMoiClick,
             modifier = Modifier.weight(1f),
         )
         CardFoyer(
             pace = pace,
             retard = retard,
             maintenance = maintenance,
-            onClick = onCardClick,
+            onClick = onFoyerClick,
             modifier = Modifier.weight(1f),
         )
     }

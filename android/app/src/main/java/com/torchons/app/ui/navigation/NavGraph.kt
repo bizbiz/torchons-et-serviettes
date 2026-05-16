@@ -38,7 +38,7 @@ import com.torchons.app.ui.changelog.ChangelogScreen
 import com.torchons.app.ui.home.HomeScreen
 import com.torchons.app.ui.login.LoginScreen
 import com.torchons.app.ui.settings.CategoriesScreen
-import com.torchons.app.ui.settings.FoyersScreen
+import com.torchons.app.ui.settings.FoyerSettingsScreen
 import com.torchons.app.ui.settings.RoomsScreen
 import com.torchons.app.ui.settings.SettingsScreen
 import com.torchons.app.ui.stats.StatsScreen
@@ -69,7 +69,9 @@ object Routes {
     const val TASK_CLONE = "task_clone/{cloneFromId}"
     const val CATEGORIES = "categories"
     const val ROOMS = "rooms"
-    const val FOYERS = "foyers"
+    // P1 refonte : ecran Foyer unique (remplace l'ancien ecran autonome
+    // "Mes foyers" — route FOYERS supprimee).
+    const val FOYER_SETTINGS = "foyer_settings"
     const val CHANGELOG = "changelog"
     const val CATALOG = "catalog"
 
@@ -226,8 +228,8 @@ fun NavGraph(
                 onNavigateToRooms = {
                     navController.navigate(Routes.ROOMS)
                 },
-                onNavigateToFoyers = {
-                    navController.navigate(Routes.FOYERS)
+                onNavigateToFoyerSettings = {
+                    navController.navigate(Routes.FOYER_SETTINGS)
                 },
                 onNavigateToChangelog = {
                     navController.navigate(Routes.CHANGELOG)
@@ -298,17 +300,31 @@ fun NavGraph(
             )
         }
 
-        // Gestion des foyers (multi-tenant v0.7.0)
-        composable(Routes.FOYERS) {
-            val ep = dagger.hilt.android.EntryPointAccessors.fromApplication(
-                navController.context.applicationContext,
-                FoyersEntryPoint::class.java,
-            )
-            FoyersScreen(
-                apiService = ep.apiService(),
-                authRepository = ep.authRepository(),
-                taskRepository = ep.taskRepository(),
+        // P1 refonte — l'ancien ecran autonome "Mes foyers" (Routes.FOYERS /
+        // FoyersScreen) a ete supprime : remplace par l'entree "🏠 <nom>" des
+        // Reglages + le bouton "Creer un foyer" + la feuille switch DANS
+        // l'ecran Foyer (design decision 3).
+
+        // P1 refonte — Ecran Foyer unique (design-foyer-settings-presence.md
+        // decision 2). Plein ecran (couvre la bottom nav), atteignable depuis
+        // la ligne Reglages "🏠 <nom>" et la card Foyer de l'accueil.
+        composable(Routes.FOYER_SETTINGS) {
+            FoyerSettingsScreen(
                 onBack = { navController.popBackStack() },
+                onManageRooms = { navController.navigate(Routes.ROOMS) },
+                onManageCategories = { navController.navigate(Routes.CATEGORIES) },
+                onInviteSomeone = {
+                    navController.navigate(Routes.inviteQr(addDevice = false))
+                },
+                onAddDevice = {
+                    navController.navigate(Routes.inviteQr(addDevice = true))
+                },
+                onLeftFoyer = {
+                    // Plus aucun foyer : retour a Welcome (efface le backstack).
+                    navController.navigate(Routes.WELCOME) {
+                        popUpTo(Routes.MAIN) { inclusive = true }
+                    }
+                },
             )
         }
 
@@ -387,7 +403,7 @@ fun MainScreen(
     onNavigateToEditTask: (String) -> Unit,
     onNavigateToCategories: () -> Unit,
     onNavigateToRooms: () -> Unit,
-    onNavigateToFoyers: () -> Unit,
+    onNavigateToFoyerSettings: () -> Unit,
     onNavigateToChangelog: () -> Unit,
     onNavigateToCatalog: () -> Unit,
     onNavigateToInviteSomeone: () -> Unit,
@@ -465,7 +481,9 @@ fun MainScreen(
                 composable(Routes.HOME) {
                     HomeScreen(
                         onTaskClick = onNavigateToTaskDetail,
-                        onEditTask = onNavigateToEditTask
+                        onEditTask = onNavigateToEditTask,
+                        onNavigateToSettings = onNavigateToFoyerSettings,
+                        onFoyerClick = onNavigateToFoyerSettings,
                     )
                 }
                 composable(Routes.TASK_LIST) {
@@ -482,12 +500,8 @@ fun MainScreen(
                 composable(Routes.SETTINGS) {
                     SettingsScreen(
                         onLogout = onLogout,
-                        onManageCategories = onNavigateToCategories,
-                        onManageRooms = onNavigateToRooms,
-                        onManageFoyers = onNavigateToFoyers,
                         onOpenChangelog = onNavigateToChangelog,
-                        onInviteSomeone = onNavigateToInviteSomeone,
-                        onAddDevice = onNavigateToAddDevice,
+                        onOpenFoyerSettings = onNavigateToFoyerSettings,
                     )
                 }
             }
@@ -510,14 +524,5 @@ interface ApiServiceEntryPoint {
     fun apiService(): ApiService
 }
 
-/**
- * EntryPoint Hilt pour FoyersScreen qui a besoin de plusieurs dependances :
- * ApiService + AuthRepository (pour le switch) + TaskRepository (pour le wipe cache).
- */
-@EntryPoint
-@InstallIn(SingletonComponent::class)
-interface FoyersEntryPoint {
-    fun apiService(): ApiService
-    fun authRepository(): com.torchons.app.data.repository.AuthRepository
-    fun taskRepository(): com.torchons.app.data.repository.TaskRepository
-}
+// P1 refonte — FoyersEntryPoint supprime avec l'ecran autonome "Mes foyers".
+// Le switch/create foyer passe desormais par SettingsViewModel (Hilt).

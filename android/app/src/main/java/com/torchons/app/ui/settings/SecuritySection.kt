@@ -406,13 +406,13 @@ fun SupportDevCard() {
     }
 }
 
-private fun copyCode(context: Context, code: String) {
+internal fun copyCode(context: Context, code: String) {
     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         ?: return
     cm.setPrimaryClip(ClipData.newPlainText("Code de recuperation T&S", code))
 }
 
-private fun shareCode(context: Context, code: String) {
+internal fun shareCode(context: Context, code: String) {
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_SUBJECT, "Code de recuperation Torchons & Serviettes")

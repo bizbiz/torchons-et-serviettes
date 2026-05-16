@@ -19,24 +19,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import android.Manifest
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Balance
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Devices
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -44,9 +35,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -55,12 +49,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedButton
 import com.torchons.app.ui.common.FoyerGamifState
-import com.torchons.app.ui.common.InfoTooltip
 import com.torchons.app.ui.common.WhyNoPointsDialog
-import com.torchons.app.util.WifiHelper
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -68,16 +58,25 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 
+/**
+ * Reglages principaux (residuel apres la refonte P1 ecran Foyer).
+ *
+ * Ne contient plus que ce qui est lie au COMPTE / a l'app (pas au foyer
+ * en particulier) : Profil, entree prominente "🏠 <nom>" vers l'ecran
+ * Foyer, bouton "Creer un nouveau foyer", gamification de mon compte,
+ * notifications, popup affinite, nouveautes, infos version/build/backend,
+ * soutien dev, deconnexion.
+ *
+ * Tout le foyer-scope (pieces, categories, presence/WiFi, gamif foyer,
+ * bonus/malus, quitter le foyer, ...) ET les sliders compte-scope
+ * (renouvellement, tolerance fair-share) ont migre dans FoyerSettingsScreen.
+ */
 @Composable
 fun SettingsScreen(
     onLogout: () -> Unit,
-    onManageCategories: () -> Unit = {},
-    onManageRooms: () -> Unit = {},
-    onManageFoyers: () -> Unit = {},
     onOpenChangelog: () -> Unit = {},
-    onInviteSomeone: () -> Unit = {},
-    onAddDevice: () -> Unit = {},
-    viewModel: SettingsViewModel = hiltViewModel()
+    onOpenFoyerSettings: () -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val scope = rememberCoroutineScope()
     val displayName by viewModel.displayName.collectAsState()
@@ -90,23 +89,6 @@ fun SettingsScreen(
     val foyerMemberCount = s.foyerMemberCount
     val notifHour = s.notifHour
     val affinityPopup = s.affinityPopup
-    val affinityExpiry = s.affinityExpiry
-    val fairShareTolerance = s.fairShareTolerance
-    val homeSsids = s.homeSsids
-    var showWifiExplanation by remember { mutableStateOf(false) }
-    var showAdvanced by remember { mutableStateOf(false) }
-    val context = androidx.compose.ui.platform.LocalContext.current
-
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            val ssid = WifiHelper.getCurrentSsid(context)
-            if (ssid != null) viewModel.addHomeSsid(ssid)
-        }
-    }
-    val fairShareRatio by viewModel.fairShareRatio.collectAsState()
-    val users by viewModel.users.collectAsState()
     val backendConnected by viewModel.backendConnected.collectAsState()
 
     // v0.32 : etat gamification (user-level + foyer courant + liste de tous
@@ -115,12 +97,13 @@ fun SettingsScreen(
     val gamifUser = s.gamificationEnabled
     val currentFoyer by viewModel.currentFoyer.collectAsState()
     val allFoyers by viewModel.allFoyers.collectAsState()
-    val gamifFoyer = currentFoyer?.gamificationEnabled ?: true
     val anyFoyerOff = allFoyers.any { !it.gamificationEnabled }
     val helpLinkVisible = !gamifUser || anyFoyerOff
 
-    var showFoyerConfirmDialog by remember { mutableStateOf(false) }
     var showWhyNoPointsDialog by remember { mutableStateOf(false) }
+    var showCreateFoyerDialog by remember { mutableStateOf(false) }
+
+    val foyerName = currentFoyer?.name ?: "Mon foyer"
 
     LaunchedEffect(Unit) {
         viewModel.checkBackend()
@@ -173,10 +156,68 @@ fun SettingsScreen(
             }
         }
 
+        // P1 refonte — Entree prominente vers l'ecran Foyer. Remplace
+        // entierement l'ancienne card "Mes foyers" (design decision 9).
+        Card(
+            onClick = onOpenFoyerSettings,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+            ),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Home,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "🏠 $foyerName",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Pieces, categories, presence, gamification du foyer...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        // P1 refonte — Creer un nouveau foyer (remplace le FAB de l'ancien
+        // ecran "Mes foyers", design decision 3). POST /api/foyers puis
+        // bascule auto sur le nouveau foyer.
+        OutlinedButton(
+            onClick = { showCreateFoyerDialog = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Creer un nouveau foyer")
+        }
+
         // v0.32 : Gamification user-level + help link conditionnel.
-        // Carte prominente juste apres Profil pour decouvrabilite max
-        // (cf grill-me Q7 choix C : user toggle haut, foyer toggle dans
-        // Options avancees plus bas, help link en haut user settings).
+        // DISTINCTE de la gamification du foyer (qui, elle, vit dans
+        // l'ecran Foyer). Ici = "pour mon compte, tous foyers confondus".
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -238,181 +279,6 @@ fun SettingsScreen(
             }
         }
 
-        // Categories
-        Card(
-            onClick = onManageCategories,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Gerer les categories",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Ajouter, modifier, supprimer, WiFi maison",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        // Foyers (multi-tenant)
-        Card(
-            onClick = onManageFoyers,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Home,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Mes foyers",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Voir, creer, basculer entre les foyers",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        // v0.30 — Inviter quelqu'un dans le foyer actif (QR code).
-        Card(
-            onClick = onInviteSomeone,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PersonAdd,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Inviter quelqu'un",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Generer un QR code pour ajouter un membre au foyer",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        // v0.31 — Ajouter un de mes propres appareils (tablette, 2nd tel).
-        Card(
-            onClick = onAddDevice,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Devices,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Ajouter un de mes appareils",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Connecter une tablette ou un 2eme telephone a ton compte",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        // Pieces (rooms)
-        Card(
-            onClick = onManageRooms,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Gerer les pieces",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Cuisine, SDB, Chambre... + emoji et couleur",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
         // Nouveautes + Roadmap
         Card(
             onClick = onOpenChangelog,
@@ -446,96 +312,6 @@ fun SettingsScreen(
                     )
                 }
             }
-        }
-
-        // WiFi maison
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Home,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "WiFi maison",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    InfoTooltip(
-                        title = "WiFi maison",
-                        description = "Les taches des categories marquees 'a la maison' ne seront suggerees que lorsque tu es connecte a un de ces reseaux WiFi."
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (homeSsids.isEmpty()) {
-                    Text(
-                        text = "Aucun WiFi configure — toutes les taches sont visibles",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    homeSsids.forEach { ssid ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(ssid, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                            IconButton(onClick = { viewModel.removeHomeSsid(ssid) }, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.Close, "Supprimer", modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = {
-                        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
-                            context, Manifest.permission.ACCESS_FINE_LOCATION
-                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                        if (hasPermission) {
-                            val ssid = WifiHelper.getCurrentSsid(context)
-                            if (ssid != null) viewModel.addHomeSsid(ssid)
-                        } else {
-                            showWifiExplanation = true
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Ajouter mon WiFi actuel")
-                }
-            }
-        }
-
-        // Dialog explication WiFi avant permission
-        if (showWifiExplanation) {
-            AlertDialog(
-                onDismissRequest = { showWifiExplanation = false },
-                title = { Text("Detection WiFi maison") },
-                text = {
-                    Text("L'appli Torchons & Serviettes peut afficher les taches a faire a la maison uniquement lorsque vous y etes.\n\nPour ce faire, l'app a besoin d'acceder a votre localisation lorsqu'elle est ouverte.\n\nSi vous etes interesse par cette fonctionnalite, cliquez sur Continuer. Sinon, cliquez sur Annuler — vous pourrez reactiver cette fonctionnalite dans vos reglages plus tard.")
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        showWifiExplanation = false
-                        locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                    }) { Text("Continuer") }
-                },
-                dismissButton = {
-                    OutlinedButton(onClick = { showWifiExplanation = false }) { Text("Annuler") }
-                }
-            )
         }
 
         // Notifications
@@ -683,320 +459,83 @@ fun SettingsScreen(
                     checked = affinityPopup,
                     onCheckedChange = { viewModel.setAffinityPopup(it) }
                 )
-
             }
         }
 
-        // Fair-share
-        if (users.size >= 2) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Balance,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Equilibre fair-share",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Repartition souhaitee des taches du foyer.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "${users[0].displayName} : $fairShareRatio% — ${users[1].displayName} : ${100 - fairShareRatio}%",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Slider(
-                        value = fairShareRatio.toFloat(),
-                        onValueChange = { viewModel.updateFairShareRatio(it.toInt()) },
-                        onValueChangeFinished = { viewModel.saveFairShare() },
-                        valueRange = 10f..90f,
-                        steps = 7,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
-
-        // Options avancees (pliable)
+        // Infos app (relogees ici — etaient dans "Options avancees" qui a
+        // disparu avec la refonte P1 ; doivent rester accessibles).
         Card(
-            onClick = { showAdvanced = !showAdvanced },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Infos",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = "Options avancees",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        text = "Version",
+                        style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f)
                     )
-                    Icon(
-                        imageVector = if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = null
+                    Text(
+                        text = "v${com.torchons.app.BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-
-                if (showAdvanced) {
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // v0.32 : toggle gamification du foyer courant. Tout
-                    // membre peut toggler — dialog de confirmation pour
-                    // rendre l'impact explicite (cf grill-me Q4).
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Gamification dans ce foyer",
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            Text(
-                                text = if (gamifFoyer)
-                                    "Activee — tous les membres voient les points dans ce foyer."
-                                else
-                                    "Desactivee — personne ne voit les points dans ce foyer.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = gamifFoyer,
-                            onCheckedChange = { newValue ->
-                                if (!newValue) {
-                                    // Confirmation avant desactivation —
-                                    // l'autre membre va perdre la gamif sans
-                                    // l'avoir demande.
-                                    showFoyerConfirmDialog = true
-                                } else {
-                                    viewModel.setCurrentFoyerGamificationEnabled(true)
-                                }
-                            },
-                        )
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    // Duree de persistance affinites/efforts
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Renouvellement : $affinityExpiry mois",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        InfoTooltip(
-                            title = "Renouvellement affinites/efforts",
-                            description = "Apres cette duree, l'app te redemandera ton affinite et estimation d'effort pour chaque tache. Les anciennes valeurs restent valables tant qu'elles ne sont pas remplacees."
-                        )
-                    }
-                    Slider(
-                        value = affinityExpiry.toFloat(),
-                        onValueChange = { viewModel.setAffinityExpiry(it.toInt()) },
-                        valueRange = 1f..12f,
-                        steps = 10,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                    // Tolerance fair-share
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Tolerance fair-share : ${fairShareTolerance}%",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        InfoTooltip(
-                            title = "Tolerance fair-share",
-                            description = "L'app te dit 'tu as fait plus que ta part' quand tu as fait au moins X% de plus que ton ratio cible. A 30% (defaut) avec un ratio 50/50, l'app te felicite quand tu as fait 65% du boulot ou plus. A 0%, l'app te felicite des que tu depasses ton ratio. A 100%, jamais (sauf si tu fais tout)."
-                        )
-                    }
-                    Slider(
-                        value = fairShareTolerance.toFloat(),
-                        onValueChange = { viewModel.setFairShareTolerance(it.toInt()) },
-                        valueRange = 0f..100f,
-                        steps = 19,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    // --- Bonus / Malus de points ---
-                    val bonusConfig by viewModel.bonusConfig.collectAsState()
-                    var showBonusMalus by remember { mutableStateOf(false) }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showBonusMalus = !showBonusMalus }
-                            .padding(vertical = 4.dp),
-                    ) {
-                        Text(
-                            text = "Bonus / Malus de points",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(
-                            imageVector = if (showBonusMalus) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-
-                    if (showBonusMalus && bonusConfig != null) {
-                        val cfg = bonusConfig!!
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Bonus retard
-                        Text("Bonus retard", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        BonusSlider("Bonus %", "+${(cfg.bonusPct * 100).toInt()}%", cfg.bonusPct, 0f..2f, 19,
-                            "Multiplicateur applique quand une tache est en retard au-dela du seuil. +50% = touche 1.5x les points.",
-                        ) { viewModel.updateBonusConfig("bonus_pct", it) }
-                        BonusSlider("Seuil bonus (Strict)", "${(cfg.seuilBonusStrict * 100).toInt()}%", cfg.seuilBonusStrict, 0f..1f, 19,
-                            "% du cycle de retard pour declencher le bonus sur les taches Strict.",
-                        ) { viewModel.updateBonusConfig("seuil_bonus_strict", it) }
-                        BonusSlider("Seuil bonus (Normal)", "${(cfg.seuilBonusNormal * 100).toInt()}%", cfg.seuilBonusNormal, 0f..1f, 19,
-                            "% du cycle de retard pour declencher le bonus sur les taches Normal.",
-                        ) { viewModel.updateBonusConfig("seuil_bonus_normal", it) }
-                        BonusSlider("Seuil bonus (Souple)", "${(cfg.seuilBonusSouple * 100).toInt()}%", cfg.seuilBonusSouple, 0f..1f, 19,
-                            "% du cycle de retard pour declencher le bonus sur les taches Souple.",
-                        ) { viewModel.updateBonusConfig("seuil_bonus_souple", it) }
-
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                        // Malus avance
-                        Text("Malus avance", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        BonusSlider("Plancher malus", "${(cfg.plancherMalus * 100).toInt()}%", cfg.plancherMalus, 0.1f..1f, 17,
-                            "Multiplicateur minimum a 100% d'avance (debut du cycle). 50% = au pire la moitie des points.",
-                        ) { viewModel.updateBonusConfig("plancher_malus", it) }
-                        BonusSlider("Seuil malus (Strict)", "${(cfg.seuilMalusStrict * 100).toInt()}%", cfg.seuilMalusStrict, 0f..1f, 19,
-                            "% du cycle en avance pour entrer en zone malus sur les taches Strict.",
-                        ) { viewModel.updateBonusConfig("seuil_malus_strict", it) }
-                        BonusSlider("Seuil malus (Normal)", "${(cfg.seuilMalusNormal * 100).toInt()}%", cfg.seuilMalusNormal, 0f..1f, 19,
-                            "% du cycle en avance pour entrer en zone malus sur les taches Normal.",
-                        ) { viewModel.updateBonusConfig("seuil_malus_normal", it) }
-                        BonusSlider("Seuil malus (Souple)", "${(cfg.seuilMalusSouple * 100).toInt()}%", cfg.seuilMalusSouple, 0f..1f, 19,
-                            "% du cycle en avance pour entrer en zone malus sur les taches Souple.",
-                        ) { viewModel.updateBonusConfig("seuil_malus_souple", it) }
-
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                        // Analyse retard (bump)
-                        Text("Detection retards repetitifs", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        BonusSlider("Fenetre min", "${cfg.bumpYMinDays} j", cfg.bumpYMinDays.toFloat(), 30f..365f, 10,
-                            "Duree minimale de la fenetre d'analyse pour detecter un retard systematique.",
-                        ) { viewModel.updateBonusConfig("bump_y_min_days", it.toInt()) }
-                        BonusSlider("Fenetre max", "${cfg.bumpYMaxDays} j", cfg.bumpYMaxDays.toFloat(), 180f..3650f, 10,
-                            "Duree maximale de la fenetre d'analyse (les vieilles donnees pourrissent).",
-                        ) { viewModel.updateBonusConfig("bump_y_max_days", it.toInt()) }
-                        BonusSlider("Completions min", "${cfg.bumpZMin}", cfg.bumpZMin.toFloat(), 1f..10f, 8,
-                            "Nombre minimum de completions dans la fenetre pour tirer une conclusion.",
-                        ) { viewModel.updateBonusConfig("bump_z_min", it.toInt()) }
-                        BonusSlider("Ratio retard", "${(cfg.bumpXRatio * 100).toInt()}%", cfg.bumpXRatio, 0.3f..1f, 13,
-                            "Pourcentage de completions qui doivent etre en zone bonus pour qualifier 'systematiquement en retard'.",
-                        ) { viewModel.updateBonusConfig("bump_x_ratio", it) }
-                        BonusSlider("Grace period", "${(cfg.bumpGraceRatio * 100).toInt()}%", cfg.bumpGraceRatio, 0.1f..2f, 18,
-                            "Apres proposition de bump, on attend ce % de la fenetre avant de re-analyser.",
-                        ) { viewModel.updateBonusConfig("bump_grace_ratio", it) }
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    // Infos app
-                    Text(
-                        text = "Infos",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
-                    )
+                // Marqueur de build (beta uniquement : BUILD_INFO vide en
+                // prod). Permet de verifier de visu QUEL build est installe
+                // (date + SHA git court), le versionName ne bougeant pas
+                // entre 2 builds dev sur la meme version.
+                if (com.torchons.app.BuildConfig.BUILD_INFO.isNotEmpty()) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Version",
+                            text = "Build",
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "v${com.torchons.app.BuildConfig.VERSION_NAME}",
+                            text = com.torchons.app.BuildConfig.BUILD_INFO,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    // Marqueur de build (beta uniquement : BUILD_INFO vide en
-                    // prod). Permet de verifier de visu QUEL build est installe
-                    // (date + SHA git court), le versionName ne bougeant pas
-                    // entre 2 builds dev sur la meme version.
-                    if (com.torchons.app.BuildConfig.BUILD_INFO.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Build",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Text(
-                                text = com.torchons.app.BuildConfig.BUILD_INFO,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { viewModel.checkBackend() },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Backend",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .clip(androidx.compose.foundation.shape.CircleShape)
-                                .background(if (backendConnected) com.torchons.app.util.TaskUrgencyCalculator.VERT else com.torchons.app.util.TaskUrgencyCalculator.ROUGE)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (backendConnected) "Connecte" else "Hors ligne",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (backendConnected) com.torchons.app.util.TaskUrgencyCalculator.VERT else com.torchons.app.util.TaskUrgencyCalculator.ROUGE
-                        )
-                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { viewModel.checkBackend() },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Backend",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(if (backendConnected) com.torchons.app.util.TaskUrgencyCalculator.VERT else com.torchons.app.util.TaskUrgencyCalculator.ROUGE)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (backendConnected) "Connecte" else "Hors ligne",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (backendConnected) com.torchons.app.util.TaskUrgencyCalculator.VERT else com.torchons.app.util.TaskUrgencyCalculator.ROUGE
+                    )
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // v0.30 — Securite du foyer (regenerer code, quitter foyer)
-        SecuritySection(
-            viewModel = viewModel,
-            onLoggedOut = onLogout,
-        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -1037,42 +576,38 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(32.dp))
     }
 
-    // v0.32 : dialog de confirmation pour desactiver la gamif du foyer.
-    // Mention explicite de l'autre membre pour rendre l'impact tangible
-    // (cf grill-me Q4).
-    if (showFoyerConfirmDialog) {
-        val foyer = currentFoyer
-        val otherMemberName = users
-            .firstOrNull { it.displayName != displayName }
-            ?.displayName
-            ?: "l'autre membre du foyer"
+    // P1 refonte — Dialog "Creer un nouveau foyer". Reutilise le meme
+    // endpoint que l'ancien ecran Mes foyers (POST /api/foyers via
+    // SettingsViewModel.createAndSwitchToFoyer), puis bascule dessus.
+    if (showCreateFoyerDialog) {
+        var name by remember { mutableStateOf("") }
         AlertDialog(
-            onDismissRequest = { showFoyerConfirmDialog = false },
-            title = { Text("Desactiver la gamification du foyer ?") },
+            onDismissRequest = { showCreateFoyerDialog = false },
+            title = { Text("Nouveau foyer", fontWeight = FontWeight.Bold) },
             text = {
-                Column {
-                    Text(
-                        text = "Tu vas desactiver la gamification du foyer \"${foyer?.name ?: ""}\".",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "$otherMemberName et toi ne verrez plus les points, les stats ni les bonus dans ce foyer. Vous pourrez le reactiver a tout moment.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nom") },
+                    placeholder = { Text("Ex: Colloc Paris") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.setCurrentFoyerGamificationEnabled(false)
-                        showFoyerConfirmDialog = false
+                        val trimmed = name.trim()
+                        if (trimmed.isNotEmpty()) {
+                            showCreateFoyerDialog = false
+                            viewModel.createAndSwitchToFoyer(trimmed)
+                        }
                     },
-                ) { Text("Desactiver") }
+                    enabled = name.trim().isNotEmpty(),
+                ) { Text("Creer") }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showFoyerConfirmDialog = false }) { Text("Annuler") }
+                TextButton(onClick = { showCreateFoyerDialog = false }) { Text("Annuler") }
             },
         )
     }
@@ -1098,13 +633,13 @@ fun SettingsScreen(
             onReactivateFoyer = { foyerId ->
                 // Si c'est le foyer courant, on toggle directement. Sinon
                 // l'user doit switcher dessus d'abord — on ferme le dialog
-                // et on l'oriente vers Mes foyers.
+                // et on l'oriente vers l'ecran Foyer (qui gere le switch).
                 if (currentFoyer?.id == foyerId) {
                     viewModel.setCurrentFoyerGamificationEnabled(true)
                     showWhyNoPointsDialog = false
                 } else {
                     showWhyNoPointsDialog = false
-                    onManageFoyers()
+                    onOpenFoyerSettings()
                 }
             },
             onDismiss = { showWhyNoPointsDialog = false },
@@ -1112,69 +647,5 @@ fun SettingsScreen(
     }
 }
 
-@Composable
-private fun SettingSwitch(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-/**
- * Slider pour les parametres bonus/malus avec label + valeur + tooltip i.
- * Envoie onValueChangeEnd (pas onValueChange) pour ne PAS spammer le backend
- * a chaque pixel du drag.
- */
-@Composable
-private fun BonusSlider(
-    label: String,
-    valueLabel: String,
-    value: Float,
-    range: ClosedFloatingPointRange<Float>,
-    steps: Int,
-    tooltipDescription: String,
-    onValueChangeEnd: (Float) -> Unit,
-) {
-    var sliderValue by remember(value) { mutableStateOf(value) }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = "$label : $valueLabel",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
-        InfoTooltip(
-            title = label,
-            description = tooltipDescription,
-        )
-    }
-    Slider(
-        value = sliderValue,
-        onValueChange = { sliderValue = it },
-        onValueChangeFinished = { onValueChangeEnd(sliderValue) },
-        valueRange = range,
-        steps = steps,
-        modifier = Modifier.fillMaxWidth(),
-    )
-}
+// SettingSwitch + BonusSlider extraits dans SettingsComponents.kt (P1
+// refonte ecran Foyer) — reutilises par SettingsScreen et FoyerSettingsScreen.
