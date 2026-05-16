@@ -127,6 +127,17 @@ private val migration8to9 = object : Migration(8, 9) {
     }
 }
 
+private val migration9to10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // last_completed_at calcule serveur (max completed_at non supprimee).
+        // Consomme par TaskUrgencyCalculator (reconcilie max() avec le cache
+        // local des completions) pour que l'urgence soit juste meme quand le
+        // cache local de completions est vide pour la tache. NULL par defaut :
+        // le prochain GET /api/tasks rempliera la vraie valeur.
+        db.execSQL("ALTER TABLE tasks ADD COLUMN lastCompletedAt TEXT DEFAULT NULL")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -139,7 +150,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8, migration8to9)
+            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8, migration8to9, migration9to10)
             .build()
     }
 

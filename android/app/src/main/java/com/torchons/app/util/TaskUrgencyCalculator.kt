@@ -208,6 +208,32 @@ object TaskUrgencyCalculator {
         State.GREEN -> 2
     }
 
+    /**
+     * Reconcilie la derniere completion SERVEUR (TaskResponse.last_completed_at,
+     * autoritaire en ligne) avec la plus recente du cache LOCAL des completions
+     * (optimiste hors-ligne). On garde la plus RECENTE des deux :
+     *
+     * - en ligne : le serveur est a jour (>= local) -> le serveur fait foi ;
+     * - hors-ligne : une completion locale optimiste pas encore refletee par
+     *   un refresh /tasks est plus recente que le champ serveur perime ->
+     *   le local gagne (recalcul immediat sans reseau).
+     *
+     * Resout le cas "cache de completions vide pour la tache" (ex. ecran liste
+     * apres un refresh /tasks qui n'a pas (re)peuple /completions) ou le client
+     * retombait a tort sur created_at -> "dans Xj" au lieu de Rouge.
+     * Cf docs/cache-conventions.md (regle 2 : online = serveur autoritaire).
+     */
+    fun latestCompletedAt(serverLastCompletedAt: String?, localCacheLatest: String?): String? {
+        val s = parseInstant(serverLastCompletedAt)
+        val l = parseInstant(localCacheLatest)
+        return when {
+            s == null -> localCacheLatest
+            l == null -> serverLastCompletedAt
+            l.isAfter(s) -> localCacheLatest
+            else -> serverLastCompletedAt
+        }
+    }
+
     private fun parseInstant(iso: String?): Instant? {
         if (iso.isNullOrBlank()) return null
         return try {

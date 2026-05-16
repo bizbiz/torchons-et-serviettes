@@ -40,6 +40,13 @@ data class Task(
     // `today` de ce delta dans TaskUrgencyCalculator pour rendre l'urgence.
     @SerializedName("absent_days_since_last_completion")
     val absentDaysSinceLastCompletion: Int = 0,
+    // Derniere completion calculee SERVEUR (max(completed_at) non supprimee).
+    // Source de verite quand en ligne : evite que le client retombe a tort
+    // sur created_at quand son cache local de completions est vide pour la
+    // tache (ex. ecran liste apres un refresh /tasks sans /completions).
+    // Reconcilie par max() avec le cache local cf TaskUrgencyCalculator
+    // .latestCompletedAt + docs/cache-conventions.md (regle 2).
+    @SerializedName("last_completed_at") val lastCompletedAt: String? = null,
 )
 
 /**

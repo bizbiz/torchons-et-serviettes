@@ -597,9 +597,17 @@ class TaskListViewModel @Inject constructor(
 
         var tasksWithUrgency = filteredTasks.map { task ->
             val lastCompletion = lastCompletionByTaskId[task.id]
+            // Online = serveur autoritaire (task.lastCompletedAt calcule
+            // serveur) ; offline = completion optimiste locale plus recente.
+            // max() des deux -> evite le fallback errone sur created_at quand
+            // le cache local de completions est vide pour la tache.
+            val effectiveLastCompleted = TaskUrgencyCalculator.latestCompletedAt(
+                serverLastCompletedAt = task.lastCompletedAt,
+                localCacheLatest = lastCompletion?.completedAt,
+            )
             val nominal = TaskUrgencyCalculator.nominalIntervalDays(task.recurrenceRule)
             val dueDate = TaskUrgencyCalculator.computeDueDate(
-                lastCompletedAt = lastCompletion?.completedAt,
+                lastCompletedAt = effectiveLastCompleted,
                 rule = task.recurrenceRule,
                 createdAt = task.createdAt,
             )

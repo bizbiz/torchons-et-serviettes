@@ -34,6 +34,10 @@ data class TaskEntity(
     // completion. Persiste en local pour que l'UI reste coherente offline.
     // Refresh sur GET /api/tasks ou apres resolution de RESOLVE_PRESENCE.
     val absentDaysSinceLastCompletion: Int = 0,
+    // Derniere completion calculee SERVEUR. Persistee pour rester dispo en
+    // offline (un refresh /tasks la rafraichit). Reconciliee par max() avec
+    // le cache local des completions cf TaskUrgencyCalculator.latestCompletedAt.
+    val lastCompletedAt: String? = null,
 )
 
 /** Conversion DTO -> Entite (pour upsert depuis l'API). */
@@ -54,6 +58,7 @@ fun Task.toEntity(): TaskEntity = TaskEntity(
     createdAt = createdAt,
     updatedAt = updatedAt,
     absentDaysSinceLastCompletion = absentDaysSinceLastCompletion,
+    lastCompletedAt = lastCompletedAt,
 )
 
 /** Conversion Entite -> DTO (pour exposer aux ViewModels). */
@@ -74,4 +79,5 @@ fun TaskEntity.toDomain(): Task = Task(
     createdAt = createdAt,
     updatedAt = updatedAt,
     absentDaysSinceLastCompletion = absentDaysSinceLastCompletion,
+    lastCompletedAt = lastCompletedAt,
 )
