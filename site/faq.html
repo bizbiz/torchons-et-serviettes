@@ -41,6 +41,9 @@
       crée un foyer (ou on en rejoint un), on choisit un prénom affiché, et
       c'est tout. Un <strong>code de récupération</strong> permet de
       retrouver son foyer en cas de changement de téléphone.
+      <strong>Important :</strong> ce code n'existe que chez vous —
+      <strong>je n'ai aucun moyen de le retrouver</strong> s'il est perdu ou
+      mal noté. Notez-le précieusement à la création du foyer.
     </p>
 
     <h2>Comment rejoindre le foyer de quelqu'un ?</h2>
@@ -58,8 +61,12 @@
       téléphone, tablette) à votre profil existant : un QR « ajouter un
       appareil » dédié, sans recréer de membre. Pour
       <strong>récupérer un foyer après une perte/réinitialisation</strong> :
-      le code de récupération. Ce code n'est jamais stocké en clair (haché en
-      <code>argon2id</code>) — gardez-le de côté à la création du foyer.
+      le code de récupération. Ce code n'est jamais stocké en clair sur le
+      serveur (haché en <code>argon2id</code>) : c'est une garantie de
+      sécurité, mais cela veut aussi dire que
+      <strong>même moi, je ne peux pas le récupérer ni le réinitialiser</strong>
+      s'il est perdu ou mal noté. Gardez-le précieusement dès la création du
+      foyer (l'app propose de le copier/partager).
     </p>
 
     <h2>C'est quoi les « affinités » ?</h2>
@@ -211,10 +218,29 @@
 
     <h2>Y a-t-il des notifications ?</h2>
     <p>
-      Oui : des rappels pour les tâches qui arrivent à échéance ou sont en
-      retard, et quelques sollicitations utiles (voter l'effort/fréquence,
-      confirmer une présence). Elles passent par le service de notifications
-      d'Android. Vous pouvez les désactiver.
+      Il y a <strong>cinq types de notifications</strong>, chacun activable
+      ou désactivable <strong>indépendamment</strong> dans
+      Réglages → Notifications :
+    </p>
+    <ul>
+      <li><strong>Résumé quotidien</strong> — un rappel des tâches à faire, à
+        l'heure que vous choisissez (réglable).</li>
+      <li><strong>Tâches urgentes</strong> — quand une tâche passe en retard.</li>
+      <li><strong>Tâche faite en solo</strong> — quand un autre membre fait
+        une tâche seul.</li>
+      <li><strong>Tâche faite ensemble (avec moi)</strong>.</li>
+      <li><strong>Tâche faite à plusieurs sans moi</strong> — uniquement à
+        partir de 3 membres dans le foyer.</li>
+    </ul>
+    <p>
+      <strong>À ne pas confondre avec les votes :</strong> les demandes du
+      type « note l'effort/la fréquence de cette tâche » ou « étais-tu
+      absent ces jours-là ? » ne sont <em>pas</em> des notifications. C'est
+      une <strong>petite fenêtre dans l'application</strong>, affichée
+      seulement à l'ouverture de l'app, au plus une fois toutes les deux
+      heures environ, et <strong>toujours « plus tard » d'un geste</strong>
+      (rien d'obligatoire, rien dans la barre de notifications). La
+      confirmation de présence fait partie de cette même fenêtre.
     </p>
 
     <h2>Est-ce vraiment gratuit ?</h2>
@@ -239,10 +265,11 @@
 
     <h2>Où voir les nouveautés et la feuille de route ?</h2>
     <p>
-      Dans l'application : <strong>Réglages → Nouveautés</strong> (notes de
-      version) et la feuille de route. Je prévois de les publier aussi sur ce
-      site, depuis <em>exactement la même source</em> que l'application, pour
-      qu'il n'y ait jamais de décalage entre les deux.
+      Les <a href="changelog.html">dernières évolutions de l'application</a>
+      et les <a href="roadmap.html">idées pour la suite du développement</a>
+      sont publiées ici. Elles sont générées depuis exactement la même source
+      que l'écran « Nouveautés » de l'application — donc toujours à jour, sans
+      décalage entre les deux.
     </p>
   </div>
 </main>
@@ -253,6 +280,8 @@
     <span>
       <a href="about.html">À propos</a> ·
       <a href="faq.html">FAQ</a> ·
+      <a href="changelog.html">Nouveautés</a> ·
+      <a href="roadmap.html">Feuille de route</a> ·
       <a href="privacy.html">Confidentialité</a> ·
       <a href="contact.html">Contact</a>
     </span>
