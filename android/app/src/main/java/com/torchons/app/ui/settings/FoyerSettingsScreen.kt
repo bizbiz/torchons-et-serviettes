@@ -69,8 +69,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.ui.common.InfoTooltip
+import com.torchons.app.ui.common.PresenceCalendarGrid
 import com.torchons.app.ui.home.ProjectionSimulationDialog
 import com.torchons.app.util.WifiHelper
+import java.time.YearMonth
 
 /**
  * Ecran "Foyer" (P1 refonte — design-foyer-settings-presence.md decision 9).
@@ -121,6 +123,9 @@ fun FoyerSettingsScreen(
     var showBonusMalus by remember { mutableStateOf(false) }
     var showLeaveConfirm by remember { mutableStateOf(false) }
     var showRegenerateConfirm by remember { mutableStateOf(false) }
+    // P2 — sous-section calendrier de presence (repliee par defaut).
+    var showPresenceCalendar by remember { mutableStateOf(false) }
+    var visibleMonth by remember { mutableStateOf(YearMonth.now()) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -407,6 +412,71 @@ fun FoyerSettingsScreen(
                     Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Ajouter mon WiFi actuel")
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // Sous-section repliable "Calendrier de presence" (P2,
+                // design decision 4 / 4c). Meme pattern d'expand que la
+                // collapsible "Bonus / Malus" plus bas. Repliee par defaut
+                // (avancee). Editeur ONLINE : GET au mois visible, PUT puis
+                // GET-after-PUT (cf docs/cache-conventions.md).
+                val presenceDays by viewModel.presenceDays.collectAsState()
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showPresenceCalendar = !showPresenceCalendar },
+                ) {
+                    Text(
+                        text = "Calendrier de presence",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    InfoTooltip(
+                        title = "Calendrier de presence",
+                        description = "Renseigne ou corrige les jours ou " +
+                            "quelqu'un etait au foyer. Sert au gel des taches " +
+                            "\"a la maison\" pendant les absences. Tu peux " +
+                            "naviguer dans le passe ET planifier des absences " +
+                            "futures. Detail des etats et des sources dans la " +
+                            "legende sous le calendrier.",
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        imageVector = if (showPresenceCalendar)
+                            Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                    )
+                }
+
+                if (showPresenceCalendar) {
+                    Spacer(Modifier.height(8.dp))
+                    // Charge la plage du mois visible a l'ouverture / au
+                    // changement de mois.
+                    LaunchedEffect(visibleMonth, showPresenceCalendar) {
+                        val from = visibleMonth.atDay(1).toString()
+                        val to = visibleMonth.atEndOfMonth().toString()
+                        viewModel.loadPresence(from, to)
+                    }
+                    PresenceCalendarGrid(
+                        visibleMonth = visibleMonth,
+                        statesByDate = presenceDays,
+                        onMonthChange = { visibleMonth = it },
+                        onCellTap = { day, next ->
+                            val status = when (next) {
+                                com.torchons.app.data.model.PresenceCellState.PRESENT -> "present"
+                                com.torchons.app.data.model.PresenceCellState.ABSENT -> "absent"
+                                com.torchons.app.data.model.PresenceCellState.UNKNOWN -> "clear"
+                            }
+                            val from = visibleMonth.atDay(1).toString()
+                            val to = visibleMonth.atEndOfMonth().toString()
+                            viewModel.setPresence(day.toString(), status, from, to)
+                        },
+                        editable = true,
+                        showLegend = true,
+                    )
                 }
             }
 

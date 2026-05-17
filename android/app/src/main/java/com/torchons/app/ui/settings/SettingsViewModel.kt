@@ -13,6 +13,9 @@ import com.torchons.app.data.model.FoyerCreateRequest
 import com.torchons.app.data.model.MaintenanceRateResponse
 import com.torchons.app.data.model.ObjectiveUpdate
 import com.torchons.app.data.model.PaceResponse
+import com.torchons.app.data.model.PresenceCellState
+import com.torchons.app.data.model.PresenceDayPut
+import com.torchons.app.data.model.PresenceSource
 import com.torchons.app.data.model.RetardResponse
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
@@ -446,6 +449,67 @@ class SettingsViewModel @Inject constructor(
                 loadSimulationData()
             } catch (e: Exception) {
                 Log.e("SettingsVM", "saveObjective failed", e)
+            }
+        }
+    }
+
+    // --- Calendrier de presence (P2 — design decision 4) ---
+    // Editeur ONLINE : serveur autoritaire (cf docs/cache-conventions.md).
+    // On charge la plage du mois visible via GET /presence, on edite via
+    // PUT /presence puis on recharge la plage (GET-after-PUT) pour refleter
+    // la verite serveur. Pas de cache Room (rien d'offline-first ici).
+
+    /** date ISO "YYYY-MM-DD" -> (etat de case, source). Jours absents de la
+     *  map = non renseignes (la grille les rend gris). */
+    private val _presenceDays =
+        MutableStateFlow<Map<String, Pair<PresenceCellState, PresenceSource>>>(emptyMap())
+    val presenceDays: StateFlow<Map<String, Pair<PresenceCellState, PresenceSource>>> =
+        _presenceDays.asStateFlow()
+
+    /** Charge les jours de presence du foyer dans [from, to] (ISO). */
+    fun loadPresence(from: String, to: String) {
+        viewModelScope.launch {
+            try {
+                val resp = apiService.getPresence(from, to)
+                if (resp.isSuccessful) {
+                    val rows = resp.body() ?: emptyList()
+                    _presenceDays.value = rows.associate { row ->
+                        val state = when (row.status) {
+                            "confirmed_present" -> PresenceCellState.PRESENT
+                            "confirmed_absent" -> PresenceCellState.ABSENT
+                            else -> PresenceCellState.UNKNOWN
+                        }
+                        val source = when (row.source) {
+                            "auto_wifi" -> PresenceSource.AUTO_WIFI
+                            "manual" -> PresenceSource.MANUAL
+                            else -> PresenceSource.MANUAL // foyer_init -> traite comme pose
+                        }
+                        row.date to (state to source)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("SettingsVM", "loadPresence failed", e)
+            }
+        }
+    }
+
+    /**
+     * Pose / efface un jour de presence puis recharge la plage visible
+     * (GET-after-PUT — online = serveur autoritaire). `status` : "present",
+     * "absent" ou "clear". `rangeFrom`/`rangeTo` = plage a recharger apres
+     * (le mois visible).
+     */
+    fun setPresence(date: String, status: String, rangeFrom: String, rangeTo: String) {
+        viewModelScope.launch {
+            try {
+                val resp = apiService.putPresence(
+                    listOf(PresenceDayPut(date = date, status = status)),
+                )
+                if (resp.isSuccessful) {
+                    loadPresence(rangeFrom, rangeTo)
+                }
+            } catch (e: Exception) {
+                Log.e("SettingsVM", "setPresence failed", e)
             }
         }
     }

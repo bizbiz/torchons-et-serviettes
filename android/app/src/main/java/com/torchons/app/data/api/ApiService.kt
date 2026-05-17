@@ -225,6 +225,19 @@ interface ApiService {
     @POST("presence/checkin")
     suspend fun presenceCheckin(): Response<Map<String, Boolean>>
 
+    /** P2 — Jours de presence du foyer dans [from, to] (calendrier partage). */
+    @GET("presence")
+    suspend fun getPresence(
+        @Query("from") from: String,
+        @Query("to") to: String,
+    ): Response<List<com.torchons.app.data.model.PresenceDayDto>>
+
+    /** P2 — Pose / efface des jours de presence (edition manuelle). */
+    @PUT("presence")
+    suspend fun putPresence(
+        @Body days: List<com.torchons.app.data.model.PresenceDayPut>,
+    ): Response<List<com.torchons.app.data.model.PresenceDayDto>>
+
     // --- Completions ---
 
     /** Liste des completions avec filtres optionnels. */

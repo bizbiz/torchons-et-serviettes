@@ -18,7 +18,8 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -52,6 +53,139 @@ def _today_local() -> date:
     return datetime.now(TZ_LOCAL).date()
 
 
+# Plage maximale pour GET /presence — borne anti-abus (un foyer ne peut pas
+# demander des annees de donnees d'un coup).
+PRESENCE_RANGE_MAX_DAYS = 400
+
+
+# --- Schemas ---
+
+
+class PresenceDayOut(BaseModel):
+    """Une ligne presence_days exposee au client (calendrier partage)."""
+
+    date: date
+    status: str  # confirmed_present / confirmed_absent
+    source: str  # auto_wifi / manual / foyer_init
+
+    model_config = {"from_attributes": True}
+
+
+class PresenceDayPut(BaseModel):
+    """Un jour a poser via PUT /presence.
+
+    status :
+    - "present" -> confirmed_present
+    - "absent"  -> confirmed_absent
+    - "clear"   -> supprime la ligne (le jour redevient incertain)
+    """
+
+    date: date
+    status: str
+
+
+@router.get("/presence", response_model=list[PresenceDayOut])
+async def get_presence(
+    from_date: date = Query(..., alias="from"),
+    to_date: date = Query(..., alias="to"),
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+) -> list[PresenceDayOut]:
+    """Jours de presence du foyer courant dans la plage [from, to] (inclus).
+
+    Foyer-scope via get_current_user. Sert le calendrier partage (ecran Foyer
+    + prompt RESOLVE_PRESENCE). Les jours sans ligne sont "incertains" et
+    n'apparaissent simplement pas dans la reponse (le client les rend gris).
+    """
+    if from_date > to_date:
+        raise HTTPException(status_code=400, detail="from doit etre <= to")
+    if (to_date - from_date).days > PRESENCE_RANGE_MAX_DAYS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Plage trop large (max {PRESENCE_RANGE_MAX_DAYS} jours)",
+        )
+
+    foyer_uuid = current_foyer_uuid(current)
+    result = await session.execute(
+        select(PresenceDay)
+        .where(
+            PresenceDay.foyer_id == foyer_uuid,
+            PresenceDay.date >= from_date,
+            PresenceDay.date <= to_date,
+        )
+        .order_by(PresenceDay.date)
+    )
+    rows = result.scalars().all()
+    return [PresenceDayOut.model_validate(r) for r in rows]
+
+
+@router.put("/presence", response_model=list[PresenceDayOut])
+async def put_presence(
+    days: list[PresenceDayPut],
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+) -> list[PresenceDayOut]:
+    """Pose / efface des jours de presence du foyer courant (edition manuelle).
+
+    Pour chaque jour :
+    - present -> upsert confirmed_present, source=manual
+    - absent  -> upsert confirmed_absent, source=manual
+    - clear   -> delete la ligne (retour a "incertain")
+
+    Dates futures permises (planifier une absence a l'avance). Idempotent :
+    rejouer le meme PUT laisse la base dans le meme etat. Source forcee a
+    "manual" — precedence d'ecriture manual > auto_wifi > foyer_init : un
+    check-in WiFi ulterieur ne pourra plus ecraser ces jours (cf checkin).
+
+    Retourne l'etat des jours touches (apres upsert ; les jours "clear" ne
+    sont pas renvoyes puisque supprimes).
+    """
+    foyer_uuid = current_foyer_uuid(current)
+    touched: list[PresenceDay] = []
+
+    for item in days:
+        if item.status not in ("present", "absent", "clear"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"status invalide: {item.status}",
+            )
+
+        existing = await session.execute(
+            select(PresenceDay).where(
+                PresenceDay.foyer_id == foyer_uuid,
+                PresenceDay.date == item.date,
+            )
+        )
+        row = existing.scalar_one_or_none()
+
+        if item.status == "clear":
+            # Effacer => le jour redevient incertain (gris cote client).
+            if row is not None:
+                await session.delete(row)
+            continue
+
+        new_status = (
+            "confirmed_present" if item.status == "present" else "confirmed_absent"
+        )
+        # Select-then-update/insert (meme pattern que checkin / resolve_prompt).
+        if row is None:
+            row = PresenceDay(
+                foyer_id=foyer_uuid,
+                date=item.date,
+                status=new_status,
+                source="manual",
+            )
+            session.add(row)
+        else:
+            row.status = new_status
+            row.source = "manual"
+        touched.append(row)
+
+    await session.flush()
+    await session.commit()
+    return [PresenceDayOut.model_validate(r) for r in touched]
+
+
 @router.post("/presence/checkin")
 async def checkin(
     session: AsyncSession = Depends(get_session),
@@ -80,9 +214,15 @@ async def checkin(
             status="confirmed_present",
             source="auto_wifi",
         ))
+    elif day_row.source == "manual":
+        # Precedence d'ecriture : manual > auto_wifi > foyer_init. Un jour
+        # pose explicitement a la main (calendrier / prompt) n'est jamais
+        # ecrase par un check-in WiFi automatique, meme si le signal WiFi
+        # contredit le statut manuel. On laisse la ligne intacte.
+        pass
     elif day_row.status != "confirmed_present":
-        # Un jour marque absent manuellement mais maintenant on a un signal
-        # WiFi positif : la presence l'emporte.
+        # Source non-manuelle (auto_wifi / foyer_init) marquee absent :
+        # un signal WiFi positif est fiable, la presence l'emporte.
         day_row.status = "confirmed_present"
         day_row.source = "auto_wifi"
 

@@ -1,22 +1,12 @@
 package com.torchons.app.ui.common
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,25 +22,22 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.torchons.app.data.model.PresenceCellState
+import com.torchons.app.data.model.PresenceSource
 import com.torchons.app.data.model.UserPrompt
-import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
 import java.util.Locale
 
 /**
@@ -78,6 +65,7 @@ fun ResolvePresenceDialog(
             onResolve = onResolve,
             onDismiss = onDismiss,
             onNavigateToSettings = onNavigateToSettings,
+            onNavigateToFoyerSettings = onNavigateToSettings,
         )
     } else {
         SimplifiedModeDialog(
@@ -90,7 +78,6 @@ fun ResolvePresenceDialog(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CalendarModeDialog(
     prompt: UserPrompt,
@@ -98,26 +85,42 @@ private fun CalendarModeDialog(
     onResolve: (payload: Map<String, Any?>) -> Unit,
     onDismiss: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToFoyerSettings: () -> Unit,
 ) {
     @Suppress("UNCHECKED_CAST")
     val uncertainDays = (prompt.context["uncertain_days"] as? List<*>)
         ?.mapNotNull { it?.toString() } ?: emptyList()
 
-    // Etat : chaque jour est pre-coche "absent" par defaut. Le prompt
-    // n'apparait que si on suspecte une absence (trou de presence) — autant
-    // demander de confirmer la minorite des jours presents plutot que toggle
-    // tous les jours d'une longue absence.
+    // Etat : chaque jour incertain est pre-coche "absent" par defaut. Le
+    // prompt n'apparait que si on suspecte une absence (trou de presence) —
+    // autant demander de confirmer la minorite des jours presents plutot
+    // que toggle tous les jours d'une longue absence. La grille partagee
+    // (PresenceCalendarGrid) est CONTROLEE : on lui passe l'etat courant
+    // (statesByDate) et on recoit le prochain etat du cycle au tap.
     val dayStates = remember {
-        mutableStateMapOf<String, Boolean>().apply {
-            uncertainDays.forEach { put(it, false) } // false = absent
+        mutableStateMapOf<String, PresenceCellState>().apply {
+            uncertainDays.forEach { put(it, PresenceCellState.ABSENT) }
         }
     }
     var showInfo by remember { mutableStateOf(false) }
+
+    // Mois affiche : celui du 1er jour incertain (sinon mois courant).
+    val firstUncertain = remember(uncertainDays) {
+        uncertainDays.minOrNull()?.let { LocalDate.parse(it) } ?: LocalDate.now()
+    }
+    var visibleMonth by remember {
+        mutableStateOf(YearMonth.of(firstUncertain.year, firstUncertain.month))
+    }
 
     if (showInfo) {
         InfoDialog(onDismiss = { showInfo = false })
         return
     }
+
+    // Adapte l'etat local (jours incertains) au format attendu par la
+    // grille partagee : date -> (etat, source manuelle).
+    val statesByDate: Map<String, Pair<PresenceCellState, PresenceSource>> =
+        dayStates.mapValues { (_, state) -> state to PresenceSource.MANUAL }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -133,95 +136,48 @@ private fun CalendarModeDialog(
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
                     "Ces jours n'ont pas ete detectes automatiquement. " +
-                    "Par defaut ils sont marques \"absent\" (gris). " +
-                    "Appuie sur un jour pour le passer en \"present\" (vert).",
+                    "Par defaut ils sont marques \"absent\". " +
+                    "Appuie sur un jour pour passer present / absent.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Grille de jours avec en-tetes L M M J V S D
-                val dayHeaders = listOf("L", "M", "M", "J", "V", "S", "D")
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    dayHeaders.forEach { h ->
-                        Text(
-                            h,
-                            modifier = Modifier.size(36.dp),
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Generer les semaines
-                if (uncertainDays.isNotEmpty()) {
-                    val dates = uncertainDays.map { LocalDate.parse(it) }.sorted()
-                    val firstDate = dates.first()
-                    // Aligner sur le lundi de la premiere semaine
-                    val startOfWeek = firstDate.with(DayOfWeek.MONDAY)
-                    val lastDate = dates.last()
-                    val endOfWeek = lastDate.with(DayOfWeek.SUNDAY)
-
-                    var cursor = startOfWeek
-                    while (cursor <= endOfWeek) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                        ) {
-                            for (dow in 1..7) {
-                                val day = cursor
-                                val dayStr = day.toString()
-                                val isUncertain = dayStr in dayStates
-
-                                if (isUncertain) {
-                                    val isPresent = dayStates[dayStr] == true
-                                    val bgColor by animateColorAsState(
-                                        if (isPresent) Color(0xFF10B981) else Color(0xFFD1D5DB),
-                                        label = "dayColor",
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .size(36.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(bgColor)
-                                            .clickable { dayStates[dayStr] = !isPresent },
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(
-                                            "${day.dayOfMonth}",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = if (isPresent) Color.White else Color(0xFF6B7280),
-                                        )
-                                    }
-                                } else {
-                                    // Jour hors de la plage incertaine (padding)
-                                    Box(modifier = Modifier.size(36.dp), contentAlignment = Alignment.Center) {
-                                        if (day >= firstDate && day <= lastDate) {
-                                            // Jour dans la plage mais deja confirme
-                                            Text(
-                                                "${day.dayOfMonth}",
-                                                fontSize = 13.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                                            )
-                                        }
-                                    }
-                                }
-                                cursor = cursor.plusDays(1)
+                // Grille calendrier PARTAGEE (meme composable que l'ecran
+                // Foyer — design decision 4c). Seuls les jours incertains
+                // sont editables ; les autres jours du mois s'affichent
+                // gris (non renseigne) et le cycle de tap les laisse tels
+                // quels cote prompt (on ne resout que les incertains).
+                PresenceCalendarGrid(
+                    visibleMonth = visibleMonth,
+                    statesByDate = statesByDate,
+                    onMonthChange = { visibleMonth = it },
+                    onCellTap = { day, next ->
+                        val key = day.toString()
+                        // On ne touche QUE les jours incertains de ce prompt
+                        // (les autres jours ne sont pas a resoudre ici).
+                        if (key in dayStates) {
+                            // Le prompt resout vers present/absent uniquement :
+                            // UNKNOWN du cycle est ramene a ABSENT (defaut).
+                            dayStates[key] = when (next) {
+                                PresenceCellState.PRESENT -> PresenceCellState.PRESENT
+                                PresenceCellState.ABSENT -> PresenceCellState.ABSENT
+                                PresenceCellState.UNKNOWN -> PresenceCellState.ABSENT
                             }
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-                }
+                    },
+                    editable = true,
+                    showLegend = true,
+                )
 
                 Spacer(modifier = Modifier.height(8.dp))
                 HorizontalDivider()
                 Spacer(modifier = Modifier.height(4.dp))
+                // Lien vers le calendrier complet (design decision 4c :
+                // "voir tout le calendrier" depuis le prompt -> ecran Foyer).
+                TextButton(onClick = onNavigateToFoyerSettings) {
+                    Text("Voir tout le calendrier", style = MaterialTheme.typography.labelSmall)
+                }
                 TextButton(onClick = onNavigateToSettings) {
                     Text("Desactiver cette fonctionnalite", style = MaterialTheme.typography.labelSmall)
                 }
@@ -229,7 +185,9 @@ private fun CalendarModeDialog(
         },
         confirmButton = {
             Button(onClick = {
-                val days = dayStates.mapValues { (_, present) -> if (present) "present" else "absent" }
+                val days = dayStates.mapValues { (_, state) ->
+                    if (state == PresenceCellState.PRESENT) "present" else "absent"
+                }
                 onResolve(mapOf("days" to days))
             }) {
                 Text("Valider")
