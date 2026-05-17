@@ -76,6 +76,12 @@ fun UserProfileDialog(
     request: UserProfileRequest,
     onDismiss: () -> Unit,
     onTaskClick: ((String) -> Unit)? = null,
+    /**
+     * P3 (design decision 10) : si fourni, affiche un lien "Voir le calendrier
+     * des series" qui ouvre StreakCalendarModal pour cet user. Null = lien
+     * masque (callers hors Stats qui ne cablent pas le modal).
+     */
+    onOpenStreakCalendar: (() -> Unit)? = null,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val apiService = remember {
@@ -176,6 +182,19 @@ fun UserProfileDialog(
                     StatPill(label = "Actions", value = history.size.toString())
                     StatPill(label = "Completions", value = completionsCount.toString())
                     StatPill(label = "Points", value = "+$totalPoints")
+                }
+
+                // P3 (decision 10) : lien vers le calendrier des series de ce
+                // membre (modal lecture seule). Affiche seulement si l'hote
+                // a cable le callback (Stats).
+                if (onOpenStreakCalendar != null) {
+                    Spacer(Modifier.height(4.dp))
+                    TextButton(
+                        onClick = onOpenStreakCalendar,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Voir le calendrier des streaks →")
+                    }
                 }
 
                 // v0.31 — Section "Total du foyer" : numbers absolus +

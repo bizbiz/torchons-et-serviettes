@@ -36,6 +36,15 @@ data class PresenceDayPut(
     val status: String,
 )
 
+/**
+ * Reponse de GET /api/activity-days?user_id=&from=&to= (P3 — couche
+ * etoile/streak). Jours ou le membre selectionne a fait >=1 tache du foyer.
+ */
+data class ActivityDaysDto(
+    /** Jours calendaires ISO "YYYY-MM-DD". */
+    val days: List<String> = emptyList(),
+)
+
 /** Statut visuel d'un jour dans la grille calendrier partagee. */
 enum class PresenceCellState {
     /** confirmed_present — fond vert. */

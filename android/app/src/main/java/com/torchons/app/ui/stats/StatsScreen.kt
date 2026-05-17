@@ -23,6 +23,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FilterList
@@ -85,6 +86,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun StatsScreen(
     onTaskClick: (String) -> Unit = {},
+    onNavigateToFoyerSettings: () -> Unit = {},
     viewModel: StatsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -92,6 +94,9 @@ fun StatsScreen(
 
     // Etat pour l'ouverture du modal profil utilisateur.
     var userProfileRequest by remember { mutableStateOf<UserProfileRequest?>(null) }
+    // P3 — Etat pour l'ouverture du modal calendrier des series (lecture
+    // seule). Stocke l'userId pre-positionne dans le selecteur d'user.
+    var streakCalendarUserId by remember { mutableStateOf<String?>(null) }
 
     if (uiState.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -124,6 +129,12 @@ fun StatsScreen(
 
             val onUserClick: (UserProfileRequest) -> Unit = { req -> userProfileRequest = req }
             val currentUserId by viewModel.userId.collectAsState()
+            // Affordance dediee (decision 10) : ouvre le modal calendrier des
+            // series avec le selecteur d'user pre-positionne. Distinct du
+            // tap-sur-nom generique (qui garde le modal profil).
+            val onOpenStreakCalendar: (String) -> Unit = { uid ->
+                streakCalendarUserId = uid
+            }
 
             when (uiState.selectedTab) {
                 0 -> ResumeTab(
@@ -152,6 +163,7 @@ fun StatsScreen(
                     fairShare = uiState.fairShare,
                     currentUserId = currentUserId,
                     onUserClick = onUserClick,
+                    onOpenStreakCalendar = onOpenStreakCalendar,
                 )
                 1 -> BadgesTab(uiState.badges)
                 2 -> HistoryTab(
@@ -171,7 +183,9 @@ fun StatsScreen(
         }
     }
 
-    // Modal profil utilisateur (affiche quand un nom est clique).
+    // Modal profil utilisateur (affiche quand un nom est clique). Le
+    // tap-sur-nom generique reste inchange (decision 10) : il ouvre TOUJOURS
+    // ce modal profil. On lui ajoute juste un lien vers le calendrier series.
     userProfileRequest?.let { req ->
         UserProfileDialog(
             request = req,
@@ -179,7 +193,32 @@ fun StatsScreen(
             onTaskClick = { taskId ->
                 userProfileRequest = null
                 onTaskClick(taskId)
+            },
+            onOpenStreakCalendar = {
+                val uid = req.userId
+                userProfileRequest = null
+                streakCalendarUserId = uid
+            },
+        )
+    }
+
+    // P3 — Modal calendrier des series (lecture seule). Membres = liste des
+    // users du foyer (stats), fallback sur les streaks si stats vide.
+    streakCalendarUserId?.let { uid ->
+        val members = remember(uiState.stats, uiState.streaks) {
+            val fromStats = uiState.stats.map {
+                StreakMember(it.userId, it.displayName)
             }
+            val list = fromStats.ifEmpty {
+                uiState.streaks.map { StreakMember(it.userId, it.displayName) }
+            }
+            list.distinctBy { it.userId }
+        }
+        StreakCalendarModal(
+            members = members,
+            initialUserId = uid,
+            onDismiss = { streakCalendarUserId = null },
+            onNavigateToFoyerSettings = onNavigateToFoyerSettings,
         )
     }
 }
@@ -211,6 +250,7 @@ private fun ResumeTab(
     fairShare: List<FairShareStatus>,
     currentUserId: String?,
     onUserClick: (UserProfileRequest) -> Unit,
+    onOpenStreakCalendar: (String) -> Unit,
 ) {
     val myFairShare = fairShare.find { it.userId == currentUserId }
     val otherFairShare = fairShare.find { it.userId != currentUserId }
@@ -322,6 +362,19 @@ private fun ResumeTab(
                             color = if (streak.currentStreak > 0)
                                 MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        // Affordance dediee (decision 10) : ouvre le modal
+                        // calendrier des series pre-positionne sur CE membre.
+                        // N'altere PAS le tap-sur-nom (qui ouvre le profil).
+                        IconButton(
+                            onClick = { onOpenStreakCalendar(streak.userId) },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarMonth,
+                                contentDescription =
+                                    "Voir le calendrier des series de ${streak.displayName}",
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                     }
                 }
             }

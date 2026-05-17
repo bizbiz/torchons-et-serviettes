@@ -238,6 +238,15 @@ interface ApiService {
         @Body days: List<com.torchons.app.data.model.PresenceDayPut>,
     ): Response<List<com.torchons.app.data.model.PresenceDayDto>>
 
+    /** P3 — Jours d'activite d'un membre dans [from, to] (couche etoile/streak
+     *  du calendrier). Mirrors getPresence. */
+    @GET("activity-days")
+    suspend fun getActivityDays(
+        @Query("user_id") userId: String,
+        @Query("from") from: String,
+        @Query("to") to: String,
+    ): Response<com.torchons.app.data.model.ActivityDaysDto>
+
     // --- Completions ---
 
     /** Liste des completions avec filtres optionnels. */

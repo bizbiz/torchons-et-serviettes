@@ -20,13 +20,15 @@ from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
+from app.models.completion import TaskCompletion
 from app.models.enums import PromptType
 from app.models.presence_day import PresenceDay
+from app.models.task import Task
 from app.models.user_foyer import UserFoyer
 from app.models.user_prompt import UserPrompt
 from app.utils.scoping import current_foyer_uuid
@@ -117,6 +119,74 @@ async def get_presence(
     )
     rows = result.scalars().all()
     return [PresenceDayOut.model_validate(r) for r in rows]
+
+
+class ActivityDaysOut(BaseModel):
+    """Jours d'activite d'un membre (couche etoile/streak du calendrier)."""
+
+    days: list[date]
+
+
+@router.get("/activity-days", response_model=ActivityDaysOut)
+async def get_activity_days(
+    user_id: uuid.UUID = Query(...),
+    from_date: date = Query(..., alias="from"),
+    to_date: date = Query(..., alias="to"),
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+) -> ActivityDaysOut:
+    """Jours ou `user_id` a fait >=1 tache du foyer courant dans [from, to].
+
+    Couche etoile/streak du calendrier partage (decision 5/6 du design) : la
+    presence reste foyer-globale, seule cette couche depend du membre
+    selectionne. Un jour "actif" = au moins une completion NON supprimee d'une
+    tache appartenant au foyer courant, completed_by = user_id.
+
+    Bucketage par `func.date(completed_at)` — identique aux autres aggregats
+    de completions (stats/long-term, couple-totals) pour rester coherent. Le
+    parametre `user_id` doit etre membre du foyer courant (sinon liste vide,
+    pas de fuite cross-foyer). Plage bornee comme GET /presence (anti-abus).
+    """
+    if from_date > to_date:
+        raise HTTPException(status_code=400, detail="from doit etre <= to")
+    if (to_date - from_date).days > PRESENCE_RANGE_MAX_DAYS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Plage trop large (max {PRESENCE_RANGE_MAX_DAYS} jours)",
+        )
+
+    foyer_uuid = current_foyer_uuid(current)
+
+    # Garde-fou isolation : user_id doit etre (ou avoir ete) membre du foyer
+    # courant. On n'exclut PAS les former_member ici : l'historique d'activite
+    # d'un ancien membre reste consultable dans le calendrier du foyer.
+    member_check = await session.execute(
+        select(UserFoyer.user_id).where(
+            UserFoyer.foyer_id == foyer_uuid,
+            UserFoyer.user_id == user_id,
+        )
+    )
+    if member_check.scalar_one_or_none() is None:
+        # Non-membre : pas de fuite, on renvoie une liste vide.
+        return ActivityDaysOut(days=[])
+
+    # Jours distincts avec >=1 completion non supprimee de ce membre sur une
+    # tache du foyer courant (scope transitif via JOIN tasks).
+    day_col = func.date(TaskCompletion.completed_at).label("d")
+    result = await session.execute(
+        select(day_col)
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
+            TaskCompletion.completed_by == user_id,
+            TaskCompletion.deleted_at.is_(None),
+            Task.foyer_id == foyer_uuid,
+            day_col >= from_date,
+            day_col <= to_date,
+        )
+        .group_by("d")
+        .order_by("d")
+    )
+    return ActivityDaysOut(days=[row[0] for row in result.all()])
 
 
 @router.put("/presence", response_model=list[PresenceDayOut])

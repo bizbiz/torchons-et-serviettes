@@ -496,7 +496,10 @@ fun MainScreen(
                     )
                 }
                 composable(Routes.STATS) {
-                    StatsScreen(onTaskClick = onNavigateToTaskDetail)
+                    StatsScreen(
+                        onTaskClick = onNavigateToTaskDetail,
+                        onNavigateToFoyerSettings = onNavigateToFoyerSettings,
+                    )
                 }
                 composable(Routes.SETTINGS) {
                     SettingsScreen(
