@@ -69,6 +69,11 @@ class SettingsViewModel @Inject constructor(
     val displayName: StateFlow<String?> = authRepository.displayNameFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    // P4b : id du user courant — defaut du selecteur du modal "Présence
+    // & séries" ouvert depuis l'ecran Foyer.
+    val userId: StateFlow<String?> = authRepository.userIdFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     private val _backendConnected = MutableStateFlow(false)
     val backendConnected: StateFlow<Boolean> = _backendConnected.asStateFlow()
 

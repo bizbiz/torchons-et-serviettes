@@ -71,6 +71,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.ui.common.InfoTooltip
 import com.torchons.app.ui.common.PresenceCalendarGrid
 import com.torchons.app.ui.home.ProjectionSimulationDialog
+import com.torchons.app.ui.stats.StreakCalendarModal
+import com.torchons.app.ui.stats.StreakMember
 import com.torchons.app.util.WifiHelper
 import java.time.YearMonth
 
@@ -107,6 +109,7 @@ fun FoyerSettingsScreen(
     val allFoyers by viewModel.allFoyers.collectAsState()
     val users by viewModel.users.collectAsState()
     val displayName by viewModel.displayName.collectAsState()
+    val userId by viewModel.userId.collectAsState()
 
     val foyerName = currentFoyer?.name ?: "Mon foyer"
     val homeSsids = s.homeSsids
@@ -123,9 +126,9 @@ fun FoyerSettingsScreen(
     var showBonusMalus by remember { mutableStateOf(false) }
     var showLeaveConfirm by remember { mutableStateOf(false) }
     var showRegenerateConfirm by remember { mutableStateOf(false) }
-    // P2 — sous-section calendrier de presence (repliee par defaut).
-    var showPresenceCalendar by remember { mutableStateOf(false) }
-    var visibleMonth by remember { mutableStateOf(YearMonth.now()) }
+    // P4b — le calendrier n'est plus inline : un bouton ouvre LE modal
+    // unique "Présence & séries" (design decision 5 v3).
+    var showPresenceModal by remember { mutableStateOf(false) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -416,67 +419,21 @@ fun FoyerSettingsScreen(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                // Sous-section repliable "Calendrier de presence" (P2,
-                // design decision 4 / 4c). Meme pattern d'expand que la
-                // collapsible "Bonus / Malus" plus bas. Repliee par defaut
-                // (avancee). Editeur ONLINE : GET au mois visible, PUT puis
-                // GET-after-PUT (cf docs/cache-conventions.md).
-                val presenceDays by viewModel.presenceDays.collectAsState()
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showPresenceCalendar = !showPresenceCalendar },
+                // P4b — le calendrier de présence n'est PLUS inline ici :
+                // un seul modal "Présence & séries" (éditable), ouvrable de
+                // plusieurs endroits (design decision 5 v3 — "one modal to
+                // rule them all"). Ce bloc ne garde que les réglages.
+                OutlinedButton(
+                    onClick = { showPresenceModal = true },
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(
-                        text = "Calendrier de presence",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    InfoTooltip(
-                        title = "Calendrier de presence",
-                        description = "Renseigne ou corrige les jours ou " +
-                            "quelqu'un etait au foyer. Sert au gel des taches " +
-                            "\"a la maison\" pendant les absences. Tu peux " +
-                            "naviguer dans le passe ET planifier des absences " +
-                            "futures. Detail des etats et des sources dans la " +
-                            "legende sous le calendrier.",
-                    )
-                    Spacer(Modifier.width(4.dp))
                     Icon(
-                        imageVector = if (showPresenceCalendar)
-                            Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        Icons.Default.Timeline,
                         contentDescription = null,
+                        modifier = Modifier.size(18.dp),
                     )
-                }
-
-                if (showPresenceCalendar) {
-                    Spacer(Modifier.height(8.dp))
-                    // Charge la plage du mois visible a l'ouverture / au
-                    // changement de mois.
-                    LaunchedEffect(visibleMonth, showPresenceCalendar) {
-                        val from = visibleMonth.atDay(1).toString()
-                        val to = visibleMonth.atEndOfMonth().toString()
-                        viewModel.loadPresence(from, to)
-                    }
-                    PresenceCalendarGrid(
-                        visibleMonth = visibleMonth,
-                        statesByDate = presenceDays,
-                        onMonthChange = { visibleMonth = it },
-                        onCellTap = { day, next ->
-                            val status = when (next) {
-                                com.torchons.app.data.model.PresenceCellState.PRESENT -> "present"
-                                com.torchons.app.data.model.PresenceCellState.ABSENT -> "absent"
-                                com.torchons.app.data.model.PresenceCellState.UNKNOWN -> "clear"
-                            }
-                            val from = visibleMonth.atDay(1).toString()
-                            val to = visibleMonth.atEndOfMonth().toString()
-                            viewModel.setPresence(day.toString(), status, from, to)
-                        },
-                        editable = true,
-                        showLegend = true,
-                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Ouvrir l'agenda de présence & séries")
                 }
             }
 
@@ -1075,6 +1032,18 @@ fun FoyerSettingsScreen(
     // --- Flows SecuritySection (regenerer code / quitter foyer) ---
     // On reutilise les memes dialogs que SecuritySection sans dupliquer la
     // card : ces handlers consomment regenerateState / leaveState du VM.
+    // P4b — modal UNIQUE "Présence & séries" (éditable), ouvert depuis le
+    // bouton du bloc Présence & absences (design decision 5 v3).
+    if (showPresenceModal) {
+        val presenceMembers = remember(users) {
+            users.map { StreakMember(it.id, it.displayName) }
+        }
+        StreakCalendarModal(
+            members = presenceMembers,
+            initialUserId = userId ?: presenceMembers.firstOrNull()?.userId.orEmpty(),
+            onDismiss = { showPresenceModal = false },
+        )
+    }
     RecoveryAndLeaveDialogs(
         viewModel = viewModel,
         onLeftFoyer = onLeftFoyer,

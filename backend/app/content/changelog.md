@@ -1,5 +1,20 @@
 # Notes de version
 
+## v0.34.0 — 2026-05-18
+
+### Présence & séries : un seul agenda
+- Le calendrier de présence et celui des séries ne font plus qu'un : un
+  seul écran "Présence & séries" où tu poses les jours présent / absent,
+  vois les étoiles des jours où une tâche a été faite et la série
+  reliée. Ouvrable depuis l'écran Foyer (bouton "Ouvrir l'agenda de
+  présence & séries"), depuis Stats (bloc série du résumé) et depuis le
+  profil d'un membre.
+- L'écran Foyer ne contient plus de calendrier en double : il garde les
+  réglages de présence (mise en pause si absent, WiFi maison) et un
+  bouton vers l'agenda.
+- Modifier un jour de présence recalcule aussitôt le retard des tâches
+  maison et la série.
+
 ## v0.33.1 — 2026-05-18
 
 ### Corrections (ecran Foyer / presence / series)

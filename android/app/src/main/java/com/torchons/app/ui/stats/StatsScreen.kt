@@ -202,8 +202,8 @@ fun StatsScreen(
         )
     }
 
-    // P3 — Modal calendrier des series (lecture seule). Membres = liste des
-    // users du foyer (stats), fallback sur les streaks si stats vide.
+    // P4b — Modal UNIQUE "Présence & séries" (éditable). Membres = liste
+    // des users du foyer (stats), fallback sur les streaks si stats vide.
     streakCalendarUserId?.let { uid ->
         val members = remember(uiState.stats, uiState.streaks) {
             val fromStats = uiState.stats.map {
@@ -218,7 +218,6 @@ fun StatsScreen(
             members = members,
             initialUserId = uid,
             onDismiss = { streakCalendarUserId = null },
-            onNavigateToFoyerSettings = onNavigateToFoyerSettings,
         )
     }
 }

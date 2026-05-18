@@ -38,9 +38,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.runtime.rememberCoroutineScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.PresenceCellState
+import com.torchons.app.data.model.PresenceDayPut
 import com.torchons.app.data.model.PresenceSource
+import com.torchons.app.data.repository.TaskRepository
+import kotlinx.coroutines.launch
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -59,40 +63,48 @@ import java.time.YearMonth
 @InstallIn(SingletonComponent::class)
 interface StreakCalendarApiEntryPoint {
     fun apiService(): ApiService
+    // P4b : le modal edite la presence -> il doit aussi recalculer l'etat
+    // derive (home-freeze/urgence + serie/record) cf cache-conventions.
+    fun taskRepository(): TaskRepository
 }
 
 /** Un membre du foyer affichable dans le selecteur d'user du modal. */
 data class StreakMember(val userId: String, val displayName: String)
 
 /**
- * Modal LECTURE SEULE du calendrier de presence + couche streak (P3 —
- * design-foyer-settings-presence.md decision 5/6/10).
+ * Modal UNIQUE "Agenda — presence & series" (P4b, design decision 5 v3 :
+ * "one modal to rule them all"). Remplace l'ancien modal lecture seule ET
+ * le calendrier inline de l'ecran Foyer.
  *
- * - La presence (fond vert/rouge/gris + icone source) reste FOYER-GLOBALE :
- *   un seul GET /api/presence pour le foyer.
+ * - La presence (fond vert/rouge/gris + icone source) est FOYER-GLOBALE :
+ *   un seul GET /api/presence pour le foyer. **Editable au clic** :
+ *   tap -> PUT /presence + recalcul derive (home-freeze/urgence + serie).
  * - La couche etoile/serie depend du membre selectionne : GET
  *   /api/activity-days?user_id=. Le selecteur d'user ne recharge QUE cette
  *   couche (la presence ne bouge pas).
- * - Calendrier en mode `editable = false`, `showStreak = true`. La navigation
- *   de mois est celle de la grille (callback onMonthChange) ; on refetch la
- *   plage visible a chaque changement de mois ou d'user.
- * - Lien "Modifier la presence →" -> deep-link ecran Foyer (callback fourni
- *   par l'hote, cable dans le NavGraph comme HomeScreen).
+ * - Auto-suffisant (Hilt EntryPoint : ApiService + TaskRepository), pas de
+ *   VM hote -> ouvrable des 4 entrees (ecran Foyer / Stats / profil /
+ *   prompt) sans threader de callbacks.
  */
 @Composable
 fun StreakCalendarModal(
     members: List<StreakMember>,
     initialUserId: String,
     onDismiss: () -> Unit,
-    onNavigateToFoyerSettings: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val apiService = remember {
+    val scope = rememberCoroutineScope()
+    val entryPoint = remember {
         EntryPointAccessors.fromApplication(
             context.applicationContext,
             StreakCalendarApiEntryPoint::class.java,
-        ).apiService()
+        )
     }
+    val apiService = remember { entryPoint.apiService() }
+    val taskRepository = remember { entryPoint.taskRepository() }
+    // Incremente a chaque edition reussie -> re-trigger le GET presence
+    // (la serie se recalcule sur la nouvelle presence).
+    var refreshTrigger by remember { mutableStateOf(0) }
 
     var selectedUserId by remember {
         mutableStateOf(
@@ -117,8 +129,9 @@ fun StreakCalendarModal(
     val rangeFrom = visibleMonth.atDay(1).minusDays(7)
     val rangeTo = visibleMonth.atEndOfMonth().plusDays(7)
 
-    // Refetch presence (foyer) au changement de mois uniquement.
-    LaunchedEffect(visibleMonth) {
+    // Refetch presence (foyer) au changement de mois OU apres une edition
+    // (refreshTrigger) -> la serie se recalcule sur la presence a jour.
+    LaunchedEffect(visibleMonth, refreshTrigger) {
         try {
             val resp = withContext(Dispatchers.IO) {
                 apiService.getPresence(rangeFrom.toString(), rangeTo.toString())
@@ -198,7 +211,7 @@ fun StreakCalendarModal(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Calendrier des series",
+                        text = "Présence & séries",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
@@ -232,9 +245,44 @@ fun StreakCalendarModal(
                         visibleMonth = visibleMonth,
                         statesByDate = presence,
                         onMonthChange = { visibleMonth = it },
-                        // Lecture seule : pas d'edition cote modal Stats.
-                        onCellTap = { _, _ -> },
-                        editable = false,
+                        // P4b : modal UNIQUE editable (one modal to rule them
+                        // all). Tap -> PUT /presence + recalcul derive
+                        // (home-freeze/urgence + serie/record) cf
+                        // docs/cache-conventions.md regle 1.
+                        onCellTap = { day, next ->
+                            val status = when (next) {
+                                PresenceCellState.PRESENT -> "present"
+                                PresenceCellState.ABSENT -> "absent"
+                                PresenceCellState.UNKNOWN -> "clear"
+                            }
+                            scope.launch {
+                                try {
+                                    val r = withContext(Dispatchers.IO) {
+                                        apiService.putPresence(
+                                            listOf(
+                                                PresenceDayPut(
+                                                    date = day.toString(),
+                                                    status = status,
+                                                ),
+                                            ),
+                                        )
+                                    }
+                                    if (r.isSuccessful) {
+                                        refreshTrigger++
+                                        withContext(Dispatchers.IO) {
+                                            taskRepository.refreshTasks()
+                                            taskRepository.refreshCompletions(
+                                                limit = 2000,
+                                            )
+                                        }
+                                    }
+                                } catch (_: Exception) {
+                                    // best-effort : online autoritaire, le
+                                    // prochain GET re-aligne si besoin.
+                                }
+                            }
+                        },
+                        editable = true,
                         showLegend = true,
                         activityDays = activityDays,
                         showStreak = true,
@@ -251,29 +299,8 @@ fun StreakCalendarModal(
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    TextButton(
-                        onClick = {
-                            onDismiss()
-                            onNavigateToFoyerSettings()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(4.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.EditCalendar,
-                            contentDescription = null,
-                            modifier = Modifier.height(18.dp),
-                        )
-                        Spacer(Modifier.height(0.dp))
-                        Text(
-                            "  Modifier la presence →",
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                    }
-                }
+                // P4b : plus de lien "Modifier la presence →" — CE modal EST
+                // la surface d'edition (one modal to rule them all).
             }
         }
     }
