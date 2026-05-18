@@ -93,6 +93,24 @@ async def sync(
                 row_id=op.row_id,
                 reason="unique_violation",
             ))
+        except Exception as e:
+            # Filet de securite : toute erreur inattendue sur UNE op (ex.
+            # operation non supportee par un handler, payload incoherent,
+            # client plus recent que le serveur sur une table non geree)
+            # devient un conflit LOCALISE a cette op au lieu de faire
+            # remonter l'exception hors du endpoint -> sinon le batch /sync
+            # entier renvoie 400, ne commit jamais, et la file offline du
+            # foyer reste bloquee a l'infini (retry de la meme op). Voir
+            # docs/cache-conventions.md + commit 08d4a2c (deploy ordering).
+            # StaleUpdateError / IntegrityError sont catches au-dessus :
+            # ce bloc ne voit que l'inattendu.
+            await session.rollback()
+            conflicts.append(SyncConflict(
+                client_op_id=op.client_op_id,
+                table=op.table,
+                row_id=op.row_id,
+                reason=f"op_error: {type(e).__name__}: {e}",
+            ))
 
     await session.commit()
 
