@@ -220,6 +220,30 @@ class SyncWorker(
             return
         }
         val data = change.data ?: return
+
+        // UPDATE : le new_data du change_log est PARTIEL (completed_by /
+        // completed_at, cf stats.py update_completion + sync.py
+        // _handle_completion UPDATE). Reconstruire la Completion entiere ici
+        // ecraserait taskId / points / collectiveId avec des defauts (la row
+        // disparaitrait de l'historique de la tache). On patche la row
+        // existante a la place — meme strategie que le cas is_archived des
+        // taches. Si la row est absente, on laisse le prochain
+        // refreshCompletions (replaceForTask autoritaire) la reconcilier.
+        if (change.operation == "UPDATE") {
+            val existing = completionDao.getById(change.rowId) ?: return
+            completionDao.upsertAll(
+                listOf(
+                    existing.copy(
+                        completedBy = (data["completed_by"] as? String) ?: existing.completedBy,
+                        completedAt = (data["completed_at"] as? String) ?: existing.completedAt,
+                        notes = if (data.containsKey("notes")) data["notes"] as? String
+                                else existing.notes,
+                    )
+                )
+            )
+            return
+        }
+
         val comp = Completion(
             id = change.rowId,
             taskId = data["task_id"] as? String ?: "",

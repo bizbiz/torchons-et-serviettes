@@ -10,6 +10,7 @@ import com.torchons.app.data.local.dao.RoomDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.TaskHistoryDao
 import com.torchons.app.data.local.dao.UserDao
+import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.toDomain
 import com.torchons.app.data.local.entities.toEntity
@@ -25,6 +26,7 @@ import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.UpdateTaskRequest
 import com.torchons.app.data.model.User
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.util.UUID
@@ -50,6 +52,7 @@ class TaskRepository @Inject constructor(
     private val taskHistoryDao: TaskHistoryDao,
     private val roomDao: RoomDao,
     private val syncTrigger: SyncTrigger,
+    private val tokenManager: TokenManager,
 ) {
     private val gson = Gson()
 
@@ -323,10 +326,18 @@ class TaskRepository @Inject constructor(
         val rowId = UUID.randomUUID().toString()
         val now = completedAt ?: Instant.now().toString()
 
+        // L'ecriture optimiste doit MIMER le resultat serveur : sans
+        // completedBy explicite, le backend attribue la completion au user du
+        // JWT (cf sync.py _handle_completion : data.get("completed_by",
+        // user_id)). On resout donc l'id du user courant ici, sinon la row
+        // locale a completedBy="" et l'historique affiche "?" jusqu'au prochain
+        // refresh. Cf docs/cache-conventions.md (etat derive juste sans reseau).
+        val effectiveCompletedBy = completedBy ?: tokenManager.userIdFlow.first()
+
         val optimistic = Completion(
             id = rowId,
             taskId = taskId,
-            completedBy = completedBy ?: "",
+            completedBy = effectiveCompletedBy ?: "",
             completedAt = now,
             pointsEarned = 1,
             notes = notes,
@@ -336,7 +347,7 @@ class TaskRepository @Inject constructor(
 
         val payload = mapOf<String, Any?>(
             "task_id" to taskId,
-            "completed_by" to completedBy,
+            "completed_by" to effectiveCompletedBy,
             "completed_at" to completedAt,
             "notes" to notes,
         )
@@ -363,10 +374,67 @@ class TaskRepository @Inject constructor(
     }
 
     /**
-     * Completion "fait ensemble" : cree N lignes cote serveur via l'endpoint
-     * dedie (calcul des points + anti-doublon atomique cote backend). En cas
-     * d'erreur reseau ou de conflit 409, retourne Result.failure et n'ecrit
-     * rien localement. Online-first, pas d'offline queue v1.
+     * Supprime un evenement collectif entier en offline-first : delete local
+     * OPTIMISTE de chaque ligne + une op DELETE enqueue par ligne (meme chemin
+     * que [deleteCompletion] : le backend _handle_completion DELETE soft-delete
+     * chaque row, le SyncWorker propage). Remplace l'ancien chemin online-only
+     * apiService.deleteCollectiveCompletion + refresh immediat (anti-pattern :
+     * casse l'offline et le refresh re-ajoutait les lignes fantomes tant que
+     * l'op n'etait pas poussee). Cf docs/cache-conventions.md.
+     */
+    suspend fun deleteCollectiveCompletion(rowIds: List<String>): Result<Unit> {
+        for (id in rowIds) {
+            completionDao.deleteById(id)
+            enqueue(UUID.randomUUID().toString(), "task_completions", "DELETE", id, null)
+        }
+        return Result.success(Unit)
+    }
+
+    /**
+     * Edite une completion (qui / quand) en offline-first : upsert local
+     * OPTIMISTE immediat (l'historique + l'urgence se recalculent aussitot)
+     * + enqueue d'une op UPDATE (le backend _handle_completion UPDATE applique
+     * completed_by/completed_at, le SyncWorker propage le change_log). Pas de
+     * refresh immediat : l'op est en file, le serveur a encore l'ancienne
+     * valeur, un refetch ecraserait l'optimiste. Cf docs/cache-conventions.md.
+     */
+    suspend fun updateCompletion(
+        completionId: String,
+        completedBy: String,
+        completedAt: String,
+    ): Result<Unit> {
+        val existing = completionDao.getById(completionId)
+            ?: return Result.failure(IllegalStateException("Completion introuvable en cache"))
+        completionDao.upsertAll(
+            listOf(existing.copy(completedBy = completedBy, completedAt = completedAt))
+        )
+        enqueue(
+            UUID.randomUUID().toString(),
+            "task_completions",
+            "UPDATE",
+            completionId,
+            mapOf("completed_by" to completedBy, "completed_at" to completedAt),
+        )
+        return Result.success(Unit)
+    }
+
+    /**
+     * Completion "fait ensemble" : optimiste-avec-reconciliation.
+     *
+     * 1. Insere immediatement N lignes locales (collective_id client, points
+     *    estimes) -> l'historique s'affiche sans attendre le reseau.
+     * 2. Appelle l'endpoint dedie (online-first : le split des points en
+     *    ceil + l'anti-doublon sont atomiques cote serveur ; on ne peut PAS
+     *    rejouer ca via N INSERT /sync — chaque INSERT recalculerait les
+     *    points pleins, pas divises).
+     * 3. Succes -> on retire l'optimiste et on insere les lignes serveur
+     *    autoritaires (vrais ids + points + reason).
+     * 4. Echec (409 anti-doublon / reseau) -> rollback de l'optimiste : le
+     *    backend gagne, rien n'a ete persiste donc l'UI ne doit pas mentir.
+     *
+     * Cf docs/cache-conventions.md (offline = on fait confiance au front ;
+     * online = serveur autoritaire ; ici la persistance est online-only par
+     * contrainte metier, mais le retour visuel reste immediat).
      */
     suspend fun completeTaskCollective(
         taskId: String,
@@ -377,6 +445,26 @@ class TaskRepository @Inject constructor(
         if (participantUserIds.isEmpty()) {
             return Result.failure(IllegalArgumentException("Aucun participant"))
         }
+
+        val clientCollectiveId = UUID.randomUUID().toString()
+        val now = completedAt ?: Instant.now().toString()
+        val optimisticRows = participantUserIds.map { uid ->
+            Completion(
+                id = UUID.randomUUID().toString(),
+                taskId = taskId,
+                completedBy = uid,
+                completedAt = now,
+                pointsEarned = 1,
+                notes = notes,
+                collectiveId = clientCollectiveId,
+            )
+        }
+        completionDao.upsertAll(optimisticRows.map { it.toEntity() })
+
+        suspend fun rollback() {
+            optimisticRows.forEach { completionDao.deleteById(it.id) }
+        }
+
         return try {
             val resp = apiService.completeTaskCollective(
                 taskId = taskId,
@@ -388,16 +476,22 @@ class TaskRepository @Inject constructor(
             )
             if (resp.isSuccessful) {
                 val body = resp.body()
-                    ?: return Result.failure(IllegalStateException("Reponse vide"))
-                // Insere les N rows en local pour affichage immediat.
+                if (body == null) {
+                    rollback()
+                    return Result.failure(IllegalStateException("Reponse vide"))
+                }
+                // Reconcilie : retire l'optimiste, insere les rows serveur.
+                rollback()
                 completionDao.upsertAll(body.completions.map { it.toEntity() })
                 Result.success(body)
             } else {
+                rollback()
                 val code = resp.code()
                 val errorBody = resp.errorBody()?.string().orEmpty()
                 Result.failure(CollectiveCompletionException(code, errorBody))
             }
         } catch (e: Exception) {
+            rollback()
             Result.failure(e)
         }
     }

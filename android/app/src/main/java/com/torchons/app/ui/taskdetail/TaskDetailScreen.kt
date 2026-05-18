@@ -48,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -496,10 +497,16 @@ fun TaskDetailScreen(
                     else -> "Pour ${assignedNames.joinToString(", ")}"
                 }
 
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = { viewModel.refresh(userInitiated = true) },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                ) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -1024,7 +1031,7 @@ fun TaskDetailScreen(
                                 userNames = uiState.userNames,
                                 onDeleteOne = { viewModel.deleteCompletion(group.head.id) },
                                 onDeleteCollective = {
-                                    group.collectiveId?.let { viewModel.deleteCollective(it) }
+                                    viewModel.deleteCollective(group.rows.map { it.id })
                                 },
                                 onEdit = { viewModel.showEditCompletion(group.head) },
                                 onUserClick = { uid ->
@@ -1079,6 +1086,7 @@ fun TaskDetailScreen(
 
                     // Espace en bas
                     item { Spacer(modifier = Modifier.height(32.dp)) }
+                }
                 }
             }
         }

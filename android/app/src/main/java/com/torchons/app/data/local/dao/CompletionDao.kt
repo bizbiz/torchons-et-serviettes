@@ -17,6 +17,10 @@ interface CompletionDao {
     @Query("SELECT * FROM completions WHERE taskId = :taskId ORDER BY completedAt DESC")
     fun observeByTask(taskId: String): Flow<List<CompletionEntity>>
 
+    /** Lookup one-shot pour patcher une row (edition optimiste + UPDATE sync partiel). */
+    @Query("SELECT * FROM completions WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): CompletionEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(completions: List<CompletionEntity>)
 

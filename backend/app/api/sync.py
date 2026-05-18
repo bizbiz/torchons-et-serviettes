@@ -343,12 +343,16 @@ async def _handle_completion(
     user_id: str,
     foyer_id: str,
 ) -> uuid.UUID:
-    """Traite INSERT / DELETE sur task_completions.
+    """Traite INSERT / UPDATE / DELETE sur task_completions.
 
     Sur INSERT : applique le systeme bonus/malus (points_earned + multiplier
     + reason) pour rester coherent avec le endpoint REST POST /complete. Le
     payload client n'a que {task_id, completed_by, completed_at, notes} —
     le back recalcule autoritairement.
+
+    Sur UPDATE : applique completed_by / completed_at / notes (edition d'une
+    completion offline-first). Memes effets que le REST PUT /completions/{id}
+    (stats.py) — pas de recalcul des points, coherent avec ce endpoint.
     """
     data = op.data or {}
 
@@ -407,6 +411,32 @@ async def _handle_completion(
         ).scalar_one_or_none()
         if row:
             row.deleted_at = datetime.now(timezone.utc)
+        return op.row_id
+
+    if op.operation == "UPDATE":
+        foyer_uuid = uuid.UUID(foyer_id) if isinstance(foyer_id, str) else foyer_id
+        row = (
+            await session.execute(
+                select(TaskCompletion)
+                .join(Task, Task.id == TaskCompletion.task_id)
+                .where(
+                    TaskCompletion.id == op.row_id,
+                    TaskCompletion.deleted_at.is_(None),
+                    Task.foyer_id == foyer_uuid,
+                )
+            )
+        ).scalar_one_or_none()
+        if row:
+            if data.get("completed_by"):
+                row.completed_by = uuid.UUID(data["completed_by"])
+            if data.get("completed_at"):
+                ca = datetime.fromisoformat(data["completed_at"])
+                if ca.tzinfo is None:
+                    ca = ca.replace(tzinfo=timezone.utc)
+                row.completed_at = ca
+            if "notes" in data:
+                row.notes = data.get("notes")
+            row.version += 1
         return op.row_id
 
     raise HTTPException(status_code=400, detail=f"Operation non supportee pour completions: {op.operation}")

@@ -58,6 +58,9 @@ data class TaskDetailUiState(
     val completionMessage: String? = null,
     val hasCachedData: Boolean = false,
     val lastRefreshFailed: Boolean = false,
+    /** True pendant un refresh declenche par le pull-to-refresh (indicateur
+     *  de tirage). Distinct de [isLoading] (spinner plein ecran au 1er load). */
+    val isRefreshing: Boolean = false,
     /** True pendant l'animation de celebration post-completion. */
     val isCelebrating: Boolean = false,
     /** Compteur incremente a chaque celebration pour relancer konfetti. */
@@ -176,9 +179,17 @@ class TaskDetailViewModel @Inject constructor(
      * Refresh les donnees depuis l'API. Les ratings sont chargees en direct
      * (non cachees) ; si l'appel echoue, l'UI conserve la derniere valeur.
      */
-    fun refresh() {
+    /**
+     * @param userInitiated true si declenche par le geste pull-to-refresh —
+     *   alimente alors l'indicateur de tirage. Le refresh auto au resume
+     *   (LifecycleResumeEffect) passe false : pas de flash d'indicateur.
+     */
+    fun refresh(userInitiated: Boolean = false) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = _uiState.value.task == null)
+            _uiState.value = _uiState.value.copy(
+                isLoading = _uiState.value.task == null,
+                isRefreshing = if (userInitiated) true else _uiState.value.isRefreshing,
+            )
 
             val results = listOf(
                 async { taskRepository.refreshTasks() },
@@ -239,6 +250,7 @@ class TaskDetailViewModel @Inject constructor(
 
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
+                isRefreshing = false,
                 lastRefreshFailed = !allOk,
             )
         }
@@ -335,25 +347,18 @@ class TaskDetailViewModel @Inject constructor(
     }
 
     /**
-     * Supprime un evenement collectif entier (toutes les lignes du collective_id).
-     * Appelle la route serveur dediee qui soft-delete en transaction unique.
+     * Supprime un evenement collectif entier (toutes les lignes du groupe).
+     * Offline-first via le repository : delete local OPTIMISTE de chaque row +
+     * enqueue DELETE par row (le serveur reconcilie, SyncWorker propage). Pas
+     * de refresh immediat. Cf docs/cache-conventions.md.
      */
-    fun deleteCollective(collectiveId: String) {
+    fun deleteCollective(rowIds: List<String>) {
         viewModelScope.launch {
-            try {
-                val resp = apiService.deleteCollectiveCompletion(taskId, collectiveId)
-                if (!resp.isSuccessful) {
-                    _uiState.value = _uiState.value.copy(
-                        error = "Erreur ${resp.code()} lors de la suppression du collectif"
-                    )
-                    return@launch
-                }
-                taskRepository.refreshCompletions(taskId = taskId)
-                _uiState.value = _uiState.value.copy(completionMessage = "Collectif supprime")
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = e.message ?: "Erreur lors de la suppression du collectif"
-                )
+            val res = taskRepository.deleteCollectiveCompletion(rowIds)
+            _uiState.value = if (res.isSuccess) {
+                _uiState.value.copy(completionMessage = "Collectif supprime")
+            } else {
+                _uiState.value.copy(error = "Erreur lors de la suppression du collectif")
             }
         }
     }
@@ -366,17 +371,18 @@ class TaskDetailViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(editingCompletion = null)
     }
 
+    /**
+     * Edite une completion (qui / quand). Offline-first via le repository :
+     * upsert local OPTIMISTE + enqueue UPDATE, pas de refresh immediat (le
+     * serveur a encore l'ancienne valeur). Cf docs/cache-conventions.md.
+     */
     fun saveCompletionEdit(completionId: String, completedBy: String, completedAt: String) {
         viewModelScope.launch {
-            try {
-                apiService.updateCompletion(completionId, mapOf(
-                    "completed_by" to completedBy,
-                    "completed_at" to completedAt
-                ))
-                _uiState.value = _uiState.value.copy(editingCompletion = null, completionMessage = "Completion modifiee")
-                taskRepository.refreshCompletions(taskId = taskId)
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
+            val res = taskRepository.updateCompletion(completionId, completedBy, completedAt)
+            _uiState.value = if (res.isSuccess) {
+                _uiState.value.copy(editingCompletion = null, completionMessage = "Completion modifiee")
+            } else {
+                _uiState.value.copy(error = "Erreur lors de la modification")
             }
         }
     }
