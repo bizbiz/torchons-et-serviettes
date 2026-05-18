@@ -105,3 +105,27 @@ ou garantir des int.
 - [ ] Pas de `refresh` immédiat qui ré-ajoute une ligne optimistiquement
       supprimée ?
 - [ ] Testé **en mode avion** ET reconnexion (la sync réconcilie) ?
+- [ ] Nouveau **type d'op `/sync`** (table/opération offline jamais
+      émise avant) ? → handler serveur déployé **AVANT** l'APK qui
+      l'émet (cf ci-dessous).
+
+## Ordre de déploiement client ⇄ serveur (bug réel, mai 2026)
+
+Client et serveur (Scaleway, canal beta) se déploient séparément. Si un
+changement client **émet un nouveau type d'op `/sync`** (ex. passage de
+`task_completions` INSERT/DELETE à un **UPDATE** pour l'édition de
+complétion), le **handler serveur correspondant doit être en prod AVANT**
+que l'APK qui l'émet ne soit utilisé.
+
+Pourquoi c'est grave : la boucle `/sync` ne catchait que
+`StaleUpdateError`/`IntegrityError`. Une op qu'un vieux handler ne
+supporte pas levait une `HTTPException` **non catchée** → le **batch
+`/sync` entier** renvoyait 400, ne committait jamais, et l'op était
+re-tentée à l'infini → **toute la file offline du foyer bloquée** (pas
+juste la feature concernée).
+
+Filet en place (`backend/app/api/sync.py`) : un `except Exception`
+isole désormais une op inattendue en **conflit par-op** (rollback +
+`SyncConflict`), le reste du batch passe. C'est un backstop, **pas** une
+dispense : garder l'ordre serveur-d'abord. Déploiement serveur :
+`docs/runbook-deploy-scaleway.md`.

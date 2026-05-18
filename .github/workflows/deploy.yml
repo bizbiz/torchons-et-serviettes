@@ -1,19 +1,28 @@
-# SQUELETTE CI deploiement prod — Scaleway Container Registry + SSH.
+# Deploiement backend prod (Scaleway) — build serveur via SSH.
 #
-# Etat : manuel (workflow_dispatch) tant que les secrets ne sont pas cables.
-# Activer le push auto sur tag une fois le flow valide en dry-run.
+# Build SUR le serveur (docker compose up -d --build) : pas de registry,
+# pas de job build-and-push. C'est la voie qui a deploye 0.32.0 puis la
+# refonte offline-first ecran detail (mai 2026) ; fiable pour ce backend
+# dogfood 2 personnes. L'ancien chemin registry est retire (bug
+# TS_API_IMAGE vide -> compose tirait le fallback ts-api:latest).
 #
-# Secrets GitHub a creer (Settings > Secrets and variables > Actions) :
-#   SCW_REGISTRY      ex: rg.fr-par.scw.cloud/torchons-serviettes
-#   SCW_SECRET_KEY    cle secrete Scaleway (user = "nologin")
-#   DEPLOY_SSH_HOST   IP / host de l'instance Scaleway
-#   DEPLOY_SSH_USER   ex: root  (ou user docker)
-#   DEPLOY_SSH_KEY    cle privee SSH (PEM) autorisee sur le serveur
-#   DEPLOY_PATH       ex: /path/to/clone (repo clone cote serveur)
+# Secrets GitHub requis (Settings > Secrets and variables > Actions) :
+#   DEPLOY_SSH_HOST   IP de l'instance Scaleway (***REMOVED***)
+#   DEPLOY_SSH_USER   user SSH (ubuntu)
+#   DEPLOY_SSH_KEY    cle privee SSH autorisee sur le serveur
+#   DEPLOY_PATH       repo clone cote serveur (/path/to/clone)
+# (SCW_REGISTRY / SCW_SECRET_KEY ne sont PLUS utilises — peuvent rester.)
 #
-# Pre-requis serveur : repo clone dans DEPLOY_PATH, .env.prod rempli,
-# backend/firebase-key.json present, docker + compose v2 installes,
-# `docker login` Scaleway deja fait OU fait par le step deploy.
+# Pre-requis serveur (faits — cf docs/runbook-deploy-scaleway.md) :
+#   - repo clone dans DEPLOY_PATH, POSSEDE par DEPLOY_SSH_USER
+#   - DEPLOY_SSH_USER dans le groupe docker
+#   - deploy key read-only du user pour git pull + github.com en known_hosts
+#   - .env.prod rempli, backend/firebase-key.json present
+#
+# Declenchement (autonome) :
+#   gh workflow run deploy.yml -f confirm=deploy -R bizbiz/torchons-serviettes
+#   puis : gh run watch
+# (ou UI : Actions > deploy-prod > Run workflow > champ confirm = "deploy")
 
 name: deploy-prod
 
@@ -26,32 +35,11 @@ on:
         default: ''
 
 jobs:
-  build-and-push:
+  deploy:
     if: ${{ github.event.inputs.confirm == 'deploy' }}
     runs-on: ubuntu-latest
-    outputs:
-      image: ${{ steps.meta.outputs.image }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Compute image tag
-        id: meta
-        run: echo "image=${{ secrets.SCW_REGISTRY }}/ts-api:${{ github.sha }}" >> "$GITHUB_OUTPUT"
-
-      - name: Login Scaleway registry
-        run: echo "${{ secrets.SCW_SECRET_KEY }}" | docker login "${{ secrets.SCW_REGISTRY }}" -u nologin --password-stdin
-
-      - name: Build & push image
-        run: |
-          docker build -t "${{ steps.meta.outputs.image }}" -t "${{ secrets.SCW_REGISTRY }}/ts-api:latest" ./backend
-          docker push "${{ steps.meta.outputs.image }}"
-          docker push "${{ secrets.SCW_REGISTRY }}/ts-api:latest"
-
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: SSH deploy (pull + up -d)
+      - name: SSH deploy (pull + build + up -d)
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_SSH_HOST }}
@@ -61,10 +49,7 @@ jobs:
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
             git pull --ff-only
-            echo "${{ secrets.SCW_SECRET_KEY }}" | docker login "${{ secrets.SCW_REGISTRY }}" -u nologin --password-stdin
-            export TS_API_IMAGE="${{ needs.build-and-push.outputs.image }}"
-            docker compose -f docker-compose.prod.yml --env-file .env.prod pull api
-            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build api
             # Smoke test : echoue le job si /api/health n'est pas ok.
             sleep 8
             curl -fsS https://api.torchonsetserviettes.app/api/health | grep -q '"status":"ok"'
