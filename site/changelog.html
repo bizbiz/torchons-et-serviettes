@@ -33,7 +33,23 @@
     <p class="lead">Les dernières évolutions de l'application, version par version. Même contenu que l'écran « Nouveautés » de l'app.</p>
     <p class="meta">Généré automatiquement depuis la même source que
       l'application — aucun décalage entre les versions.
-      <small>(mise à jour : 2026-05-16)</small></p>
+      <small>(mise à jour : 2026-05-18)</small></p>
+<h2>v0.33.0 — 2026-05-18</h2>
+<h3>Ecran Foyer dedie</h3>
+<ul>
+<li>Les reglages lies au foyer sont regroupes dans un ecran &quot;Foyer&quot; dedie (titre = nom du foyer), accessible depuis la ligne du foyer dans les Reglages et depuis la card &quot;Foyer&quot; de l&#x27;accueil. Deux groupes clairs : &quot;Ce foyer&quot; (partage entre membres) et &quot;Mon compte&quot; (vaut pour tous tes foyers), avec un (i) qui explique le perimetre.</li>
+<li>L&#x27;ancien ecran &quot;Mes foyers&quot; disparait : &quot;Creer un nouveau foyer&quot; est un bouton dans les Reglages (bascule automatique sur le foyer cree), et &quot;Changer de foyer&quot; est une feuille de selection directement dans l&#x27;ecran Foyer — affichee seulement si tu as au moins deux foyers.</li>
+<li>Pieces et Categories sont desormais ranges sous l&#x27;ecran Foyer. Un bouton &quot;Simuler le rattrapage&quot; y ouvre le meme simulateur que la card &quot;Foyer&quot;.</li>
+</ul>
+<h3>Calendrier de presence editable</h3>
+<ul>
+<li>Un calendrier dans l&#x27;ecran Foyer permet de poser ou effacer les jours presents/absents, dans le passe comme dans le futur (planifier une absence a l&#x27;avance). Trois etats : vert = present, rouge doux = absent (taches maison gelees ce jour), gris = non renseigne (compte absent par defaut). Une icone indique la source : Wi-Fi (detecte) ou main (pose manuellement).</li>
+<li>Un jour pose a la main n&#x27;est jamais ecrase par la detection Wi-Fi automatique (priorite au manuel). Legende et (i) detaillee sous la grille. C&#x27;est la meme grille que le rappel &quot;Jours a confirmer&quot;, avec un lien &quot;Voir tout le calendrier&quot; depuis ce rappel.</li>
+</ul>
+<h3>Calendrier des series</h3>
+<ul>
+<li>Depuis l&#x27;onglet Stats (bloc serie du resume) et le profil d&#x27;un membre, un calendrier des series en lecture seule : une etoile sur chaque jour ou le membre a fait au moins une tache, et un trait qui relie les jours actifs. La serie passe au travers des jours confirmes absents (une absence legitime ne casse pas la serie) et se casse sur un jour incertain ou un jour present sans tache. Selecteur de membre integre ; lien &quot;Modifier la presence&quot; vers l&#x27;ecran Foyer.</li>
+</ul>
 <h2>v0.32.0 — 2026-05-12</h2>
 <h3>Gamification — desactivation possible</h3>
 <ul>

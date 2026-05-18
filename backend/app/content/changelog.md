@@ -1,5 +1,41 @@
 # Notes de version
 
+## v0.33.0 — 2026-05-18
+
+### Ecran Foyer dedie
+- Les reglages lies au foyer sont regroupes dans un ecran "Foyer" dedie
+  (titre = nom du foyer), accessible depuis la ligne du foyer dans les
+  Reglages et depuis la card "Foyer" de l'accueil. Deux groupes clairs :
+  "Ce foyer" (partage entre membres) et "Mon compte" (vaut pour tous tes
+  foyers), avec un (i) qui explique le perimetre.
+- L'ancien ecran "Mes foyers" disparait : "Creer un nouveau foyer" est un
+  bouton dans les Reglages (bascule automatique sur le foyer cree), et
+  "Changer de foyer" est une feuille de selection directement dans l'ecran
+  Foyer — affichee seulement si tu as au moins deux foyers.
+- Pieces et Categories sont desormais ranges sous l'ecran Foyer. Un bouton
+  "Simuler le rattrapage" y ouvre le meme simulateur que la card "Foyer".
+
+### Calendrier de presence editable
+- Un calendrier dans l'ecran Foyer permet de poser ou effacer les jours
+  presents/absents, dans le passe comme dans le futur (planifier une
+  absence a l'avance). Trois etats : vert = present, rouge doux = absent
+  (taches maison gelees ce jour), gris = non renseigne (compte absent par
+  defaut). Une icone indique la source : Wi-Fi (detecte) ou main (pose
+  manuellement).
+- Un jour pose a la main n'est jamais ecrase par la detection Wi-Fi
+  automatique (priorite au manuel). Legende et (i) detaillee sous la
+  grille. C'est la meme grille que le rappel "Jours a confirmer", avec un
+  lien "Voir tout le calendrier" depuis ce rappel.
+
+### Calendrier des series
+- Depuis l'onglet Stats (bloc serie du resume) et le profil d'un membre,
+  un calendrier des series en lecture seule : une etoile sur chaque jour
+  ou le membre a fait au moins une tache, et un trait qui relie les jours
+  actifs. La serie passe au travers des jours confirmes absents (une
+  absence legitime ne casse pas la serie) et se casse sur un jour
+  incertain ou un jour present sans tache. Selecteur de membre integre ;
+  lien "Modifier la presence" vers l'ecran Foyer.
+
 ## v0.32.0 — 2026-05-12
 
 ### Gamification — desactivation possible
