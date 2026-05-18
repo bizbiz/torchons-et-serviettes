@@ -391,12 +391,20 @@ class TaskRepository @Inject constructor(
     }
 
     /**
-     * Edite une completion (qui / quand) en offline-first : upsert local
-     * OPTIMISTE immediat (l'historique + l'urgence se recalculent aussitot)
-     * + enqueue d'une op UPDATE (le backend _handle_completion UPDATE applique
-     * completed_by/completed_at, le SyncWorker propage le change_log). Pas de
-     * refresh immediat : l'op est en file, le serveur a encore l'ancienne
-     * valeur, un refetch ecraserait l'optimiste. Cf docs/cache-conventions.md.
+     * Edite une completion (qui / quand). Upsert local OPTIMISTE immediat
+     * (l'historique + l'urgence se recalculent aussitot) puis persiste via
+     * le REST PUT /completions/{id} (stats.py) — PAS via enqueue /sync.
+     *
+     * Raison (interim) : tant que le backend Scaleway n'a pas la branche
+     * UPDATE de _handle_completion (deploiement manuel/CI a faire), une op
+     * /sync "task_completions UPDATE" ferait lever un HTTP 400 NON catche
+     * par la boucle /sync (sync.py:77-95 ne catch que StaleUpdateError /
+     * IntegrityError) -> batch entier en echec -> file offline bloquee pour
+     * tout le foyer. Le REST PUT existe deja cote serveur et ne passe pas
+     * par /sync : sans risque. Contrepartie : une edition faite hors-ligne
+     * n'est pas mise en file (online-only). Repasser sur enqueue("UPDATE")
+     * une fois Scaleway a jour (la branche serveur est deja sur main, commit
+     * 08d4a2c, dormante jusqu'au deploy). Cf docs/cache-conventions.md.
      */
     suspend fun updateCompletion(
         completionId: String,
@@ -405,17 +413,25 @@ class TaskRepository @Inject constructor(
     ): Result<Unit> {
         val existing = completionDao.getById(completionId)
             ?: return Result.failure(IllegalStateException("Completion introuvable en cache"))
+        // Optimiste : l'UI reflete l'edition sans attendre le reseau.
         completionDao.upsertAll(
             listOf(existing.copy(completedBy = completedBy, completedAt = completedAt))
         )
-        enqueue(
-            UUID.randomUUID().toString(),
-            "task_completions",
-            "UPDATE",
-            completionId,
-            mapOf("completed_by" to completedBy, "completed_at" to completedAt),
-        )
-        return Result.success(Unit)
+        return try {
+            val resp = apiService.updateCompletion(
+                completionId,
+                mapOf("completed_by" to completedBy, "completed_at" to completedAt),
+            )
+            if (resp.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                // Echec serveur : le prochain refreshCompletions
+                // (replaceForTask autoritaire) reconciliera (backend gagne).
+                Result.failure(IllegalStateException("HTTP ${resp.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     /**
