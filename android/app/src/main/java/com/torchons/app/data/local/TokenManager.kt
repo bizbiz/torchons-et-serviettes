@@ -65,6 +65,10 @@ class TokenManager @Inject constructor(
         // Masquer les taches maison de la liste hors WiFi maison (user-level).
         // Defaut true = comportement historique.
         private val HIDE_HOME_OFF_WIFI_KEY = booleanPreferencesKey("hide_home_tasks_off_wifi")
+        // Cache offline du nom du foyer courant : evite le flash du
+        // placeholder "Mon foyer" a l'ouverture de l'ecran Foyer avant que
+        // /api/foyers reponde (offline-first, cf docs/cache-conventions.md).
+        private val CURRENT_FOYER_NAME_KEY = stringPreferencesKey("current_foyer_name")
     }
 
     /** Flow du token JWT. Emet null si aucun token stocke. */
@@ -144,6 +148,23 @@ class TokenManager @Inject constructor(
         context.dataStore.edit { it[GAMIF_FOYER_KEY] = enabled }
     }
 
+    /** Nom du foyer courant mis en cache local : sert a seeder l'UI au
+     *  demarrage du ViewModel sans attendre /api/foyers. */
+    val currentFoyerNameFlow: Flow<String?> =
+        context.dataStore.data.map { it[CURRENT_FOYER_NAME_KEY] }
+
+    suspend fun setCurrentFoyerName(name: String) {
+        context.dataStore.edit { it[CURRENT_FOYER_NAME_KEY] = name }
+    }
+
+    /** Lectures one-shot du foyer courant en cache (id + nom) pour le seed
+     *  d'ouverture de l'ecran Foyer (avant la reponse reseau). */
+    suspend fun getCachedFoyerId(): String? =
+        context.dataStore.data.first()[FOYER_ID_KEY]
+
+    suspend fun getCachedFoyerName(): String? =
+        context.dataStore.data.first()[CURRENT_FOYER_NAME_KEY]
+
     suspend fun setHomeSsids(ssids: List<String>) {
         context.dataStore.edit { prefs ->
             prefs[HOME_SSIDS_KEY] = ssids.filter { it.isNotBlank() }.joinToString("|")
@@ -202,6 +223,7 @@ class TokenManager @Inject constructor(
             preferences.remove(USERNAME_KEY)
             preferences.remove(DISPLAY_NAME_KEY)
             preferences.remove(FOYER_ID_KEY)
+            preferences.remove(CURRENT_FOYER_NAME_KEY)
         }
     }
 

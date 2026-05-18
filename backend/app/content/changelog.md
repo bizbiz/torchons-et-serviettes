@@ -1,5 +1,17 @@
 # Notes de version
 
+## v0.33.1 — 2026-05-18
+
+### Corrections (ecran Foyer / presence / series)
+- Le nom du foyer s'affiche immediatement a l'ouverture de l'ecran Foyer
+  (fini le bref "Mon foyer" affiche le temps du chargement).
+- Calendrier des series : les etoiles et le trait de serie restent
+  desormais a l'interieur du calendrier (plus de marques qui debordaient
+  hors de la grille).
+- Modifier la presence (present / absent) recalcule aussitot le retard
+  des taches maison et la serie : l'affichage est a jour sans avoir a
+  recharger.
+
 ## v0.33.0 — 2026-05-18
 
 ### Ecran Foyer dedie

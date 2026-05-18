@@ -163,18 +163,31 @@ fun PresenceCalendarGrid(
                         var connCursor = cursor
                         for (dow in 1..7) {
                             val d = connCursor
-                            // Reliure entrante (depuis le jour precedent) et
-                            // sortante (vers le jour suivant) : un segment
-                            // est trace si la transition correspondante est
-                            // "reliee" (adjacence active OU pont sur absents).
-                            val linkLeft = streak.linkedToPrev.contains(d)
-                            val linkRight = streak.linkedToNext.contains(d)
-                            val node = streak.activeNodes.contains(d)
-                            StreakConnectorCell(
-                                drawHalo = node,
-                                linkLeft = linkLeft,
-                                linkRight = linkRight,
-                            )
+                            // P2 sweep : la couche streak ne doit JAMAIS
+                            // deborder hors du mois affiche, sinon des halos /
+                            // traits ambre flottent sur les cases de padding
+                            // ("streak en dehors du calendrier"). Meme garde
+                            // inMonth que la rangee des jours plus bas.
+                            val dInMonth = d.month == visibleMonth.month &&
+                                d.year == visibleMonth.year
+                            if (dInMonth) {
+                                // Reliure entrante (jour precedent) / sortante
+                                // (jour suivant) : segment trace si la
+                                // transition est "reliee" (adjacence active
+                                // OU pont sur absents).
+                                val linkLeft = streak.linkedToPrev.contains(d)
+                                val linkRight = streak.linkedToNext.contains(d)
+                                val node = streak.activeNodes.contains(d)
+                                StreakConnectorCell(
+                                    drawHalo = node,
+                                    linkLeft = linkLeft,
+                                    linkRight = linkRight,
+                                )
+                            } else {
+                                // Case de padding hors-mois : rien (aligne
+                                // avec le Box vide de la rangee des jours).
+                                Box(modifier = Modifier.size(36.dp))
+                            }
                             connCursor = connCursor.plusDays(1)
                         }
                     }

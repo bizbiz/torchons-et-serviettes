@@ -97,8 +97,25 @@ class SettingsViewModel @Inject constructor(
     val allFoyers: StateFlow<List<Foyer>> = _allFoyers.asStateFlow()
 
     init {
+        seedFoyerFromCache()
         loadAll()
         checkBackend()
+    }
+
+    /** P1 sweep : seed le foyer courant depuis le cache local (DataStore)
+     *  AVANT que /api/foyers reponde, pour ne plus flasher le placeholder
+     *  "Mon foyer" a l'ouverture de l'ecran Foyer. loadAll() remplace ensuite
+     *  par la donnee serveur autoritaire (online = serveur autoritaire,
+     *  cf docs/cache-conventions.md). */
+    private fun seedFoyerFromCache() {
+        viewModelScope.launch {
+            if (_currentFoyer.value != null) return@launch
+            val id = tokenManager.getCachedFoyerId()
+            val name = tokenManager.getCachedFoyerName()
+            if (id != null && name != null && _currentFoyer.value == null) {
+                _currentFoyer.value = Foyer(id = id, name = name)
+            }
+        }
     }
 
     fun checkBackend() {
@@ -183,6 +200,9 @@ class SettingsViewModel @Inject constructor(
                     _currentFoyer.value = current
                     if (current != null) {
                         tokenManager.setCurrentFoyerGamificationEnabled(current.gamificationEnabled)
+                        // P1 sweep : persiste le nom pour le seed offline au
+                        // prochain demarrage (cf seedFoyerFromCache).
+                        tokenManager.setCurrentFoyerName(current.name)
                     }
                 }
             } catch (_: Exception) {}
@@ -507,6 +527,12 @@ class SettingsViewModel @Inject constructor(
                 )
                 if (resp.isSuccessful) {
                     loadPresence(rangeFrom, rangeTo)
+                    // P2 sweep : un changement de presence modifie le
+                    // home-freeze (urgence/retard des taches maison) ET la
+                    // serie/record. cache-conventions regle 1 : etat derive
+                    // recalcule a CHAQUE mutation -> on re-pull l'autoritatif.
+                    taskRepository.refreshTasks()
+                    taskRepository.refreshCompletions(limit = 2000)
                 }
             } catch (e: Exception) {
                 Log.e("SettingsVM", "setPresence failed", e)
