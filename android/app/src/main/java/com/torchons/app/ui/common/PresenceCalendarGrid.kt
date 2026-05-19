@@ -2,6 +2,7 @@ package com.torchons.app.ui.common
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -94,13 +95,21 @@ fun PresenceCalendarGrid(
     /** Affiche la legende + (i) sous la grille. */
     showLegend: Boolean = true,
     /**
-     * P3 — Couche etoile/streak (design decision 6). Jours ou le membre
-     * selectionne a fait >=1 tache. Off par defaut : l'editeur de presence
-     * P2 (ecran Foyer / prompt) reste visuellement INCHANGE.
+     * Jours ou le membre selectionne a fait >=1 tache (etoile). Off par
+     * defaut : l'editeur de presence (prompt) reste inchange.
      */
     activityDays: Set<LocalDate> = emptySet(),
-    /** Active le rendu etoiles + serie reliee. false = comportement P2 strict. */
+    /** Affiche l'etoile d'activite + la legende serie. */
     showStreak: Boolean = false,
+    /**
+     * P4b sweep 0.34.1 — liseré serie, SOURCE UNIQUE = serveur (/streaks).
+     * Fini le recalcul client fenetré (il cassait en cross-mois et ne
+     * connaissait pas le record). `recordRunDays` = jours du run RECORD
+     * (best_streak) ; `currentRunDays` = run EN COURS. Incluent les jours
+     * absents PONTES (continuite du liseré). Vides => aucun liseré.
+     */
+    recordRunDays: Set<LocalDate> = emptySet(),
+    currentRunDays: Set<LocalDate> = emptySet(),
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         MonthHeader(
@@ -135,63 +144,13 @@ fun PresenceCalendarGrid(
         val startOfWeek = firstOfMonth.with(DayOfWeek.MONDAY)
         val endOfWeek = lastOfMonth.with(DayOfWeek.SUNDAY)
 
-        // P3 — Pre-calcul de la couche streak : pour chaque jour AFFICHE
-        // (y compris les jours hors-mois des semaines de bord, pour que la
-        // serie ne soit pas coupee artificiellement au saut de semaine), on
-        // determine s'il est un noeud actif (etoile) et si la transition
-        // vers le jour suivant est "reliee".
-        val streak = if (showStreak) {
-            computeStreakRender(startOfWeek, endOfWeek, statesByDate, activityDays)
-        } else {
-            null
-        }
-
         var cursor = startOfWeek
         while (cursor <= endOfWeek) {
             Box(modifier = Modifier.fillMaxWidth()) {
-                // Couche connecteur (sous les cases) : un ruban horizontal
-                // qui relie les jours d'une meme serie. Dessine d'abord pour
-                // passer DERRIERE les cases (z-order = ordre de declaration).
-                if (streak != null) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(36.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        var connCursor = cursor
-                        for (dow in 1..7) {
-                            val d = connCursor
-                            // P2 sweep : la couche streak ne doit JAMAIS
-                            // deborder hors du mois affiche, sinon des halos /
-                            // traits ambre flottent sur les cases de padding
-                            // ("streak en dehors du calendrier"). Meme garde
-                            // inMonth que la rangee des jours plus bas.
-                            val dInMonth = d.month == visibleMonth.month &&
-                                d.year == visibleMonth.year
-                            if (dInMonth) {
-                                // Reliure entrante (jour precedent) / sortante
-                                // (jour suivant) : segment trace si la
-                                // transition est "reliee" (adjacence active
-                                // OU pont sur absents).
-                                val linkLeft = streak.linkedToPrev.contains(d)
-                                val linkRight = streak.linkedToNext.contains(d)
-                                val node = streak.activeNodes.contains(d)
-                                StreakConnectorCell(
-                                    drawHalo = node,
-                                    linkLeft = linkLeft,
-                                    linkRight = linkRight,
-                                )
-                            } else {
-                                // Case de padding hors-mois : rien (aligne
-                                // avec le Box vide de la rangee des jours).
-                                Box(modifier = Modifier.size(36.dp))
-                            }
-                            connCursor = connCursor.plusDays(1)
-                        }
-                    }
-                }
+                // P4b sweep 0.34.1 : plus de couche connecteur cliente
+                // (computeStreakRender fenetré = cause du miscount cross-mois
+                // + record faux). La serie est un LISERÉ par case piloté par
+                // les date-sets serveur (recordRunDays / currentRunDays).
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -210,6 +169,8 @@ fun PresenceCalendarGrid(
                                 source = source,
                                 editable = editable,
                                 showStar = showStreak && activityDays.contains(day),
+                                inRecordRun = recordRunDays.contains(day),
+                                inCurrentRun = currentRunDays.contains(day),
                                 onTap = {
                                     onCellTap(day, nextState(state))
                                 },
@@ -276,6 +237,9 @@ private fun DayCell(
     editable: Boolean,
     onTap: () -> Unit,
     showStar: Boolean = false,
+    /** Liseré serie (P4b) : record prime sur en-cours si chevauchement. */
+    inRecordRun: Boolean = false,
+    inCurrentRun: Boolean = false,
 ) {
     // Rouge DOUX = errorContainer (teinte douce), pas le rouge vif `error`.
     val presentColor = Color(0xFF10B981)
@@ -299,6 +263,20 @@ private fun DayCell(
         .size(36.dp)
         .clip(RoundedCornerShape(8.dp))
         .background(bg)
+    // Liseré serie : record (or, epais) prime sur en-cours (indigo). Le
+    // fond de case reste la presence (vert/rouge doux/gris) — decision 5 v3.
+    val runColor: Color? = when {
+        inRecordRun -> STREAK_RECORD_COLOR
+        inCurrentRun -> STREAK_CURRENT_COLOR
+        else -> null
+    }
+    if (runColor != null) {
+        cellModifier = cellModifier.border(
+            width = if (inRecordRun) 3.dp else 2.dp,
+            color = runColor,
+            shape = RoundedCornerShape(8.dp),
+        )
+    }
     if (editable) {
         cellModifier = cellModifier.clickable { onTap() }
     }
@@ -344,143 +322,20 @@ private fun DayCell(
     }
 }
 
-/** Ambre — etoile d'activite + halo de serie (lisible sur vert/rouge/gris). */
+/** Or — etoile d'activite + liseré du run RECORD (best_streak). Lisible
+ *  sur les 3 fonds de presence (vert / rouge doux / gris). */
 private val STREAK_STAR_COLOR = Color(0xFFF59E0B)
+private val STREAK_RECORD_COLOR = STREAK_STAR_COLOR
 
-/**
- * Resultat du pre-calcul de la couche streak pour une plage de jours.
- *
- * - `activeNodes` : jours ou le membre a fait >=1 tache (etoile + halo).
- * - `linkedToNext` / `linkedToPrev` : un jour `d` est dedans si la transition
- *   `d -> d+1` (resp. `d-1 -> d`) appartient a une serie continue et doit
- *   etre tracee comme un trait reliant les deux cases.
- */
-private data class StreakRender(
-    val activeNodes: Set<LocalDate>,
-    val linkedToNext: Set<LocalDate>,
-    val linkedToPrev: Set<LocalDate>,
-)
+/** Indigo — liseré du run EN COURS (current_streak). Distinct de l'or
+ *  (record) et des couleurs de presence. */
+private val STREAK_CURRENT_COLOR = Color(0xFF6366F1)
 
-/**
- * Calcule la couche streak sur [from, to] (regle v0.17 — design decision 6).
- *
- * Un "noeud actif" = jour present dans `activityDays` (>=1 tache faite par le
- * membre selectionne).
- *
- * Reliure de deux noeuds actifs A < B consecutifs (aucun autre noeud actif
- * entre les deux) : on regarde chaque jour de gap strictement entre A et B :
- *  - **PONT** (la serie continue, regle v0.17) si TOUS les jours de gap sont
- *    `confirmed_absent` (ABSENT explicite dans `statesByDate`). Un jour
- *    absent ne casse pas la serie : le membre etait legitimement parti.
- *  - **CASSURE** (vraie rupture) des qu'UN jour de gap est :
- *      * incertain = aucune ligne de presence (etat UNKNOWN), OU
- *      * `confirmed_present` mais SANS activite (present a la maison mais
- *        rien fait ce jour-la -> la serie se casse comme un jour normal
- *        sans completion).
- * Deux noeuds actifs strictement adjacents (B = A+1, pas de gap) sont
- * toujours relies.
- */
-private fun computeStreakRender(
-    from: LocalDate,
-    to: LocalDate,
-    statesByDate: Map<String, Pair<PresenceCellState, PresenceSource>>,
-    activityDays: Set<LocalDate>,
-): StreakRender {
-    val nodes = mutableSetOf<LocalDate>()
-    var d = from
-    while (d <= to) {
-        if (activityDays.contains(d)) nodes.add(d)
-        d = d.plusDays(1)
-    }
-    if (nodes.size < 1) {
-        return StreakRender(nodes, emptySet(), emptySet())
-    }
-
-    val sortedNodes = nodes.sorted()
-    val linkedToNext = mutableSetOf<LocalDate>()
-    val linkedToPrev = mutableSetOf<LocalDate>()
-
-    for (i in 0 until sortedNodes.size - 1) {
-        val a = sortedNodes[i]
-        val b = sortedNodes[i + 1]
-        var bridged = true
-        var gap = a.plusDays(1)
-        while (gap < b) {
-            val state = statesByDate[gap.toString()]?.first
-                ?: PresenceCellState.UNKNOWN
-            // Pont uniquement si le jour de gap est ABSENT confirme. Tout
-            // autre cas (UNKNOWN incertain, ou PRESENT sans activite) casse.
-            if (state != PresenceCellState.ABSENT) {
-                bridged = false
-                break
-            }
-            gap = gap.plusDays(1)
-        }
-        if (bridged) {
-            // Marque toute la chaine a..b comme reliee (trait continu qui
-            // traverse les jours de gap pontes).
-            var cur = a
-            while (cur < b) {
-                linkedToNext.add(cur)
-                linkedToPrev.add(cur.plusDays(1))
-                cur = cur.plusDays(1)
-            }
-        }
-    }
-    return StreakRender(nodes, linkedToNext, linkedToPrev)
-}
-
-/**
- * Une case de la couche connecteur (sous la grille). Dessine un ruban
- * horizontal ambre clair :
- *  - un demi-segment vers la gauche si `linkLeft` (relie au jour precedent),
- *  - un demi-segment vers la droite si `linkRight` (relie au jour suivant),
- *  - un point de halo central si `drawHalo` (jour actif).
- * Une CASSURE = absence de segment entre deux cases (rien n'est dessine),
- * d'ou une coupure visuelle nette.
- */
-@Composable
-private fun StreakConnectorCell(
-    drawHalo: Boolean,
-    linkLeft: Boolean,
-    linkRight: Boolean,
-) {
-    val bandColor = STREAK_STAR_COLOR.copy(alpha = 0.30f)
-    Box(
-        modifier = Modifier.size(36.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        // Demi-segment gauche : part du bord gauche jusqu'au centre.
-        if (linkLeft) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .width(20.dp)
-                    .height(8.dp)
-                    .background(bandColor),
-            )
-        }
-        // Demi-segment droit : part du centre jusqu'au bord droit.
-        if (linkRight) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .width(20.dp)
-                    .height(8.dp)
-                    .background(bandColor),
-            )
-        }
-        // Halo central (jour actif) — pastille plus marquee derriere la case.
-        if (drawHalo) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(STREAK_STAR_COLOR.copy(alpha = 0.22f)),
-            )
-        }
-    }
-}
+// P4b sweep 0.34.1 — StreakRender / computeStreakRender / StreakConnectorCell
+// SUPPRIMÉS : ils recalculaient la serie cote client sur une fenetre 1 mois
+// (cause racine du miscount cross-mois + record absent). La serie est
+// desormais 100 % serveur (stats._compute_user_streak -> /streaks ->
+// recordRunDays / currentRunDays), rendue en liseré par DayCell.
 
 /** Legende des 3 etats + 2 icones source + (i) detaillee. En mode streak,
  *  ajoute la ligne etoile + l'explication de la regle pont/cassure. */
@@ -497,15 +352,16 @@ private fun PresenceLegend(showStreak: Boolean = false) {
             // (i) detaillee. La partie streak n'est ajoutee qu'en mode streak
             // (modal Stats) — l'editeur de presence P2 garde son texte exact.
             val streakInfo = if (showStreak) {
-                "\n\n— Serie d'activite —\n" +
-                    "L'etoile signale que ce membre a fait au moins une tache " +
-                    "ce jour-la. Le halo ambre relie les jours actifs en une " +
-                    "serie continue. La serie PASSE AU TRAVERS des jours " +
-                    "absents (un jour confirme absent ne casse pas la serie, " +
-                    "regle v0.17 : le membre etait legitimement parti). Elle " +
-                    "SE CASSE sur un jour incertain (presence non renseignee) " +
-                    "ou sur un jour present sans activite (a la maison mais " +
-                    "aucune tache faite)."
+                "\n\n— Series —\n" +
+                    "L'etoile = ce membre a fait au moins une tache ce " +
+                    "jour-la. Le liseré OR entoure les jours de la " +
+                    "MEILLEURE serie (record) ; le liseré INDIGO ceux de " +
+                    "la serie EN COURS. Une serie PASSE AU TRAVERS des " +
+                    "jours confirmes absents (regle v0.17 : absence " +
+                    "legitime) et SE CASSE sur un jour incertain ou un jour " +
+                    "present sans aucune tache. Calcul sur TOUT l'historique " +
+                    "cote serveur (le record n'est plus tronque par le mois " +
+                    "affiche)."
             } else {
                 ""
             }
@@ -583,9 +439,9 @@ private fun PresenceLegend(showStreak: Boolean = false) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        // P3 — Ligne etoile/serie (uniquement en mode streak : modal Stats).
+        // P4b — etoile + liseré record/en-cours (mode serie : modal).
         if (showStreak) {
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.Star,
@@ -595,13 +451,20 @@ private fun PresenceLegend(showStreak: Boolean = false) {
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Etoile = tache faite ce jour ; la serie passe au travers " +
-                        "des jours absents (v0.17), se casse sur un jour " +
-                        "incertain ou present sans activite",
+                    "Tache faite ce jour-la",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            Spacer(Modifier.height(2.dp))
+            LegendBorderChip(
+                color = STREAK_RECORD_COLOR,
+                label = "Liseré or = meilleure serie (record)",
+            )
+            LegendBorderChip(
+                color = STREAK_CURRENT_COLOR,
+                label = "Liseré indigo = serie en cours",
+            )
         }
     }
 }
@@ -617,6 +480,28 @@ private fun LegendChip(color: Color, label: String) {
                 .size(14.dp)
                 .clip(CircleShape)
                 .background(color),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** Pastille à liseré (pas remplie) — miroir du liseré serie d'une case. */
+@Composable
+private fun LegendBorderChip(color: Color, label: String) {
+    Row(
+        modifier = Modifier.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(14.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .border(2.dp, color, RoundedCornerShape(4.dp)),
         )
         Spacer(Modifier.width(8.dp))
         Text(

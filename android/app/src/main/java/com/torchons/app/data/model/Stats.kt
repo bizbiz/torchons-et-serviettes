@@ -89,7 +89,11 @@ data class StreakInfo(
     @SerializedName("user_id") val userId: String,
     @SerializedName("display_name") val displayName: String,
     @SerializedName("current_streak") val currentStreak: Int = 0,
-    @SerializedName("best_streak") val bestStreak: Int = 0
+    @SerializedName("best_streak") val bestStreak: Int = 0,
+    // P4b sweep 0.34.1 — dates ISO des deux runs (jours actifs + jours
+    // absents pontés) pour le liseré. Source unique = serveur /streaks.
+    @SerializedName("current_run") val currentRun: List<String> = emptyList(),
+    @SerializedName("best_run") val bestRun: List<String> = emptyList()
 )
 
 data class BadgeInfo(

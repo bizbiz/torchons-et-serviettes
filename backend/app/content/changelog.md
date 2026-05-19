@@ -1,5 +1,18 @@
 # Notes de version
 
+## v0.34.1 — 2026-05-19
+
+### Séries : calcul corrigé + affichage clair
+- La série n'était plus calculée correctement quand elle traversait deux
+  mois (ex : du 19 avril au 6 mai) et le record était faux. C'est corrigé :
+  la série et le record sont maintenant calculés sur tout l'historique
+  (plus de troncature au mois affiché).
+- Nouveau repérage visuel dans le calendrier : un liseré **or** entoure
+  les jours de ta **meilleure série (record)**, un liseré **indigo** ceux
+  de la **série en cours**. Le fond des cases reste la présence
+  (vert / rouge doux / gris) et l'étoile marque les jours où une tâche a
+  été faite. Légende mise à jour.
+
 ## v0.34.0 — 2026-05-18
 
 ### Présence & séries : un seul agenda

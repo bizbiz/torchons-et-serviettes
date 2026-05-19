@@ -121,6 +121,10 @@ fun StreakCalendarModal(
     }
     // Jours d'activite du membre selectionne (couche etoile/serie).
     var activityDays by remember { mutableStateOf<Set<LocalDate>>(emptySet()) }
+    // P4b sweep 0.34.1 — runs serie SOURCE SERVEUR (/streaks). Plus de
+    // recalcul client fenetré : record + en-cours sur tout l'historique.
+    var recordRunDays by remember { mutableStateOf<Set<LocalDate>>(emptySet()) }
+    var currentRunDays by remember { mutableStateOf<Set<LocalDate>>(emptySet()) }
     var loading by remember { mutableStateOf(true) }
 
     // Plage = mois visible elargi d'une semaine de chaque cote, pour que la
@@ -190,6 +194,35 @@ fun StreakCalendarModal(
             activityDays = emptySet()
         } finally {
             loading = false
+        }
+    }
+
+    // P4b sweep 0.34.1 — runs serie depuis /streaks (calcul serveur sur
+    // TOUT l'historique, regle v0.17). Refetch au changement d'user OU
+    // apres une edition de presence (refreshTrigger : les absences
+    // pontees changent les runs).
+    LaunchedEffect(selectedUserId, refreshTrigger) {
+        if (selectedUserId.isBlank()) {
+            recordRunDays = emptySet()
+            currentRunDays = emptySet()
+            return@LaunchedEffect
+        }
+        try {
+            val resp = withContext(Dispatchers.IO) { apiService.getStreaks() }
+            if (resp.isSuccessful) {
+                val s = resp.body()?.firstOrNull { it.userId == selectedUserId }
+                fun parse(list: List<String>): Set<LocalDate> = list.mapNotNull {
+                    try {
+                        LocalDate.parse(it)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }.toSet()
+                recordRunDays = s?.let { parse(it.bestRun) } ?: emptySet()
+                currentRunDays = s?.let { parse(it.currentRun) } ?: emptySet()
+            }
+        } catch (_: Exception) {
+            // best-effort : pas de liseré si le fetch echoue.
         }
     }
 
@@ -286,6 +319,8 @@ fun StreakCalendarModal(
                         showLegend = true,
                         activityDays = activityDays,
                         showStreak = true,
+                        recordRunDays = recordRunDays,
+                        currentRunDays = currentRunDays,
                     )
                     if (loading) {
                         Box(

@@ -59,6 +59,11 @@ class StreakInfo(BaseModel):
     display_name: str
     current_streak: int
     best_streak: int
+    # Dates des deux runs (jours actifs + jours absents PONTES) pour le
+    # liseré cote client. Source unique : ce calcul serveur (fini la
+    # reimplementation cliente fenetree qui cassait en cross-mois).
+    current_run: list[date] = []
+    best_run: list[date] = []
 
 
 class BadgeInfo(BaseModel):
@@ -361,15 +366,18 @@ def _compute_user_streak(
     days: list[date],
     today: date,
     absent_set: set[date],
-) -> tuple[int, int]:
-    """Calcule (current_streak, best_streak) pour un user.
+) -> tuple[int, int, list[date], list[date]]:
+    """Calcule (current_streak, best_streak, current_run, best_run).
 
     `days` = dates distinctes avec >=1 completion, triees descendant.
     `absent_set` = dates explicitement confirmed_absent du foyer.
 
     Un jour de absent_set est neutre : il ne casse pas le streak mais ne
     s'incremente pas non plus (semantique "jours actifs" — le compteur
-    affiche le vrai nombre de jours d'activite, jamais menteur).
+    affiche le vrai nombre de jours d'activite, jamais menteur). Les deux
+    listes de dates renvoyees incluent les jours absents PONTES (pour la
+    continuite visuelle du liseré cote client) ; les compteurs entiers, eux,
+    ne comptent que les jours d'activite (semantique inchangee).
     """
     days_set = set(days)
 
@@ -380,34 +388,45 @@ def _compute_user_streak(
             cursor = cursor - timedelta(days=1)
 
     current = 0
+    current_run: list[date] = []
     while True:
         if cursor in days_set:
             current += 1
+            current_run.append(cursor)
             cursor -= timedelta(days=1)
         elif cursor in absent_set:
+            current_run.append(cursor)  # ponte : continuite visuelle
             cursor -= timedelta(days=1)
         else:
             break
 
     # Best : on itere les completions desc, en autorisant un gap >1 si tous
-    # les jours intermediaires sont absent_set.
+    # les jours intermediaires sont absent_set (ponte).
     best = 0
+    best_run: list[date] = []
     if days:
         run = 1
+        run_dates: list[date] = [days[0]]
         for i in range(1, len(days)):
             gap = (days[i - 1] - days[i]).days
             if gap == 1:
                 run += 1
+                run_dates.append(days[i])
                 continue
             intermediate = {days[i - 1] - timedelta(days=k) for k in range(1, gap)}
             if intermediate.issubset(absent_set):
                 run += 1
+                run_dates.extend(sorted(intermediate))
+                run_dates.append(days[i])
             else:
-                best = max(best, run)
+                if run > best:
+                    best, best_run = run, list(run_dates)
                 run = 1
-        best = max(best, run)
+                run_dates = [days[i]]
+        if run > best:
+            best, best_run = run, list(run_dates)
 
-    return current, best
+    return current, best, sorted(set(current_run)), sorted(set(best_run))
 
 
 @router.get("/streaks", response_model=list[StreakInfo])
@@ -447,13 +466,17 @@ async def get_streaks(
         # plus vieille completion a aujourd'hui) pour neutraliser les vacances.
         oldest = days[-1] if days else today
         absent_set = await get_absent_dates(session, foyer_uuid, oldest, today)
-        current, best = _compute_user_streak(days, today, absent_set)
+        current, best, current_run, best_run = _compute_user_streak(
+            days, today, absent_set,
+        )
 
         streaks.append(StreakInfo(
             user_id=user.id,
             display_name=user.display_name,
             current_streak=current,
             best_streak=best,
+            current_run=current_run,
+            best_run=best_run,
         ))
 
     return streaks
@@ -514,7 +537,7 @@ async def get_badges(
     today = date.today()
     oldest = days[-1] if days else today
     absent_set = await get_absent_dates(session, foyer_uuid, oldest, today)
-    _, best_streak = _compute_user_streak(days, today, absent_set)
+    _, best_streak, _, _ = _compute_user_streak(days, today, absent_set)
 
     streak_thresholds = {"streak_3": 3, "streak_7": 7, "streak_14": 14, "streak_30": 30}
     for badge_type, threshold in streak_thresholds.items():
