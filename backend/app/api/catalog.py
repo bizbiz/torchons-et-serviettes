@@ -392,6 +392,11 @@ async def apply_import(
             await session.flush()
             room_key_to_id[decision.template_key] = new_room.id
             created_rooms += 1
+            # Dé-dup INTRA-boucle : sans ça, deux template_keys au même
+            # nom localisé créeraient 2 rows -> viol. uq_rooms_name_foyer
+            # -> IntegrityError 500 (bug add-foyer : un user existant
+            # importe un catalogue à noms collidants dans un 2e foyer).
+            existing_rooms.append(new_room)
 
     # Resolve final category_key -> id
     cat_key_to_id: dict[str, uuid.UUID] = {}
@@ -427,6 +432,9 @@ async def apply_import(
             await session.flush()
             cat_key_to_id[decision.template_key] = new_cat.id
             created_categories += 1
+            # Dé-dup INTRA-boucle (cf rooms) : évite la 2e création au
+            # même nom -> viol. uq_categories_name_foyer -> 500.
+            existing_cats.append(new_cat)
 
     # Enfin : les tasks
     for tk in body.task_keys:

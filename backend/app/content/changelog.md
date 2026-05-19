@@ -1,5 +1,13 @@
 # Notes de version
 
+## v0.35.3 — 2026-05-19
+
+### Création de foyer : pièces/tâches enfin créées (fix serveur)
+- Correction du bug où créer un foyer (en étant déjà membre d'un autre)
+  laissait le foyer **vide** : l'import échouait côté serveur quand deux
+  éléments du catalogue portaient le même nom. Les pièces, catégories
+  et tâches choisies dans le parcours sont maintenant bien créées.
+
 ## v0.35.2 — 2026-05-19
 
 ### Création de foyer : erreurs visibles
