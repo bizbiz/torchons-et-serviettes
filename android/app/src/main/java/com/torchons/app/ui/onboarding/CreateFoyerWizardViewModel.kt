@@ -257,9 +257,11 @@ class CreateFoyerWizardViewModel @Inject constructor(
                 }
             }
         }
-        // Import catalogue dans le NOUVEAU foyer (JWT déjà switché) — best-effort.
+        // Import catalogue dans le NOUVEAU foyer (JWT déjà switché). On NE
+        // swallow PLUS en silence : si l'import échoue, l'user (et le dev)
+        // doit voir POURQUOI — sinon foyer vide = mystère (bug dogfood).
         if (s.selectedRoomKeys.isNotEmpty() || s.selectedTaskKeys.isNotEmpty()) {
-            runCatching {
+            try {
                 val resolveResp = apiService.resolveCatalogImport(
                     ImportResolveRequest(
                         taskKeys = s.selectedTaskKeys.toList(),
@@ -268,23 +270,47 @@ class CreateFoyerWizardViewModel @Inject constructor(
                     )
                 )
                 val resolved = resolveResp.body()
-                if (resolveResp.isSuccessful && resolved != null) {
-                    val roomDecisions = resolved.rooms.map {
-                        ImportDecision(it.templateKey, "create", null)
-                    }
-                    val catDecisions = resolved.categories.map {
-                        ImportDecision(it.templateKey, "create", null)
-                    }
-                    apiService.applyCatalogImport(
-                        ImportApplyRequest(
-                            taskKeys = s.selectedTaskKeys.toList(),
-                            roomDecisions = roomDecisions,
-                            categoryDecisions = catDecisions,
-                            roomKeys = s.selectedRoomKeys.toList(),
-                            categoryKeys = emptyList(),
+                if (!resolveResp.isSuccessful || resolved == null) {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            error = "Import échoué (resolve ${resolveResp.code()})",
                         )
+                    }
+                    return
+                }
+                val roomDecisions = resolved.rooms.map {
+                    ImportDecision(it.templateKey, "create", null)
+                }
+                val catDecisions = resolved.categories.map {
+                    ImportDecision(it.templateKey, "create", null)
+                }
+                val applyResp = apiService.applyCatalogImport(
+                    ImportApplyRequest(
+                        taskKeys = s.selectedTaskKeys.toList(),
+                        roomDecisions = roomDecisions,
+                        categoryDecisions = catDecisions,
+                        roomKeys = s.selectedRoomKeys.toList(),
+                        categoryKeys = emptyList(),
+                    )
+                )
+                if (!applyResp.isSuccessful) {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            error = "Import échoué (apply ${applyResp.code()})",
+                        )
+                    }
+                    return
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        error = "Import échoué : ${e.message}",
                     )
                 }
+                return
             }
         }
         // Bascule effectuée : wiper le cache Room local (sinon l'UI montre

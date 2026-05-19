@@ -1,5 +1,12 @@
 # Notes de version
 
+## v0.35.2 — 2026-05-19
+
+### Création de foyer : erreurs visibles
+- Si l'import des pièces/tâches échoue pendant « Créer un foyer », un
+  message d'erreur explicite s'affiche désormais (avant : le foyer
+  pouvait rester vide sans aucune explication).
+
 ## v0.35.1 — 2026-05-19
 
 ### Correction création de foyer
