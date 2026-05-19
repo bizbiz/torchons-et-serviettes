@@ -1,5 +1,19 @@
 # Notes de version
 
+## v0.35.5 — 2026-05-19
+
+### Catalogue de suggestions enrichi
+- Deux nouvelles catégories suggérées : « Soin personnel » (masque
+  visage, RDV coiffeur/dentiste/médecin) et « Animal » (eau, litière,
+  gamelles, panier).
+- Catégorie « Entretien » enfin fournie : filtres lave-linge /
+  lave-vaisselle, détartrer la cafetière, aiguiser les couteaux,
+  dégivrer le congélateur, nettoyer l'aspirateur, les interrupteurs…
+- Plus de suggestions Jardinage (tailler, rempoter, saison) et
+  Administratif (impôts, déclarer mes heures, abonnements, papiers).
+- La catégorie « Courses » et sa suggestion sont retirées (d'autres
+  apps le font mieux).
+
 ## v0.35.4 — 2026-05-19
 
 ### Création de foyer : vraiment corrigé (contrainte base de données)

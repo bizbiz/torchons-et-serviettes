@@ -83,12 +83,6 @@ categories:
     color: "#6366F1"
     requires_home: true
 
-  - key: courses
-    name:
-      fr: "Courses"
-    color: "#EC4899"
-    requires_home: false
-
   - key: administratif
     name:
       fr: "Administratif"
@@ -106,6 +100,18 @@ categories:
       fr: "Entretien"
     color: "#F97316"
     requires_home: true
+
+  - key: soin_personnel
+    name:
+      fr: "Soin personnel"
+    color: "#14B8A6"
+    requires_home: false
+
+  - key: animal
+    name:
+      fr: "Animal"
+    color: "#A16207"
+    requires_home: false
 
 tasks:
   # --- Cuisine ---
@@ -308,17 +314,7 @@ tasks:
       every_n_days: 1
     default_tolerance: NORMAL
 
-  # --- Courses / Admin ---
-
-  - key: faire_courses
-    title:
-      fr: "Faire les courses"
-    default_category_key: courses
-    default_weight: 6
-    default_recurrence:
-      type: interval
-      every_n_days: 7
-    default_tolerance: NORMAL
+  # --- Administratif ---
 
   - key: verifier_factures
     title:
@@ -342,3 +338,238 @@ tasks:
       type: interval
       every_n_days: 4
     default_tolerance: STRICT
+
+  - key: tailler_plantes
+    title:
+      fr: "Tailler et nettoyer les plantes"
+    default_category_key: jardinage
+    default_room_key: salon
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 30
+    default_tolerance: SOUPLE
+
+  - key: rempoter_plantes
+    title:
+      fr: "Rempoter et rafraichir le terreau"
+    default_category_key: jardinage
+    default_room_key: salon
+    default_weight: 3
+    default_recurrence:
+      type: interval
+      every_n_days: 180
+    default_tolerance: SOUPLE
+
+  - key: plantes_saison
+    title:
+      fr: "Sortir / rentrer les plantes selon la saison"
+    default_category_key: jardinage
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 180
+    default_tolerance: SOUPLE
+
+  # --- Entretien (appareils & maison) ---
+
+  - key: nettoyer_filtre_lave_linge
+    title:
+      fr: "Nettoyer le filtre du lave-linge"
+    default_category_key: entretien
+    default_room_key: buanderie
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 30
+    default_tolerance: SOUPLE
+
+  - key: nettoyer_filtre_lave_vaisselle
+    title:
+      fr: "Nettoyer le filtre du lave-vaisselle"
+    default_category_key: entretien
+    default_room_key: cuisine
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 30
+    default_tolerance: SOUPLE
+
+  - key: detartrer_cafetiere
+    title:
+      fr: "Detartrer la cafetiere"
+    default_category_key: entretien
+    default_room_key: cuisine
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 30
+    default_tolerance: SOUPLE
+
+  - key: aiguiser_couteaux
+    title:
+      fr: "Aiguiser les couteaux"
+    default_category_key: entretien
+    default_room_key: cuisine
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 60
+    default_tolerance: SOUPLE
+
+  - key: degivrer_congelateur
+    title:
+      fr: "Degivrer le congelateur"
+    default_category_key: entretien
+    default_room_key: cuisine
+    default_weight: 4
+    default_recurrence:
+      type: interval
+      every_n_days: 180
+    default_tolerance: SOUPLE
+
+  - key: nettoyer_aspirateur
+    title:
+      fr: "Nettoyer l'aspirateur (sac / filtre)"
+    default_category_key: entretien
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 90
+    default_tolerance: SOUPLE
+
+  - key: nettoyer_interrupteurs
+    title:
+      fr: "Nettoyer les interrupteurs et poignees"
+    default_category_key: entretien
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 45
+    default_tolerance: SOUPLE
+
+  # --- Administratif ---
+
+  - key: declarer_heures
+    title:
+      fr: "Declarer mes heures"
+    default_category_key: administratif
+    default_weight: 2
+    default_recurrence:
+      type: monthly
+      day_of_month: 1
+    default_tolerance: SOUPLE
+
+  - key: impots
+    title:
+      fr: "Faire / verifier les impots"
+    default_category_key: administratif
+    default_weight: 6
+    default_recurrence:
+      type: interval
+      every_n_days: 365
+    default_tolerance: SOUPLE
+
+  - key: verifier_abonnements
+    title:
+      fr: "Verifier les abonnements et prelevements"
+    default_category_key: administratif
+    default_weight: 3
+    default_recurrence:
+      type: interval
+      every_n_days: 90
+    default_tolerance: SOUPLE
+
+  - key: sauvegarder_papiers
+    title:
+      fr: "Sauvegarder les papiers importants"
+    default_category_key: administratif
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 180
+    default_tolerance: SOUPLE
+
+  # --- Soin personnel ---
+
+  - key: masque_visage
+    title:
+      fr: "Faire un masque visage / soin de la peau"
+    default_category_key: soin_personnel
+    default_weight: 1
+    default_recurrence:
+      type: interval
+      every_n_days: 7
+    default_tolerance: SOUPLE
+
+  - key: rdv_coiffeur
+    title:
+      fr: "Prendre RDV coiffeur"
+    default_category_key: soin_personnel
+    default_weight: 1
+    default_recurrence:
+      type: interval
+      every_n_days: 60
+    default_tolerance: SOUPLE
+
+  - key: rdv_dentiste
+    title:
+      fr: "RDV dentiste"
+    default_category_key: soin_personnel
+    default_weight: 1
+    default_recurrence:
+      type: interval
+      every_n_days: 180
+    default_tolerance: SOUPLE
+
+  - key: rdv_medecin
+    title:
+      fr: "RDV medecin / controle annuel"
+    default_category_key: soin_personnel
+    default_weight: 1
+    default_recurrence:
+      type: interval
+      every_n_days: 365
+    default_tolerance: SOUPLE
+
+  # --- Animal ---
+
+  - key: animal_eau
+    title:
+      fr: "Changer l'eau de l'animal"
+    default_category_key: animal
+    default_weight: 1
+    default_recurrence:
+      type: interval
+      every_n_days: 7
+    default_tolerance: NORMAL
+
+  - key: animal_litiere
+    title:
+      fr: "Nettoyer la litiere"
+    default_category_key: animal
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 2
+    default_tolerance: NORMAL
+
+  - key: animal_gamelles
+    title:
+      fr: "Recurer les gamelles"
+    default_category_key: animal
+    default_weight: 1
+    default_recurrence:
+      type: interval
+      every_n_days: 10
+    default_tolerance: SOUPLE
+
+  - key: animal_panier
+    title:
+      fr: "Laver le panier / plaid"
+    default_category_key: animal
+    default_weight: 2
+    default_recurrence:
+      type: interval
+      every_n_days: 30
+    default_tolerance: SOUPLE
