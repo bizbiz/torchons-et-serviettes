@@ -1,5 +1,12 @@
 # Notes de version
 
+## v0.35.1 — 2026-05-19
+
+### Correction création de foyer
+- Les pièces et tâches choisies dans le parcours « Créer un foyer »
+  apparaissent maintenant tout de suite dans le nouveau foyer (avant :
+  il fallait changer de foyer puis revenir pour qu'elles s'affichent).
+
 ## v0.35.0 — 2026-05-19
 
 ### Créer un foyer : vrai parcours guidé

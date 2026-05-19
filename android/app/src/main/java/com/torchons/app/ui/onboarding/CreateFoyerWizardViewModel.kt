@@ -13,6 +13,7 @@ import com.torchons.app.data.model.ImportResolveRequest
 import com.torchons.app.data.model.OnboardingCreateFoyerRequest
 import com.torchons.app.data.model.RoomCreateRequest
 import com.torchons.app.data.repository.AuthRepository
+import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.service.TokenRegistrar
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,6 +74,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
     private val tokenRegistrar: TokenRegistrar,
+    private val taskRepository: TaskRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WizardState())
@@ -284,6 +286,17 @@ class CreateFoyerWizardViewModel @Inject constructor(
                     )
                 }
             }
+        }
+        // Bascule effectuée : wiper le cache Room local (sinon l'UI montre
+        // les données de l'ANCIEN foyer — cf switchFoyer docstring) puis
+        // re-fetcher le nouveau foyer (tâches/pièces importées incluses).
+        taskRepository.wipeLocalCache()
+        runCatching {
+            taskRepository.refreshTasks()
+            taskRepository.refreshCategories()
+            taskRepository.refreshRooms()
+            taskRepository.refreshUsers()
+            taskRepository.refreshCompletions(limit = 2000)
         }
         _uiState.update { it.copy(isSubmitting = false, done = true) }
     }
