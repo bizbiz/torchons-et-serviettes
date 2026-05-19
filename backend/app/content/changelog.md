@@ -1,5 +1,13 @@
 # Notes de version
 
+## v0.34.4 — 2026-05-19
+
+### Nom du foyer à jour dans les Réglages
+- Dans les Réglages, la ligne « 🏠 <nom du foyer> » se met maintenant à
+  jour quand tu changes de foyer ou en quittes un depuis l'écran Foyer
+  (avant : elle pouvait afficher un foyer déjà quitté tant qu'on ne
+  rouvrait pas l'écran Foyer).
+
 ## v0.34.3 — 2026-05-19
 
 ### Foyers quittés masqués de « Changer de foyer »

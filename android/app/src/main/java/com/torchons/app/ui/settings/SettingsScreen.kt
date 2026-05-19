@@ -107,6 +107,11 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         viewModel.checkBackend()
+        // P4a.1 sweep — l'onglet Réglages a une instance SettingsViewModel
+        // DISTINCTE de l'écran Foyer (hiltViewModel par destination) : on
+        // re-fetch les foyers à chaque (ré)apparition pour que la ligne
+        // "🏠 <nom>" reflète un switch/leave fait dans l'écran Foyer.
+        viewModel.refreshFoyers()
     }
 
     Column(
