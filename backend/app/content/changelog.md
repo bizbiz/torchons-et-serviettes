@@ -1,5 +1,12 @@
 # Notes de version
 
+## v0.34.3 — 2026-05-19
+
+### Foyers quittés masqués de « Changer de foyer »
+- Les foyers que tu as quittés n'apparaissent plus dans la liste
+  « Changer de foyer » (avant : ils restaient affichés en « Former
+  member »).
+
 ## v0.34.2 — 2026-05-19
 
 ### Foyers : affichage à jour sans rafraîchir
