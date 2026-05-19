@@ -1,5 +1,15 @@
 # Notes de version
 
+## v0.35.4 — 2026-05-19
+
+### Création de foyer : vraiment corrigé (contrainte base de données)
+- Le vrai blocage du « foyer vide » était une contrainte de base trop
+  stricte : un nom de pièce ou de catégorie devait être unique sur
+  TOUTE l'app, au lieu d'être unique par foyer. Créer un foyer avec des
+  pièces/tâches déjà présentes dans un autre de tes foyers échouait.
+  Désormais un même nom de pièce/catégorie peut exister dans plusieurs
+  foyers — l'import du parcours « Créer un foyer » fonctionne.
+
 ## v0.35.3 — 2026-05-19
 
 ### Création de foyer : pièces/tâches enfin créées (fix serveur)
