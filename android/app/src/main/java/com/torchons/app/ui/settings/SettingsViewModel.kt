@@ -391,10 +391,8 @@ class SettingsViewModel @Inject constructor(
             val fResp = apiService.getMyFoyers()
             if (fResp.isSuccessful) {
                 val foyers = fResp.body() ?: emptyList()
-                // P4a.1 sweep — exclure les foyers quittés (role
-                // "former_member") : "Changer de foyer" ne liste que les
-                // foyers dont je suis membre ACTIF. /foyers les renvoie
-                // encore (pas de filtre left_at serveur) -> on filtre ici.
+                // Exclure les foyers quittés (cf loadAll : /foyers ne filtre
+                // pas left_at, on ne liste que les membres actifs).
                 _allFoyers.value = foyers.filter { it.role != "former_member" }
                 val current = foyers.find { it.isCurrent }
                 _currentFoyer.value = current

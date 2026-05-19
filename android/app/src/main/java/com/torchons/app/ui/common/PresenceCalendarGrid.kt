@@ -102,11 +102,9 @@ fun PresenceCalendarGrid(
     /** Affiche l'etoile d'activite + la legende serie. */
     showStreak: Boolean = false,
     /**
-     * P4b sweep 0.34.1 — liseré serie, SOURCE UNIQUE = serveur (/streaks).
-     * Fini le recalcul client fenetré (il cassait en cross-mois et ne
-     * connaissait pas le record). `recordRunDays` = jours du run RECORD
-     * (best_streak) ; `currentRunDays` = run EN COURS. Incluent les jours
-     * absents PONTES (continuite du liseré). Vides => aucun liseré.
+     * Liseré serie, source UNIQUE = serveur /streaks (le calcul client
+     * fenetré cassait en cross-mois). recordRunDays = run record,
+     * currentRunDays = run en cours ; incluent les jours absents pontés.
      */
     recordRunDays: Set<LocalDate> = emptySet(),
     currentRunDays: Set<LocalDate> = emptySet(),
@@ -147,10 +145,8 @@ fun PresenceCalendarGrid(
         var cursor = startOfWeek
         while (cursor <= endOfWeek) {
             Box(modifier = Modifier.fillMaxWidth()) {
-                // P4b sweep 0.34.1 : plus de couche connecteur cliente
-                // (computeStreakRender fenetré = cause du miscount cross-mois
-                // + record faux). La serie est un LISERÉ par case piloté par
-                // les date-sets serveur (recordRunDays / currentRunDays).
+                // Serie = liseré par case piloté par le serveur (plus de
+                // couche connecteur cliente, cf params record/currentRunDays).
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -331,11 +327,9 @@ private val STREAK_RECORD_COLOR = STREAK_STAR_COLOR
  *  (record) et des couleurs de presence. */
 private val STREAK_CURRENT_COLOR = Color(0xFF6366F1)
 
-// P4b sweep 0.34.1 — StreakRender / computeStreakRender / StreakConnectorCell
-// SUPPRIMÉS : ils recalculaient la serie cote client sur une fenetre 1 mois
-// (cause racine du miscount cross-mois + record absent). La serie est
-// desormais 100 % serveur (stats._compute_user_streak -> /streaks ->
-// recordRunDays / currentRunDays), rendue en liseré par DayCell.
+// StreakRender / computeStreakRender / StreakConnectorCell supprimés : le
+// calcul client fenetré cassait en cross-mois. Serie 100 % serveur
+// (_compute_user_streak -> /streaks), rendue en liseré par DayCell.
 
 /** Legende des 3 etats + 2 icones source + (i) detaillee. En mode streak,
  *  ajoute la ligne etoile + l'explication de la regle pont/cassure. */

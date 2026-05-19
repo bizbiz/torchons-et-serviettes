@@ -278,10 +278,8 @@ fun StreakCalendarModal(
                         visibleMonth = visibleMonth,
                         statesByDate = presence,
                         onMonthChange = { visibleMonth = it },
-                        // P4b : modal UNIQUE editable (one modal to rule them
-                        // all). Tap -> PUT /presence + recalcul derive
-                        // (home-freeze/urgence + serie/record) cf
-                        // docs/cache-conventions.md regle 1.
+                        // Tap -> PUT /presence + recalcul derive (home-freeze
+                        // + serie), cf docs/cache-conventions.md regle 1.
                         onCellTap = { day, next ->
                             val status = when (next) {
                                 PresenceCellState.PRESENT -> "present"
