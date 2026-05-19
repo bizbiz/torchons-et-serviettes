@@ -380,6 +380,33 @@ class SettingsViewModel @Inject constructor(
      * et createAndSwitchToFoyer. Reprend exactement le pattern de
      * FoyersScreen (option A grille v0.7.0).
      */
+    /** P4a.1 — re-fetch foyers (suspend, reconciliation serveur). */
+    private suspend fun fetchFoyers() {
+        try {
+            val fResp = apiService.getMyFoyers()
+            if (fResp.isSuccessful) {
+                val foyers = fResp.body() ?: emptyList()
+                _allFoyers.value = foyers
+                val current = foyers.find { it.isCurrent }
+                _currentFoyer.value = current
+                if (current != null) {
+                    tokenManager.setCurrentFoyerGamificationEnabled(
+                        current.gamificationEnabled,
+                    )
+                    tokenManager.setCurrentFoyerName(current.name)
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
+    /** P4a.1 Bug A — l'ecran Foyer reflete un foyer nouvellement cree ou
+     *  quitte SANS refresh manuel. Les instances SettingsViewModel de
+     *  SettingsScreen et FoyerSettingsScreen sont distinctes (hiltViewModel
+     *  par backstack) : l'ecran Foyer doit re-fetcher a son apparition. */
+    fun refreshFoyers() {
+        viewModelScope.launch { fetchFoyers() }
+    }
+
     private suspend fun doSwitchAndRefresh(foyerId: String) {
         val result = authRepository.switchFoyer(foyerId)
         if (result.isSuccess) {
@@ -663,6 +690,22 @@ class SettingsViewModel @Inject constructor(
                     return@launch
                 }
                 val resp = apiService.leaveFoyer(foyerId)
+                if (resp.code() == 404) {
+                    // P4a.1 Bug B : 404 = foyer deja quitte/supprime cote
+                    // serveur (re-leave d'un foyer fantome reste en local).
+                    // On ne jette PAS d'erreur : purge locale immediate +
+                    // reconciliation serveur (serveur autoritaire).
+                    _allFoyers.value =
+                        _allFoyers.value.filterNot { it.id == foyerId }
+                    fetchFoyers()
+                    if (_allFoyers.value.isEmpty()) {
+                        authRepository.logout()
+                        _leaveState.value = LeaveState.LoggedOut
+                    } else {
+                        _leaveState.value = LeaveState.SwitchedFoyer
+                    }
+                    return@launch
+                }
                 if (!resp.isSuccessful) {
                     _leaveState.value = LeaveState.Error("Erreur ${resp.code()}")
                     return@launch
@@ -672,13 +715,18 @@ class SettingsViewModel @Inject constructor(
                     _leaveState.value = LeaveState.Error("Reponse vide")
                     return@launch
                 }
+                // P4a.1 Bug B : retrait OPTIMISTE immediat du foyer quitte
+                // -> il disparait de "Changer de foyer" sans refresh manuel.
+                _allFoyers.value =
+                    _allFoyers.value.filterNot { it.id == foyerId }
                 if (body.newToken != null && body.newActiveFoyerId != null) {
                     // L'user est encore membre d'un autre foyer : on bascule
-                    // dessus sans logout.
+                    // dessus sans logout, puis on reconcilie la liste.
                     tokenManager.updateTokenAndFoyer(
                         body.newToken,
                         body.newActiveFoyerId,
                     )
+                    fetchFoyers()
                     _leaveState.value = LeaveState.SwitchedFoyer
                 } else {
                     // Plus aucun foyer : logout complet.

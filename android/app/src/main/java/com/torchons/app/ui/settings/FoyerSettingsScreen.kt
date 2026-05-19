@@ -111,6 +111,12 @@ fun FoyerSettingsScreen(
     val displayName by viewModel.displayName.collectAsState()
     val userId by viewModel.userId.collectAsState()
 
+    // P4a.1 Bug A — l'instance SettingsViewModel de CET ecran est distincte
+    // de celle de SettingsScreen (hiltViewModel par backstack) : re-fetch
+    // les foyers a l'apparition pour que "Changer de foyer" reflete un
+    // foyer cree/quitte ailleurs SANS refresh manuel.
+    LaunchedEffect(Unit) { viewModel.refreshFoyers() }
+
     val foyerName = currentFoyer?.name ?: "Mon foyer"
     val homeSsids = s.homeSsids
     val affinityExpiry = s.affinityExpiry

@@ -1,5 +1,15 @@
 # Notes de version
 
+## v0.34.2 — 2026-05-19
+
+### Foyers : affichage à jour sans rafraîchir
+- Après avoir créé un foyer, l'option « Changer de foyer » apparaît
+  tout de suite dans l'écran Foyer (plus besoin de revenir ou de
+  recharger l'écran).
+- Quand tu quittes un foyer, il disparaît immédiatement de la liste
+  « Changer de foyer ». Réessayer de quitter un foyer déjà quitté
+  n'affiche plus d'erreur (404).
+
 ## v0.34.1 — 2026-05-19
 
 ### Séries : calcul corrigé + affichage clair
