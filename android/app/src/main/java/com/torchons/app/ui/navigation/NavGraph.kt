@@ -78,6 +78,8 @@ object Routes {
     // v0.30 — onboarding sans compte
     const val WELCOME = "welcome"
     const val CREATE_FOYER_WIZARD = "create_foyer_wizard"
+    // P4a.2 — même wizard, variante "ajouter un foyer" (user connecté).
+    fun createFoyerWizardAdd() = "$CREATE_FOYER_WIZARD?add=true"
     const val JOIN_FOYER = "join_foyer"
     const val RESTORE_FOYER = "restore_foyer"
     /**
@@ -148,11 +150,27 @@ fun NavGraph(
         // Taches/Recovery). Au succes, navigue vers MAIN en effacant tout
         // le backstack (welcome + wizard ne doivent pas etre re-accessibles
         // via back).
-        composable(Routes.CREATE_FOYER_WIZARD) {
+        composable(
+            route = Routes.CREATE_FOYER_WIZARD + "?add={add}",
+            arguments = listOf(
+                navArgument("add") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+            ),
+        ) { entry ->
+            val add = entry.arguments?.getBoolean("add") ?: false
             CreateFoyerWizardScreen(
+                addFoyerMode = add,
                 onSuccess = {
-                    navController.navigate(Routes.MAIN) {
-                        popUpTo(Routes.WELCOME) { inclusive = true }
+                    if (add) {
+                        // User déjà connecté : le VM a déjà créé+switché le
+                        // foyer ; on revient à l'écran d'origine (Réglages).
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(Routes.MAIN) {
+                            popUpTo(Routes.WELCOME) { inclusive = true }
+                        }
                     }
                 },
                 onBack = { navController.popBackStack() },
@@ -233,6 +251,9 @@ fun NavGraph(
                 },
                 onNavigateToChangelog = {
                     navController.navigate(Routes.CHANGELOG)
+                },
+                onNavigateToCreateFoyer = {
+                    navController.navigate(Routes.createFoyerWizardAdd())
                 },
                 onNavigateToCatalog = {
                     navController.navigate(Routes.CATALOG)
@@ -405,6 +426,7 @@ fun MainScreen(
     onNavigateToRooms: () -> Unit,
     onNavigateToFoyerSettings: () -> Unit,
     onNavigateToChangelog: () -> Unit,
+    onNavigateToCreateFoyer: () -> Unit,
     onNavigateToCatalog: () -> Unit,
     onNavigateToInviteSomeone: () -> Unit,
     onNavigateToAddDevice: () -> Unit,
@@ -506,6 +528,7 @@ fun MainScreen(
                         onLogout = onLogout,
                         onOpenChangelog = onNavigateToChangelog,
                         onOpenFoyerSettings = onNavigateToFoyerSettings,
+                        onCreateFoyer = onNavigateToCreateFoyer,
                     )
                 }
             }

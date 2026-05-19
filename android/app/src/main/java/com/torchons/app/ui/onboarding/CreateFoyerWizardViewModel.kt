@@ -8,6 +8,7 @@ import com.torchons.app.data.model.CatalogRoomView
 import com.torchons.app.data.model.CatalogTaskView
 import com.torchons.app.data.model.ImportApplyRequest
 import com.torchons.app.data.model.ImportDecision
+import com.torchons.app.data.model.FoyerCreateRequest
 import com.torchons.app.data.model.ImportResolveRequest
 import com.torchons.app.data.model.OnboardingCreateFoyerRequest
 import com.torchons.app.data.model.RoomCreateRequest
@@ -60,6 +61,10 @@ data class WizardState(
     val isSubmitting: Boolean = false,
     val error: String? = null,
     val done: Boolean = false,
+    // P4a.2 — variante "ajouter un foyer" (user déjà connecté) : on saute
+    // l'étape Toi (prénom) et l'étape Recovery (code compte déjà existant),
+    // et on crée via POST /foyers + switch au lieu de l'onboarding-bootstrap.
+    val addFoyerMode: Boolean = false,
 )
 
 @HiltViewModel
@@ -161,7 +166,26 @@ class CreateFoyerWizardViewModel @Inject constructor(
         }
     }
 
+    /** P4a.2 — entrée "ajouter un foyer" (user connecté) : saute l'étape
+     *  Toi (prénom déjà connu). Appelé une fois par l'écran. */
+    fun enableAddFoyerMode() {
+        _uiState.update {
+            if (it.addFoyerMode) it
+            else it.copy(
+                addFoyerMode = true,
+                step = if (it.step < 2) 2 else it.step,
+            )
+        }
+    }
+
     fun nextStep() {
+        val cur = _uiState.value
+        // addFoyer : pas d'étape 5 (Recovery). L'étape 4 "Suivant" déclenche
+        // le submit, qui passe `done` à true (cf submit()).
+        if (cur.addFoyerMode && cur.step == 4) {
+            submit()
+            return
+        }
         _uiState.update {
             val s = it.step
             // Step 1 : default value si vide
@@ -175,9 +199,9 @@ class CreateFoyerWizardViewModel @Inject constructor(
                 foyerName = newFoyer,
             )
         }
-        // Step 4 -> 5 declenche le submit
-        if (_uiState.value.step == 5 && _uiState.value.recoveryCode == null) {
-            // On vient de passer a 5 sans code -> il faut le recuperer
+        // Step 4 -> 5 declenche le submit (flow onboarding normal)
+        if (!_uiState.value.addFoyerMode &&
+            _uiState.value.step == 5 && _uiState.value.recoveryCode == null) {
             _uiState.update { it.copy(step = 4) }  // re-place sur 4
             submit()
         }
@@ -194,6 +218,77 @@ class CreateFoyerWizardViewModel @Inject constructor(
     }
 
     /**
+     * P4a.2 — création d'un foyer SUPPLÉMENTAIRE (user déjà connecté) :
+     * POST /foyers + switch (pas d'onboarding-bootstrap, pas de recovery
+     * code). Pièces/tâches importées APRÈS le switch -> ciblent le
+     * nouveau foyer. `done=true` à la fin (pas d'étape 5).
+     */
+    private suspend fun submitAddFoyer(s: WizardState) {
+        val createResp = apiService.createFoyer(
+            FoyerCreateRequest(s.foyerName.ifBlank { "Mon foyer" }),
+        )
+        val created = createResp.body()
+        if (!createResp.isSuccessful || created == null) {
+            _uiState.update {
+                it.copy(
+                    isSubmitting = false,
+                    error = "Erreur creation foyer (${createResp.code()})",
+                )
+            }
+            return
+        }
+        val switched = authRepository.switchFoyer(created.id)
+        if (switched.isFailure) {
+            _uiState.update {
+                it.copy(
+                    isSubmitting = false,
+                    error = "Foyer créé mais bascule impossible",
+                )
+            }
+            return
+        }
+        // Pièces custom (texte libre) — best-effort (foyer créé de toute façon).
+        if (s.customRooms.isNotEmpty()) {
+            runCatching {
+                for (name in s.customRooms) {
+                    apiService.createRoom(RoomCreateRequest(name = name))
+                }
+            }
+        }
+        // Import catalogue dans le NOUVEAU foyer (JWT déjà switché) — best-effort.
+        if (s.selectedRoomKeys.isNotEmpty() || s.selectedTaskKeys.isNotEmpty()) {
+            runCatching {
+                val resolveResp = apiService.resolveCatalogImport(
+                    ImportResolveRequest(
+                        taskKeys = s.selectedTaskKeys.toList(),
+                        roomKeys = s.selectedRoomKeys.toList(),
+                        categoryKeys = emptyList(),
+                    )
+                )
+                val resolved = resolveResp.body()
+                if (resolveResp.isSuccessful && resolved != null) {
+                    val roomDecisions = resolved.rooms.map {
+                        ImportDecision(it.templateKey, "create", null)
+                    }
+                    val catDecisions = resolved.categories.map {
+                        ImportDecision(it.templateKey, "create", null)
+                    }
+                    apiService.applyCatalogImport(
+                        ImportApplyRequest(
+                            taskKeys = s.selectedTaskKeys.toList(),
+                            roomDecisions = roomDecisions,
+                            categoryDecisions = catDecisions,
+                            roomKeys = s.selectedRoomKeys.toList(),
+                            categoryKeys = emptyList(),
+                        )
+                    )
+                }
+            }
+        }
+        _uiState.update { it.copy(isSubmitting = false, done = true) }
+    }
+
+    /**
      * Submit : appelle create-foyer puis (optionnel) catalog/import.
      * Sur succes, place step = 5 avec le recovery_code en state.
      */
@@ -204,6 +299,10 @@ class CreateFoyerWizardViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
+                if (s.addFoyerMode) {
+                    submitAddFoyer(s)
+                    return@launch
+                }
                 val deviceId = tokenManager.getOrCreateDeviceId()
                 val createResp = apiService.onboardingCreateFoyer(
                     OnboardingCreateFoyerRequest(

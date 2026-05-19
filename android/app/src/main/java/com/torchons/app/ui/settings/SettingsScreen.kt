@@ -76,6 +76,8 @@ fun SettingsScreen(
     onLogout: () -> Unit,
     onOpenChangelog: () -> Unit = {},
     onOpenFoyerSettings: () -> Unit = {},
+    /** P4a.2 — ouvre le wizard "Créer un foyer" (variante add-foyer). */
+    onCreateFoyer: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val scope = rememberCoroutineScope()
@@ -101,7 +103,6 @@ fun SettingsScreen(
     val helpLinkVisible = !gamifUser || anyFoyerOff
 
     var showWhyNoPointsDialog by remember { mutableStateOf(false) }
-    var showCreateFoyerDialog by remember { mutableStateOf(false) }
 
     val foyerName = currentFoyer?.name ?: "Mon foyer"
 
@@ -205,11 +206,10 @@ fun SettingsScreen(
             }
         }
 
-        // P1 refonte — Creer un nouveau foyer (remplace le FAB de l'ancien
-        // ecran "Mes foyers", design decision 3). POST /api/foyers puis
-        // bascule auto sur le nouveau foyer.
+        // P4a.2 — Créer un foyer = wizard onboarding (variante add-foyer :
+        // nom/pièces/tâches puis POST /foyers + switch). Décision 3 v2.
         OutlinedButton(
-            onClick = { showCreateFoyerDialog = true },
+            onClick = onCreateFoyer,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -581,41 +581,8 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(32.dp))
     }
 
-    // P1 refonte — Dialog "Creer un nouveau foyer". Reutilise le meme
-    // endpoint que l'ancien ecran Mes foyers (POST /api/foyers via
-    // SettingsViewModel.createAndSwitchToFoyer), puis bascule dessus.
-    if (showCreateFoyerDialog) {
-        var name by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showCreateFoyerDialog = false },
-            title = { Text("Nouveau foyer", fontWeight = FontWeight.Bold) },
-            text = {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Nom") },
-                    placeholder = { Text("Ex: Colloc Paris") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val trimmed = name.trim()
-                        if (trimmed.isNotEmpty()) {
-                            showCreateFoyerDialog = false
-                            viewModel.createAndSwitchToFoyer(trimmed)
-                        }
-                    },
-                    enabled = name.trim().isNotEmpty(),
-                ) { Text("Creer") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCreateFoyerDialog = false }) { Text("Annuler") }
-            },
-        )
-    }
+    // P4a.2 — l'ancien dialog "nom seul" est remplacé par le wizard
+    // (onCreateFoyer -> route create_foyer_wizard?add=true).
 
     // v0.32 : help dialog "Pourquoi pas de points ?" (dynamique selon
     // l'etat user-level + foyer-level + multi-foyer).

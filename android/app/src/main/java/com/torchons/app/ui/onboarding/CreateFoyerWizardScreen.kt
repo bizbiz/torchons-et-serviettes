@@ -69,10 +69,21 @@ import com.torchons.app.data.model.CatalogTaskView
 fun CreateFoyerWizardScreen(
     onSuccess: () -> Unit,
     onBack: () -> Unit,
+    /** P4a.2 — true = user déjà connecté ajoutant un foyer : 3 étapes
+     *  (Foyer/Pièces/Tâches), pas de Toi ni de Recovery. */
+    addFoyerMode: Boolean = false,
     viewModel: CreateFoyerWizardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbar = remember { SnackbarHostState() }
+
+    LaunchedEffect(addFoyerMode) { if (addFoyerMode) viewModel.enableAddFoyerMode() }
+
+    // En addFoyer : étapes internes 2..4 affichées 1/3..3/3.
+    val totalSteps = if (state.addFoyerMode) 3 else 5
+    val shownStep = if (state.addFoyerMode)
+        (state.step - 1).coerceIn(1, totalSteps) else state.step.coerceAtMost(totalSteps)
+    val firstStep = if (state.addFoyerMode) 2 else 1
 
     LaunchedEffect(state.done) { if (state.done) onSuccess() }
     LaunchedEffect(state.error) {
@@ -82,11 +93,12 @@ fun CreateFoyerWizardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Creer un foyer · etape ${state.step.coerceAtMost(5)}/5") },
+                title = { Text("Creer un foyer · etape $shownStep/$totalSteps") },
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            if (state.step <= 1) onBack() else viewModel.prevStep()
+                            if (state.step <= firstStep) onBack()
+                            else viewModel.prevStep()
                         },
                     ) {
                         Icon(
@@ -105,7 +117,7 @@ fun CreateFoyerWizardScreen(
                 .padding(paddingValues),
         ) {
             LinearProgressIndicator(
-                progress = { state.step / 5f },
+                progress = { shownStep / totalSteps.toFloat() },
                 modifier = Modifier.fillMaxWidth(),
             )
             Column(

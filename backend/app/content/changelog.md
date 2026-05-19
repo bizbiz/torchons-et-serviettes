@@ -1,5 +1,14 @@
 # Notes de version
 
+## v0.35.0 — 2026-05-19
+
+### Créer un foyer : vrai parcours guidé
+- « Créer un nouveau foyer » ouvre désormais le même parcours que la
+  première création (nom du foyer, puis pièces, puis tâches) au lieu
+  d'un simple champ « nom ». Le foyer est prêt à l'emploi et l'app
+  bascule dessus automatiquement. Ton prénom et ton code de
+  récupération ne sont pas redemandés (compte déjà existant).
+
 ## v0.34.4 — 2026-05-19
 
 ### Nom du foyer à jour dans les Réglages
