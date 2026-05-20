@@ -127,6 +127,11 @@ fun HomeScreen(
             )
         }
     }
+    // E2.1 — refresh à chaque (ré)ouverture de l'onglet Accueil : couvre
+    // les projections (pace/retard/maintenance) + prompts serveur-calculés
+    // stales après une mutation faite ailleurs (modal présence, édit tâche
+    // depuis Tasks, etc.). Cache-conventions règle 1.
+    LaunchedEffect(Unit) { viewModel.refresh() }
 
     // Recharger au retour sur cet ecran + checkin presence WiFi (v2 home
     // freeze — signal positif uniquement, pas de report negatif).

@@ -95,6 +95,12 @@ fun TaskListScreen(
     val currentUserId by viewModel.userId.collectAsState()
     val gamificationVisible by viewModel.gamificationVisible.collectAsState()
 
+    // E2.1 — refresh à chaque (ré)ouverture de l'onglet Tâches : Room
+    // (observeCache) capte déjà les mutations locales, mais l'urgence
+    // serveur-calculée peut être stale après une mutation faite ailleurs
+    // (ex. édit présence dans modal). Cache-conventions règle 1.
+    LaunchedEffect(Unit) { viewModel.refresh() }
+
     // Dialog unifie "Deja fait" (Single) / "Fait ensemble" (Multi).
     // Releve au niveau TaskListScreen pour etre partage entre toutes les cards.
     var dialogState by remember { mutableStateOf<TaskListCompletionDialogState?>(null) }

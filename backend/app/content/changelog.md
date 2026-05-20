@@ -1,5 +1,15 @@
 # Notes de version
 
+## v0.35.8 — 2026-05-20
+
+### Accueil & Tâches à jour automatiquement
+- L'onglet **Accueil** se met à jour à chaque ouverture (projections,
+  prompts, fair-share) — plus besoin de pull-to-refresh en revenant
+  dessus après une modification ailleurs.
+- L'onglet **Tâches** : pareil, les urgences/retards se rafraîchissent
+  à l'ouverture si tu as touché à la présence ou autre dans une autre
+  surface.
+
 ## v0.35.7 — 2026-05-20
 
 ### Stats à jour automatiquement
