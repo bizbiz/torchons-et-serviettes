@@ -1,5 +1,15 @@
 # Notes de version
 
+## v0.35.6 — 2026-05-20
+
+### Affichage à jour & libellés
+- Le sous-titre « Connecté via Tailscale » du profil (Réglages) est
+  retiré : trompeur sur la beta qui utilise Scaleway. Le canal effectif
+  reste visible dans Réglages > Infos > Build.
+- Après modification de la présence dans le modal « Présence & séries »,
+  le bloc Série du Résumé (onglet Stats) se met à jour automatiquement
+  à la fermeture du modal — plus besoin de pull-to-refresh.
+
 ## v0.35.5 — 2026-05-19
 
 ### Catalogue de suggestions enrichi

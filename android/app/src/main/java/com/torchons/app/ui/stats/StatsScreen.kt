@@ -217,7 +217,13 @@ fun StatsScreen(
         StreakCalendarModal(
             members = members,
             initialUserId = uid,
-            onDismiss = { streakCalendarUserId = null },
+            onDismiss = {
+                streakCalendarUserId = null
+                // P4 #9 — refresh des stats au close du modal pour que le
+                // bloc série du Résumé reflète une édition de présence
+                // SANS pull-to-refresh manuel (cache-conventions règle 1).
+                viewModel.loadData(isRefresh = true)
+            },
         )
     }
 }

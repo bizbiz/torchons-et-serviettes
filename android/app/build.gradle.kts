@@ -74,8 +74,8 @@ android {
         applicationId = "com.torchons.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 79
-        versionName = "0.35.2"
+        versionCode = 80
+        versionName = "0.35.6"
 
         // SUPPORT_EMAIL commun aux flavors. API_BASE_URL + TAILSCALE_AUTOLOGIN
         // sont definis PAR FLAVOR (prod = public sans Tailscale, beta = test).
