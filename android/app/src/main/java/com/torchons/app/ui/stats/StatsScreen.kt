@@ -50,6 +50,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -97,6 +98,11 @@ fun StatsScreen(
     // P3 — Etat pour l'ouverture du modal calendrier des series (lecture
     // seule). Stocke l'userId pre-positionne dans le selecteur d'user.
     var streakCalendarUserId by remember { mutableStateOf<String?>(null) }
+
+    // Refresh à chaque ouverture de l'onglet Stats : couvre toute mutation
+    // faite ailleurs (tâche complétée → série/record, présence éditée…)
+    // sans pull-to-refresh manuel. Cache-conventions règle 1, surface Stats.
+    LaunchedEffect(Unit) { viewModel.loadData(isRefresh = true) }
 
     if (uiState.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

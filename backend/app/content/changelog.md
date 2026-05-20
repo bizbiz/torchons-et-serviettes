@@ -1,5 +1,14 @@
 # Notes de version
 
+## v0.35.7 — 2026-05-20
+
+### Stats à jour automatiquement
+- L'onglet Stats se met à jour automatiquement chaque fois que tu
+  l'ouvres : si tu as complété une tâche, modifié une présence ou
+  changé quoi que ce soit ailleurs dans l'app, ta série, le
+  leaderboard et les badges reflètent ces changements sans
+  pull-to-refresh.
+
 ## v0.35.6 — 2026-05-20
 
 ### Affichage à jour & libellés
