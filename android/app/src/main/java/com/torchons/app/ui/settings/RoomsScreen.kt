@@ -46,8 +46,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.RoomCreateRequest
@@ -87,7 +89,7 @@ fun RoomsScreen(
 
     if (showCreateDialog) {
         RoomEditDialog(
-            title = "Nouvelle piece",
+            title = stringResource(R.string.rooms_dialog_new_title),
             initialName = "",
             initialColor = "#6366F1",
             initialEmoji = "",
@@ -111,7 +113,7 @@ fun RoomsScreen(
     if (editRoom != null) {
         val r = editRoom!!
         RoomEditDialog(
-            title = "Modifier ${r.name}",
+            title = stringResource(R.string.common_edit_title_format, r.name),
             initialName = r.name,
             initialColor = r.color,
             initialEmoji = r.emoji ?: "",
@@ -137,8 +139,8 @@ fun RoomsScreen(
         val r = deleteRoom!!
         AlertDialog(
             onDismissRequest = { deleteRoom = null },
-            title = { Text("Supprimer ${r.name} ?") },
-            text = { Text("Les taches de cette piece n'auront plus de piece assignee.") },
+            title = { Text(stringResource(R.string.common_delete_title_format, r.name)) },
+            text = { Text(stringResource(R.string.rooms_dialog_delete_message)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -149,10 +151,10 @@ fun RoomsScreen(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("Supprimer") }
+                ) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
-                OutlinedButton(onClick = { deleteRoom = null }) { Text("Annuler") }
+                OutlinedButton(onClick = { deleteRoom = null }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -160,10 +162,10 @@ fun RoomsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Pieces", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.rooms_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", tint = MaterialTheme.colorScheme.onPrimary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back), tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -177,7 +179,7 @@ fun RoomsScreen(
                 onClick = { showCreateDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, "Ajouter", tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Add, stringResource(R.string.common_add), tint = MaterialTheme.colorScheme.onPrimary)
             }
         }
     ) { padding ->
@@ -224,7 +226,7 @@ fun RoomsScreen(
                             modifier = Modifier.weight(1f),
                         )
                         IconButton(onClick = { deleteRoom = room }) {
-                            Icon(Icons.Default.Delete, "Supprimer", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Default.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -260,7 +262,7 @@ private fun RoomEditDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nom") },
+                    label = { Text(stringResource(R.string.common_name_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
@@ -268,13 +270,13 @@ private fun RoomEditDialog(
                 OutlinedTextField(
                     value = emoji,
                     onValueChange = { if (it.length <= 4) emoji = it },
-                    label = { Text("Emoji (optionnel)") },
-                    placeholder = { Text("Ex: 🛁") },
+                    label = { Text(stringResource(R.string.rooms_dialog_emoji_label)) },
+                    placeholder = { Text(stringResource(R.string.rooms_dialog_emoji_placeholder)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
 
-                Text("Couleur", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.common_color_label), style = MaterialTheme.typography.labelLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     colors.forEach { c ->
                         val parsed = remember(c) {
@@ -303,10 +305,10 @@ private fun RoomEditDialog(
             Button(
                 onClick = { if (name.isNotBlank()) onSave(name, color, emoji) },
                 enabled = name.isNotBlank()
-            ) { Text("Enregistrer") }
+            ) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }

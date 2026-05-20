@@ -1,5 +1,14 @@
 # Notes de version
 
+## v0.35.9 — 2026-05-20
+
+### Préparation app bilingue (FR + EN)
+- Démarrage de la traduction de l'app en anglais : les écrans
+  **Catégories** et **Pièces** (depuis l'écran Foyer) sont les premiers
+  traduits. Mets ton téléphone en anglais : ces 2 écrans s'affichent
+  en anglais. Les autres écrans restent en français le temps de la
+  migration progressive.
+
 ## v0.35.8 — 2026-05-20
 
 ### Accueil & Tâches à jour automatiquement

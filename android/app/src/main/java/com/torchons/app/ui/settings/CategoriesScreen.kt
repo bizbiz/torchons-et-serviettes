@@ -49,8 +49,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.CategoryCreateRequest
@@ -86,7 +88,7 @@ fun CategoriesScreen(
     // Dialog creation
     if (showCreateDialog) {
         CategoryEditDialog(
-            title = "Nouvelle categorie",
+            title = stringResource(R.string.categories_dialog_new_title),
             initialName = "",
             initialColor = "#6366F1",
             initialRequiresHome = false,
@@ -105,7 +107,7 @@ fun CategoriesScreen(
     if (editCategory != null) {
         val cat = editCategory!!
         CategoryEditDialog(
-            title = "Modifier ${cat.name}",
+            title = stringResource(R.string.common_edit_title_format, cat.name),
             initialName = cat.name,
             initialColor = cat.color,
             initialRequiresHome = cat.requiresHome,
@@ -125,8 +127,8 @@ fun CategoriesScreen(
         val cat = deleteCategory!!
         AlertDialog(
             onDismissRequest = { deleteCategory = null },
-            title = { Text("Supprimer ${cat.name} ?") },
-            text = { Text("Les taches de cette categorie seront deplacees en 'sans categorie'.") },
+            title = { Text(stringResource(R.string.common_delete_title_format, cat.name)) },
+            text = { Text(stringResource(R.string.categories_dialog_delete_message)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -137,10 +139,10 @@ fun CategoriesScreen(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("Supprimer") }
+                ) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
-                OutlinedButton(onClick = { deleteCategory = null }) { Text("Annuler") }
+                OutlinedButton(onClick = { deleteCategory = null }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -148,10 +150,10 @@ fun CategoriesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Categories", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.categories_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", tint = MaterialTheme.colorScheme.onPrimary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back), tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -165,7 +167,7 @@ fun CategoriesScreen(
                 onClick = { showCreateDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, "Ajouter", tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Add, stringResource(R.string.common_add), tint = MaterialTheme.colorScheme.onPrimary)
             }
         }
     ) { padding ->
@@ -210,7 +212,7 @@ fun CategoriesScreen(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        "A la maison",
+                                        stringResource(R.string.common_home_label),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.primary
                                     )
@@ -218,7 +220,7 @@ fun CategoriesScreen(
                             }
                         }
                         IconButton(onClick = { deleteCategory = cat }) {
-                            Icon(Icons.Default.Delete, "Supprimer", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Default.Delete, stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -227,15 +229,6 @@ fun CategoriesScreen(
         }
     }
 }
-
-/** Texte du tooltip "a la maison" pour le flag requires_home sur les categories. */
-private const val HOME_FREEZE_TOOLTIP =
-    "Si active, les taches de cette categorie sont mises en pause quand " +
-    "personne n'est a la maison. Les jours d'absence ne comptent pas — " +
-    "les taches n'accumulent pas de retard pendant l'absence.\n\n" +
-    "Exemple : \"Passer l'aspirateur\" tous les 7 jours. Tu pars 5 jours. " +
-    "Sans la pause, tu reviens et c'est en retard. Avec la pause, les 5 " +
-    "jours ne comptent pas — il te reste 2 jours pour la faire."
 
 @Composable
 private fun CategoryEditDialog(
@@ -260,12 +253,12 @@ private fun CategoryEditDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nom") },
+                    label = { Text(stringResource(R.string.common_name_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
 
-                Text("Couleur", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.common_color_label), style = MaterialTheme.typography.labelLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     colors.forEach { c ->
                         val parsed = try { Color(android.graphics.Color.parseColor(c)) } catch (_: Exception) { Color.Gray }
@@ -310,11 +303,11 @@ private fun CategoryEditDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("A la maison uniquement", style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.categories_requires_home_switch_label), style = MaterialTheme.typography.bodyMedium)
                             Spacer(modifier = Modifier.width(4.dp))
                             InfoTooltip(
-                                title = "A la maison",
-                                description = HOME_FREEZE_TOOLTIP,
+                                title = stringResource(R.string.categories_requires_home_tooltip_title),
+                                description = stringResource(R.string.categories_requires_home_tooltip_description),
                             )
                         }
                     }
@@ -326,10 +319,10 @@ private fun CategoryEditDialog(
             Button(
                 onClick = { if (name.isNotBlank()) onSave(name, color, requiresHome) },
                 enabled = name.isNotBlank()
-            ) { Text("Enregistrer") }
+            ) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }

@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- app_name est defini par flavor (resValue dans build.gradle.kts) :
-         prod = "Torchons & Serviettes", beta = "T&S Beta" (installe a cote). -->
+    <!-- app_name is set per flavor via resValue in build.gradle.kts:
+         prod = "Torchons & Serviettes", beta = "T&S Beta". -->
+
+    <!-- Legacy strings (pre-E3 i18n chantier). Will migrate as each screen
+         is converted to stringResource (cf docs/audit-i18n-user-facing-surfaces.md). -->
     <string name="login_loading">Connexion en cours…</string>
     <string name="login_error">Erreur de connexion</string>
     <string name="task_list_title">Mes tâches</string>
@@ -31,5 +34,38 @@
     <string name="completed_by">Complété par</string>
     <string name="completed_at">Complété le</string>
     <string name="points_earned">Points gagnés</string>
-    <string name="widget_description">Suggestions de taches</string>
+    <string name="widget_description">Suggestions de tâches</string>
+
+    <!-- ============================================================
+         E3.1.0 — i18n proof of pattern (Categories + Rooms screens).
+         Keys: <surface>_<role>_<intent> lowercase snake_case.
+         "common_*" keys are reused across screens.
+         ============================================================ -->
+
+    <!-- Common reusable strings -->
+    <string name="common_back">Retour</string>
+    <string name="common_add">Ajouter</string>
+    <string name="common_save">Enregistrer</string>
+    <string name="common_cancel">Annuler</string>
+    <string name="common_delete">Supprimer</string>
+    <string name="common_edit_title_format">Modifier %1$s</string>
+    <string name="common_delete_title_format">Supprimer %1$s ?</string>
+    <string name="common_name_label">Nom</string>
+    <string name="common_color_label">Couleur</string>
+    <string name="common_home_label">À la maison</string>
+
+    <!-- CategoriesScreen -->
+    <string name="categories_title">Catégories</string>
+    <string name="categories_dialog_new_title">Nouvelle catégorie</string>
+    <string name="categories_dialog_delete_message">Les tâches de cette catégorie seront déplacées en « sans catégorie ».</string>
+    <string name="categories_requires_home_switch_label">À la maison uniquement</string>
+    <string name="categories_requires_home_tooltip_title">À la maison</string>
+    <string name="categories_requires_home_tooltip_description">Si activé, les tâches de cette catégorie sont mises en pause quand personne n\'est à la maison. Les jours d\'absence ne comptent pas — les tâches n\'accumulent pas de retard pendant l\'absence.\n\nExemple : « Passer l\'aspirateur » tous les 7 jours. Tu pars 5 jours. Sans la pause, tu reviens et c\'est en retard. Avec la pause, les 5 jours ne comptent pas — il te reste 2 jours pour la faire.</string>
+
+    <!-- RoomsScreen -->
+    <string name="rooms_title">Pièces</string>
+    <string name="rooms_dialog_new_title">Nouvelle pièce</string>
+    <string name="rooms_dialog_delete_message">Les tâches de cette pièce n\'auront plus de pièce assignée.</string>
+    <string name="rooms_dialog_emoji_label">Emoji (optionnel)</string>
+    <string name="rooms_dialog_emoji_placeholder">Ex : 🛁</string>
 </resources>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- English translation. Keys must mirror values/strings.xml.
+         Missing keys fall back to the default (FR) locale at runtime. -->
+
+    <!-- Legacy strings (pre-E3) translated for EN parity. -->
+    <string name="login_loading">Signing in…</string>
+    <string name="login_error">Sign-in error</string>
+    <string name="task_list_title">My tasks</string>
+    <string name="task_complete">Mark as done</string>
+    <string name="task_completed_success">Task completed!</string>
+    <string name="task_detail_title">Task details</string>
+    <string name="task_detail_completions">History</string>
+    <string name="task_detail_no_completions">No completions yet</string>
+    <string name="task_weight">Weight</string>
+    <string name="task_freshness">Freshness</string>
+    <string name="category_all">All</string>
+    <string name="logout">Sign out</string>
+    <string name="refresh">Refresh</string>
+    <string name="error_generic">Something went wrong</string>
+    <string name="error_network">Network error</string>
+    <string name="empty_tasks">No tasks to show</string>
+    <string name="recurrence_interval">Every %d days</string>
+    <string name="recurrence_weekdays">Weekdays</string>
+    <string name="recurrence_monthly">Monthly (day %d)</string>
+    <string name="freshness_vert">Freshness: Green</string>
+    <string name="freshness_jaune">Freshness: Yellow</string>
+    <string name="freshness_orange">Freshness: Orange</string>
+    <string name="freshness_rouge">Freshness: Red</string>
+    <string name="assigned_to">Assigned to</string>
+    <string name="description">Description</string>
+    <string name="no_description">No description</string>
+    <string name="completed_by">Completed by</string>
+    <string name="completed_at">Completed at</string>
+    <string name="points_earned">Points earned</string>
+    <string name="widget_description">Task suggestions</string>
+
+    <!-- ============================================================
+         E3.1.0 — i18n proof of pattern (Categories + Rooms screens).
+         ============================================================ -->
+
+    <!-- Common reusable strings -->
+    <string name="common_back">Back</string>
+    <string name="common_add">Add</string>
+    <string name="common_save">Save</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_edit_title_format">Edit %1$s</string>
+    <string name="common_delete_title_format">Delete %1$s?</string>
+    <string name="common_name_label">Name</string>
+    <string name="common_color_label">Color</string>
+    <string name="common_home_label">At home</string>
+
+    <!-- CategoriesScreen -->
+    <string name="categories_title">Categories</string>
+    <string name="categories_dialog_new_title">New category</string>
+    <string name="categories_dialog_delete_message">Tasks in this category will be moved to \"no category\".</string>
+    <string name="categories_requires_home_switch_label">Only at home</string>
+    <string name="categories_requires_home_tooltip_title">At home</string>
+    <string name="categories_requires_home_tooltip_description">When on, tasks in this category are paused while no one is home. Days of absence don\'t count — tasks don\'t pile up late during the absence.\n\nExample: “Vacuum” every 7 days. You\'re away for 5 days. Without the pause, you come back and it\'s overdue. With the pause, those 5 days don\'t count — you still have 2 days to do it.</string>
+
+    <!-- RoomsScreen -->
+    <string name="rooms_title">Rooms</string>
+    <string name="rooms_dialog_new_title">New room</string>
+    <string name="rooms_dialog_delete_message">Tasks in this room will no longer have a room assigned.</string>
+    <string name="rooms_dialog_emoji_label">Emoji (optional)</string>
+    <string name="rooms_dialog_emoji_placeholder">E.g.: 🛁</string>
+</resources>
