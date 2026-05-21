@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — Torchons &amp; Serviettes</title>
+<meta name="description" content="How Torchons & Serviettes works: affinities, recurrence, urgency, fair share, absences, multi-device, privacy.">
+<meta name="theme-color" content="#0f766e">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Torchons & Serviettes">
+<meta property="og:title" content="FAQ — Torchons & Serviettes">
+<meta property="og:description" content="How the app works in detail: affinities, recurrence, urgency, fairness, absences, multi-device, data.">
+<meta property="og:url" content="https://torchonsetserviettes.app/en/faq">
+<meta name="twitter:card" content="summary">
+<link rel="alternate" hreflang="fr" href="https://torchonsetserviettes.app/faq.html">
+<link rel="alternate" hreflang="en" href="https://torchonsetserviettes.app/en/faq.html">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>Torchons &amp; Serviettes</a>
+    <nav class="site">
+      <a href="about.html">About</a>
+      <a href="faq.html">FAQ</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="contact.html">Contact</a>
+      <span class="lang-switch"><strong>EN</strong> · <a href="../faq.html">FR</a></span>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>Frequently asked questions</h1>
+    <p class="lead">
+      Everything the app does, explained simply. A question missing?
+      Drop me a line via the <a href="contact.html">Contact</a> page.
+    </p>
+
+    <h2>Do I need to create an account?</h2>
+    <p>
+      No. No e-mail, no password, no phone number. You create a
+      household (or join one), pick a display name, and that's it. A
+      <strong>recovery code</strong> lets you recover your household
+      when changing phones. <strong>Important:</strong> this code
+      only exists on your device —
+      <strong>I have no way to retrieve it</strong> if it's lost or
+      mis-written. Note it carefully when creating the household.
+    </p>
+
+    <h2>How do I join someone's household?</h2>
+    <p>
+      A household member shows a <strong>QR code</strong> from the app;
+      you scan it and you're in. The code is single-use and valid for
+      <strong>15 minutes</strong> — after that or after use, a new one
+      must be generated. This is deliberate: it prevents invite links
+      from lingering indefinitely.
+    </p>
+
+    <h2>I have several phones, or I'm changing phones?</h2>
+    <p>
+      Two cases. To <strong>add one of your devices</strong> (a 2nd
+      phone, a tablet) to your existing profile: a dedicated "add a
+      device" QR, without creating a new member. To
+      <strong>recover a household after a loss/reset</strong>: the
+      recovery code. This code is never stored in clear on the server
+      (hashed with <code>argon2id</code>): that's a security guarantee,
+      but it also means that
+      <strong>even I cannot retrieve or reset it</strong> if lost or
+      mis-noted. Keep it carefully from the moment the household is
+      created (the app offers to copy/share it).
+    </p>
+
+    <h2>What are "affinities"?</h2>
+    <p>
+      Each person can say how much they like (or dislike) a task on a
+      scale of <strong>1 to 10</strong> (1 = hate it, 5 = neutral by
+      default, 10 = love it). One prefers vacuuming, the other prefers
+      dishes: the app uses this to
+      <strong>prioritise tasks you like</strong>, at comparable
+      urgency, and to surface your "favourite" task. It locks no one
+      in: urgency still takes priority over comfort.
+    </p>
+
+    <h2>How does the app pick the task it suggests?</h2>
+    <p>
+      First by <strong>urgency</strong> (the most overdue / most
+      pressing first), respecting the task's tolerance level. At
+      equal urgency, it tie-breaks by your
+      <strong>affinities</strong>, then by <strong>fairness</strong>
+      (whoever has done less). The point: never having to wonder
+      "what should I do now?".
+    </p>
+
+    <h2>How is a task's frequency set?</h2>
+    <p>
+      Each member can <strong>vote</strong> on the frequency they
+      think is right; the app takes the <strong>average</strong>
+      (consensus), no need to agree out loud. Three forms of cadence:
+    </p>
+    <ul>
+      <li><strong>Fixed interval</strong> — every N days (e.g. every
+        7 days).</li>
+      <li><strong>Varies by month</strong> — e.g. watering plants
+        more often in summer than in winter.</li>
+      <li><strong>No fixed rhythm</strong> — see the next question.</li>
+    </ul>
+
+    <h2>What about tasks done "now and then", with no rhythm?</h2>
+    <p>
+      Some tasks have no clear cadence. The app can handle them in
+      "<strong>uncadenced</strong>" mode: rather than imposing a
+      frequency, it <strong>learns</strong> your real rhythm from the
+      history of when you've done it, and stays quiet until there's
+      something worth flagging.
+    </p>
+
+    <h2>How do one-off tasks (just once) work?</h2>
+    <p>
+      A task with no recurrence is "to do" until it's done, then
+      considered settled — no more due date. It
+      <strong>drops off lists after about a week</strong> after being
+      completed, but stays in the history (stats, points). Nothing is
+      deleted, just tidied away.
+    </p>
+
+    <h2>What do the green / orange / red colours mean?</h2>
+    <p>
+      That's urgency, computed deterministically against the due date
+      (last time done + cadence):
+    </p>
+    <ul>
+      <li><strong>Red</strong> — the due date is past, it's overdue.</li>
+      <li><strong>Orange</strong> — the due date is approaching (a
+        small window before the date, proportional to the cadence:
+        roughly the day itself for a weekly task, a few days before
+        for a monthly task).</li>
+      <li><strong>Green</strong> — there's still time, nothing to
+        flag.</li>
+    </ul>
+
+    <h2>What's Strict / Normal / Loose tolerance?</h2>
+    <p>
+      That's a task's "temperament": how bad it is to be late.
+      Important: tolerance <strong>doesn't change the colour</strong>
+      or the due date. It's used only to
+      <strong>break ties in priorities</strong> when the app picks
+      "the most urgent" to suggest: an overdue strict task comes
+      before an overdue loose task.
+    </p>
+
+    <h2>How does the app make sharing "fair" and not just "equal"?</h2>
+    <p>
+      Each member has a configurable <strong>target share</strong>
+      (50% each by default, but adjustable: a child or someone very
+      busy can have a lower share). The app tracks the gap between
+      the share <em>actually</em> done and the targeted share, with a
+      tolerance margin, and rebalances its suggestions accordingly.
+      Fair, then — not necessarily equal.
+    </p>
+
+    <h2>What's a task's "effort"?</h2>
+    <p>
+      Not all tasks are equal: 5 minutes of dishes ≠ a deep clean.
+      Each task has an <strong>effort</strong> score (voted by
+      members, averaged), where <strong>1 point ≈ 5 minutes</strong>.
+      That's what lets fairness and points count the <em>real</em>
+      weight of tasks, not just their number.
+    </p>
+
+    <h2>How does the "playful" side work (points)?</h2>
+    <p>
+      Doing a task earns points proportional to its effort. The
+      system encourages doing things <strong>at the right
+      cadence</strong>: a bonus if a task is consistently done late
+      (it's clearly underestimated — worth valuing more), a small
+      discount if consistently done too early. There are also streaks,
+      a household leaderboard, a daily goal in minutes, and a
+      "catch-up simulation" that shows how long it'll take the
+      household to clear the backlog.
+    </p>
+
+    <h2>I don't like the game side: can I turn it off?</h2>
+    <p>
+      Yes, completely. Gamification can be disabled
+      <strong>per person</strong> (you alone) <strong>or for the
+      entire household</strong>. When off, it hides points, bonuses,
+      leaderboard, streaks and stats — the app remains fully usable
+      as a plain task manager.
+    </p>
+
+    <h2>How does the app know I'm away for 2 weeks?</h2>
+    <p>
+      Truthfully, it doesn't really know. It only knows when you
+      <em>are</em> there. If it doesn't "see" you, it assumes nothing
+      and doesn't forget you: it simply asks the question — "Were you
+      away?". You answer, and the relevant tasks (those that require
+      being at home) are paused or not accordingly, to avoid coming
+      back from holidays to a backlog. This feature is
+      <strong>fully optional</strong>.
+    </p>
+
+    <h2>Why does the app request location and Wi-Fi permissions?</h2>
+    <p>
+      Only for <strong>automatic presence detection</strong>
+      (recognising your home Wi-Fi to know whether you're there,
+      which is used to pause tasks during absences). It is
+      <strong>entirely optional</strong>: you can refuse these
+      permissions, the app works perfectly well without — you then
+      confirm your presence manually when it asks.
+    </p>
+
+    <h2>Does it work offline? What if two people edit at the same time?</h2>
+    <p>
+      The app is <strong>"offline-first"</strong>: everything works
+      without a network, changes are saved locally and sync when the
+      connection returns. On concurrent edits, last write wins and
+      true conflicts are detected (no silent loss). Your devices stay
+      consistent.
+    </p>
+
+    <h2>Are there notifications?</h2>
+    <p>
+      There are <strong>five types of notifications</strong>, each
+      can be turned on or off
+      <strong>independently</strong> in Settings → Notifications:
+    </p>
+    <ul>
+      <li><strong>Daily summary</strong> — a reminder of tasks to do,
+        at the time you choose (adjustable).</li>
+      <li><strong>Urgent tasks</strong> — when a task goes overdue.</li>
+      <li><strong>Task done solo</strong> — when another member does
+        a task alone.</li>
+      <li><strong>Task done together (including me)</strong>.</li>
+      <li><strong>Task done as a group without me</strong> — only
+        starting from 3 members in the household.</li>
+    </ul>
+    <p>
+      <strong>Not to be confused with votes:</strong> prompts like
+      "rate the effort/frequency of this task" or "were you away on
+      these days?" are <em>not</em> notifications. They're
+      a <strong>small in-app dialog</strong>, shown only when the
+      app opens, at most every two hours or so, and
+      <strong>always dismissible with one tap</strong> (nothing is
+      mandatory, nothing in the notification bar). Presence
+      confirmation is part of this same dialog.
+    </p>
+
+    <h2>Is it really free?</h2>
+    <p>
+      Yes, fully, with all features. No paid version, no reserved
+      feature, no ads. That said, the project costs me
+      <strong>about €100 per year</strong> (server, domain name,
+      developer account), not counting development time. Donations
+      remain optional and unlock nothing — they simply help me keep
+      the app free (details on <a href="about.html">About</a>).
+    </p>
+
+    <h2>What happens to my data if I delete my account?</h2>
+    <p>
+      Deletion (Settings → Household security) triggers an immediate
+      logical erasure, followed by a definitive purge within
+      <strong>30 days</strong>. A household left completely inactive
+      is archived after 90 days then purged after a year. Details in
+      the <a href="privacy.html">privacy policy</a>.
+    </p>
+
+    <h2>Where can I see the release notes and roadmap?</h2>
+    <p>
+      The <a href="../changelog.html">latest app updates <small>(FR)</small></a>
+      and the <a href="../roadmap.html">ideas for next steps <small>(FR)</small></a>
+      are published here. They are generated from exactly the same
+      source as the app's "What's new" screen — always up to date,
+      no drift.
+    </p>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <span>© <span id="y">2026</span> Torchons &amp; Serviettes</span>
+    <span>
+      <a href="about.html">About</a> ·
+      <a href="faq.html">FAQ</a> ·
+      <a href="../changelog.html">Release notes</a> ·
+      <a href="../roadmap.html">Roadmap</a> ·
+      <a href="privacy.html">Privacy</a> ·
+      <a href="contact.html">Contact</a>
+    </span>
+  </div>
+</footer>
+<script>document.getElementById('y').textContent=new Date().getFullYear();</script>
+</body>
+</html>
