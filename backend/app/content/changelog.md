@@ -1,5 +1,21 @@
 # Notes de version
 
+## v0.35.14 — 2026-05-21
+
+### Traduction EN — Catalogue de templates
+- Les **noms des pièces** (Cuisine&#160;→&#160;Kitchen, Salle de bain
+  &#160;→&#160;Bathroom, Buanderie&#160;→&#160;Laundry room, …), les
+  **catégories** (Ménage&#160;→&#160;Cleaning, Linge&#160;→&#160;Laundry,
+  Administratif&#160;→&#160;Admin, Soin personnel&#160;→&#160;Personal
+  care, …) et les **41 tâches** du catalogue (Faire la
+  vaisselle&#160;→&#160;Do the dishes, Passer l\'aspirateur&#160;→&#160;
+  Vacuum, Détartrer la cafetière&#160;→&#160;Descale the coffee maker,
+  …) sont désormais traduits en anglais.
+- L\'app envoie automatiquement la langue de ton téléphone au serveur,
+  donc importer le catalogue depuis l\'écran «&#160;Catalogue&#160;»
+  créera des tâches en anglais si ton téléphone est en anglais, en
+  français sinon.
+
 ## v0.35.13 — 2026-05-21
 
 ### Traduction EN — Onboarding complet

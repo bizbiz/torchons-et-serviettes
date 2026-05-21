@@ -17,99 +17,117 @@ rooms:
   - key: cuisine
     name:
       fr: "Cuisine"
+      en: "Kitchen"
     emoji: "🍳"
 
   - key: salon
     name:
       fr: "Salon"
+      en: "Living room"
     emoji: "🛋"
 
   - key: chambre
     name:
       fr: "Chambre"
+      en: "Bedroom"
     emoji: "🛏"
 
   - key: salle_de_bain
     name:
       fr: "Salle de bain"
+      en: "Bathroom"
     emoji: "🚿"
 
   - key: toilettes
     name:
       fr: "Toilettes"
+      en: "Toilet"
     emoji: "🚽"
 
   - key: entree
     name:
       fr: "Entree"
+      en: "Entrance"
     emoji: "🚪"
 
   - key: couloir
     name:
       fr: "Couloir"
+      en: "Hallway"
     emoji: "🏠"
 
   - key: balcon
     name:
       fr: "Balcon"
+      en: "Balcony"
     emoji: "🌿"
 
   - key: buanderie
     name:
       fr: "Buanderie"
+      en: "Laundry room"
     emoji: "🧺"
 
   - key: bureau
     name:
       fr: "Bureau"
+      en: "Office"
     emoji: "💼"
 
 categories:
   - key: menage
     name:
       fr: "Menage"
+      en: "Cleaning"
     color: "#10B981"
     requires_home: true
 
   - key: cuisine_cat
     name:
       fr: "Cuisine"
+      en: "Kitchen"
     color: "#F59E0B"
     requires_home: true
 
   - key: linge
     name:
       fr: "Linge"
+      en: "Laundry"
     color: "#6366F1"
     requires_home: true
 
   - key: administratif
     name:
       fr: "Administratif"
+      en: "Admin"
     color: "#8B5CF6"
     requires_home: false
 
   - key: jardinage
     name:
       fr: "Jardinage"
+      en: "Gardening"
     color: "#22C55E"
     requires_home: true
 
   - key: entretien
     name:
       fr: "Entretien"
+      en: "Maintenance"
     color: "#F97316"
     requires_home: true
 
   - key: soin_personnel
     name:
       fr: "Soin personnel"
+      en: "Personal care"
     color: "#14B8A6"
     requires_home: false
 
   - key: animal
     name:
       fr: "Animal"
+      en: "Pet"
     color: "#A16207"
     requires_home: false
 
@@ -119,8 +137,10 @@ tasks:
   - key: vaisselle
     title:
       fr: "Faire la vaisselle"
+      en: "Do the dishes"
     description:
       fr: "Remplir et vider le lave-vaisselle"
+      en: "Load and unload the dishwasher"
     default_category_key: cuisine_cat
     default_room_key: cuisine
     default_weight: 2
@@ -132,6 +152,7 @@ tasks:
   - key: nettoyer_plan_de_travail
     title:
       fr: "Nettoyer le plan de travail"
+      en: "Clean the counter"
     default_category_key: cuisine_cat
     default_room_key: cuisine
     default_weight: 1
@@ -143,6 +164,7 @@ tasks:
   - key: sortir_poubelles
     title:
       fr: "Sortir les poubelles"
+      en: "Take out the trash"
     default_category_key: menage
     default_room_key: cuisine
     default_weight: 1
@@ -154,8 +176,10 @@ tasks:
   - key: nettoyer_frigo
     title:
       fr: "Nettoyer le frigo"
+      en: "Clean the fridge"
     description:
       fr: "Vider, jeter les perimes, passer un coup d'eponge"
+      en: "Empty, throw out expired items, wipe down"
     default_category_key: cuisine_cat
     default_room_key: cuisine
     default_weight: 4
@@ -167,6 +191,7 @@ tasks:
   - key: detartrer_bouilloire
     title:
       fr: "Detartrer la bouilloire"
+      en: "Descale the kettle"
     default_category_key: cuisine_cat
     default_room_key: cuisine
     default_weight: 2
@@ -180,8 +205,10 @@ tasks:
   - key: nettoyer_sdb
     title:
       fr: "Nettoyer la salle de bain"
+      en: "Clean the bathroom"
     description:
       fr: "Lavabo, douche, sol, miroir"
+      en: "Sink, shower, floor, mirror"
     default_category_key: menage
     default_room_key: salle_de_bain
     default_weight: 4
@@ -193,6 +220,7 @@ tasks:
   - key: changer_serviettes
     title:
       fr: "Changer les serviettes de bain"
+      en: "Change the bath towels"
     default_category_key: linge
     default_room_key: salle_de_bain
     default_weight: 1
@@ -204,6 +232,7 @@ tasks:
   - key: nettoyer_toilettes
     title:
       fr: "Nettoyer les toilettes"
+      en: "Clean the toilet"
     default_category_key: menage
     default_room_key: toilettes
     default_weight: 2
@@ -217,6 +246,7 @@ tasks:
   - key: lancer_machine_linge
     title:
       fr: "Lancer une machine a laver"
+      en: "Start a laundry load"
     default_category_key: linge
     default_room_key: buanderie
     default_weight: 1
@@ -228,6 +258,7 @@ tasks:
   - key: etendre_linge
     title:
       fr: "Etendre le linge"
+      en: "Hang the laundry"
     default_category_key: linge
     default_room_key: buanderie
     default_weight: 2
@@ -239,6 +270,7 @@ tasks:
   - key: plier_linge
     title:
       fr: "Plier et ranger le linge"
+      en: "Fold and put away laundry"
     default_category_key: linge
     default_room_key: chambre
     default_weight: 3
@@ -250,6 +282,7 @@ tasks:
   - key: changer_draps
     title:
       fr: "Changer les draps du lit"
+      en: "Change the bed sheets"
     default_category_key: linge
     default_room_key: chambre
     default_weight: 3
@@ -263,6 +296,7 @@ tasks:
   - key: aspirateur
     title:
       fr: "Passer l'aspirateur"
+      en: "Vacuum"
     default_category_key: menage
     default_room_key: salon
     default_weight: 4
@@ -274,6 +308,7 @@ tasks:
   - key: serpillere
     title:
       fr: "Passer la serpillere"
+      en: "Mop the floor"
     default_category_key: menage
     default_room_key: cuisine
     default_weight: 4
@@ -285,6 +320,7 @@ tasks:
   - key: depoussiere
     title:
       fr: "Depoussierer les meubles"
+      en: "Dust the furniture"
     default_category_key: menage
     default_room_key: salon
     default_weight: 3
@@ -296,6 +332,7 @@ tasks:
   - key: nettoyer_vitres
     title:
       fr: "Nettoyer les vitres"
+      en: "Clean the windows"
     default_category_key: menage
     default_room_key: salon
     default_weight: 4
@@ -307,6 +344,7 @@ tasks:
   - key: aerer_maison
     title:
       fr: "Aerer la maison"
+      en: "Air out the home"
     default_category_key: menage
     default_weight: 1
     default_recurrence:
@@ -319,6 +357,7 @@ tasks:
   - key: verifier_factures
     title:
       fr: "Verifier les factures du mois"
+      en: "Check this month's bills"
     default_category_key: administratif
     default_weight: 4
     default_recurrence:
@@ -331,6 +370,7 @@ tasks:
   - key: arroser_plantes
     title:
       fr: "Arroser les plantes"
+      en: "Water the plants"
     default_category_key: jardinage
     default_room_key: salon
     default_weight: 2
@@ -342,6 +382,7 @@ tasks:
   - key: tailler_plantes
     title:
       fr: "Tailler et nettoyer les plantes"
+      en: "Prune and clean the plants"
     default_category_key: jardinage
     default_room_key: salon
     default_weight: 2
@@ -353,6 +394,7 @@ tasks:
   - key: rempoter_plantes
     title:
       fr: "Rempoter et rafraichir le terreau"
+      en: "Repot and refresh the soil"
     default_category_key: jardinage
     default_room_key: salon
     default_weight: 3
@@ -364,6 +406,7 @@ tasks:
   - key: plantes_saison
     title:
       fr: "Sortir / rentrer les plantes selon la saison"
+      en: "Move plants in/out for the season"
     default_category_key: jardinage
     default_weight: 2
     default_recurrence:
@@ -376,6 +419,7 @@ tasks:
   - key: nettoyer_filtre_lave_linge
     title:
       fr: "Nettoyer le filtre du lave-linge"
+      en: "Clean the washer filter"
     default_category_key: entretien
     default_room_key: buanderie
     default_weight: 2
@@ -387,6 +431,7 @@ tasks:
   - key: nettoyer_filtre_lave_vaisselle
     title:
       fr: "Nettoyer le filtre du lave-vaisselle"
+      en: "Clean the dishwasher filter"
     default_category_key: entretien
     default_room_key: cuisine
     default_weight: 2
@@ -398,6 +443,7 @@ tasks:
   - key: detartrer_cafetiere
     title:
       fr: "Detartrer la cafetiere"
+      en: "Descale the coffee maker"
     default_category_key: entretien
     default_room_key: cuisine
     default_weight: 2
@@ -409,6 +455,7 @@ tasks:
   - key: aiguiser_couteaux
     title:
       fr: "Aiguiser les couteaux"
+      en: "Sharpen the knives"
     default_category_key: entretien
     default_room_key: cuisine
     default_weight: 2
@@ -420,6 +467,7 @@ tasks:
   - key: degivrer_congelateur
     title:
       fr: "Degivrer le congelateur"
+      en: "Defrost the freezer"
     default_category_key: entretien
     default_room_key: cuisine
     default_weight: 4
@@ -431,6 +479,7 @@ tasks:
   - key: nettoyer_aspirateur
     title:
       fr: "Nettoyer l'aspirateur (sac / filtre)"
+      en: "Clean the vacuum (bag / filter)"
     default_category_key: entretien
     default_weight: 2
     default_recurrence:
@@ -441,6 +490,7 @@ tasks:
   - key: nettoyer_interrupteurs
     title:
       fr: "Nettoyer les interrupteurs et poignees"
+      en: "Clean switches and handles"
     default_category_key: entretien
     default_weight: 2
     default_recurrence:
@@ -453,6 +503,7 @@ tasks:
   - key: declarer_heures
     title:
       fr: "Declarer mes heures"
+      en: "Submit my work hours"
     default_category_key: administratif
     default_weight: 2
     default_recurrence:
@@ -463,6 +514,7 @@ tasks:
   - key: impots
     title:
       fr: "Faire / verifier les impots"
+      en: "File / review taxes"
     default_category_key: administratif
     default_weight: 6
     default_recurrence:
@@ -473,6 +525,7 @@ tasks:
   - key: verifier_abonnements
     title:
       fr: "Verifier les abonnements et prelevements"
+      en: "Review subscriptions and direct debits"
     default_category_key: administratif
     default_weight: 3
     default_recurrence:
@@ -483,6 +536,7 @@ tasks:
   - key: sauvegarder_papiers
     title:
       fr: "Sauvegarder les papiers importants"
+      en: "Back up important documents"
     default_category_key: administratif
     default_weight: 2
     default_recurrence:
@@ -495,6 +549,7 @@ tasks:
   - key: masque_visage
     title:
       fr: "Faire un masque visage / soin de la peau"
+      en: "Face mask / skincare routine"
     default_category_key: soin_personnel
     default_weight: 1
     default_recurrence:
@@ -505,6 +560,7 @@ tasks:
   - key: rdv_coiffeur
     title:
       fr: "Prendre RDV coiffeur"
+      en: "Book a hair appointment"
     default_category_key: soin_personnel
     default_weight: 1
     default_recurrence:
@@ -515,6 +571,7 @@ tasks:
   - key: rdv_dentiste
     title:
       fr: "RDV dentiste"
+      en: "Dentist appointment"
     default_category_key: soin_personnel
     default_weight: 1
     default_recurrence:
@@ -525,6 +582,7 @@ tasks:
   - key: rdv_medecin
     title:
       fr: "RDV medecin / controle annuel"
+      en: "Doctor / annual check-up"
     default_category_key: soin_personnel
     default_weight: 1
     default_recurrence:
@@ -537,6 +595,7 @@ tasks:
   - key: animal_eau
     title:
       fr: "Changer l'eau de l'animal"
+      en: "Change the pet's water"
     default_category_key: animal
     default_weight: 1
     default_recurrence:
@@ -547,6 +606,7 @@ tasks:
   - key: animal_litiere
     title:
       fr: "Nettoyer la litiere"
+      en: "Clean the litter box"
     default_category_key: animal
     default_weight: 2
     default_recurrence:
@@ -557,6 +617,7 @@ tasks:
   - key: animal_gamelles
     title:
       fr: "Recurer les gamelles"
+      en: "Scrub the food bowls"
     default_category_key: animal
     default_weight: 1
     default_recurrence:
@@ -567,6 +628,7 @@ tasks:
   - key: animal_panier
     title:
       fr: "Laver le panier / plaid"
+      en: "Wash the pet bed / blanket"
     default_category_key: animal
     default_weight: 2
     default_recurrence:

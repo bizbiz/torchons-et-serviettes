@@ -3,6 +3,7 @@ package com.torchons.app.di
 import android.content.Context
 import com.torchons.app.BuildConfig
 import com.torchons.app.core.network.BackendHealthInterceptor
+import com.torchons.app.core.network.LocaleInterceptor
 import com.torchons.app.core.network.RetryGetInterceptor
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.api.AuthInterceptor
@@ -43,11 +44,12 @@ object AppModule {
      *
      * Ordre des intercepteurs (important) :
      * 1. AuthInterceptor : ajoute le header Authorization
-     * 2. RetryGetInterceptor : retry une fois les GET en cas d'IOException
+     * 2. LocaleInterceptor : ajoute le header Accept-Language (E3.5)
+     * 3. RetryGetInterceptor : retry une fois les GET en cas d'IOException
      *    (avant le BackendHealthInterceptor pour que le retry ne pollue pas
      *    l'etat de connexion sur un blip)
-     * 3. BackendHealthInterceptor : notifie le moniteur de l'etat backend
-     * 4. HttpLoggingInterceptor (debug uniquement) : log des requetes
+     * 4. BackendHealthInterceptor : notifie le moniteur de l'etat backend
+     * 5. HttpLoggingInterceptor (debug uniquement) : log des requetes
      *
      * Timeouts reduits par rapport au defaut 30s/30s/30s :
      * - connect 5s : un backend qui n'accepte pas la connexion en 5s est down
@@ -58,11 +60,13 @@ object AppModule {
     @Singleton
     fun provideOkHttpClient(
         authInterceptor: AuthInterceptor,
+        localeInterceptor: LocaleInterceptor,
         retryGetInterceptor: RetryGetInterceptor,
         healthInterceptor: BackendHealthInterceptor,
     ): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .addInterceptor(localeInterceptor)
             .addInterceptor(retryGetInterceptor)
             .addInterceptor(healthInterceptor)
             .connectTimeout(5, TimeUnit.SECONDS)

@@ -39,6 +39,7 @@ from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
 from app.models.user_foyer import UserFoyer
 from app.services.catalog import Catalog, get_catalog, pick_locale
+from app.utils.locale import get_request_locale
 from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api/catalog", tags=["catalog"])
@@ -157,14 +158,14 @@ async def _existing_categories(session: AsyncSession, foyer_id: uuid.UUID) -> li
 
 
 def _resolve_room(
-    room_key: str, catalog: Catalog, existing: list[Room]
+    room_key: str, catalog: Catalog, existing: list[Room], locale: str = "fr"
 ) -> ResolvedItem:
     template = catalog.room_by_key(room_key)
     if template is None:
         return ResolvedItem(
             template_key=room_key, template_name=room_key, strategy="create"
         )
-    template_name = pick_locale(template.name)
+    template_name = pick_locale(template.name, locale)
     # Deja rattachee a ce template ?
     by_key = next((r for r in existing if r.template_key == room_key), None)
     if by_key is not None:
@@ -197,14 +198,14 @@ def _resolve_room(
 
 
 def _resolve_category(
-    cat_key: str, catalog: Catalog, existing: list[Category]
+    cat_key: str, catalog: Catalog, existing: list[Category], locale: str = "fr"
 ) -> ResolvedItem:
     template = catalog.category_by_key(cat_key)
     if template is None:
         return ResolvedItem(
             template_key=cat_key, template_name=cat_key, strategy="create"
         )
-    template_name = pick_locale(template.name)
+    template_name = pick_locale(template.name, locale)
     by_key = next((c for c in existing if c.template_key == cat_key), None)
     if by_key is not None:
         return ResolvedItem(
@@ -238,8 +239,11 @@ def _resolve_category(
 
 
 @router.get("", response_model=CatalogView)
-async def get_catalog_endpoint():
-    """Retourne le catalogue curate (rooms + categories + tasks) en locale fr.
+async def get_catalog_endpoint(
+    locale: str = Depends(get_request_locale),
+):
+    """Retourne le catalogue curate (rooms + categories + tasks) dans la
+    locale demandee (Accept-Language header, fallback "fr").
 
     **Public (pas d'auth)** : ce sont des donnees template globales, non
     sensibles, identiques pour tout le monde. Et surtout le wizard
@@ -253,7 +257,7 @@ async def get_catalog_endpoint():
         rooms=[
             CatalogRoomView(
                 key=r.key,
-                name=pick_locale(r.name),
+                name=pick_locale(r.name, locale),
                 emoji=r.emoji,
             )
             for r in catalog.rooms
@@ -261,7 +265,7 @@ async def get_catalog_endpoint():
         categories=[
             CatalogCategoryView(
                 key=c.key,
-                name=pick_locale(c.name),
+                name=pick_locale(c.name, locale),
                 color=c.color,
                 requires_home=c.requires_home,
             )
@@ -270,8 +274,8 @@ async def get_catalog_endpoint():
         tasks=[
             CatalogTaskView(
                 key=t.key,
-                title=pick_locale(t.title),
-                description=pick_locale(t.description) if t.description else None,
+                title=pick_locale(t.title, locale),
+                description=pick_locale(t.description, locale) if t.description else None,
                 default_category_key=t.default_category_key,
                 default_room_key=t.default_room_key,
                 default_weight=t.default_weight,
@@ -288,6 +292,7 @@ async def resolve_import(
     body: ImportResolveRequest,
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
+    locale: str = Depends(get_request_locale),
 ):
     """Analyse les items a importer et retourne les propositions de mapping.
 
@@ -315,12 +320,12 @@ async def resolve_import(
     existing_cats = await _existing_categories(session, foyer_id)
 
     return ImportResolveResponse(
-        rooms=[_resolve_room(k, catalog, existing_rooms) for k in sorted(needed_room_keys)],
-        categories=[_resolve_category(k, catalog, existing_cats) for k in sorted(needed_cat_keys)],
+        rooms=[_resolve_room(k, catalog, existing_rooms, locale) for k in sorted(needed_room_keys)],
+        categories=[_resolve_category(k, catalog, existing_cats, locale) for k in sorted(needed_cat_keys)],
         tasks=[
             ResolvedItem(
                 template_key=tk,
-                template_name=pick_locale(catalog.task_by_key(tk).title) if catalog.task_by_key(tk) else tk,
+                template_name=pick_locale(catalog.task_by_key(tk).title, locale) if catalog.task_by_key(tk) else tk,
                 strategy="create",
             )
             for tk in body.task_keys
@@ -334,6 +339,7 @@ async def apply_import(
     body: ImportApplyRequest,
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
+    locale: str = Depends(get_request_locale),
 ):
     """Execute l'import apres validation du modal de mapping par l'user.
 
@@ -373,7 +379,7 @@ async def apply_import(
             if existing_by_key is not None:
                 room_key_to_id[decision.template_key] = existing_by_key.id
                 continue
-            name = pick_locale(template.name)
+            name = pick_locale(template.name, locale)
             # Anti-collision d'unicite : si un nom identique existe deja, on
             # le reutilise au lieu de crasher l'uniqueness.
             existing_by_name = next(
@@ -414,7 +420,7 @@ async def apply_import(
             if existing_by_key is not None:
                 cat_key_to_id[decision.template_key] = existing_by_key.id
                 continue
-            name = pick_locale(template.name)
+            name = pick_locale(template.name, locale)
             existing_by_name = next(
                 (c for c in existing_cats if c.name == name), None
             )
@@ -454,8 +460,8 @@ async def apply_import(
             tolerance = TaskTolerance.NORMAL
         new_task = Task(
             foyer_id=foyer_id,
-            title=pick_locale(template.title),
-            description=pick_locale(template.description) if template.description else None,
+            title=pick_locale(template.title, locale),
+            description=pick_locale(template.description, locale) if template.description else None,
             category_id=cat_id,
             room_id=room_id,
             recurrence_rule=template.default_recurrence,
