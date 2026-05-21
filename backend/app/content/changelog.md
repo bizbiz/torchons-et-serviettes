@@ -1,5 +1,17 @@
 # Notes de version
 
+## Site web v0.35.14b — 2026-05-21
+
+### Site bilingue (partiel)
+- Le site web torchonsetserviettes.app est maintenant accessible en
+  anglais sur les pages principales&#160;: **accueil**, **À propos**,
+  **Contact** et **page 404**. Sélecteur de langue dans le menu.
+- Pages **FAQ**, **Politique de confidentialité**, **Nouveautés** et
+  **Feuille de route** restent en français pour le moment (le
+  sélecteur les marque «&#160;FR&#160;» avec un petit «&#160;EN
+  bientôt&#160;»). Traduction prévue dans un prochain ship dédié —
+  contenu juridique sensible qui mérite une relecture soignée.
+
 ## v0.35.14 — 2026-05-21
 
 ### Traduction EN — Catalogue de templates

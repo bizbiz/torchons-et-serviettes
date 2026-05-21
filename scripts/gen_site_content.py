@@ -51,6 +51,7 @@ PAGE = """<!DOCTYPE html>
       <a href="faq.html">FAQ</a>
       <a href="privacy.html">Confidentialité</a>
       <a href="contact.html">Contact</a>
+      <span class="lang-switch" title="English translation pending"><span style="opacity:.4">EN</span> · <strong>FR</strong></span>
     </nav>
   </div>
 </header>

@@ -97,6 +97,19 @@ nav.site a {
 }
 nav.site a:hover { color: var(--accent); }
 
+/* Sélecteur de langue (FR ↔ EN) — séparé du reste du nav par une
+   marge plus large, plus petit, état actif en gras. */
+.lang-switch {
+  margin-left: 1.5rem;
+  font-size: .85rem;
+  color: var(--muted);
+}
+.lang-switch a {
+  margin-left: 0;
+  font-size: .85rem;
+}
+.lang-switch strong { color: var(--ink); }
+
 main { padding: 2.5rem 0 3rem; }
 
 h1 { font-size: 2rem; line-height: 1.22; margin: 0 0 .4rem; letter-spacing: -.01em; }
