@@ -278,6 +278,170 @@
     <string name="leave_dialog_switched_message">Tu as basculé sur un autre foyer où tu es membre.</string>
 
     <!-- ============================================================
+         E3.2a — HomeScreen + ProjectionCards + PropositionDialogs +
+         ProjectionSimulationDialog + TaskListScreen (vague A).
+         ============================================================ -->
+
+    <!-- HomeScreen — bandeau présence non confirmée -->
+    <string name="home_unresolved_presence_subtitle">Les tâches maison sont gelées</string>
+    <string name="home_unresolved_presence_resolve">Résoudre</string>
+    <plurals name="home_unresolved_presence_days">
+        <item quantity="one">%d jour non confirmé</item>
+        <item quantity="other">%d jours non confirmés</item>
+    </plurals>
+
+    <!-- HomeScreen — salutation + boutons -->
+    <string name="home_greeting_format">Bonjour %1$s&#160;!</string>
+    <string name="home_greeting_fallback">Bonjour&#160;!</string>
+    <string name="home_rate_task_cd">Noter une tâche</string>
+
+    <!-- HomeScreen — placeholders/empty -->
+    <string name="home_loading_next_suggestion">Prochaine suggestion en route…</string>
+    <string name="home_backend_unreachable_title">Données indisponibles</string>
+    <string name="home_backend_unreachable_message">Le backend ne répond pas pour le moment. Réessaie dans quelques instants.</string>
+    <string name="home_all_fresh_title">Tout est frais&#160;!</string>
+    <string name="home_all_fresh_message">Aucune tâche urgente pour le moment.</string>
+
+    <!-- HomeScreen — carte retard timeline -->
+    <string name="home_retard_chart_title">Retard du foyer · 30 jours</string>
+
+    <!-- HomeScreen — version footer -->
+    <string name="home_version_footer_format">Torchons &amp; Serviettes v%1$s</string>
+
+    <!-- HomeScreen — SuggestionCard -->
+    <string name="suggestion_reason_urgent">La plus urgente</string>
+    <string name="suggestion_reason_uncertain">Sans cadence</string>
+    <string name="suggestion_reason_affinity">Tu aimes bien</string>
+    <string name="suggestion_bonus_badge_format">🔥 +%1$d%%</string>
+    <string name="suggestion_edit_cd">Modifier</string>
+    <string name="suggestion_dismiss_cd">Ignorer cette suggestion</string>
+    <string name="suggestion_action_done">Fait&#160;!</string>
+    <string name="suggestion_action_already_done">Déjà fait</string>
+    <string name="suggestion_action_together">Ensemble</string>
+    <string name="suggestion_solo_points_info_cd">Pourquoi 0 point&#160;?</string>
+
+    <!-- HomeScreen — points predits -->
+    <plurals name="suggestion_predicted_points">
+        <item quantity="one">%d pt</item>
+        <item quantity="other">%d pts</item>
+    </plurals>
+    <plurals name="suggestion_bonus_delta_points">
+        <item quantity="one">🔥 +%d pt bonus retard</item>
+        <item quantity="other">🔥 +%d pts bonus retard</item>
+    </plurals>
+
+    <!-- HomeScreen — DatePicker generic dialog -->
+    <string name="common_validate">Valider</string>
+
+    <!-- ProjectionCards — Card Moi + Foyer -->
+    <string name="projection_card_self_title">Moi</string>
+    <string name="projection_card_foyer_title">Foyer</string>
+    <string name="projection_card_quota_reached_cd">Quota atteint</string>
+    <string name="projection_card_progress_format">%1$s / %2$s</string>
+    <string name="projection_card_unit_min_format">%1$d min</string>
+    <string name="projection_card_unit_tasks_format">%1$d t.</string>
+    <string name="projection_card_objective_reached">Bravo, objectif atteint&#160;!</string>
+    <string name="projection_card_remaining_format">Encore %1$s</string>
+    <string name="projection_card_catchup_format">Rattrapage&#160;: %1$d j</string>
+    <string name="projection_card_zero_retard">Zéro retard</string>
+    <string name="projection_card_maintenance_format">Maintien&#160;: %1$d min/j</string>
+    <string name="projection_card_retard_tasks_format">%1$d t. en retard</string>
+    <string name="projection_card_rate_insufficient">Rythme insuffisant</string>
+    <string name="projection_card_catchup_date_format">%1$d j (%2$s)</string>
+    <string name="projection_card_minutes_format">%1$d min</string>
+    <string name="projection_card_hours_format">%1$dh</string>
+    <string name="projection_card_hours_minutes_format">%1$dh%2$d</string>
+
+    <!-- PropositionDialogs — Receiver -->
+    <string name="proposition_receiver_title_format">%1$s propose un nouvel objectif</string>
+    <string name="proposition_receiver_intro">Objectif minute/jour pour chaque membre du foyer&#160;:</string>
+    <string name="proposition_receiver_you_suffix"> (toi)</string>
+    <string name="proposition_member_value_format">%1$d min/j</string>
+    <string name="proposition_receiver_timeout_hint">Tu as 3 minutes pour répondre. Si vous acceptez tous les deux, ces objectifs seront sauvés pour chacun.</string>
+    <string name="proposition_accept">Accepter</string>
+    <string name="proposition_decline">Refuser</string>
+
+    <!-- PropositionDialogs — Proposer waiting -->
+    <string name="proposition_waiting_title">En attente…</string>
+    <string name="proposition_waiting_body">Tu as proposé un nouvel objectif au foyer. Les autres membres doivent accepter dans leur app (ouverte maintenant).</string>
+    <string name="proposition_waiting_expire">Expire dans 3 min sinon</string>
+    <string name="proposition_waiting_cancel">Annuler la proposition</string>
+
+    <!-- PropositionDialogs — Celebration -->
+    <string name="proposition_celebration_title">Objectifs validés&#160;!</string>
+    <string name="proposition_celebration_intro">Tout le monde est d\'accord. Vos nouveaux objectifs sont en place&#160;:</string>
+    <string name="proposition_celebration_member_format">%1$s%2$s&#160;: %3$d min/j</string>
+    <string name="proposition_celebration_punchline">Vous êtes sur la bonne voie vers un foyer propre&#160;!</string>
+    <string name="proposition_celebration_easter_open">Clique ici pour voir ce qu\'on évite…</string>
+    <string name="proposition_celebration_easter_close">Non merci</string>
+    <string name="proposition_celebration_chaos_title">Le chaos.</string>
+    <string name="proposition_celebration_chaos_subtitle">Celui-là, c\'est pas pour nous.</string>
+    <string name="proposition_celebration_lets_go">Let\'s go&#160;!</string>
+
+    <!-- ProjectionSimulationDialog -->
+    <string name="simulation_loading_title">Chargement…</string>
+    <string name="simulation_loading_message">Les données ne sont pas encore prêtes, ferme et réessaie.</string>
+    <string name="simulation_title_catchup">Simulation rattrapage</string>
+    <string name="simulation_title_target">Rythme cible du foyer</string>
+    <string name="simulation_unit_minutes">Minutes</string>
+    <string name="simulation_unit_tasks">Tâches</string>
+    <string name="simulation_retard_format">Retard&#160;: %1$s (%2$d tâches)</string>
+    <string name="simulation_zero_retard">Zéro retard&#160;! Fixe le rythme cible de maintien.</string>
+    <string name="simulation_slider_label_with_you_format">%1$s (toi)</string>
+    <string name="simulation_value_tasks_per_day_format">%1$d tâches/j</string>
+    <string name="simulation_value_minutes_per_day_format">%1$d min/j</string>
+    <string name="simulation_average_14d_format">Moyenne 14j&#160;: %1$d min/j</string>
+    <string name="simulation_rate_insufficient_format">Rythme insuffisant pour rattraper. Il faut &gt; %1$d min/j combinés.</string>
+    <string name="simulation_already_caught_up">Déjà rattrapé&#160;!</string>
+    <plurals name="simulation_catchup_days">
+        <item quantity="one">À ces rythmes&#160;: rattrapage en %d jour</item>
+        <item quantity="other">À ces rythmes&#160;: rattrapage en %d jours</item>
+    </plurals>
+    <string name="simulation_then_maintain_format">Puis pour maintenir&#160;: %1$d min/j combinés</string>
+    <string name="simulation_maintain_only_format">Maintien&#160;: %1$d min/j combinés</string>
+    <string name="simulation_propose_to_foyer">Proposer au foyer</string>
+    <string name="simulation_just_for_me">Juste pour moi</string>
+
+    <!-- TaskListScreen -->
+    <string name="task_list_add_task_cd">Ajouter une tâche</string>
+    <string name="task_list_catalog_cd">Catalogue de templates</string>
+    <string name="task_list_foyer_settings_cd">Réglages du foyer</string>
+    <string name="task_list_off_home_banner_format">Pas à la maison — %1$d tâche(s) masquée(s)</string>
+    <string name="task_list_off_home_tooltip_title">Pourquoi des tâches sont masquées&#160;?</string>
+    <string name="task_list_off_home_tooltip_description">Les tâches des catégories «&#160;à la maison&#160;» sont cachées parce que l\'app ne te détecte pas sur ton WiFi maison&#160;: soit tu es absent, soit aucun WiFi maison n\'est configuré / la permission de localisation nécessaire pour lire le nom du WiFi manque.\n\nTu peux quand même les afficher avec «&#160;Tout afficher&#160;», configurer ton WiFi maison dans les réglages du foyer, ou désactiver ce comportement là-bas.</string>
+    <string name="task_list_show_all">Tout afficher</string>
+    <string name="task_list_hide_home">Masquer</string>
+
+    <!-- TaskListScreen — search bar -->
+    <string name="task_list_search_placeholder">Rechercher…</string>
+    <string name="task_list_search_filters_applied_cd">Filtres appliqués</string>
+    <string name="task_list_search_filters_ignored_cd">Filtres ignorés</string>
+    <string name="task_list_search_close_cd">Fermer la recherche</string>
+    <string name="task_list_search_open_cd">Rechercher</string>
+
+    <!-- TaskListScreen — tri-state filter chips -->
+    <string name="task_list_filter_todo_high">À faire</string>
+    <string name="task_list_filter_todo_low">Pas à faire</string>
+    <string name="task_list_filter_affinity_high">Aimées</string>
+    <string name="task_list_filter_affinity_low">Détestées</string>
+    <string name="task_list_filter_effort_high">Long</string>
+    <string name="task_list_filter_effort_low">Court</string>
+    <string name="task_list_filter_recurrence_high">Récurrentes</string>
+    <string name="task_list_filter_recurrence_low">Ponctuelles</string>
+    <string name="task_list_filter_home_high">Maison</string>
+    <string name="task_list_filter_home_low">Hors maison</string>
+    <string name="task_list_filter_assignment_high">Solo</string>
+    <string name="task_list_filter_assignment_low">Groupe</string>
+
+    <!-- TaskListScreen — category & room chips -->
+    <string name="task_list_filter_all_categories">Toutes</string>
+    <string name="task_list_filter_all_rooms">Toutes pièces</string>
+
+    <!-- TaskListScreen — empty states -->
+    <string name="task_list_no_search_results_format">Aucun résultat pour «&#160;%1$s&#160;»</string>
+    <string name="task_list_empty">Aucune tâche à afficher</string>
+
+    <!-- ============================================================
          E3.1.1e — SecuritySection + SupportDevCard.
          ============================================================ -->
 

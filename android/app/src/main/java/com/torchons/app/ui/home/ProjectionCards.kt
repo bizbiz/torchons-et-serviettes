@@ -28,8 +28,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.model.MaintenanceRateResponse
 import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.RetardResponse
@@ -103,11 +105,13 @@ private fun CardMoi(
     val progress = if (objectiveMin > 0) (doneMin.toFloat() / objectiveMin).coerceIn(0f, 1f) else 0f
     val quotaReached = doneMin >= objectiveMin && objectiveMin > 0
     val remainingMin = (objectiveMin - doneMin).coerceAtLeast(0)
-    val doneTxt = if (unit == "tasks") "$doneTasks t." else "$doneMin min"
+    val doneTxt = if (unit == "tasks")
+        stringResource(R.string.projection_card_unit_tasks_format, doneTasks)
+    else stringResource(R.string.projection_card_unit_min_format, doneMin)
     val objectiveTxt = if (unit == "tasks") {
         val tasks = (objectiveMin / 5).coerceAtLeast(1)
-        "$tasks t."
-    } else "$objectiveMin min"
+        stringResource(R.string.projection_card_unit_tasks_format, tasks)
+    } else stringResource(R.string.projection_card_unit_min_format, objectiveMin)
 
     // Nombre de jours a l'objectif pour rattraper le retard (en supposant
     // le reste du foyer constant)
@@ -129,7 +133,7 @@ private fun CardMoi(
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "Moi",
+                    text = stringResource(R.string.projection_card_self_title),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
@@ -144,7 +148,7 @@ private fun CardMoi(
                     ) {
                         Icon(
                             Icons.Default.Check,
-                            contentDescription = "Quota atteint",
+                            contentDescription = stringResource(R.string.projection_card_quota_reached_cd),
                             tint = Color.White,
                             modifier = Modifier.size(14.dp),
                         )
@@ -153,7 +157,7 @@ private fun CardMoi(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "$doneTxt / $objectiveTxt",
+                text = stringResource(R.string.projection_card_progress_format, doneTxt, objectiveTxt),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
             )
@@ -169,8 +173,13 @@ private fun CardMoi(
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = if (quotaReached) "Bravo, objectif atteint !"
-                else "Encore ${if (unit == "tasks") "${(remainingMin / 5).coerceAtLeast(1)} t." else "$remainingMin min"}",
+                text = if (quotaReached) stringResource(R.string.projection_card_objective_reached)
+                else stringResource(
+                    R.string.projection_card_remaining_format,
+                    if (unit == "tasks")
+                        stringResource(R.string.projection_card_unit_tasks_format, (remainingMin / 5).coerceAtLeast(1))
+                    else stringResource(R.string.projection_card_unit_min_format, remainingMin),
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -185,7 +194,7 @@ private fun CardMoi(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Rattrapage : $daysCatchupAtObjective j",
+                        text = stringResource(R.string.projection_card_catchup_format, daysCatchupAtObjective),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -223,7 +232,7 @@ private fun CardFoyer(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = "Foyer",
+                text = stringResource(R.string.projection_card_foyer_title),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
             )
@@ -238,7 +247,7 @@ private fun CardFoyer(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Zero retard",
+                        text = stringResource(R.string.projection_card_zero_retard),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         color = TaskUrgencyCalculator.VERT,
@@ -247,7 +256,7 @@ private fun CardFoyer(
                 if (maintPerDay > 0) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Maintien : ${maintPerDay.toInt()} min/j",
+                        text = stringResource(R.string.projection_card_maintenance_format, maintPerDay.toInt()),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -260,14 +269,14 @@ private fun CardFoyer(
                     color = TaskUrgencyCalculator.ROUGE,
                 )
                 Text(
-                    text = "$retardTasks t. en retard",
+                    text = stringResource(R.string.projection_card_retard_tasks_format, retardTasks),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 if (daysToCatchUp == null) {
                     Text(
-                        text = "Rythme insuffisant",
+                        text = stringResource(R.string.projection_card_rate_insufficient),
                         style = MaterialTheme.typography.labelSmall,
                         color = TaskUrgencyCalculator.ROUGE,
                     )
@@ -281,7 +290,11 @@ private fun CardFoyer(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "$daysToCatchUp j (${catchupDate?.format(DATE_FORMATTER) ?: "-"})",
+                            text = stringResource(
+                                R.string.projection_card_catchup_date_format,
+                                daysToCatchUp,
+                                catchupDate?.format(DATE_FORMATTER) ?: "-",
+                            ),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -290,7 +303,7 @@ private fun CardFoyer(
                 if (maintPerDay > 0) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Maintien : ${maintPerDay.toInt()} min/j",
+                        text = stringResource(R.string.projection_card_maintenance_format, maintPerDay.toInt()),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -318,11 +331,13 @@ private fun remainingDaysAtRate(
     return ceil(retardMinutes / netRate).toInt()
 }
 
+@Composable
 private fun formatMinutes(minutes: Int): String {
-    if (minutes < 60) return "$minutes min"
+    if (minutes < 60) return stringResource(R.string.projection_card_minutes_format, minutes)
     val h = minutes / 60
     val m = minutes % 60
-    return if (m == 0) "${h}h" else "${h}h$m"
+    return if (m == 0) stringResource(R.string.projection_card_hours_format, h)
+    else stringResource(R.string.projection_card_hours_minutes_format, h, m)
 }
 
 private val DATE_FORMATTER: DateTimeFormatter =

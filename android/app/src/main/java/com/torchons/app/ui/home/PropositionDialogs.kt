@@ -34,9 +34,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import com.torchons.app.R
 import com.torchons.app.data.model.PropositionView
 import com.torchons.app.util.TaskUrgencyCalculator
 import kotlinx.coroutines.delay
@@ -61,28 +63,29 @@ fun PropositionReceiverDialog(
         ),
         title = {
             Text(
-                text = "${proposition.proposerName} propose un nouvel objectif",
+                text = stringResource(R.string.proposition_receiver_title_format, proposition.proposerName),
                 fontWeight = FontWeight.Bold,
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Objectif minute/jour pour chaque membre du foyer :",
+                    text = stringResource(R.string.proposition_receiver_intro),
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                val youSuffix = stringResource(R.string.proposition_receiver_you_suffix)
                 proposition.responses.forEach { r ->
                     val mins = proposition.sliderValues[r.userId] ?: 0
                     val isMe = r.userId == currentUserId
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = r.displayName + if (isMe) " (toi)" else "",
+                            text = r.displayName + if (isMe) youSuffix else "",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = if (isMe) FontWeight.SemiBold else FontWeight.Normal,
                             modifier = Modifier.weight(1f),
                         )
                         Text(
-                            text = "$mins min/j",
+                            text = stringResource(R.string.proposition_member_value_format, mins),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -90,7 +93,7 @@ fun PropositionReceiverDialog(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Tu as 3 minutes pour repondre. Si vous acceptez tous les deux, ces objectifs seront sauves pour chacun.",
+                    text = stringResource(R.string.proposition_receiver_timeout_hint),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -103,7 +106,7 @@ fun PropositionReceiverDialog(
             ) {
                 Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Accepter")
+                Text(stringResource(R.string.proposition_accept))
             }
         },
         dismissButton = {
@@ -113,7 +116,7 @@ fun PropositionReceiverDialog(
             ) {
                 Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Refuser")
+                Text(stringResource(R.string.proposition_decline))
             }
         },
     )
@@ -144,7 +147,7 @@ fun PropositionProposerWaitingDialog(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "En attente...",
+                    text = stringResource(R.string.proposition_waiting_title),
                     fontWeight = FontWeight.Bold,
                 )
             }
@@ -152,7 +155,7 @@ fun PropositionProposerWaitingDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Tu as propose un nouvel objectif au foyer. Les autres membres doivent accepter dans leur app (ouverte maintenant).",
+                    text = stringResource(R.string.proposition_waiting_body),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -177,7 +180,7 @@ fun PropositionProposerWaitingDialog(
                             modifier = Modifier.weight(1f),
                         )
                         Text(
-                            text = "$mins min/j",
+                            text = stringResource(R.string.proposition_member_value_format, mins),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -185,7 +188,7 @@ fun PropositionProposerWaitingDialog(
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Expire dans 3 min sinon",
+                    text = stringResource(R.string.proposition_waiting_expire),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -193,7 +196,7 @@ fun PropositionProposerWaitingDialog(
         },
         confirmButton = {
             TextButton(onClick = onCancel) {
-                Text("Annuler la proposition")
+                Text(stringResource(R.string.proposition_waiting_cancel))
             }
         },
     )
@@ -223,7 +226,7 @@ fun PropositionCelebrationDialog(
         ),
         title = {
             Text(
-                text = "Objectifs valides !",
+                text = stringResource(R.string.proposition_celebration_title),
                 fontWeight = FontWeight.Bold,
                 color = TaskUrgencyCalculator.VERT,
             )
@@ -235,28 +238,37 @@ fun PropositionCelebrationDialog(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = "Tout le monde est d'accord. Vos nouveaux objectifs sont en place :",
+                    text = stringResource(R.string.proposition_celebration_intro),
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                val youSuffix = stringResource(R.string.proposition_receiver_you_suffix)
                 proposition.responses.forEach { r ->
                     val mins = proposition.sliderValues[r.userId] ?: 0
                     val isMe = r.userId == currentUserId
                     Text(
-                        text = "${r.displayName}${if (isMe) " (toi)" else ""} : $mins min/j",
+                        text = stringResource(
+                            R.string.proposition_celebration_member_format,
+                            r.displayName,
+                            if (isMe) youSuffix else "",
+                            mins,
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (isMe) FontWeight.SemiBold else FontWeight.Normal,
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Vous etes sur la bonne voie vers un foyer propre !",
+                    text = stringResource(R.string.proposition_celebration_punchline),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = TaskUrgencyCalculator.VERT,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 TextButton(onClick = { showEasterEgg = !showEasterEgg }) {
-                    Text(if (showEasterEgg) "Non merci" else "Clique ici pour voir ce qu'on evite...")
+                    Text(
+                        if (showEasterEgg) stringResource(R.string.proposition_celebration_easter_close)
+                        else stringResource(R.string.proposition_celebration_easter_open)
+                    )
                 }
                 if (showEasterEgg) {
                     // v0.8.1 : emoji easter egg. v0.8.2 : vrai gif bundle.
@@ -279,12 +291,12 @@ fun PropositionCelebrationDialog(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Le chaos.",
+                                text = stringResource(R.string.proposition_celebration_chaos_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                             )
                             Text(
-                                text = "Celui-la, c'est pas pour nous.",
+                                text = stringResource(R.string.proposition_celebration_chaos_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
@@ -293,7 +305,7 @@ fun PropositionCelebrationDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss) { Text("Let's go !") }
+            Button(onClick = onDismiss) { Text(stringResource(R.string.proposition_celebration_lets_go)) }
         },
     )
 }

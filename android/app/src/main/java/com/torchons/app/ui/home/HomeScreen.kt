@@ -64,10 +64,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.Room
@@ -374,13 +377,17 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "${uiState.unresolvedPresenceDaysCount} jour${if (uiState.unresolvedPresenceDaysCount > 1) "s" else ""} non confirme${if (uiState.unresolvedPresenceDaysCount > 1) "s" else ""}",
+                            pluralStringResource(
+                                R.plurals.home_unresolved_presence_days,
+                                uiState.unresolvedPresenceDaysCount,
+                                uiState.unresolvedPresenceDaysCount,
+                            ),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF92400E),
                         )
                         Text(
-                            "Les taches maison sont gelees",
+                            stringResource(R.string.home_unresolved_presence_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFFB45309),
                         )
@@ -389,7 +396,7 @@ fun HomeScreen(
                         onClick = { viewModel.reopenPresencePrompt() },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF92400E)),
                     ) {
-                        Text("Resoudre", style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.home_unresolved_presence_resolve), style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -401,7 +408,8 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = "Bonjour ${displayName ?: ""} !",
+                text = displayName?.let { stringResource(R.string.home_greeting_format, it) }
+                    ?: stringResource(R.string.home_greeting_fallback),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
@@ -409,7 +417,7 @@ fun HomeScreen(
             IconButton(onClick = { viewModel.showManualRating() }) {
                 Icon(
                     imageVector = Icons.Default.QuestionMark,
-                    contentDescription = "Noter une tache",
+                    contentDescription = stringResource(R.string.home_rate_task_cd),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -515,7 +523,7 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Prochaine suggestion en route...",
+                        text = stringResource(R.string.home_loading_next_suggestion),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -543,13 +551,13 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Donnees indisponibles",
+                            text = stringResource(R.string.home_backend_unreachable_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
                         )
                         Text(
-                            text = "Le backend ne repond pas pour le moment. Reessaie dans quelques instants.",
+                            text = stringResource(R.string.home_backend_unreachable_message),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -563,13 +571,13 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Tout est frais !",
+                            text = stringResource(R.string.home_all_fresh_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
                         )
                         Text(
-                            text = "Aucune tache urgente pour le moment.",
+                            text = stringResource(R.string.home_all_fresh_message),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -592,7 +600,7 @@ fun HomeScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Retard du foyer · 30 jours",
+                        text = stringResource(R.string.home_retard_chart_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -606,7 +614,7 @@ fun HomeScreen(
 
         // Version
         Text(
-            text = "Torchons & Serviettes v${com.torchons.app.BuildConfig.VERSION_NAME}",
+            text = stringResource(R.string.home_version_footer_format, com.torchons.app.BuildConfig.VERSION_NAME),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
             modifier = Modifier.fillMaxWidth(),
@@ -653,9 +661,9 @@ private fun SuggestionCard(
     onDismiss: () -> Unit = {},
 ) {
     val reasonLabel = when (suggestion.reason) {
-        "urgent" -> "La plus urgente"
-        "uncertain" -> "Sans cadence"
-        else -> "Tu aimes bien"
+        "urgent" -> stringResource(R.string.suggestion_reason_urgent)
+        "uncertain" -> stringResource(R.string.suggestion_reason_uncertain)
+        else -> stringResource(R.string.suggestion_reason_affinity)
     }
     val reasonIcon = when (suggestion.reason) {
         "urgent" -> Icons.Default.Warning
@@ -713,7 +721,7 @@ private fun SuggestionCard(
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     ) {
                         Text(
-                            text = "🔥 +${(suggestion.bonusPct * 100).toInt()}%",
+                            text = stringResource(R.string.suggestion_bonus_badge_format, (suggestion.bonusPct * 100).toInt()),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color(0xFFC2410C),
                             fontWeight = FontWeight.SemiBold,
@@ -724,7 +732,7 @@ private fun SuggestionCard(
                 IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = "Modifier",
+                        contentDescription = stringResource(R.string.suggestion_edit_cd),
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -734,7 +742,7 @@ private fun SuggestionCard(
                 IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Ignorer cette suggestion",
+                        contentDescription = stringResource(R.string.suggestion_dismiss_cd),
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -792,7 +800,7 @@ private fun SuggestionCard(
             ) {
                 Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Fait !")
+                Text(stringResource(R.string.suggestion_action_done))
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -805,7 +813,7 @@ private fun SuggestionCard(
                 ) {
                     Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Deja fait")
+                    Text(stringResource(R.string.suggestion_action_already_done))
                 }
                 OutlinedButton(
                     onClick = onFaitEnsemble,
@@ -813,7 +821,7 @@ private fun SuggestionCard(
                 ) {
                     Icon(Icons.Default.Groups, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Ensemble")
+                    Text(stringResource(R.string.suggestion_action_together))
                 }
             }
         }
@@ -850,12 +858,12 @@ private fun DatePickerDialog(
                     onDateSelected("${date}T12:00:00Z")
                 }
             }) {
-                Text("Valider")
+                Text(stringResource(R.string.common_validate))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Annuler")
+                Text(stringResource(R.string.common_cancel))
             }
         }
     ) {
@@ -896,7 +904,7 @@ private fun SuggestionPointsLine(suggestion: Suggestion) {
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
-            text = "$finalPts pt${if (finalPts > 1) "s" else ""}",
+            text = pluralStringResource(R.plurals.suggestion_predicted_points, finalPts, finalPts),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             color = color,
@@ -904,7 +912,7 @@ private fun SuggestionPointsLine(suggestion: Suggestion) {
         if (!isSolo && suggestion.bonusEligible && delta > 0) {
             Spacer(Modifier.width(6.dp))
             Text(
-                text = "🔥 +$delta pt${if (delta > 1) "s" else ""} bonus retard",
+                text = pluralStringResource(R.plurals.suggestion_bonus_delta_points, delta, delta),
                 style = MaterialTheme.typography.labelSmall,
                 color = color,
             )
@@ -913,7 +921,7 @@ private fun SuggestionPointsLine(suggestion: Suggestion) {
             Spacer(Modifier.width(4.dp))
             Icon(
                 imageVector = Icons.Outlined.Info,
-                contentDescription = "Pourquoi 0 point ?",
+                contentDescription = stringResource(R.string.suggestion_solo_points_info_cd),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier
                     .size(18.dp)

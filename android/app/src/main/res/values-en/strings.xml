@@ -273,6 +273,169 @@
     <string name="leave_dialog_switched_message">You\'ve switched to another household where you\'re a member.</string>
 
     <!-- ============================================================
+         E3.2a — Home/Projection/Proposition/Simulation/TaskList.
+         ============================================================ -->
+
+    <!-- HomeScreen — unresolved presence banner -->
+    <string name="home_unresolved_presence_subtitle">Home tasks are frozen</string>
+    <string name="home_unresolved_presence_resolve">Resolve</string>
+    <plurals name="home_unresolved_presence_days">
+        <item quantity="one">%d unconfirmed day</item>
+        <item quantity="other">%d unconfirmed days</item>
+    </plurals>
+
+    <!-- HomeScreen — greeting + buttons -->
+    <string name="home_greeting_format">Hi %1$s!</string>
+    <string name="home_greeting_fallback">Hi!</string>
+    <string name="home_rate_task_cd">Rate a task</string>
+
+    <!-- HomeScreen — placeholders/empty -->
+    <string name="home_loading_next_suggestion">Next suggestion on its way…</string>
+    <string name="home_backend_unreachable_title">Data unavailable</string>
+    <string name="home_backend_unreachable_message">The backend isn\'t responding right now. Try again in a moment.</string>
+    <string name="home_all_fresh_title">All fresh!</string>
+    <string name="home_all_fresh_message">Nothing urgent right now.</string>
+
+    <!-- HomeScreen — retard timeline card -->
+    <string name="home_retard_chart_title">Household overdue · 30 days</string>
+
+    <!-- HomeScreen — version footer -->
+    <string name="home_version_footer_format">Torchons &amp; Serviettes v%1$s</string>
+
+    <!-- HomeScreen — SuggestionCard -->
+    <string name="suggestion_reason_urgent">Most urgent</string>
+    <string name="suggestion_reason_uncertain">Uncadenced</string>
+    <string name="suggestion_reason_affinity">You like it</string>
+    <string name="suggestion_bonus_badge_format">🔥 +%1$d%%</string>
+    <string name="suggestion_edit_cd">Edit</string>
+    <string name="suggestion_dismiss_cd">Dismiss this suggestion</string>
+    <string name="suggestion_action_done">Done!</string>
+    <string name="suggestion_action_already_done">Already done</string>
+    <string name="suggestion_action_together">Together</string>
+    <string name="suggestion_solo_points_info_cd">Why 0 points?</string>
+
+    <!-- HomeScreen — predicted points -->
+    <plurals name="suggestion_predicted_points">
+        <item quantity="one">%d pt</item>
+        <item quantity="other">%d pts</item>
+    </plurals>
+    <plurals name="suggestion_bonus_delta_points">
+        <item quantity="one">🔥 +%d pt late bonus</item>
+        <item quantity="other">🔥 +%d pts late bonus</item>
+    </plurals>
+
+    <!-- Generic dialog -->
+    <string name="common_validate">Confirm</string>
+
+    <!-- ProjectionCards — Self + Foyer -->
+    <string name="projection_card_self_title">Me</string>
+    <string name="projection_card_foyer_title">Household</string>
+    <string name="projection_card_quota_reached_cd">Quota reached</string>
+    <string name="projection_card_progress_format">%1$s / %2$s</string>
+    <string name="projection_card_unit_min_format">%1$d min</string>
+    <string name="projection_card_unit_tasks_format">%1$d t.</string>
+    <string name="projection_card_objective_reached">Goal reached!</string>
+    <string name="projection_card_remaining_format">%1$s left</string>
+    <string name="projection_card_catchup_format">Catch-up: %1$d d</string>
+    <string name="projection_card_zero_retard">Zero overdue</string>
+    <string name="projection_card_maintenance_format">Maintain: %1$d min/d</string>
+    <string name="projection_card_retard_tasks_format">%1$d tasks overdue</string>
+    <string name="projection_card_rate_insufficient">Pace too low</string>
+    <string name="projection_card_catchup_date_format">%1$d d (%2$s)</string>
+    <string name="projection_card_minutes_format">%1$d min</string>
+    <string name="projection_card_hours_format">%1$dh</string>
+    <string name="projection_card_hours_minutes_format">%1$dh%2$d</string>
+
+    <!-- PropositionDialogs — Receiver -->
+    <string name="proposition_receiver_title_format">%1$s proposes a new goal</string>
+    <string name="proposition_receiver_intro">Daily minute goal for each household member:</string>
+    <string name="proposition_receiver_you_suffix"> (you)</string>
+    <string name="proposition_member_value_format">%1$d min/d</string>
+    <string name="proposition_receiver_timeout_hint">You have 3 minutes to answer. If you both accept, these goals will be saved for each of you.</string>
+    <string name="proposition_accept">Accept</string>
+    <string name="proposition_decline">Decline</string>
+
+    <!-- PropositionDialogs — Proposer waiting -->
+    <string name="proposition_waiting_title">Waiting…</string>
+    <string name="proposition_waiting_body">You proposed a new goal to the household. The other members need to accept in their app (open right now).</string>
+    <string name="proposition_waiting_expire">Expires in 3 min otherwise</string>
+    <string name="proposition_waiting_cancel">Cancel proposal</string>
+
+    <!-- PropositionDialogs — Celebration -->
+    <string name="proposition_celebration_title">Goals confirmed!</string>
+    <string name="proposition_celebration_intro">Everyone agreed. Your new goals are in place:</string>
+    <string name="proposition_celebration_member_format">%1$s%2$s: %3$d min/d</string>
+    <string name="proposition_celebration_punchline">You\'re on track for a clean home!</string>
+    <string name="proposition_celebration_easter_open">Tap here to see what we\'re avoiding…</string>
+    <string name="proposition_celebration_easter_close">No thanks</string>
+    <string name="proposition_celebration_chaos_title">Chaos.</string>
+    <string name="proposition_celebration_chaos_subtitle">Not for us.</string>
+    <string name="proposition_celebration_lets_go">Let\'s go!</string>
+
+    <!-- ProjectionSimulationDialog -->
+    <string name="simulation_loading_title">Loading…</string>
+    <string name="simulation_loading_message">Data isn\'t ready yet — close and try again.</string>
+    <string name="simulation_title_catchup">Catch-up simulation</string>
+    <string name="simulation_title_target">Household target pace</string>
+    <string name="simulation_unit_minutes">Minutes</string>
+    <string name="simulation_unit_tasks">Tasks</string>
+    <string name="simulation_retard_format">Overdue: %1$s (%2$d tasks)</string>
+    <string name="simulation_zero_retard">Zero overdue! Set the target maintenance pace.</string>
+    <string name="simulation_slider_label_with_you_format">%1$s (you)</string>
+    <string name="simulation_value_tasks_per_day_format">%1$d tasks/d</string>
+    <string name="simulation_value_minutes_per_day_format">%1$d min/d</string>
+    <string name="simulation_average_14d_format">14d average: %1$d min/d</string>
+    <string name="simulation_rate_insufficient_format">Pace too low to catch up. Need &gt; %1$d min/d combined.</string>
+    <string name="simulation_already_caught_up">Already caught up!</string>
+    <plurals name="simulation_catchup_days">
+        <item quantity="one">At this pace: catch up in %d day</item>
+        <item quantity="other">At this pace: catch up in %d days</item>
+    </plurals>
+    <string name="simulation_then_maintain_format">Then to maintain: %1$d min/d combined</string>
+    <string name="simulation_maintain_only_format">Maintain: %1$d min/d combined</string>
+    <string name="simulation_propose_to_foyer">Propose to household</string>
+    <string name="simulation_just_for_me">Just for me</string>
+
+    <!-- TaskListScreen -->
+    <string name="task_list_add_task_cd">Add a task</string>
+    <string name="task_list_catalog_cd">Template catalog</string>
+    <string name="task_list_foyer_settings_cd">Household settings</string>
+    <string name="task_list_off_home_banner_format">Away from home — %1$d task(s) hidden</string>
+    <string name="task_list_off_home_tooltip_title">Why are some tasks hidden?</string>
+    <string name="task_list_off_home_tooltip_description">Tasks in \"at home\" categories are hidden because the app doesn\'t detect you on your home WiFi: either you\'re away, or no home WiFi is configured / the location permission required to read the WiFi name is missing.\n\nYou can still show them with \"Show all\", configure your home WiFi in household settings, or disable this behaviour there.</string>
+    <string name="task_list_show_all">Show all</string>
+    <string name="task_list_hide_home">Hide</string>
+
+    <!-- TaskListScreen — search bar -->
+    <string name="task_list_search_placeholder">Search…</string>
+    <string name="task_list_search_filters_applied_cd">Filters applied</string>
+    <string name="task_list_search_filters_ignored_cd">Filters ignored</string>
+    <string name="task_list_search_close_cd">Close search</string>
+    <string name="task_list_search_open_cd">Search</string>
+
+    <!-- TaskListScreen — tri-state filter chips -->
+    <string name="task_list_filter_todo_high">To do</string>
+    <string name="task_list_filter_todo_low">Not to do</string>
+    <string name="task_list_filter_affinity_high">Liked</string>
+    <string name="task_list_filter_affinity_low">Disliked</string>
+    <string name="task_list_filter_effort_high">Long</string>
+    <string name="task_list_filter_effort_low">Short</string>
+    <string name="task_list_filter_recurrence_high">Recurring</string>
+    <string name="task_list_filter_recurrence_low">One-off</string>
+    <string name="task_list_filter_home_high">Home</string>
+    <string name="task_list_filter_home_low">Off-home</string>
+    <string name="task_list_filter_assignment_high">Solo</string>
+    <string name="task_list_filter_assignment_low">Group</string>
+
+    <!-- TaskListScreen — category & room chips -->
+    <string name="task_list_filter_all_categories">All</string>
+    <string name="task_list_filter_all_rooms">All rooms</string>
+
+    <!-- TaskListScreen — empty states -->
+    <string name="task_list_no_search_results_format">No results for \"%1$s\"</string>
+    <string name="task_list_empty">No tasks to show</string>
+
+    <!-- ============================================================
          E3.1.1e — SecuritySection + SupportDevCard.
          ============================================================ -->
 

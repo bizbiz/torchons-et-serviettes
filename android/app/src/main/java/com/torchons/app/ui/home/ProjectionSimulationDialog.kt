@@ -24,8 +24,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.model.MaintenanceRateResponse
 import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.RetardResponse
@@ -62,10 +65,10 @@ fun ProjectionSimulationDialog(
         // Pas de donnees encore : dismiss
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Chargement...") },
-            text = { Text("Les donnees ne sont pas encore pretes, ferme et reessaie.") },
+            title = { Text(stringResource(R.string.simulation_loading_title)) },
+            text = { Text(stringResource(R.string.simulation_loading_message)) },
             confirmButton = {
-                TextButton(onClick = onDismiss) { Text("OK") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_ok)) }
             },
         )
         return
@@ -116,7 +119,8 @@ fun ProjectionSimulationDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = if (retardMin > 0) "Simulation rattrapage" else "Rythme cible du foyer",
+                text = if (retardMin > 0) stringResource(R.string.simulation_title_catchup)
+                else stringResource(R.string.simulation_title_target),
                 fontWeight = FontWeight.Bold,
             )
         },
@@ -131,13 +135,13 @@ fun ProjectionSimulationDialog(
                     FilterChip(
                         selected = unit == "min",
                         onClick = { unit = "min" },
-                        label = { Text("Minutes") },
+                        label = { Text(stringResource(R.string.simulation_unit_minutes)) },
                         colors = FilterChipDefaults.filterChipColors(),
                     )
                     FilterChip(
                         selected = unit == "tasks",
                         onClick = { unit = "tasks" },
-                        label = { Text("Taches") },
+                        label = { Text(stringResource(R.string.simulation_unit_tasks)) },
                         colors = FilterChipDefaults.filterChipColors(),
                     )
                 }
@@ -145,13 +149,17 @@ fun ProjectionSimulationDialog(
                 // Etat actuel
                 if (retardMin > 0) {
                     Text(
-                        text = "Retard : ${formatMinutesLong(retardMin)} (${retard?.taskCount ?: 0} taches)",
+                        text = stringResource(
+                            R.string.simulation_retard_format,
+                            formatMinutesLong(retardMin),
+                            retard?.taskCount ?: 0,
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TaskUrgencyCalculator.ROUGE,
                     )
                 } else {
                     Text(
-                        text = "Zero retard ! Fixe le rythme cible de maintien.",
+                        text = stringResource(R.string.simulation_zero_retard),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TaskUrgencyCalculator.VERT,
                     )
@@ -162,11 +170,13 @@ fun ProjectionSimulationDialog(
                     val value = sliderValues[u.userId] ?: 0f
                     val maxVal = maxByUser[u.userId] ?: 60f
                     val isMe = u.userId == currentUserId
-                    val label = u.displayName + if (isMe) " (toi)" else ""
+                    val label = if (isMe)
+                        stringResource(R.string.simulation_slider_label_with_you_format, u.displayName)
+                    else u.displayName
                     val displayed = if (unit == "tasks") {
-                        "${(value / 5f).roundToInt()} taches/j"
+                        stringResource(R.string.simulation_value_tasks_per_day_format, (value / 5f).roundToInt())
                     } else {
-                        "${value.roundToInt()} min/j"
+                        stringResource(R.string.simulation_value_minutes_per_day_format, value.roundToInt())
                     }
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         Text(
@@ -191,7 +201,7 @@ fun ProjectionSimulationDialog(
                         steps = ((maxVal / 5f).toInt() - 1).coerceAtLeast(0),
                     )
                     Text(
-                        text = "Moyenne 14j : ${u.minutesPerDayAvg.roundToInt()} min/j",
+                        text = stringResource(R.string.simulation_average_14d_format, u.minutesPerDayAvg.roundToInt()),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -202,18 +212,18 @@ fun ProjectionSimulationDialog(
                 if (retardMin > 0) {
                     when {
                         daysToCatchUp == null -> Text(
-                            text = "Rythme insuffisant pour rattraper. Il faut > ${maintPerDay.toInt()} min/j combines.",
+                            text = stringResource(R.string.simulation_rate_insufficient_format, maintPerDay.toInt()),
                             style = MaterialTheme.typography.bodyMedium,
                             color = TaskUrgencyCalculator.ROUGE,
                             fontWeight = FontWeight.SemiBold,
                         )
                         daysToCatchUp == 0 -> Text(
-                            text = "Deja rattrape !",
+                            text = stringResource(R.string.simulation_already_caught_up),
                             style = MaterialTheme.typography.bodyMedium,
                             color = TaskUrgencyCalculator.VERT,
                         )
                         else -> Text(
-                            text = "A ces rythmes : rattrapage en $daysToCatchUp jour${if (daysToCatchUp > 1) "s" else ""}",
+                            text = pluralStringResource(R.plurals.simulation_catchup_days, daysToCatchUp, daysToCatchUp),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -222,9 +232,9 @@ fun ProjectionSimulationDialog(
                 if (maintPerDay > 0) {
                     Text(
                         text = if (retardMin > 0) {
-                            "Puis pour maintenir : ${maintPerDay.toInt()} min/j combines"
+                            stringResource(R.string.simulation_then_maintain_format, maintPerDay.toInt())
                         } else {
-                            "Maintien : ${maintPerDay.toInt()} min/j combines"
+                            stringResource(R.string.simulation_maintain_only_format, maintPerDay.toInt())
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -241,23 +251,25 @@ fun ProjectionSimulationDialog(
                     onProposeToFoyer(map, unit)
                 },
                 enabled = otherTouched,
-            ) { Text("Proposer au foyer") }
+            ) { Text(stringResource(R.string.simulation_propose_to_foyer)) }
         },
         dismissButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onDismiss) { Text("Annuler") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
                 OutlinedButton(onClick = {
                     val mineValue = sliderValues[currentUserId]?.roundToInt() ?: 0
                     onSaveSelf(mineValue, unit)
-                }) { Text("Juste pour moi") }
+                }) { Text(stringResource(R.string.simulation_just_for_me)) }
             }
         },
     )
 }
 
+@Composable
 private fun formatMinutesLong(minutes: Int): String {
-    if (minutes < 60) return "$minutes min"
+    if (minutes < 60) return stringResource(R.string.projection_card_minutes_format, minutes)
     val h = minutes / 60
     val m = minutes % 60
-    return if (m == 0) "${h}h" else "${h}h$m"
+    return if (m == 0) stringResource(R.string.projection_card_hours_format, h)
+    else stringResource(R.string.projection_card_hours_minutes_format, h, m)
 }

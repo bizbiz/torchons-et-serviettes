@@ -62,10 +62,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.CompletionDialog
 import com.torchons.app.ui.common.CompletionDialogMode
@@ -161,10 +163,10 @@ fun TaskListScreen(
                         )
                     }
                     twoPersonFaitEnsembleTaskId = null
-                }) { Text("Valider") }
+                }) { Text(stringResource(R.string.common_validate)) }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { twoPersonFaitEnsembleTaskId = null }) { Text("Annuler") }
+                androidx.compose.material3.TextButton(onClick = { twoPersonFaitEnsembleTaskId = null }) { Text(stringResource(R.string.common_cancel)) }
             },
         ) { DatePicker(state = datePickerState) }
     }
@@ -202,7 +204,7 @@ fun TaskListScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = "Catalogue de templates",
+                        contentDescription = stringResource(R.string.task_list_catalog_cd),
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
@@ -212,7 +214,7 @@ fun TaskListScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Ajouter une tache",
+                        contentDescription = stringResource(R.string.task_list_add_task_cd),
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
@@ -255,23 +257,15 @@ fun TaskListScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Pas a la maison — ${uiState.homeTasksHidden} tache(s) masquee(s)",
+                            text = stringResource(R.string.task_list_off_home_banner_format, uiState.homeTasksHidden),
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
                         InfoTooltip(
-                            title = "Pourquoi des taches sont masquees ?",
-                            description = "Les taches des categories \"a la " +
-                                "maison\" sont cachees parce que l'app ne te " +
-                                "detecte pas sur ton WiFi maison : soit tu es " +
-                                "absent, soit aucun WiFi maison n'est configure / " +
-                                "la permission de localisation necessaire pour " +
-                                "lire le nom du WiFi manque.\n\nTu peux quand " +
-                                "meme les afficher avec \"Tout afficher\", " +
-                                "configurer ton WiFi maison dans les reglages du " +
-                                "foyer, ou desactiver ce comportement la-bas.",
+                            title = stringResource(R.string.task_list_off_home_tooltip_title),
+                            description = stringResource(R.string.task_list_off_home_tooltip_description),
                         )
                         IconButton(
                             onClick = onNavigateToFoyerSettings,
@@ -279,14 +273,17 @@ fun TaskListScreen(
                         ) {
                             Icon(
                                 Icons.Default.Settings,
-                                contentDescription = "Reglages du foyer",
+                                contentDescription = stringResource(R.string.task_list_foyer_settings_cd),
                                 modifier = Modifier.size(18.dp),
                             )
                         }
                         androidx.compose.material3.TextButton(
                             onClick = { viewModel.toggleShowAll() }
                         ) {
-                            Text(if (uiState.showAllTasks) "Masquer" else "Tout afficher")
+                            Text(
+                                if (uiState.showAllTasks) stringResource(R.string.task_list_hide_home)
+                                else stringResource(R.string.task_list_show_all)
+                            )
                         }
                     }
                 }
@@ -311,19 +308,21 @@ fun TaskListScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 4.dp)
                         .focusRequester(searchFocusRequester),
-                    placeholder = { Text("Rechercher...") },
+                    placeholder = { Text(stringResource(R.string.task_list_search_placeholder)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { viewModel.toggleSearchRespectFilters() }) {
                                 Icon(
                                     imageVector = if (uiState.searchRespectFilters) Icons.Default.FilterList else Icons.Default.FilterListOff,
-                                    contentDescription = if (uiState.searchRespectFilters) "Filtres appliques" else "Filtres ignores",
+                                    contentDescription = if (uiState.searchRespectFilters)
+                                        stringResource(R.string.task_list_search_filters_applied_cd)
+                                    else stringResource(R.string.task_list_search_filters_ignored_cd),
                                     tint = if (uiState.searchRespectFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                             IconButton(onClick = { viewModel.closeSearchBar() }) {
-                                Icon(Icons.Default.Close, contentDescription = "Fermer la recherche")
+                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.task_list_search_close_cd))
                             }
                         }
                     },
@@ -347,45 +346,45 @@ fun TaskListScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         FilterTextChip(
-                            highLabel = "À faire",
-                            lowLabel = "Pas à faire",
+                            highLabel = stringResource(R.string.task_list_filter_todo_high),
+                            lowLabel = stringResource(R.string.task_list_filter_todo_low),
                             state = uiState.filterTodo,
                             onClick = { viewModel.toggleFilterTodo() },
                         )
                         FilterTextChip(
-                            highLabel = "Aimées",
-                            lowLabel = "Détestées",
+                            highLabel = stringResource(R.string.task_list_filter_affinity_high),
+                            lowLabel = stringResource(R.string.task_list_filter_affinity_low),
                             state = uiState.filterAffinity,
                             onClick = { viewModel.toggleFilterAffinity() },
                         )
                         FilterTextChip(
-                            highLabel = "Long",
-                            lowLabel = "Court",
+                            highLabel = stringResource(R.string.task_list_filter_effort_high),
+                            lowLabel = stringResource(R.string.task_list_filter_effort_low),
                             state = uiState.filterEffort,
                             onClick = { viewModel.toggleFilterEffort() },
                         )
                         FilterTextChip(
-                            highLabel = "Récurrentes",
-                            lowLabel = "Ponctuelles",
+                            highLabel = stringResource(R.string.task_list_filter_recurrence_high),
+                            lowLabel = stringResource(R.string.task_list_filter_recurrence_low),
                             state = uiState.filterRecurrence,
                             onClick = { viewModel.toggleFilterRecurrence() },
                         )
                         FilterTextChip(
-                            highLabel = "Maison",
-                            lowLabel = "Hors maison",
+                            highLabel = stringResource(R.string.task_list_filter_home_high),
+                            lowLabel = stringResource(R.string.task_list_filter_home_low),
                             state = uiState.filterHome,
                             onClick = { viewModel.toggleFilterHome() },
                         )
                         FilterTextChip(
-                            highLabel = "Solo",
-                            lowLabel = "Groupe",
+                            highLabel = stringResource(R.string.task_list_filter_assignment_high),
+                            lowLabel = stringResource(R.string.task_list_filter_assignment_low),
                             state = uiState.filterAssignment,
                             onClick = { viewModel.toggleFilterAssignment() },
                         )
                     }
 
                     IconButton(onClick = { viewModel.openSearchBar() }) {
-                        Icon(Icons.Default.Search, contentDescription = "Rechercher")
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.task_list_search_open_cd))
                     }
                 }
 
@@ -402,7 +401,7 @@ fun TaskListScreen(
                         FilterChip(
                             selected = uiState.selectedCategoryIds.isEmpty(),
                             onClick = { viewModel.clearCategoryFilter() },
-                            label = { Text("Toutes") },
+                            label = { Text(stringResource(R.string.task_list_filter_all_categories)) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.primary,
                                 selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -455,7 +454,7 @@ fun TaskListScreen(
                         FilterChip(
                             selected = uiState.selectedRoomId == null,
                             onClick = { viewModel.selectRoom(null) },
-                            label = { Text("Toutes pieces") }
+                            label = { Text(stringResource(R.string.task_list_filter_all_rooms)) }
                         )
                         uiState.availableRooms.forEach { room ->
                             val label = if (!room.emoji.isNullOrBlank()) {
@@ -483,7 +482,7 @@ fun TaskListScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = "Aucun resultat pour \"${uiState.searchQuery.trim()}\"",
+                            text = stringResource(R.string.task_list_no_search_results_format, uiState.searchQuery.trim()),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -507,13 +506,13 @@ fun TaskListScreen(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    text = "Donnees indisponibles",
+                                    text = stringResource(R.string.home_backend_unreachable_title),
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center
                                 )
                                 Text(
-                                    text = "Le backend ne repond pas pour le moment. Reessaie dans quelques instants.",
+                                    text = stringResource(R.string.home_backend_unreachable_message),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center
@@ -527,7 +526,7 @@ fun TaskListScreen(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    text = "Aucune tache a afficher",
+                                    text = stringResource(R.string.task_list_empty),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center

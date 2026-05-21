@@ -1,5 +1,17 @@
 # Notes de version
 
+## v0.35.11 — 2026-05-21
+
+### Traduction EN — Accueil & Tâches
+- Les onglets **Accueil** et **Tâches** sont désormais bilingues : titre,
+  salutation, cards "Moi"/"Foyer", suggestions, boutons (Fait /
+  Déjà fait / Ensemble), filtres tri-state, recherche, et tous les
+  dialogs de proposition entre membres s'affichent en anglais si ton
+  téléphone est en anglais. Les pluriels (1 jour vs N jours, 1 pt vs N
+  pts) sont gérés correctement dans les deux langues.
+- L'écran **Détail d'une tâche** et **Édition** restent en FR pour
+  l'instant — leur traduction arrive dans la prochaine version.
+
 ## v0.35.10 — 2026-05-21
 
 ### Traduction EN — Catalogue

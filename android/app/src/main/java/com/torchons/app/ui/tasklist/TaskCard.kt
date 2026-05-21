@@ -29,8 +29,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.ui.common.CelebrationCardContent
 import com.torchons.app.ui.common.randomCelebration
 import com.torchons.app.util.TaskUrgencyCalculator
@@ -151,7 +153,7 @@ fun TaskCard(
             ) {
                 Icon(
                     imageVector = Icons.Default.CalendarMonth,
-                    contentDescription = "Deja fait",
+                    contentDescription = stringResource(R.string.suggestion_action_already_done),
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -166,7 +168,7 @@ fun TaskCard(
             ) {
                 Icon(
                     imageVector = Icons.Default.Groups,
-                    contentDescription = "Fait ensemble",
+                    contentDescription = stringResource(R.string.suggestion_action_together),
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -181,7 +183,7 @@ fun TaskCard(
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Fait",
+                    contentDescription = stringResource(R.string.suggestion_action_done),
                     modifier = Modifier.size(20.dp),
                 )
             }
