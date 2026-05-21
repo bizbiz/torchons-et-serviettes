@@ -59,11 +59,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 import com.torchons.app.ui.common.FrequencyVoteDialog
 import com.torchons.app.ui.common.InfoTooltip
 import com.torchons.app.util.DurationFormat
@@ -140,8 +143,8 @@ fun TaskEditScreen(
     if (showDeleteDialog && taskId != null) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Supprimer la tache ?") },
-            text = { Text("Cette action est irreversible. La tache sera supprimee pour tous les utilisateurs.") },
+            title = { Text(stringResource(R.string.task_edit_delete_dialog_title)) },
+            text = { Text(stringResource(R.string.task_edit_delete_dialog_message)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -152,12 +155,12 @@ fun TaskEditScreen(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Supprimer")
+                    Text(stringResource(R.string.common_delete))
                 }
             },
             dismissButton = {
                 OutlinedButton(onClick = { showDeleteDialog = false }) {
-                    Text("Annuler")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -169,7 +172,8 @@ fun TaskEditScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = if (uiState.isEditMode) "Modifier la tache" else "Nouvelle tache",
+                        text = if (uiState.isEditMode) stringResource(R.string.task_edit_title_edit)
+                        else stringResource(R.string.task_edit_title_new),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -178,7 +182,7 @@ fun TaskEditScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Retour",
+                            contentDescription = stringResource(R.string.common_back),
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
@@ -188,7 +192,7 @@ fun TaskEditScreen(
                         IconButton(onClick = { showDeleteDialog = true }) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
-                                contentDescription = "Supprimer",
+                                contentDescription = stringResource(R.string.task_edit_delete_cd),
                                 tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
@@ -227,11 +231,11 @@ fun TaskEditScreen(
             uiState.clonedFromTitle?.let { src ->
                 AssistChip(
                     onClick = { viewModel.resetClone() },
-                    label = { Text("Duplique de : $src") },
+                    label = { Text(stringResource(R.string.task_edit_cloned_from_format, src)) },
                     trailingIcon = {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Annuler la duplication",
+                            contentDescription = stringResource(R.string.task_edit_cancel_clone_cd),
                             modifier = Modifier.height(AssistChipDefaults.IconSize),
                         )
                     },
@@ -261,7 +265,7 @@ fun TaskEditScreen(
                         viewModel.updateTitle(newValue.text)
                     }
                 },
-                label = { Text("Titre *") },
+                label = { Text(stringResource(R.string.task_edit_field_title)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(titleFocusRequester),
@@ -280,7 +284,7 @@ fun TaskEditScreen(
                 ) {
                     Column {
                         Text(
-                            text = "Dupliquer une tache existante :",
+                            text = stringResource(R.string.task_edit_suggestions_header),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -314,7 +318,7 @@ fun TaskEditScreen(
             OutlinedTextField(
                 value = uiState.description,
                 onValueChange = { viewModel.updateDescription(it) },
-                label = { Text("Description") },
+                label = { Text(stringResource(R.string.task_edit_field_description)) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 4
@@ -329,10 +333,10 @@ fun TaskEditScreen(
                 onExpandedChange = { categoryExpanded = it }
             ) {
                 OutlinedTextField(
-                    value = selectedCategory?.name ?: "Aucune",
+                    value = selectedCategory?.name ?: stringResource(R.string.task_edit_dropdown_none),
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Categorie") },
+                    label = { Text(stringResource(R.string.task_edit_field_category)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -343,7 +347,7 @@ fun TaskEditScreen(
                     onDismissRequest = { categoryExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Aucune") },
+                        text = { Text(stringResource(R.string.task_edit_dropdown_none)) },
                         onClick = {
                             viewModel.updateCategoryId(null)
                             categoryExpanded = false
@@ -369,14 +373,15 @@ fun TaskEditScreen(
                 expanded = roomExpanded,
                 onExpandedChange = { roomExpanded = it }
             ) {
+                val noneLabel = stringResource(R.string.task_edit_dropdown_none)
                 val roomLabel = selectedRoom?.let {
                     if (!it.emoji.isNullOrBlank()) "${it.emoji} ${it.name}" else it.name
-                } ?: "Aucune"
+                } ?: noneLabel
                 OutlinedTextField(
                     value = roomLabel,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Piece") },
+                    label = { Text(stringResource(R.string.task_edit_field_room)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roomExpanded) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -387,7 +392,7 @@ fun TaskEditScreen(
                     onDismissRequest = { roomExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Aucune") },
+                        text = { Text(noneLabel) },
                         onClick = {
                             viewModel.updateRoomId(null)
                             roomExpanded = false
@@ -409,14 +414,14 @@ fun TaskEditScreen(
             // Assignes
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Text(
-                    text = "Assigne a",
+                    text = stringResource(R.string.task_edit_field_assigned),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 InfoTooltip(
-                    title = "Assignation",
-                    description = "Selectionne qui doit faire cette tache. Si tous les membres sont coches, c'est une tache commune. Si un seul est coche, c'est une tache personnelle visible uniquement par cette personne."
+                    title = stringResource(R.string.task_edit_assigned_tooltip_title),
+                    description = stringResource(R.string.task_edit_assigned_tooltip_description),
                 )
             }
             FlowRow(
@@ -442,10 +447,10 @@ fun TaskEditScreen(
             // - uncertain -> Irreguliere
             // - none -> Une seule fois
             val recurrenceLabel = when (uiState.recurrenceType) {
-                "interval" -> "Reguliere"
-                "monthly_variable" -> "Selon le mois"
-                "uncertain" -> "Irreguliere"
-                "none" -> "Une seule fois"
+                "interval" -> stringResource(R.string.task_edit_recurrence_interval)
+                "monthly_variable" -> stringResource(R.string.task_edit_recurrence_monthly)
+                "uncertain" -> stringResource(R.string.task_edit_recurrence_uncertain)
+                "none" -> stringResource(R.string.task_edit_recurrence_none)
                 else -> uiState.recurrenceType
             }
 
@@ -457,7 +462,7 @@ fun TaskEditScreen(
                     value = recurrenceLabel,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Frequence") },
+                    label = { Text(stringResource(R.string.task_edit_field_recurrence)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = recurrenceExpanded) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -468,28 +473,28 @@ fun TaskEditScreen(
                     onDismissRequest = { recurrenceExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Reguliere") },
+                        text = { Text(stringResource(R.string.task_edit_recurrence_interval)) },
                         onClick = {
                             viewModel.updateRecurrenceType("interval")
                             recurrenceExpanded = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Selon le mois") },
+                        text = { Text(stringResource(R.string.task_edit_recurrence_monthly)) },
                         onClick = {
                             viewModel.updateRecurrenceType("monthly_variable")
                             recurrenceExpanded = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Irreguliere") },
+                        text = { Text(stringResource(R.string.task_edit_recurrence_uncertain)) },
                         onClick = {
                             viewModel.updateRecurrenceType("uncertain")
                             recurrenceExpanded = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Une seule fois") },
+                        text = { Text(stringResource(R.string.task_edit_recurrence_none)) },
                         onClick = {
                             viewModel.updateRecurrenceType("none")
                             recurrenceExpanded = false
@@ -529,7 +534,7 @@ fun TaskEditScreen(
                 OutlinedTextField(
                     value = uiState.recurrenceFieldText,
                     onValueChange = { viewModel.updateRecurrenceFieldText(it) },
-                    label = { Text("Tous les combien de ${unit.label.lowercase()} ?") },
+                    label = { Text(stringResource(R.string.task_edit_every_n_format, unit.label.lowercase())) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     enabled = !isVoteLocked,
@@ -539,19 +544,24 @@ fun TaskEditScreen(
                 if (canonicalDays >= 7) {
                     val human = DurationFormat.formatDaysHuman(canonicalDays, long = true)
                     Text(
-                        text = "≈ $human ($canonicalDays j)",
+                        text = stringResource(R.string.task_edit_breakdown_format, human, canonicalDays),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 4.dp),
                     )
                 }
                 if (isVoteLocked) {
-                    val s = if (votes!!.votesCount > 1) "s" else ""
-                    val consensusDays = votes.consensusEveryNDays ?: 0
+                    val consensusDays = votes!!.consensusEveryNDays ?: 0
                     val consensusHuman = if (consensusDays > 0)
-                        DurationFormat.formatDaysHuman(consensusDays) else "?"
+                        DurationFormat.formatDaysHuman(consensusDays)
+                    else stringResource(R.string.task_edit_consensus_unknown)
                     Text(
-                        text = "Consensus : $consensusHuman (${votes.votesCount} vote$s)",
+                        text = pluralStringResource(
+                            R.plurals.task_edit_consensus_format,
+                            votes.votesCount,
+                            votes.votesCount,
+                            consensusHuman,
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 4.dp, top = 4.dp),
@@ -561,7 +571,7 @@ fun TaskEditScreen(
                             onClick = { viewModel.openFrequencyVoteDialog() },
                             modifier = Modifier.padding(top = 4.dp),
                         ) {
-                            Text("Modifier mon vote")
+                            Text(stringResource(R.string.task_edit_edit_vote_button))
                         }
                     }
                 }
@@ -569,9 +579,22 @@ fun TaskEditScreen(
 
             // Tableau 12 mois si monthly_variable
             if (uiState.recurrenceType == "monthly_variable") {
-                val monthNames = listOf("Jan", "Fev", "Mar", "Avr", "Mai", "Jun", "Jul", "Aou", "Sep", "Oct", "Nov", "Dec")
+                val monthNames = listOf(
+                    stringResource(R.string.task_edit_month_jan),
+                    stringResource(R.string.task_edit_month_feb),
+                    stringResource(R.string.task_edit_month_mar),
+                    stringResource(R.string.task_edit_month_apr),
+                    stringResource(R.string.task_edit_month_may),
+                    stringResource(R.string.task_edit_month_jun),
+                    stringResource(R.string.task_edit_month_jul),
+                    stringResource(R.string.task_edit_month_aug),
+                    stringResource(R.string.task_edit_month_sep),
+                    stringResource(R.string.task_edit_month_oct),
+                    stringResource(R.string.task_edit_month_nov),
+                    stringResource(R.string.task_edit_month_dec),
+                )
                 Text(
-                    text = "Jours entre chaque repetition par mois (vide = inactif)",
+                    text = stringResource(R.string.task_edit_monthly_header),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -610,20 +633,20 @@ fun TaskEditScreen(
             if (uiState.recurrenceType == "interval" || uiState.recurrenceType == "monthly_variable") {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Tolerance au retard",
+                        text = stringResource(R.string.task_edit_field_tolerance),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     InfoTooltip(
-                        title = "A quoi sert la tolerance ?",
+                        title = stringResource(R.string.task_detail_tolerance_help_title),
                         description = com.torchons.app.ui.common.TOLERANCE_INFO_TEXT,
                     )
                 }
                 val tolerances = listOf(
-                    "STRICT" to "Strict",
-                    "NORMAL" to "Normal",
-                    "SOUPLE" to "Souple",
+                    "STRICT" to stringResource(R.string.task_tolerance_strict),
+                    "NORMAL" to stringResource(R.string.task_tolerance_normal),
+                    "SOUPLE" to stringResource(R.string.task_tolerance_souple),
                 )
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     tolerances.forEachIndexed { idx, (value, label) ->
@@ -639,16 +662,19 @@ fun TaskEditScreen(
             // Effort (temps estime)
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 val minutes = uiState.weight * 5
-                val timeLabel = if (minutes >= 60) "${minutes / 60}h${if (minutes % 60 > 0) "%02d".format(minutes % 60) else ""}" else "${minutes}min"
+                val timeLabel = if (minutes >= 60) {
+                    if (minutes % 60 > 0) stringResource(R.string.duration_hours_minutes_format, minutes / 60, minutes % 60)
+                    else stringResource(R.string.duration_hours_only_format, minutes / 60)
+                } else stringResource(R.string.duration_minutes_format, minutes)
                 Text(
-                    text = "Effort : $timeLabel",
+                    text = stringResource(R.string.task_edit_effort_format, timeLabel),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 InfoTooltip(
-                    title = "Effort",
-                    description = "Estimation du temps que prend cette tache. Chaque utilisateur pourra donner sa propre estimation, la moyenne sera utilisee pour calculer les points."
+                    title = stringResource(R.string.task_edit_effort_tooltip_title),
+                    description = stringResource(R.string.task_edit_effort_tooltip_description),
                 )
             }
             Slider(
@@ -677,7 +703,8 @@ fun TaskEditScreen(
                     )
                 } else {
                     Text(
-                        text = if (uiState.isEditMode) "Enregistrer" else "Creer la tache",
+                        text = if (uiState.isEditMode) stringResource(R.string.task_edit_save_button_edit)
+                        else stringResource(R.string.task_edit_save_button_new),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -702,7 +729,7 @@ fun TaskEditScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Supprimer la tache",
+                        text = stringResource(R.string.task_edit_delete_button),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )

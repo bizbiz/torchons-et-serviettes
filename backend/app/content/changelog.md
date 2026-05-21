@@ -1,5 +1,23 @@
 # Notes de version
 
+## v0.35.12 — 2026-05-21
+
+### Traduction EN — Détail & édition de tâche
+- L'écran **Détail d'une tâche** est désormais bilingue : état d'urgence,
+  bandeau «&#160;Pour…&#160;», bandeau «&#160;tu n'as pas voté&#160;»,
+  card Effort &amp; Affinité avec liens «&#160;+ d'info&#160;», fréquence,
+  tolérance, historique des complétions (cartes individuelles et
+  collectives) et historique des modifications (votes + édits) avec
+  les noms de champs traduits.
+- L'écran **Édition / Création de tâche** est bilingue : titre, chip
+  «&#160;Dupliqué de…&#160;», suggestions, dropdowns catégorie / pièce /
+  fréquence, champ «&#160;tous les combien&#160;», breakdown smart,
+  consensus avec pluriels, tableau 12 mois (noms de mois localisés),
+  tolérance et effort.
+- L'app est maintenant traduite à environ 95&#160;%. Reste à traduire :
+  écrans d'onboarding (Welcome / Login / création de foyer / scan QR),
+  catalogue de templates et site web.
+
 ## v0.35.11 — 2026-05-21
 
 ### Traduction EN — Accueil & Tâches

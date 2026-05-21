@@ -72,6 +72,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -79,6 +82,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.TaskHistoryEventType
@@ -177,11 +181,11 @@ fun TaskDetailScreen(
                         viewModel.completeTaskCollective(bothIds, "${date}T12:00:00Z")
                     }
                     showTwoPersonFaitEnsembleDate = false
-                }) { Text("Valider") }
+                }) { Text(stringResource(R.string.common_validate)) }
             },
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = { showTwoPersonFaitEnsembleDate = false }) {
-                    Text("Annuler")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         ) { DatePicker(state = datePickerState) }
@@ -224,18 +228,18 @@ fun TaskDetailScreen(
                             selectedDate = "${d}T12:00:00Z"
                         }
                         showCompDatePicker = false
-                    }) { Text("Ok") }
+                    }) { Text(stringResource(R.string.common_ok)) }
                 },
-                dismissButton = { androidx.compose.material3.TextButton(onClick = { showCompDatePicker = false }) { Text("Annuler") } }
+                dismissButton = { androidx.compose.material3.TextButton(onClick = { showCompDatePicker = false }) { Text(stringResource(R.string.common_cancel)) } }
             ) { DatePicker(state = dps) }
         }
 
         AlertDialog(
             onDismissRequest = { viewModel.dismissEditCompletion() },
-            title = { Text("Modifier la completion", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.task_detail_edit_completion_title), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Qui a fait ?", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.task_detail_edit_who), style = MaterialTheme.typography.labelLarge)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         uiState.userNames.forEach { (uid, name) ->
                             val isSelected = uid == selectedUser
@@ -247,7 +251,7 @@ fun TaskDetailScreen(
                             ) { Text(name) }
                         }
                     }
-                    Text("Quand ?", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.task_detail_edit_when), style = MaterialTheme.typography.labelLarge)
                     OutlinedButton(onClick = { showCompDatePicker = true }) {
                         val dateStr = try {
                             val i = java.time.Instant.parse(selectedDate)
@@ -269,17 +273,17 @@ fun TaskDetailScreen(
                     ) {
                         Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Supprimer cette completion")
+                        Text(stringResource(R.string.task_detail_edit_delete_button))
                     }
                 }
             },
             confirmButton = {
                 Button(onClick = { viewModel.saveCompletionEdit(comp.id, selectedUser, selectedDate) }) {
-                    Text("Enregistrer")
+                    Text(stringResource(R.string.common_save))
                 }
             },
             dismissButton = {
-                OutlinedButton(onClick = { viewModel.dismissEditCompletion() }) { Text("Annuler") }
+                OutlinedButton(onClick = { viewModel.dismissEditCompletion() }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -386,7 +390,7 @@ fun TaskDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = uiState.task?.title ?: "Detail",
+                        text = uiState.task?.title ?: stringResource(R.string.task_detail_title_fallback),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -395,7 +399,7 @@ fun TaskDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Retour",
+                            contentDescription = stringResource(R.string.common_back),
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
@@ -404,14 +408,14 @@ fun TaskDetailScreen(
                     IconButton(onClick = { uiState.task?.let { onClone(it.id) } }) {
                         Icon(
                             imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "Dupliquer cette tache",
+                            contentDescription = stringResource(R.string.task_detail_clone_cd),
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                     IconButton(onClick = { uiState.task?.let { onEdit(it.id) } }) {
                         Icon(
                             imageVector = Icons.Default.Edit,
-                            contentDescription = "Modifier",
+                            contentDescription = stringResource(R.string.task_detail_edit_cd),
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
@@ -452,13 +456,13 @@ fun TaskDetailScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "Details indisponibles hors ligne",
+                                text = stringResource(R.string.task_detail_offline_title),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center
                             )
                             Text(
-                                text = "Le backend ne repond pas pour le moment.",
+                                text = stringResource(R.string.task_detail_offline_message),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center
@@ -466,7 +470,7 @@ fun TaskDetailScreen(
                         }
                     } else {
                         Text(
-                            text = "Tache introuvable",
+                            text = stringResource(R.string.task_detail_not_found),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -478,9 +482,9 @@ fun TaskDetailScreen(
                 val task = uiState.task!!
                 val stateColor = TaskUrgencyCalculator.stateColor(uiState.urgencyState)
                 val stateLabel = when (uiState.urgencyState) {
-                    TaskUrgencyCalculator.State.GREEN -> "A jour"
-                    TaskUrgencyCalculator.State.ORANGE -> "A faire bientot"
-                    TaskUrgencyCalculator.State.RED -> "En retard"
+                    TaskUrgencyCalculator.State.GREEN -> stringResource(R.string.task_detail_state_green)
+                    TaskUrgencyCalculator.State.ORANGE -> stringResource(R.string.task_detail_state_orange)
+                    TaskUrgencyCalculator.State.RED -> stringResource(R.string.task_detail_state_red)
                 }
 
                 val assignedIds = task.assignedToIds.toSet()
@@ -492,9 +496,9 @@ fun TaskDetailScreen(
                     uiState.userNames.keys.all { it in assignedIds }
                 val assignedLabel = when {
                     assignedNames.isEmpty() -> null
-                    allFoyerAssigned -> "Pour tout le foyer"
-                    assignedNames.size == 1 -> "Pour ${assignedNames.single()} uniquement"
-                    else -> "Pour ${assignedNames.joinToString(", ")}"
+                    allFoyerAssigned -> stringResource(R.string.task_detail_assigned_all)
+                    assignedNames.size == 1 -> stringResource(R.string.task_detail_assigned_one_format, assignedNames.single())
+                    else -> stringResource(R.string.task_detail_assigned_many_format, assignedNames.joinToString(", "))
                 }
 
                 PullToRefreshBox(
@@ -575,7 +579,7 @@ fun TaskDetailScreen(
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                text = "⭐ +${(preview.multiplier * 100 - 100).toInt()}% bonus",
+                                                text = stringResource(R.string.task_detail_bonus_format, (preview.multiplier * 100 - 100).toInt()),
                                                 style = MaterialTheme.typography.labelMedium,
                                                 color = Color(0xFF2E7D32),
                                                 fontWeight = FontWeight.SemiBold,
@@ -586,7 +590,7 @@ fun TaskDetailScreen(
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                text = "⏱ -${(100 - preview.multiplier * 100).toInt()}% malus",
+                                                text = stringResource(R.string.task_detail_malus_format, (100 - preview.multiplier * 100).toInt()),
                                                 style = MaterialTheme.typography.labelMedium,
                                                 color = Color(0xFFEF6C00),
                                                 fontWeight = FontWeight.SemiBold,
@@ -619,15 +623,18 @@ fun TaskDetailScreen(
                     val canVoteHere = currentUserId != null && currentUserId in assignedIds && uiState.task?.isActive == true
                     if (anyMissing && canVoteHere) {
                         item {
+                            val missingFreq = stringResource(R.string.task_detail_missing_frequency)
+                            val missingAff = stringResource(R.string.task_detail_missing_affinity)
+                            val missingEff = stringResource(R.string.task_detail_missing_effort)
                             val missing = buildList {
-                                if (freqMissing) add("la frequence")
-                                if (affMissing) add("ton affinite")
-                                if (effortMissing) add("l'effort")
+                                if (freqMissing) add(missingFreq)
+                                if (affMissing) add(missingAff)
+                                if (effortMissing) add(missingEff)
                             }
-                            val verb = if (missing.size > 1) "votes" else "vote"
+                            val touchLabel = pluralStringResource(R.plurals.task_detail_no_vote_touch, missing.size.coerceAtLeast(1))
                             val label = if (missing.size == 1)
-                                "Tu n'as pas indique ${missing[0]} pour cette tache"
-                            else "Tu n'as pas encore vote pour cette tache"
+                                stringResource(R.string.task_detail_no_vote_one_format, missing[0])
+                            else stringResource(R.string.task_detail_no_vote_many)
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -656,7 +663,7 @@ fun TaskDetailScreen(
                                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                                         )
                                         Text(
-                                            text = "Toucher pour $verb",
+                                            text = touchLabel,
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                                         )
@@ -680,7 +687,7 @@ fun TaskDetailScreen(
                                 // Description
                                 if (!task.description.isNullOrBlank()) {
                                     Text(
-                                        text = "Description",
+                                        text = stringResource(R.string.task_detail_section_description),
                                         style = MaterialTheme.typography.labelLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -697,7 +704,7 @@ fun TaskDetailScreen(
                                 // Piece (read-only — l'edition se fait via le crayon top-bar)
                                 if (uiState.room != null) {
                                     Text(
-                                        text = "Piece",
+                                        text = stringResource(R.string.task_detail_section_room),
                                         style = MaterialTheme.typography.labelLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -718,7 +725,7 @@ fun TaskDetailScreen(
                                 // la gate backend _ensure_user_assigned).
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "Effort & Affinite",
+                                        text = stringResource(R.string.task_detail_section_effort_affinity),
                                         style = MaterialTheme.typography.labelLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.weight(1f)
@@ -726,7 +733,7 @@ fun TaskDetailScreen(
                                     if (isCurrentUserAssigned) {
                                         androidx.compose.material3.TextButton(
                                             onClick = { viewModel.openRatingDialog(currentUserId) }
-                                        ) { Text("Modifier") }
+                                        ) { Text(stringResource(R.string.task_detail_edit_action)) }
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -744,7 +751,7 @@ fun TaskDetailScreen(
                                                 modifier = Modifier.width(80.dp)
                                             )
                                             if (rating.effortTimeMin != null) {
-                                                val timeLabel = if (rating.effortTimeMin >= 60) "${rating.effortTimeMin / 60}h${if (rating.effortTimeMin % 60 > 0) "%02d".format(rating.effortTimeMin % 60) else ""}" else "${rating.effortTimeMin}min"
+                                                val timeLabel = formatMinutes(rating.effortTimeMin)
                                                 Text(
                                                     text = timeLabel,
                                                     style = MaterialTheme.typography.bodySmall,
@@ -752,16 +759,16 @@ fun TaskDetailScreen(
                                                     modifier = Modifier.width(50.dp)
                                                 )
                                             } else {
-                                                Text("—", modifier = Modifier.width(50.dp), style = MaterialTheme.typography.bodySmall)
+                                                Text(stringResource(R.string.task_detail_no_value_dash), modifier = Modifier.width(50.dp), style = MaterialTheme.typography.bodySmall)
                                             }
                                             if (rating.affinity != null) {
                                                 Text(
-                                                    text = "Aff: ${rating.affinity}/10",
+                                                    text = stringResource(R.string.task_detail_affinity_value_format, rating.affinity),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
                                             } else {
-                                                Text("Aff: —", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                Text(stringResource(R.string.task_detail_affinity_value_none), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                         }
                                     }
@@ -770,9 +777,13 @@ fun TaskDetailScreen(
                                 val avgMin = uiState.avgEffortTimeMin
                                 if (avgMin != null) {
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    val avgLabel = if (avgMin >= 60) "${avgMin / 60}h${if (avgMin % 60 > 0) "%02d".format(avgMin % 60) else ""}" else "${avgMin}min"
+                                    val avgLabel = formatMinutes(avgMin)
                                     Text(
-                                        text = "Moyenne : $avgLabel → ${uiState.scorePoints ?: "?"} pts",
+                                        text = stringResource(
+                                            R.string.task_detail_avg_score_format,
+                                            avgLabel,
+                                            uiState.scorePoints?.toString() ?: stringResource(R.string.task_detail_avg_score_unknown),
+                                        ),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -781,16 +792,18 @@ fun TaskDetailScreen(
                                 // v0.29 — sous-texte adaptatif effort avec lien "+ d'info".
                                 if (uiState.effortVotes != null && uiState.effortVotes!!.votesCount > 0) {
                                     Spacer(modifier = Modifier.height(2.dp))
+                                    val effortPrefix = stringResource(R.string.task_detail_effort_points_label)
+                                    val moreInfo = stringResource(R.string.task_detail_more_info_link)
                                     androidx.compose.foundation.text.ClickableText(
                                         text = androidx.compose.ui.text.buildAnnotatedString {
                                             withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-                                                append("Effort & points · ")
+                                                append(effortPrefix)
                                             }
                                             withStyle(SpanStyle(
                                                 color = MaterialTheme.colorScheme.primary,
                                                 textDecoration = TextDecoration.Underline,
                                             )) {
-                                                append("+ d'info")
+                                                append(moreInfo)
                                             }
                                         },
                                         style = MaterialTheme.typography.labelSmall,
@@ -801,16 +814,18 @@ fun TaskDetailScreen(
                                 // v0.28 — sous-texte adaptatif affinite avec lien "+ d'info".
                                 if (uiState.ratings.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(2.dp))
+                                    val affinityPrefix = stringResource(R.string.task_detail_affinity_label)
+                                    val moreInfoAff = stringResource(R.string.task_detail_more_info_link)
                                     androidx.compose.foundation.text.ClickableText(
                                         text = androidx.compose.ui.text.buildAnnotatedString {
                                             withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-                                                append("Affinites perso · ")
+                                                append(affinityPrefix)
                                             }
                                             withStyle(SpanStyle(
                                                 color = MaterialTheme.colorScheme.primary,
                                                 textDecoration = TextDecoration.Underline,
                                             )) {
-                                                append("+ d'info")
+                                                append(moreInfoAff)
                                             }
                                         },
                                         style = MaterialTheme.typography.labelSmall,
@@ -825,7 +840,7 @@ fun TaskDetailScreen(
                                 // Recurrence
                                 if (task.recurrenceRule != null) {
                                     Text(
-                                        text = "Frequence",
+                                        text = stringResource(R.string.task_detail_section_frequency),
                                         style = MaterialTheme.typography.labelLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -839,37 +854,44 @@ fun TaskDetailScreen(
                                     val isVotableRule = task.recurrenceRule.type in setOf("interval", "monthly_variable")
                                     if (freqVotes != null && isVotableRule) {
                                         Spacer(modifier = Modifier.height(2.dp))
+                                        val youPronoun = stringResource(R.string.proposition_receiver_you_suffix).trim().trimStart('(').trimEnd(')')
                                         val voterNames = buildList<String> {
-                                            if (freqVotes.myDaysPerMonth != null) add("toi")
+                                            if (freqVotes.myDaysPerMonth != null) add(youPronoun)
                                             addAll(freqVotes.others.map { it.displayName })
                                         }
                                         val nonVoterNames = task.assignedToIds
                                             .filterNot { it == currentUserId && freqVotes.myDaysPerMonth != null }
                                             .filterNot { uid -> freqVotes.others.any { it.userId == uid } }
                                             .map { uid ->
-                                                if (uid == currentUserId) "toi"
+                                                if (uid == currentUserId) youPronoun
                                                 else (uiState.userNames[uid] ?: "?")
                                             }
                                         val summary = when {
-                                            voterNames.size == 1 -> "Vote de ${voterNames[0]}"
-                                            voterNames.size > 1 -> "Moyenne des votes de ${joinFr(voterNames)}"
-                                            else -> "Pas encore vote"
+                                            voterNames.size == 1 -> stringResource(R.string.task_detail_freq_vote_one_format, voterNames[0])
+                                            voterNames.size > 1 -> stringResource(R.string.task_detail_freq_vote_many_format, joinFr(voterNames))
+                                            else -> stringResource(R.string.task_detail_freq_no_vote)
                                         }
                                         val nonVoteSuffix = if (nonVoterNames.isNotEmpty()) {
-                                            val verb = if (nonVoterNames.size > 1 || nonVoterNames.singleOrNull() == "toi") "n'avez pas vote"
-                                                       else "n'a pas vote"
-                                            " · ${joinFr(nonVoterNames)} $verb"
+                                            val qty = if (nonVoterNames.size > 1 || nonVoterNames.singleOrNull() == youPronoun) 2 else 1
+                                            val phrase = pluralStringResource(
+                                                R.plurals.task_detail_freq_no_voters_format,
+                                                qty,
+                                                joinFr(nonVoterNames),
+                                            )
+                                            stringResource(R.string.task_detail_no_voters_suffix_format, phrase)
                                         } else ""
+                                        val moreInfoFreq = stringResource(R.string.task_detail_more_info_link)
+                                        val sublineFreq = stringResource(R.string.task_detail_freq_subline_format, summary, nonVoteSuffix)
                                         androidx.compose.foundation.text.ClickableText(
                                             text = androidx.compose.ui.text.buildAnnotatedString {
                                                 withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-                                                    append("$summary$nonVoteSuffix · ")
+                                                    append(sublineFreq)
                                                 }
                                                 withStyle(SpanStyle(
                                                     color = MaterialTheme.colorScheme.primary,
                                                     textDecoration = TextDecoration.Underline,
                                                 )) {
-                                                    append("+ d'info")
+                                                    append(moreInfoFreq)
                                                 }
                                             },
                                             style = MaterialTheme.typography.labelSmall,
@@ -884,13 +906,13 @@ fun TaskDetailScreen(
                                 // Tolerance au retard
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "Tolerance au retard",
+                                        text = stringResource(R.string.task_detail_section_tolerance),
                                         style = MaterialTheme.typography.labelLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     com.torchons.app.ui.common.InfoTooltip(
-                                        title = "A quoi sert la tolerance ?",
+                                        title = stringResource(R.string.task_detail_tolerance_help_title),
                                         description = com.torchons.app.ui.common.TOLERANCE_INFO_TEXT,
                                     )
                                 }
@@ -943,7 +965,7 @@ fun TaskDetailScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Marquer comme fait",
+                                        text = stringResource(R.string.task_detail_mark_done),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold
                                     )
@@ -960,7 +982,7 @@ fun TaskDetailScreen(
                                             modifier = Modifier.size(18.dp),
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Deja fait")
+                                        Text(stringResource(R.string.suggestion_action_already_done))
                                     }
                                     OutlinedButton(
                                         onClick = {
@@ -978,7 +1000,7 @@ fun TaskDetailScreen(
                                             modifier = Modifier.size(18.dp),
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Ensemble")
+                                        Text(stringResource(R.string.suggestion_action_together))
                                     }
                                 }
                             }
@@ -999,7 +1021,7 @@ fun TaskDetailScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Historique (${uiState.completions.size})",
+                                text = stringResource(R.string.task_detail_history_title_format, uiState.completions.size),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -1009,7 +1031,7 @@ fun TaskDetailScreen(
                     if (uiState.completions.isEmpty()) {
                         item {
                             Text(
-                                text = "Aucune completion pour cette tache",
+                                text = stringResource(R.string.task_detail_history_empty),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(vertical = 8.dp)
@@ -1059,7 +1081,7 @@ fun TaskDetailScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Historique des modifications (${uiState.history.size})",
+                                text = stringResource(R.string.task_detail_modifications_title_format, uiState.history.size),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -1069,7 +1091,7 @@ fun TaskDetailScreen(
                     if (uiState.history.isEmpty()) {
                         item {
                             Text(
-                                text = "Aucune modification enregistree",
+                                text = stringResource(R.string.task_detail_modifications_empty),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(vertical = 8.dp)
@@ -1158,70 +1180,75 @@ private fun HistoryEventCard(event: TaskHistoryEvent) {
 }
 
 /**
- * Formate un evenement d'historique en libelle francais.
+ * Formate un evenement d'historique en libelle localisé.
  *
  * - VOTE_EFFORT : les points sont convertis en minutes (1pt = 5min)
  * - VOTE_FREQUENCY / VOTE_AFFINITY : valeurs affichees telles quelles
  * - TASK_UPDATE : liste des champs modifies (titre, recurrence, ...)
  */
+@Composable
 private fun formatHistoryEvent(event: TaskHistoryEvent): String {
-    val actor = event.actorName.ifBlank { "Quelqu'un" }
+    val actor = event.actorName.ifBlank { stringResource(R.string.task_history_actor_fallback) }
     return when (event.type) {
         TaskHistoryEventType.VOTE_FREQUENCY -> {
-            val value = event.voteValue ?: return "$actor a vote une frequence"
+            val value = event.voteValue ?: return stringResource(R.string.task_history_vote_freq_no_value_format, actor)
             val consensus = event.consensusAfter
             if (consensus != null) {
-                "$actor a vote ${value}j frequence → consensus ${consensus}j"
+                stringResource(R.string.task_history_vote_freq_consensus_format, actor, value, consensus)
             } else {
-                "$actor a vote ${value}j frequence"
+                stringResource(R.string.task_history_vote_freq_format, actor, value)
             }
         }
         TaskHistoryEventType.VOTE_AFFINITY -> {
-            val value = event.voteValue ?: return "$actor a vote une affinite"
+            val value = event.voteValue ?: return stringResource(R.string.task_history_vote_aff_no_value_format, actor)
             val consensus = event.consensusAfter
             if (consensus != null) {
-                "$actor a vote ${value}/10 affinite → consensus ${consensus}/10"
+                stringResource(R.string.task_history_vote_aff_consensus_format, actor, value, consensus)
             } else {
-                "$actor a vote ${value}/10 affinite"
+                stringResource(R.string.task_history_vote_aff_format, actor, value)
             }
         }
         TaskHistoryEventType.VOTE_EFFORT -> {
-            val points = event.voteValue ?: return "$actor a vote un effort"
+            val points = event.voteValue ?: return stringResource(R.string.task_history_vote_eff_no_value_format, actor)
             val minutes = points * 5
             val consensusMin = event.consensusAfter?.let { it * 5 }
             val voteLabel = formatMinutes(minutes)
             if (consensusMin != null) {
-                "$actor a vote $voteLabel effort → consensus ${formatMinutes(consensusMin)}"
+                stringResource(R.string.task_history_vote_eff_consensus_format, actor, voteLabel, formatMinutes(consensusMin))
             } else {
-                "$actor a vote $voteLabel effort"
+                stringResource(R.string.task_history_vote_eff_format, actor, voteLabel)
             }
         }
         TaskHistoryEventType.TASK_UPDATE -> {
-            val fields = event.fieldsChanged.mapNotNull { frenchFieldName(it) }
+            val fields = event.fieldsChanged.mapNotNull { localizedFieldName(it) }
             when {
-                fields.isEmpty() -> "$actor a modifie la tache"
-                fields.size == 1 -> "$actor a modifie ${fields[0]}"
-                else -> "$actor a modifie ${fields.size} champs"
+                fields.isEmpty() -> stringResource(R.string.task_history_update_unknown_format, actor)
+                fields.size == 1 -> stringResource(R.string.task_history_update_one_format, actor, fields[0])
+                else -> stringResource(R.string.task_history_update_many_format, actor, fields.size)
             }
         }
-        TaskHistoryEventType.UNKNOWN -> "$actor a modifie la tache"
+        TaskHistoryEventType.UNKNOWN -> stringResource(R.string.task_history_update_unknown_format, actor)
     }
 }
 
+@Composable
 private fun formatMinutes(min: Int): String =
-    if (min >= 60) "${min / 60}h${if (min % 60 > 0) "%02d".format(min % 60) else ""}"
-    else "${min}min"
+    if (min >= 60) {
+        if (min % 60 > 0) stringResource(R.string.duration_hours_minutes_format, min / 60, min % 60)
+        else stringResource(R.string.duration_hours_only_format, min / 60)
+    } else stringResource(R.string.duration_minutes_format, min)
 
-private fun frenchFieldName(key: String): String? = when (key) {
-    "title" -> "le titre"
-    "description" -> "la description"
-    "category_id" -> "la categorie"
-    "tolerance" -> "la tolerance"
-    "assigned_to_ids" -> "les affectations"
-    "recurrence_rule" -> "la recurrence"
-    "weight" -> "le poids"
-    "is_active" -> "l'activation"
-    "sort_order" -> "l'ordre"
+@Composable
+private fun localizedFieldName(key: String): String? = when (key) {
+    "title" -> stringResource(R.string.task_field_title)
+    "description" -> stringResource(R.string.task_field_description)
+    "category_id" -> stringResource(R.string.task_field_category)
+    "tolerance" -> stringResource(R.string.task_field_tolerance)
+    "assigned_to_ids" -> stringResource(R.string.task_field_assigned)
+    "recurrence_rule" -> stringResource(R.string.task_field_recurrence)
+    "weight" -> stringResource(R.string.task_field_weight)
+    "is_active" -> stringResource(R.string.task_field_active)
+    "sort_order" -> stringResource(R.string.task_field_order)
     else -> null
 }
 
@@ -1293,18 +1320,26 @@ private fun CompletionCard(
             onDismissRequest = { showDeleteDialog = false },
             title = {
                 Text(
-                    if (isCollective) "Supprimer ce collectif ?"
-                    else "Supprimer cette completion ?"
+                    if (isCollective) stringResource(R.string.task_detail_delete_collective_title)
+                    else stringResource(R.string.task_detail_delete_completion_title)
                 )
             },
             text = {
                 if (isCollective) {
                     Text(
-                        "Le collectif (${joinWithAmp(participantNames)}) du " +
-                                "${formatDateTime(head.completedAt)} sera entierement supprime."
+                        stringResource(
+                            R.string.task_detail_delete_collective_message_format,
+                            joinWithAmp(participantNames),
+                            formatDateTime(head.completedAt),
+                        )
                     )
                 } else {
-                    Text("La completion du ${formatDateTime(head.completedAt)} sera supprimee.")
+                    Text(
+                        stringResource(
+                            R.string.task_detail_delete_completion_message_format,
+                            formatDateTime(head.completedAt),
+                        )
+                    )
                 }
             },
             confirmButton = {
@@ -1314,10 +1349,10 @@ private fun CompletionCard(
                         if (isCollective) onDeleteCollective() else onDeleteOne()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("Supprimer") }
+                ) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showDeleteDialog = false }) { Text("Annuler") }
+                OutlinedButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -1365,7 +1400,9 @@ private fun CompletionCard(
                 val primaryColor = MaterialTheme.colorScheme.primary
                 val onSurfaceColor = MaterialTheme.colorScheme.onSurface
                 val rowsForKey = group.rows
-                val annotated = remember(rowsForKey, userNames, head.completedAt, primaryColor, onSurfaceColor) {
+                // Pré-calcul dans le scope @Composable, formatDateTime étant lui-même @Composable.
+                val dateLabel = formatDateTime(head.completedAt)
+                val annotated = remember(rowsForKey, userNames, dateLabel, primaryColor, onSurfaceColor) {
                     buildAnnotatedString {
                         addStyle(SpanStyle(color = onSurfaceColor), 0, 0)
                         if (isCollective) {
@@ -1400,7 +1437,7 @@ private fun CompletionCard(
                             )
                             addStringAnnotation("user", head.completedBy, start, length)
                         }
-                        append(" — ${formatDateTime(head.completedAt)}")
+                        append(" — $dateLabel")
                     }
                 }
                 ClickableText(
@@ -1430,8 +1467,9 @@ private fun CompletionCard(
 
             // Points gagnes : "+X pt" solo / "+X pt chacun" collectif.
             Text(
-                text = if (isCollective) "+${head.pointsEarned} pt chacun"
-                else "+${head.pointsEarned} pt",
+                text = if (isCollective)
+                    pluralStringResource(R.plurals.task_detail_points_collective, head.pointsEarned, head.pointsEarned)
+                else pluralStringResource(R.plurals.task_detail_points_solo, head.pointsEarned, head.pointsEarned),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
@@ -1440,8 +1478,10 @@ private fun CompletionCard(
     }
 }
 
-/** Formate une date ISO 8601 en format lisible. */
+/** Formate une date ISO 8601 en format lisible (pattern localisé via stringResource). */
+@Composable
 private fun formatDateTime(isoDateTime: String): String {
+    val pattern = stringResource(R.string.date_with_time_pattern)
     return try {
         val instant = try {
             Instant.parse(isoDateTime)
@@ -1449,7 +1489,7 @@ private fun formatDateTime(isoDateTime: String): String {
             Instant.parse("${isoDateTime}Z")
         }
         val localDateTime = instant.atZone(ZoneId.systemDefault())
-        val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'a' HH:mm")
+        val formatter = DateTimeFormatter.ofPattern(pattern)
         localDateTime.format(formatter)
     } catch (e: Exception) {
         isoDateTime
@@ -1467,23 +1507,25 @@ private fun joinFr(names: List<String>): String = when {
  * Formate la regle de recurrence en texte lisible (v0.27 — 3 types
  * supportes : interval, monthly_variable, uncertain).
  */
+@Composable
 private fun formatRecurrence(rule: com.torchons.app.data.model.RecurrenceRule): String {
     return when (rule.type) {
         "interval" -> rule.everyNDays?.let {
-            "Tous les ${DurationFormat.formatDaysHuman(it, long = true)}"
-        } ?: "Tous les ? jours"
-        "monthly_variable" -> "Variable selon le mois"
-        "uncertain" -> "Irreguliere"
+            stringResource(R.string.task_recurrence_every_n_days_format, DurationFormat.formatDaysHuman(it, long = true))
+        } ?: stringResource(R.string.task_recurrence_every_unknown)
+        "monthly_variable" -> stringResource(R.string.task_recurrence_monthly_variable)
+        "uncertain" -> stringResource(R.string.task_recurrence_uncertain)
         else -> rule.type
     }
 }
 
 /** Formate la tolerance en texte lisible. */
+@Composable
 private fun formatTolerance(tolerance: String): String {
     return when (tolerance) {
-        "STRICT" -> "Strict"
-        "NORMAL" -> "Normal"
-        "SOUPLE" -> "Souple"
+        "STRICT" -> stringResource(R.string.task_tolerance_strict)
+        "NORMAL" -> stringResource(R.string.task_tolerance_normal)
+        "SOUPLE" -> stringResource(R.string.task_tolerance_souple)
         else -> tolerance
     }
 }

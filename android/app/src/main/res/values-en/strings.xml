@@ -273,6 +273,214 @@
     <string name="leave_dialog_switched_message">You\'ve switched to another household where you\'re a member.</string>
 
     <!-- ============================================================
+         E3.2b — TaskDetailScreen + TaskEditScreen.
+         ============================================================ -->
+
+    <!-- TaskDetail — top bar -->
+    <string name="task_detail_title_fallback">Details</string>
+    <string name="task_detail_clone_cd">Duplicate this task</string>
+    <string name="task_detail_edit_cd">Edit</string>
+
+    <!-- TaskDetail — empty/error states -->
+    <string name="task_detail_offline_title">Details unavailable offline</string>
+    <string name="task_detail_offline_message">The backend isn\'t responding right now.</string>
+    <string name="task_detail_not_found">Task not found</string>
+
+    <!-- TaskDetail — urgency state -->
+    <string name="task_detail_state_green">Up to date</string>
+    <string name="task_detail_state_orange">Due soon</string>
+    <string name="task_detail_state_red">Overdue</string>
+    <string name="task_detail_bonus_format">⭐ +%1$d%% bonus</string>
+    <string name="task_detail_malus_format">⏱ -%1$d%% penalty</string>
+
+    <!-- TaskDetail — assignment -->
+    <string name="task_detail_assigned_all">For the whole household</string>
+    <string name="task_detail_assigned_one_format">For %1$s only</string>
+    <string name="task_detail_assigned_many_format">For %1$s</string>
+
+    <!-- TaskDetail — "you haven\'t voted" banner -->
+    <string name="task_detail_missing_frequency">frequency</string>
+    <string name="task_detail_missing_affinity">your affinity</string>
+    <string name="task_detail_missing_effort">effort</string>
+    <string name="task_detail_no_vote_one_format">You haven\'t set %1$s for this task</string>
+    <string name="task_detail_no_vote_many">You haven\'t voted on this task yet</string>
+    <plurals name="task_detail_no_vote_touch">
+        <item quantity="one">Tap to vote</item>
+        <item quantity="other">Tap to vote</item>
+    </plurals>
+
+    <!-- TaskDetail — info section -->
+    <string name="task_detail_section_description">Description</string>
+    <string name="task_detail_section_room">Room</string>
+    <string name="task_detail_section_effort_affinity">Effort &amp; Affinity</string>
+    <string name="task_detail_edit_action">Edit</string>
+    <string name="task_detail_no_value_dash">—</string>
+    <string name="task_detail_affinity_value_format">Aff: %1$d/10</string>
+    <string name="task_detail_affinity_value_none">Aff: —</string>
+    <string name="task_detail_avg_score_format">Average: %1$s → %2$s pts</string>
+    <string name="task_detail_avg_score_unknown">?</string>
+    <string name="task_detail_effort_points_label">Effort &amp; points · </string>
+    <string name="task_detail_affinity_label">Personal affinities · </string>
+    <string name="task_detail_more_info_link">more info</string>
+    <string name="task_detail_section_frequency">Frequency</string>
+    <string name="task_detail_freq_vote_one_format">%1$s\'s vote</string>
+    <string name="task_detail_freq_vote_many_format">Average of votes from %1$s</string>
+    <string name="task_detail_freq_no_vote">No votes yet</string>
+    <plurals name="task_detail_freq_no_voters_format">
+        <item quantity="one">%1$s hasn\'t voted</item>
+        <item quantity="other">%1$s haven\'t voted</item>
+    </plurals>
+    <string name="task_detail_freq_subline_format">%1$s%2$s · </string>
+    <string name="task_detail_no_voters_suffix_format"> · %1$s</string>
+    <string name="task_detail_section_tolerance">Late tolerance</string>
+    <string name="task_detail_tolerance_help_title">What\'s tolerance for?</string>
+
+    <!-- TaskDetail — main action buttons -->
+    <string name="task_detail_mark_done">Mark as done</string>
+
+    <!-- TaskDetail — completions history -->
+    <string name="task_detail_history_title_format">History (%1$d)</string>
+    <string name="task_detail_history_empty">No completions for this task</string>
+    <string name="task_detail_modifications_title_format">Edit history (%1$d)</string>
+    <string name="task_detail_modifications_empty">No edits recorded</string>
+
+    <!-- TaskDetail — delete completion dialog -->
+    <string name="task_detail_delete_collective_title">Delete this group event?</string>
+    <string name="task_detail_delete_completion_title">Delete this completion?</string>
+    <string name="task_detail_delete_collective_message_format">The group event (%1$s) of %2$s will be entirely deleted.</string>
+    <string name="task_detail_delete_completion_message_format">The completion of %1$s will be deleted.</string>
+
+    <!-- TaskDetail — edit completion dialog -->
+    <string name="task_detail_edit_completion_title">Edit completion</string>
+    <string name="task_detail_edit_who">Who did it?</string>
+    <string name="task_detail_edit_when">When?</string>
+    <string name="task_detail_edit_delete_button">Delete this completion</string>
+
+    <!-- TaskDetail — points earned -->
+    <plurals name="task_detail_points_solo">
+        <item quantity="one">+%d pt</item>
+        <item quantity="other">+%d pts</item>
+    </plurals>
+    <plurals name="task_detail_points_collective">
+        <item quantity="one">+%d pt each</item>
+        <item quantity="other">+%d pts each</item>
+    </plurals>
+
+    <!-- TaskDetail — history event format -->
+    <string name="task_history_actor_fallback">Someone</string>
+    <string name="task_history_vote_freq_format">%1$s voted %2$dd frequency</string>
+    <string name="task_history_vote_freq_consensus_format">%1$s voted %2$dd frequency → consensus %3$dd</string>
+    <string name="task_history_vote_freq_no_value_format">%1$s voted a frequency</string>
+    <string name="task_history_vote_aff_format">%1$s voted %2$d/10 affinity</string>
+    <string name="task_history_vote_aff_consensus_format">%1$s voted %2$d/10 affinity → consensus %3$d/10</string>
+    <string name="task_history_vote_aff_no_value_format">%1$s voted an affinity</string>
+    <string name="task_history_vote_eff_format">%1$s voted %2$s effort</string>
+    <string name="task_history_vote_eff_consensus_format">%1$s voted %2$s effort → consensus %3$s</string>
+    <string name="task_history_vote_eff_no_value_format">%1$s voted an effort</string>
+    <string name="task_history_update_one_format">%1$s edited %2$s</string>
+    <string name="task_history_update_many_format">%1$s edited %2$d fields</string>
+    <string name="task_history_update_unknown_format">%1$s edited the task</string>
+
+    <!-- TaskDetail — field names -->
+    <string name="task_field_title">the title</string>
+    <string name="task_field_description">the description</string>
+    <string name="task_field_category">the category</string>
+    <string name="task_field_tolerance">the tolerance</string>
+    <string name="task_field_assigned">the assignments</string>
+    <string name="task_field_recurrence">the recurrence</string>
+    <string name="task_field_weight">the weight</string>
+    <string name="task_field_active">the active state</string>
+    <string name="task_field_order">the order</string>
+
+    <!-- TaskDetail — recurrence + tolerance labels -->
+    <string name="task_recurrence_every_n_days_format">Every %1$s</string>
+    <string name="task_recurrence_every_unknown">Every ? days</string>
+    <string name="task_recurrence_monthly_variable">Varies by month</string>
+    <string name="task_recurrence_uncertain">Irregular</string>
+    <string name="task_tolerance_strict">Strict</string>
+    <string name="task_tolerance_normal">Normal</string>
+    <string name="task_tolerance_souple">Loose</string>
+
+    <!-- TaskDetail — duration helper -->
+    <string name="duration_minutes_format">%1$dmin</string>
+    <string name="duration_hours_only_format">%1$dh</string>
+    <string name="duration_hours_minutes_format">%1$dh%2$02d</string>
+
+    <!-- TaskDetail — date format pattern -->
+    <string name="date_with_time_pattern">MM/dd/yyyy \'at\' HH:mm</string>
+
+    <!-- ============================================================ -->
+    <!-- TaskEditScreen                                                -->
+    <!-- ============================================================ -->
+
+    <!-- TaskEdit — top bar -->
+    <string name="task_edit_title_edit">Edit task</string>
+    <string name="task_edit_title_new">New task</string>
+    <string name="task_edit_delete_cd">Delete</string>
+
+    <!-- TaskEdit — delete task dialog -->
+    <string name="task_edit_delete_dialog_title">Delete the task?</string>
+    <string name="task_edit_delete_dialog_message">This action is irreversible. The task will be deleted for all users.</string>
+
+    <!-- TaskEdit — clone chip -->
+    <string name="task_edit_cloned_from_format">Duplicated from: %1$s</string>
+    <string name="task_edit_cancel_clone_cd">Cancel duplication</string>
+
+    <!-- TaskEdit — fields -->
+    <string name="task_edit_field_title">Title *</string>
+    <string name="task_edit_suggestions_header">Duplicate an existing task:</string>
+    <string name="task_edit_field_description">Description</string>
+    <string name="task_edit_field_category">Category</string>
+    <string name="task_edit_field_room">Room</string>
+    <string name="task_edit_dropdown_none">None</string>
+    <string name="task_edit_field_assigned">Assigned to</string>
+    <string name="task_edit_assigned_tooltip_title">Assignment</string>
+    <string name="task_edit_assigned_tooltip_description">Choose who should do this task. If all members are checked, it\'s a shared task. If only one is checked, it\'s a personal task visible only to that person.</string>
+
+    <!-- TaskEdit — recurrence -->
+    <string name="task_edit_field_recurrence">Frequency</string>
+    <string name="task_edit_recurrence_interval">Regular</string>
+    <string name="task_edit_recurrence_monthly">Varies by month</string>
+    <string name="task_edit_recurrence_uncertain">Irregular</string>
+    <string name="task_edit_recurrence_none">Once only</string>
+    <string name="task_edit_every_n_format">Every how many %1$s?</string>
+    <string name="task_edit_breakdown_format">≈ %1$s (%2$d d)</string>
+    <plurals name="task_edit_consensus_format">
+        <item quantity="one">Consensus: %2$s (%1$d vote)</item>
+        <item quantity="other">Consensus: %2$s (%1$d votes)</item>
+    </plurals>
+    <string name="task_edit_consensus_unknown">?</string>
+    <string name="task_edit_edit_vote_button">Change my vote</string>
+
+    <!-- TaskEdit — monthly variable -->
+    <string name="task_edit_monthly_header">Days between each repetition per month (empty = off)</string>
+    <string name="task_edit_month_jan">Jan</string>
+    <string name="task_edit_month_feb">Feb</string>
+    <string name="task_edit_month_mar">Mar</string>
+    <string name="task_edit_month_apr">Apr</string>
+    <string name="task_edit_month_may">May</string>
+    <string name="task_edit_month_jun">Jun</string>
+    <string name="task_edit_month_jul">Jul</string>
+    <string name="task_edit_month_aug">Aug</string>
+    <string name="task_edit_month_sep">Sep</string>
+    <string name="task_edit_month_oct">Oct</string>
+    <string name="task_edit_month_nov">Nov</string>
+    <string name="task_edit_month_dec">Dec</string>
+
+    <!-- TaskEdit — tolerance -->
+    <string name="task_edit_field_tolerance">Late tolerance</string>
+
+    <!-- TaskEdit — effort -->
+    <string name="task_edit_effort_format">Effort: %1$s</string>
+    <string name="task_edit_effort_tooltip_title">Effort</string>
+    <string name="task_edit_effort_tooltip_description">Estimated time this task takes. Each user can give their own estimate; the average is used to compute points.</string>
+
+    <!-- TaskEdit — save / delete buttons -->
+    <string name="task_edit_save_button_edit">Save</string>
+    <string name="task_edit_save_button_new">Create task</string>
+    <string name="task_edit_delete_button">Delete the task</string>
+
+    <!-- ============================================================
          E3.2a — Home/Projection/Proposition/Simulation/TaskList.
          ============================================================ -->
 

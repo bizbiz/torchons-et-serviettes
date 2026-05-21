@@ -278,6 +278,214 @@
     <string name="leave_dialog_switched_message">Tu as basculé sur un autre foyer où tu es membre.</string>
 
     <!-- ============================================================
+         E3.2b — TaskDetailScreen + TaskEditScreen (vague B).
+         ============================================================ -->
+
+    <!-- TaskDetail — top bar -->
+    <string name="task_detail_title_fallback">Détail</string>
+    <string name="task_detail_clone_cd">Dupliquer cette tâche</string>
+    <string name="task_detail_edit_cd">Modifier</string>
+
+    <!-- TaskDetail — empty/error states -->
+    <string name="task_detail_offline_title">Détails indisponibles hors ligne</string>
+    <string name="task_detail_offline_message">Le backend ne répond pas pour le moment.</string>
+    <string name="task_detail_not_found">Tâche introuvable</string>
+
+    <!-- TaskDetail — état d\'urgence -->
+    <string name="task_detail_state_green">À jour</string>
+    <string name="task_detail_state_orange">À faire bientôt</string>
+    <string name="task_detail_state_red">En retard</string>
+    <string name="task_detail_bonus_format">⭐ +%1$d%% bonus</string>
+    <string name="task_detail_malus_format">⏱ -%1$d%% malus</string>
+
+    <!-- TaskDetail — assignation -->
+    <string name="task_detail_assigned_all">Pour tout le foyer</string>
+    <string name="task_detail_assigned_one_format">Pour %1$s uniquement</string>
+    <string name="task_detail_assigned_many_format">Pour %1$s</string>
+
+    <!-- TaskDetail — bandeau "tu n\'as pas voté" -->
+    <string name="task_detail_missing_frequency">la fréquence</string>
+    <string name="task_detail_missing_affinity">ton affinité</string>
+    <string name="task_detail_missing_effort">l\'effort</string>
+    <string name="task_detail_no_vote_one_format">Tu n\'as pas indiqué %1$s pour cette tâche</string>
+    <string name="task_detail_no_vote_many">Tu n\'as pas encore voté pour cette tâche</string>
+    <plurals name="task_detail_no_vote_touch">
+        <item quantity="one">Toucher pour vote</item>
+        <item quantity="other">Toucher pour votes</item>
+    </plurals>
+
+    <!-- TaskDetail — section infos -->
+    <string name="task_detail_section_description">Description</string>
+    <string name="task_detail_section_room">Pièce</string>
+    <string name="task_detail_section_effort_affinity">Effort &amp; Affinité</string>
+    <string name="task_detail_edit_action">Modifier</string>
+    <string name="task_detail_no_value_dash">—</string>
+    <string name="task_detail_affinity_value_format">Aff: %1$d/10</string>
+    <string name="task_detail_affinity_value_none">Aff: —</string>
+    <string name="task_detail_avg_score_format">Moyenne : %1$s → %2$s pts</string>
+    <string name="task_detail_avg_score_unknown">?</string>
+    <string name="task_detail_effort_points_label">Effort &amp; points · </string>
+    <string name="task_detail_affinity_label">Affinités perso · </string>
+    <string name="task_detail_more_info_link">+ d\'info</string>
+    <string name="task_detail_section_frequency">Fréquence</string>
+    <string name="task_detail_freq_vote_one_format">Vote de %1$s</string>
+    <string name="task_detail_freq_vote_many_format">Moyenne des votes de %1$s</string>
+    <string name="task_detail_freq_no_vote">Pas encore voté</string>
+    <plurals name="task_detail_freq_no_voters_format">
+        <item quantity="one">%1$s n\'a pas voté</item>
+        <item quantity="other">%1$s n\'ont pas voté</item>
+    </plurals>
+    <string name="task_detail_freq_subline_format">%1$s%2$s · </string>
+    <string name="task_detail_no_voters_suffix_format"> · %1$s</string>
+    <string name="task_detail_section_tolerance">Tolérance au retard</string>
+    <string name="task_detail_tolerance_help_title">À quoi sert la tolérance ?</string>
+
+    <!-- TaskDetail — boutons d\'action principaux -->
+    <string name="task_detail_mark_done">Marquer comme fait</string>
+
+    <!-- TaskDetail — historique complétions -->
+    <string name="task_detail_history_title_format">Historique (%1$d)</string>
+    <string name="task_detail_history_empty">Aucune complétion pour cette tâche</string>
+    <string name="task_detail_modifications_title_format">Historique des modifications (%1$d)</string>
+    <string name="task_detail_modifications_empty">Aucune modification enregistrée</string>
+
+    <!-- TaskDetail — dialog suppression complétion -->
+    <string name="task_detail_delete_collective_title">Supprimer ce collectif ?</string>
+    <string name="task_detail_delete_completion_title">Supprimer cette complétion ?</string>
+    <string name="task_detail_delete_collective_message_format">Le collectif (%1$s) du %2$s sera entièrement supprimé.</string>
+    <string name="task_detail_delete_completion_message_format">La complétion du %1$s sera supprimée.</string>
+
+    <!-- TaskDetail — dialog edit complétion -->
+    <string name="task_detail_edit_completion_title">Modifier la complétion</string>
+    <string name="task_detail_edit_who">Qui a fait ?</string>
+    <string name="task_detail_edit_when">Quand ?</string>
+    <string name="task_detail_edit_delete_button">Supprimer cette complétion</string>
+
+    <!-- TaskDetail — points gagnés -->
+    <plurals name="task_detail_points_solo">
+        <item quantity="one">+%d pt</item>
+        <item quantity="other">+%d pts</item>
+    </plurals>
+    <plurals name="task_detail_points_collective">
+        <item quantity="one">+%d pt chacun</item>
+        <item quantity="other">+%d pts chacun</item>
+    </plurals>
+
+    <!-- TaskDetail — formatHistoryEvent -->
+    <string name="task_history_actor_fallback">Quelqu\'un</string>
+    <string name="task_history_vote_freq_format">%1$s a voté %2$dj fréquence</string>
+    <string name="task_history_vote_freq_consensus_format">%1$s a voté %2$dj fréquence → consensus %3$dj</string>
+    <string name="task_history_vote_freq_no_value_format">%1$s a voté une fréquence</string>
+    <string name="task_history_vote_aff_format">%1$s a voté %2$d/10 affinité</string>
+    <string name="task_history_vote_aff_consensus_format">%1$s a voté %2$d/10 affinité → consensus %3$d/10</string>
+    <string name="task_history_vote_aff_no_value_format">%1$s a voté une affinité</string>
+    <string name="task_history_vote_eff_format">%1$s a voté %2$s effort</string>
+    <string name="task_history_vote_eff_consensus_format">%1$s a voté %2$s effort → consensus %3$s</string>
+    <string name="task_history_vote_eff_no_value_format">%1$s a voté un effort</string>
+    <string name="task_history_update_one_format">%1$s a modifié %2$s</string>
+    <string name="task_history_update_many_format">%1$s a modifié %2$d champs</string>
+    <string name="task_history_update_unknown_format">%1$s a modifié la tâche</string>
+
+    <!-- TaskDetail — frenchFieldName (noms de champs) -->
+    <string name="task_field_title">le titre</string>
+    <string name="task_field_description">la description</string>
+    <string name="task_field_category">la catégorie</string>
+    <string name="task_field_tolerance">la tolérance</string>
+    <string name="task_field_assigned">les affectations</string>
+    <string name="task_field_recurrence">la récurrence</string>
+    <string name="task_field_weight">le poids</string>
+    <string name="task_field_active">l\'activation</string>
+    <string name="task_field_order">l\'ordre</string>
+
+    <!-- TaskDetail — formatRecurrence + formatTolerance -->
+    <string name="task_recurrence_every_n_days_format">Tous les %1$s</string>
+    <string name="task_recurrence_every_unknown">Tous les ? jours</string>
+    <string name="task_recurrence_monthly_variable">Variable selon le mois</string>
+    <string name="task_recurrence_uncertain">Irrégulière</string>
+    <string name="task_tolerance_strict">Strict</string>
+    <string name="task_tolerance_normal">Normal</string>
+    <string name="task_tolerance_souple">Souple</string>
+
+    <!-- TaskDetail — formatMinutes helper -->
+    <string name="duration_minutes_format">%1$dmin</string>
+    <string name="duration_hours_only_format">%1$dh</string>
+    <string name="duration_hours_minutes_format">%1$dh%2$02d</string>
+
+    <!-- TaskDetail — formatDateTime -->
+    <string name="date_with_time_pattern">dd/MM/yyyy \'à\' HH:mm</string>
+
+    <!-- ============================================================ -->
+    <!-- TaskEditScreen                                                -->
+    <!-- ============================================================ -->
+
+    <!-- TaskEdit — top bar -->
+    <string name="task_edit_title_edit">Modifier la tâche</string>
+    <string name="task_edit_title_new">Nouvelle tâche</string>
+    <string name="task_edit_delete_cd">Supprimer</string>
+
+    <!-- TaskEdit — dialog suppression tâche -->
+    <string name="task_edit_delete_dialog_title">Supprimer la tâche ?</string>
+    <string name="task_edit_delete_dialog_message">Cette action est irréversible. La tâche sera supprimée pour tous les utilisateurs.</string>
+
+    <!-- TaskEdit — chip clone -->
+    <string name="task_edit_cloned_from_format">Dupliqué de : %1$s</string>
+    <string name="task_edit_cancel_clone_cd">Annuler la duplication</string>
+
+    <!-- TaskEdit — champs -->
+    <string name="task_edit_field_title">Titre *</string>
+    <string name="task_edit_suggestions_header">Dupliquer une tâche existante :</string>
+    <string name="task_edit_field_description">Description</string>
+    <string name="task_edit_field_category">Catégorie</string>
+    <string name="task_edit_field_room">Pièce</string>
+    <string name="task_edit_dropdown_none">Aucune</string>
+    <string name="task_edit_field_assigned">Assigné à</string>
+    <string name="task_edit_assigned_tooltip_title">Assignation</string>
+    <string name="task_edit_assigned_tooltip_description">Sélectionne qui doit faire cette tâche. Si tous les membres sont cochés, c\'est une tâche commune. Si un seul est coché, c\'est une tâche personnelle visible uniquement par cette personne.</string>
+
+    <!-- TaskEdit — récurrence -->
+    <string name="task_edit_field_recurrence">Fréquence</string>
+    <string name="task_edit_recurrence_interval">Régulière</string>
+    <string name="task_edit_recurrence_monthly">Selon le mois</string>
+    <string name="task_edit_recurrence_uncertain">Irrégulière</string>
+    <string name="task_edit_recurrence_none">Une seule fois</string>
+    <string name="task_edit_every_n_format">Tous les combien de %1$s ?</string>
+    <string name="task_edit_breakdown_format">≈ %1$s (%2$d j)</string>
+    <plurals name="task_edit_consensus_format">
+        <item quantity="one">Consensus : %2$s (%1$d vote)</item>
+        <item quantity="other">Consensus : %2$s (%1$d votes)</item>
+    </plurals>
+    <string name="task_edit_consensus_unknown">?</string>
+    <string name="task_edit_edit_vote_button">Modifier mon vote</string>
+
+    <!-- TaskEdit — monthly variable -->
+    <string name="task_edit_monthly_header">Jours entre chaque répétition par mois (vide = inactif)</string>
+    <string name="task_edit_month_jan">Jan</string>
+    <string name="task_edit_month_feb">Fév</string>
+    <string name="task_edit_month_mar">Mar</string>
+    <string name="task_edit_month_apr">Avr</string>
+    <string name="task_edit_month_may">Mai</string>
+    <string name="task_edit_month_jun">Juin</string>
+    <string name="task_edit_month_jul">Juil</string>
+    <string name="task_edit_month_aug">Août</string>
+    <string name="task_edit_month_sep">Sep</string>
+    <string name="task_edit_month_oct">Oct</string>
+    <string name="task_edit_month_nov">Nov</string>
+    <string name="task_edit_month_dec">Déc</string>
+
+    <!-- TaskEdit — tolerance -->
+    <string name="task_edit_field_tolerance">Tolérance au retard</string>
+
+    <!-- TaskEdit — effort -->
+    <string name="task_edit_effort_format">Effort : %1$s</string>
+    <string name="task_edit_effort_tooltip_title">Effort</string>
+    <string name="task_edit_effort_tooltip_description">Estimation du temps que prend cette tâche. Chaque utilisateur pourra donner sa propre estimation, la moyenne sera utilisée pour calculer les points.</string>
+
+    <!-- TaskEdit — boutons sauver / supprimer -->
+    <string name="task_edit_save_button_edit">Enregistrer</string>
+    <string name="task_edit_save_button_new">Créer la tâche</string>
+    <string name="task_edit_delete_button">Supprimer la tâche</string>
+
+    <!-- ============================================================
          E3.2a — HomeScreen + ProjectionCards + PropositionDialogs +
          ProjectionSimulationDialog + TaskListScreen (vague A).
          ============================================================ -->
