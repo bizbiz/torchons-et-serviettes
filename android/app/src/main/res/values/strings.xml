@@ -278,6 +278,117 @@
     <string name="leave_dialog_switched_message">Tu as basculé sur un autre foyer où tu es membre.</string>
 
     <!-- ============================================================
+         E3.3 — Onboarding (Welcome / Login / CreateFoyerWizard /
+         JoinFoyer / RestoreFoyer / InviteQr).
+         ============================================================ -->
+
+    <!-- WelcomeScreen -->
+    <string name="welcome_app_name">Torchons &amp;\nServiettes</string>
+    <string name="welcome_app_tagline">Gérer les tâches du foyer à plusieurs</string>
+    <string name="welcome_connecting">Connexion…</string>
+    <string name="welcome_create_foyer">Créer un foyer</string>
+    <string name="welcome_join_foyer">Rejoindre un foyer</string>
+    <string name="welcome_restore_foyer">Retrouver mon foyer</string>
+
+    <!-- LoginScreen (Tailscale fallback) -->
+    <string name="login_new_device">Nouvel appareil détecté</string>
+    <string name="login_who_are_you">Qui es-tu&#160;?</string>
+    <string name="login_ip_format">IP&#160;: %1$s</string>
+    <string name="login_connection_failed">Connexion impossible</string>
+    <string name="login_connection_failed_help">Vérifie que Tailscale est activé\net que le serveur est accessible.</string>
+
+    <!-- Wizard générique : nav + buttons partagés -->
+    <string name="wizard_continue">Continuer</string>
+    <string name="wizard_skip_step">Sauter cette étape</string>
+    <string name="wizard_retry">Réessayer</string>
+    <string name="wizard_recovery_continue">J\'ai noté mon code, continuer</string>
+    <string name="recovery_warning_dont_share">⚠ Ne le partage avec personne d\'autre que toi-même.</string>
+    <string name="recovery_warning_dont_share_long">⚠ Ne le partage avec personne d\'autre que toi-même. Toute personne qui possède ce code peut prendre le contrôle de ton foyer.</string>
+
+    <!-- CreateFoyerWizardScreen -->
+    <string name="wizard_title_format">Créer un foyer · étape %1$d/%2$d</string>
+
+    <!-- Step Toi (réutilisé par JoinFoyer EnterDisplayName) -->
+    <string name="onboarding_your_name_title">Comment tu t\'appelles&#160;?</string>
+    <string name="onboarding_your_name_help">Ton prénom (ou pseudo) — visible par les autres membres du foyer.</string>
+    <string name="onboarding_your_name_label">Ton prénom</string>
+
+    <!-- Step Foyer -->
+    <string name="wizard_foyer_name_title">Comment s\'appelle ton foyer&#160;?</string>
+    <string name="wizard_foyer_name_help">Le nom de ta maison ou de ta colloc, pour t\'y retrouver si tu en gères plusieurs.</string>
+    <string name="wizard_foyer_default_at_someones_format">Chez %1$s</string>
+
+    <!-- Step Pieces -->
+    <string name="wizard_rooms_title">Quelles pièces tu as&#160;?</string>
+    <string name="wizard_rooms_help">Sélectionne les pièces qui correspondent à ton chez-toi. Ça permet de proposer les bonnes tâches à l\'étape suivante.</string>
+    <string name="wizard_rooms_add_hint">Une pièce qui n\'est pas dans la liste&#160;? Ajoute-la&#160;:</string>
+    <string name="wizard_rooms_custom_label">Autre pièce</string>
+    <string name="wizard_rooms_custom_chip_format">%1$s  ✕</string>
+
+    <!-- Step Taches -->
+    <string name="wizard_tasks_title">Quelles tâches tu veux suivre&#160;?</string>
+    <string name="wizard_tasks_help">Coche celles qui te concernent. Tu pourras toujours en ajouter ou en retirer plus tard.</string>
+    <string name="wizard_tasks_empty">Aucune tâche disponible pour les pièces sélectionnées. Tu pourras les ajouter manuellement plus tard.</string>
+    <string name="wizard_tasks_creating">Création…</string>
+    <string name="wizard_tasks_submit">Créer mon foyer</string>
+
+    <!-- Catalog erreur partagée (Pieces/Taches) -->
+    <string name="wizard_catalog_error">Impossible de charger les suggestions (problème de connexion&#160;?). Tu peux réessayer, ou continuer sans&#160;: tout reste ajoutable plus tard depuis les Réglages.</string>
+
+    <!-- Step Recovery -->
+    <string name="wizard_recovery_title">Voici ton code de récupération</string>
+    <string name="wizard_recovery_help">Il te permet de retrouver tes droits d\'admin sur ton foyer si tu perds ton téléphone. Note-le bien, il ne sera affiché qu\'une seule fois.</string>
+    <string name="wizard_recovery_placeholder">…</string>
+
+    <!-- JoinFoyerScreen -->
+    <string name="join_scan_title">Scanne le QR code de ton foyer</string>
+    <string name="join_scan_help">Demande à un membre du foyer d\'ouvrir l\'app et d\'afficher un QR code d\'invitation. Tu as 15 minutes pour le scanner.</string>
+    <string name="join_scan_button">Scanner le QR code</string>
+    <string name="join_submit_button">Rejoindre le foyer</string>
+    <string name="join_adding_device_title">Connexion à ton compte…</string>
+    <string name="join_adding_device_with_foyer_format">Cet appareil sera connecté au foyer «&#160;%1$s&#160;» avec ton compte existant.</string>
+    <string name="join_adding_device_no_foyer">Cet appareil sera connecté avec ton compte existant.</string>
+    <string name="join_welcome_format">Bienvenue dans %1$s&#160;!</string>
+    <string name="join_welcome_fallback">Bienvenue&#160;!</string>
+    <string name="join_recovery_help">Voici ton code personnel de récupération. Note-le&#160;: il te permettra de retrouver ton compte si tu perds ton téléphone.</string>
+
+    <!-- RestoreFoyerScreen -->
+    <string name="restore_enter_code_title">Entre ton code de récupération</string>
+    <string name="restore_enter_code_help">Le code de 8 caractères au format XXXX-XXXX que tu as noté à la création ou en rejoignant ton foyer.</string>
+    <string name="restore_code_label">Code de récupération</string>
+    <string name="restore_code_placeholder">XXXX-XXXX</string>
+    <string name="restore_searching">Recherche…</string>
+    <string name="restore_verify_button">Vérifier</string>
+    <string name="restore_confirm_title">C\'est bien toi&#160;?</string>
+    <string name="restore_role_admin">admin</string>
+    <string name="restore_role_former_member">ancien membre</string>
+    <string name="restore_role_member">membre</string>
+    <string name="restore_role_of_format">%1$s de %2$s</string>
+    <plurals name="restore_completions_count">
+        <item quantity="one">%d tâche déjà faite</item>
+        <item quantity="other">%d tâches déjà faites</item>
+    </plurals>
+    <plurals name="restore_ratings_count">
+        <item quantity="one">%d affinité notée</item>
+        <item quantity="other">%d affinités notées</item>
+    </plurals>
+    <string name="restore_stats_join_format">%1$s · %2$s</string>
+    <string name="restore_restoring">Restauration…</string>
+    <string name="restore_yes_its_me">Oui, c\'est moi</string>
+    <string name="restore_no_not_me">Non, ce n\'est pas moi</string>
+
+    <!-- InviteQrScreen -->
+    <string name="invite_title_add_device">Ajouter un appareil</string>
+    <string name="invite_title_invite_someone">Inviter quelqu\'un</string>
+    <string name="invite_regenerate_cd">Générer un nouveau code</string>
+    <string name="invite_help_add_device">Sur ton autre appareil, installe l\'app et choisis «&#160;Rejoindre un foyer&#160;» pour scanner ce QR. Tu seras connecté avec ton compte actuel — pas de nouveau membre créé.</string>
+    <string name="invite_help_invite_someone">Demande à la personne d\'installer l\'app et de choisir «&#160;Rejoindre un foyer&#160;». Elle pourra ensuite scanner ce QR.</string>
+    <string name="invite_qr_cd">QR code d\'invitation</string>
+    <string name="invite_expires_format">Expire %1$s</string>
+    <string name="invite_expires_at_format">à %1$s</string>
+    <string name="invite_code_preview_format">Code&#160;: %1$s…</string>
+
+    <!-- ============================================================
          E3.2b — TaskDetailScreen + TaskEditScreen (vague B).
          ============================================================ -->
 

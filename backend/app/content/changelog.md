@@ -1,5 +1,23 @@
 # Notes de version
 
+## v0.35.13 — 2026-05-21
+
+### Traduction EN — Onboarding complet
+- Les écrans d\'onboarding sont désormais bilingues&#160;: **Welcome**
+  (3 boutons Créer / Rejoindre / Retrouver), **Login** (Tailscale
+  fallback, choix d\'utilisateur), **Wizard Créer un foyer** complet
+  (5 étapes&#160;: prénom, nom du foyer, pièces, tâches, code de
+  récupération), **Rejoindre un foyer** (scan QR + saisie prénom +
+  ajout d\'appareil + écran code de récupération), **Retrouver mon
+  foyer** (saisie code + confirmation d\'identité avec pluriels), et
+  **Inviter quelqu\'un** (QR code + variants ajout appareil vs invité).
+- Les rôles dans l\'écran restore («&#160;admin / ancien membre /
+  membre&#160;») sont localisés.
+- **L\'application Android est maintenant entièrement bilingue
+  FR&#160;+&#160;EN.** Bascule la langue du téléphone et tu verras
+  toute l\'app changer. Reste à traduire&#160;: messages d\'erreur
+  backend, catalogue de templates de tâches, et site web.
+
 ## v0.35.12 — 2026-05-21
 
 ### Traduction EN — Détail & édition de tâche

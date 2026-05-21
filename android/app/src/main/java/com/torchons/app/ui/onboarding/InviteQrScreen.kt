@@ -32,10 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 import qrcode.QRCode
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -58,8 +60,8 @@ fun InviteQrScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    val titleText = if (state.kind == "add_device") "Ajouter un appareil"
-    else "Inviter quelqu'un"
+    val titleText = if (state.kind == "add_device") stringResource(R.string.invite_title_add_device)
+    else stringResource(R.string.invite_title_invite_someone)
 
     Scaffold(
         topBar = {
@@ -69,7 +71,7 @@ fun InviteQrScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Retour",
+                            contentDescription = stringResource(R.string.common_back),
                         )
                     }
                 },
@@ -80,7 +82,7 @@ fun InviteQrScreen(
                     ) {
                         Icon(
                             Icons.Default.Refresh,
-                            contentDescription = "Generer un nouveau code",
+                            contentDescription = stringResource(R.string.invite_regenerate_cd),
                         )
                     }
                 },
@@ -96,9 +98,9 @@ fun InviteQrScreen(
             verticalArrangement = Arrangement.Top,
         ) {
             val helpText = if (state.kind == "add_device")
-                "Sur ton autre appareil, installe l'app et choisis \"Rejoindre un foyer\" pour scanner ce QR. Tu seras connecte avec ton compte actuel — pas de nouveau membre cree."
+                stringResource(R.string.invite_help_add_device)
             else
-                "Demande a la personne d'installer l'app et de choisir \"Rejoindre un foyer\". Elle pourra ensuite scanner ce QR."
+                stringResource(R.string.invite_help_invite_someone)
             Text(
                 text = helpText,
                 style = MaterialTheme.typography.bodyMedium,
@@ -133,7 +135,7 @@ fun InviteQrScreen(
                     }
                     Spacer(Modifier.height(12.dp))
                     OutlinedButton(onClick = { viewModel.generate() }) {
-                        Text("Reessayer")
+                        Text(stringResource(R.string.wizard_retry))
                     }
                 }
 
@@ -149,7 +151,7 @@ fun InviteQrScreen(
                         ) {
                             Image(
                                 bitmap = qrBitmap,
-                                contentDescription = "QR code d'invitation",
+                                contentDescription = stringResource(R.string.invite_qr_cd),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .aspectRatio(1f)
@@ -167,7 +169,7 @@ fun InviteQrScreen(
                     val expiresLabel = formatExpires(state.expiresAt)
                     if (expiresLabel != null) {
                         Text(
-                            text = "Expire $expiresLabel",
+                            text = stringResource(R.string.invite_expires_format, expiresLabel),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -178,7 +180,7 @@ fun InviteQrScreen(
                         shape = MaterialTheme.shapes.small,
                     ) {
                         Text(
-                            text = "Code : ${state.inviteToken!!.take(8)}...",
+                            text = stringResource(R.string.invite_code_preview_format, state.inviteToken!!.take(8)),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -210,13 +212,15 @@ private fun renderQr(content: String): androidx.compose.ui.graphics.ImageBitmap?
     }
 }
 
+@Composable
 private fun formatExpires(iso: String?): String? {
     if (iso.isNullOrBlank()) return null
-    return try {
+    val hhmm = try {
         val odt = OffsetDateTime.parse(iso)
         val local = odt.atZoneSameInstant(ZoneId.systemDefault())
-        "a ${local.format(DateTimeFormatter.ofPattern("HH:mm"))}"
+        local.format(DateTimeFormatter.ofPattern("HH:mm"))
     } catch (_: Exception) {
-        null
+        return null
     }
+    return stringResource(R.string.invite_expires_at_format, hhmm)
 }

@@ -273,6 +273,116 @@
     <string name="leave_dialog_switched_message">You\'ve switched to another household where you\'re a member.</string>
 
     <!-- ============================================================
+         E3.3 — Onboarding screens.
+         ============================================================ -->
+
+    <!-- WelcomeScreen -->
+    <string name="welcome_app_name">Torchons &amp;\nServiettes</string>
+    <string name="welcome_app_tagline">Manage household tasks together</string>
+    <string name="welcome_connecting">Connecting…</string>
+    <string name="welcome_create_foyer">Create a household</string>
+    <string name="welcome_join_foyer">Join a household</string>
+    <string name="welcome_restore_foyer">Recover my household</string>
+
+    <!-- LoginScreen (Tailscale fallback) -->
+    <string name="login_new_device">New device detected</string>
+    <string name="login_who_are_you">Who are you?</string>
+    <string name="login_ip_format">IP: %1$s</string>
+    <string name="login_connection_failed">Connection failed</string>
+    <string name="login_connection_failed_help">Check that Tailscale is on\nand the server is reachable.</string>
+
+    <!-- Wizard: shared nav + buttons -->
+    <string name="wizard_continue">Continue</string>
+    <string name="wizard_skip_step">Skip this step</string>
+    <string name="wizard_retry">Retry</string>
+    <string name="wizard_recovery_continue">I noted my code, continue</string>
+    <string name="recovery_warning_dont_share">⚠ Don\'t share it with anyone but yourself.</string>
+    <string name="recovery_warning_dont_share_long">⚠ Don\'t share it with anyone but yourself. Anyone with this code can take control of your household.</string>
+
+    <!-- CreateFoyerWizardScreen -->
+    <string name="wizard_title_format">Create a household · step %1$d/%2$d</string>
+
+    <!-- Step Toi (reused by JoinFoyer EnterDisplayName) -->
+    <string name="onboarding_your_name_title">What\'s your name?</string>
+    <string name="onboarding_your_name_help">Your first name (or nickname) — visible to other household members.</string>
+    <string name="onboarding_your_name_label">Your first name</string>
+
+    <!-- Step Foyer -->
+    <string name="wizard_foyer_name_title">What\'s your household called?</string>
+    <string name="wizard_foyer_name_help">The name of your home or flat-share, so you can find it again if you manage several.</string>
+    <string name="wizard_foyer_default_at_someones_format">%1$s\'s place</string>
+
+    <!-- Step Rooms -->
+    <string name="wizard_rooms_title">Which rooms do you have?</string>
+    <string name="wizard_rooms_help">Select rooms that match your home. This helps us suggest the right tasks in the next step.</string>
+    <string name="wizard_rooms_add_hint">A room not in the list? Add it:</string>
+    <string name="wizard_rooms_custom_label">Other room</string>
+    <string name="wizard_rooms_custom_chip_format">%1$s  ✕</string>
+
+    <!-- Step Tasks -->
+    <string name="wizard_tasks_title">Which tasks do you want to track?</string>
+    <string name="wizard_tasks_help">Check the ones relevant to you. You can always add or remove later.</string>
+    <string name="wizard_tasks_empty">No tasks available for the selected rooms. You\'ll be able to add them manually later.</string>
+    <string name="wizard_tasks_creating">Creating…</string>
+    <string name="wizard_tasks_submit">Create my household</string>
+
+    <!-- Catalog error (shared Rooms/Tasks) -->
+    <string name="wizard_catalog_error">Couldn\'t load suggestions (connection issue?). You can retry, or continue without — everything can be added later from Settings.</string>
+
+    <!-- Step Recovery -->
+    <string name="wizard_recovery_title">Here\'s your recovery code</string>
+    <string name="wizard_recovery_help">It lets you recover your admin rights on your household if you lose your phone. Note it down — it\'s shown only once.</string>
+    <string name="wizard_recovery_placeholder">…</string>
+
+    <!-- JoinFoyerScreen -->
+    <string name="join_scan_title">Scan your household\'s QR code</string>
+    <string name="join_scan_help">Ask a household member to open the app and show an invite QR code. You have 15 minutes to scan it.</string>
+    <string name="join_scan_button">Scan QR code</string>
+    <string name="join_submit_button">Join the household</string>
+    <string name="join_adding_device_title">Connecting to your account…</string>
+    <string name="join_adding_device_with_foyer_format">This device will be connected to the \"%1$s\" household with your existing account.</string>
+    <string name="join_adding_device_no_foyer">This device will be connected with your existing account.</string>
+    <string name="join_welcome_format">Welcome to %1$s!</string>
+    <string name="join_welcome_fallback">Welcome!</string>
+    <string name="join_recovery_help">Here\'s your personal recovery code. Note it down: it\'ll let you recover your account if you lose your phone.</string>
+
+    <!-- RestoreFoyerScreen -->
+    <string name="restore_enter_code_title">Enter your recovery code</string>
+    <string name="restore_enter_code_help">The 8-character code in XXXX-XXXX format that you noted when creating or joining your household.</string>
+    <string name="restore_code_label">Recovery code</string>
+    <string name="restore_code_placeholder">XXXX-XXXX</string>
+    <string name="restore_searching">Searching…</string>
+    <string name="restore_verify_button">Verify</string>
+    <string name="restore_confirm_title">Is that really you?</string>
+    <string name="restore_role_admin">admin</string>
+    <string name="restore_role_former_member">former member</string>
+    <string name="restore_role_member">member</string>
+    <string name="restore_role_of_format">%1$s of %2$s</string>
+    <plurals name="restore_completions_count">
+        <item quantity="one">%d task already done</item>
+        <item quantity="other">%d tasks already done</item>
+    </plurals>
+    <plurals name="restore_ratings_count">
+        <item quantity="one">%d affinity rated</item>
+        <item quantity="other">%d affinities rated</item>
+    </plurals>
+    <string name="restore_stats_join_format">%1$s · %2$s</string>
+    <string name="restore_restoring">Restoring…</string>
+    <string name="restore_yes_its_me">Yes, that\'s me</string>
+    <string name="restore_no_not_me">No, that\'s not me</string>
+
+    <!-- InviteQrScreen -->
+    <string name="invite_title_add_device">Add a device</string>
+    <string name="invite_title_invite_someone">Invite someone</string>
+    <string name="invite_regenerate_cd">Generate a new code</string>
+    <string name="invite_help_add_device">On your other device, install the app and choose \"Join a household\" to scan this QR. You\'ll be connected with your current account — no new member created.</string>
+    <string name="invite_help_invite_someone">Ask the person to install the app and choose \"Join a household\". They\'ll then be able to scan this QR.</string>
+    <string name="invite_qr_cd">Invitation QR code</string>
+    <string name="invite_expires_format">Expires %1$s</string>
+    <string name="invite_expires_at_format">at %1$s</string>
+    <string name="invite_code_preview_format">Code: %1$s…</string>
+
+    <!-- ============================================================
          E3.2b — TaskDetailScreen + TaskEditScreen.
          ============================================================ -->
 

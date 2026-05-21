@@ -24,10 +24,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 
 /**
  * Ecran d'accueil v0.30 — onboarding sans compte.
@@ -76,7 +78,7 @@ fun WelcomeScreen(
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "Torchons &\nServiettes",
+                text = stringResource(R.string.welcome_app_name),
                 style = MaterialTheme.typography.headlineLarge,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.primary,
@@ -84,7 +86,7 @@ fun WelcomeScreen(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Gerer les taches du foyer a plusieurs",
+                text = stringResource(R.string.welcome_app_tagline),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -97,7 +99,7 @@ fun WelcomeScreen(
                     CircularProgressIndicator()
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "Connexion...",
+                        text = stringResource(R.string.welcome_connecting),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -108,19 +110,19 @@ fun WelcomeScreen(
                         onClick = onCreateFoyerClick,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Creer un foyer")
+                        Text(stringResource(R.string.welcome_create_foyer))
                     }
                     Spacer(Modifier.height(12.dp))
                     OutlinedButton(
                         onClick = onJoinFoyerClick,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Rejoindre un foyer")
+                        Text(stringResource(R.string.welcome_join_foyer))
                     }
                     Spacer(Modifier.height(20.dp))
                     TextButton(onClick = onRestoreFoyerClick) {
                         Text(
-                            text = "Retrouver mon foyer",
+                            text = stringResource(R.string.welcome_restore_foyer),
                             style = MaterialTheme.typography.labelLarge,
                         )
                     }

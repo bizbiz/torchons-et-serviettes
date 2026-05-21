@@ -33,12 +33,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 
 /**
  * Ecran "Retrouver mon foyer" (v0.30, Phase B5).
@@ -70,12 +73,12 @@ fun RestoreFoyerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Retrouver mon foyer") },
+                title = { Text(stringResource(R.string.welcome_restore_foyer)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Retour",
+                            contentDescription = stringResource(R.string.common_back),
                         )
                     }
                 },
@@ -118,13 +121,13 @@ private fun EnterCode(
     onLookup: () -> Unit,
 ) {
     Text(
-        text = "Entre ton code de recuperation",
+        text = stringResource(R.string.restore_enter_code_title),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Le code de 8 caracteres au format XXXX-XXXX que tu as note a la creation ou en rejoignant ton foyer.",
+        text = stringResource(R.string.restore_enter_code_help),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -132,8 +135,8 @@ private fun EnterCode(
     OutlinedTextField(
         value = code,
         onValueChange = onChange,
-        label = { Text("Code de recuperation") },
-        placeholder = { Text("XXXX-XXXX") },
+        label = { Text(stringResource(R.string.restore_code_label)) },
+        placeholder = { Text(stringResource(R.string.restore_code_placeholder)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.Characters,
@@ -154,9 +157,9 @@ private fun EnterCode(
                 color = MaterialTheme.colorScheme.onPrimary,
             )
             Spacer(Modifier.width(8.dp))
-            Text("Recherche...")
+            Text(stringResource(R.string.restore_searching))
         } else {
-            Text("Verifier")
+            Text(stringResource(R.string.restore_verify_button))
         }
     }
 }
@@ -169,7 +172,7 @@ private fun ConfirmIdentity(
     onCancel: () -> Unit,
 ) {
     Text(
-        text = "C'est bien toi ?",
+        text = stringResource(R.string.restore_confirm_title),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
     )
@@ -189,20 +192,29 @@ private fun ConfirmIdentity(
             if (preview.foyerName != null) {
                 Spacer(Modifier.height(4.dp))
                 val roleLabel = when (preview.role) {
-                    "admin" -> "admin"
-                    "former_member" -> "ancien membre"
-                    else -> "membre"
+                    "admin" -> stringResource(R.string.restore_role_admin)
+                    "former_member" -> stringResource(R.string.restore_role_former_member)
+                    else -> stringResource(R.string.restore_role_member)
                 }
                 Text(
-                    text = "$roleLabel de ${preview.foyerName}",
+                    text = stringResource(R.string.restore_role_of_format, roleLabel, preview.foyerName),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Spacer(Modifier.height(12.dp))
+            val completionsLabel = pluralStringResource(
+                R.plurals.restore_completions_count,
+                preview.completionsCount,
+                preview.completionsCount,
+            )
+            val ratingsLabel = pluralStringResource(
+                R.plurals.restore_ratings_count,
+                preview.ratingsCount,
+                preview.ratingsCount,
+            )
             Text(
-                text = "${preview.completionsCount} tache(s) deja faite(s) · " +
-                    "${preview.ratingsCount} affinite(s) notee(s)",
+                text = stringResource(R.string.restore_stats_join_format, completionsLabel, ratingsLabel),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -222,9 +234,9 @@ private fun ConfirmIdentity(
                 color = MaterialTheme.colorScheme.onPrimary,
             )
             Spacer(Modifier.width(8.dp))
-            Text("Restauration...")
+            Text(stringResource(R.string.restore_restoring))
         } else {
-            Text("Oui, c'est moi")
+            Text(stringResource(R.string.restore_yes_its_me))
         }
     }
     Spacer(Modifier.height(8.dp))
@@ -233,6 +245,6 @@ private fun ConfirmIdentity(
         enabled = !isSubmitting,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text("Non, ce n'est pas moi")
+        Text(stringResource(R.string.restore_no_not_me))
     }
 }

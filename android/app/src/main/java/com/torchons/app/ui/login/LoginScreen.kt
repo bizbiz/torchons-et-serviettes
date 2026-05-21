@@ -26,11 +26,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.BuildConfig
+import com.torchons.app.R
 
 @Composable
 fun LoginScreen(
@@ -67,7 +69,7 @@ fun LoginScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Torchons &\nServiettes",
+                text = stringResource(R.string.welcome_app_name),
                 style = MaterialTheme.typography.headlineLarge,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.primary,
@@ -79,17 +81,17 @@ fun LoginScreen(
                 is LoginUiState.Loading, is LoginUiState.Idle -> {
                     CircularProgressIndicator()
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Connexion...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.welcome_connecting), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 is LoginUiState.ChooseUser -> {
                     Text(
-                        text = "Nouvel appareil detecte",
+                        text = stringResource(R.string.login_new_device),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Qui es-tu ?",
+                        text = stringResource(R.string.login_who_are_you),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -106,16 +108,16 @@ fun LoginScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "IP : ${state.ip}",
+                        text = stringResource(R.string.login_ip_format, state.ip),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 is LoginUiState.Error -> {
-                    Text("Connexion impossible", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.login_connection_failed), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Verifie que Tailscale est active\net que le serveur est accessible.",
+                        text = stringResource(R.string.login_connection_failed_help),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center

@@ -37,10 +37,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 import io.github.g00fy2.quickie.QRResult
 import io.github.g00fy2.quickie.ScanQRCode
 
@@ -86,12 +88,12 @@ fun JoinFoyerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Rejoindre un foyer") },
+                title = { Text(stringResource(R.string.welcome_join_foyer)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Retour",
+                            contentDescription = stringResource(R.string.common_back),
                         )
                     }
                 },
@@ -122,7 +124,6 @@ fun JoinFoyerScreen(
                 )
 
                 else -> EnterDisplayName(
-                    foyerHint = "Demande la personne qui t'a montre le QR",
                     displayName = state.displayName,
                     onChange = viewModel::setDisplayName,
                     isSubmitting = state.isSubmitting,
@@ -136,13 +137,13 @@ fun JoinFoyerScreen(
 @Composable
 private fun ScanInvitation(onScanClick: () -> Unit) {
     Text(
-        text = "Scanne le QR code de ton foyer",
+        text = stringResource(R.string.join_scan_title),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Demande a un membre du foyer d'ouvrir l'app et d'afficher un QR code d'invitation. Tu as 15 minutes pour le scanner.",
+        text = stringResource(R.string.join_scan_help),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -153,26 +154,25 @@ private fun ScanInvitation(onScanClick: () -> Unit) {
     ) {
         Icon(Icons.Default.QrCodeScanner, contentDescription = null)
         Spacer(Modifier.width(8.dp))
-        Text("Scanner le QR code")
+        Text(stringResource(R.string.join_scan_button))
     }
 }
 
 @Composable
 private fun EnterDisplayName(
-    foyerHint: String,
     displayName: String,
     onChange: (String) -> Unit,
     isSubmitting: Boolean,
     onSubmit: () -> Unit,
 ) {
     Text(
-        text = "Comment tu t'appelles ?",
+        text = stringResource(R.string.onboarding_your_name_title),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Ton prenom (ou pseudo) — visible par les autres membres du foyer.",
+        text = stringResource(R.string.onboarding_your_name_help),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -180,7 +180,7 @@ private fun EnterDisplayName(
     OutlinedTextField(
         value = displayName,
         onValueChange = onChange,
-        label = { Text("Ton prenom") },
+        label = { Text(stringResource(R.string.onboarding_your_name_label)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -197,9 +197,9 @@ private fun EnterDisplayName(
                 color = MaterialTheme.colorScheme.onPrimary,
             )
             Spacer(Modifier.width(8.dp))
-            Text("Connexion...")
+            Text(stringResource(R.string.welcome_connecting))
         } else {
-            Text("Rejoindre le foyer")
+            Text(stringResource(R.string.join_submit_button))
         }
     }
 }
@@ -207,16 +207,16 @@ private fun EnterDisplayName(
 @Composable
 private fun AddingDevice(foyerName: String?) {
     Text(
-        text = "Connexion a ton compte...",
+        text = stringResource(R.string.join_adding_device_title),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
     )
     Spacer(Modifier.height(8.dp))
     Text(
         text = if (foyerName != null)
-            "Cet appareil sera connecte au foyer \"$foyerName\" avec ton compte existant."
+            stringResource(R.string.join_adding_device_with_foyer_format, foyerName)
         else
-            "Cet appareil sera connecte avec ton compte existant.",
+            stringResource(R.string.join_adding_device_no_foyer),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -236,13 +236,14 @@ private fun JoinSuccessRecovery(
     onContinue: () -> Unit,
 ) {
     Text(
-        text = if (foyerName != null) "Bienvenue dans $foyerName !" else "Bienvenue !",
+        text = if (foyerName != null) stringResource(R.string.join_welcome_format, foyerName)
+        else stringResource(R.string.join_welcome_fallback),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Voici ton code personnel de recuperation. Note-le : il te permettra de retrouver ton compte si tu perds ton telephone.",
+        text = stringResource(R.string.join_recovery_help),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -272,7 +273,7 @@ private fun JoinSuccessRecovery(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
-            text = "⚠ Ne le partage avec personne d'autre que toi-meme.",
+            text = stringResource(R.string.recovery_warning_dont_share),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onErrorContainer,
             modifier = Modifier.padding(12.dp),
@@ -293,7 +294,7 @@ private fun JoinSuccessRecovery(
         ) {
             Icon(Icons.Default.ContentCopy, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Copier")
+            Text(stringResource(R.string.recovery_dialog_copy))
         }
         androidx.compose.material3.OutlinedButton(
             onClick = { shareCodeJoin(context, recoveryCode) },
@@ -301,7 +302,7 @@ private fun JoinSuccessRecovery(
         ) {
             Icon(Icons.Default.Share, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Partager")
+            Text(stringResource(R.string.recovery_dialog_share))
         }
     }
 
@@ -309,7 +310,7 @@ private fun JoinSuccessRecovery(
     Button(
         onClick = onContinue,
         modifier = Modifier.fillMaxWidth(),
-    ) { Text("J'ai note mon code, continuer") }
+    ) { Text(stringResource(R.string.wizard_recovery_continue)) }
 }
 
 private fun copyToClipboardJoin(
@@ -318,7 +319,12 @@ private fun copyToClipboardJoin(
 ) {
     val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
         as? android.content.ClipboardManager ?: return
-    cm.setPrimaryClip(android.content.ClipData.newPlainText("Code de recuperation T&S", code))
+    cm.setPrimaryClip(
+        android.content.ClipData.newPlainText(
+            context.getString(R.string.recovery_code_clipboard_label),
+            code,
+        ),
+    )
 }
 
 private fun shareCodeJoin(
@@ -329,12 +335,14 @@ private fun shareCodeJoin(
         type = "text/plain"
         putExtra(
             android.content.Intent.EXTRA_SUBJECT,
-            "Code de recuperation Torchons & Serviettes",
+            context.getString(R.string.recovery_share_subject),
         )
         putExtra(
             android.content.Intent.EXTRA_TEXT,
-            "Voici mon code de recuperation pour mon foyer dans l'app Torchons & Serviettes : $code\n\nGarde-le precieusement.",
+            context.getString(R.string.recovery_share_body_format, code),
         )
     }
-    context.startActivity(android.content.Intent.createChooser(send, "Partager le code"))
+    context.startActivity(
+        android.content.Intent.createChooser(send, context.getString(R.string.recovery_share_chooser)),
+    )
 }

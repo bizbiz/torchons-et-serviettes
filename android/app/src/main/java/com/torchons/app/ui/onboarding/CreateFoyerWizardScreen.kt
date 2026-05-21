@@ -49,10 +49,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 import com.torchons.app.data.model.CatalogRoomView
 import com.torchons.app.data.model.CatalogTaskView
 
@@ -93,7 +95,7 @@ fun CreateFoyerWizardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Creer un foyer · etape $shownStep/$totalSteps") },
+                title = { Text(stringResource(R.string.wizard_title_format, shownStep, totalSteps)) },
                 navigationIcon = {
                     IconButton(
                         onClick = {
@@ -103,7 +105,7 @@ fun CreateFoyerWizardScreen(
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Retour",
+                            contentDescription = stringResource(R.string.common_back),
                         )
                     }
                 },
@@ -136,7 +138,8 @@ fun CreateFoyerWizardScreen(
                     2 -> StepFoyer(
                         value = state.foyerName,
                         defaultHint = if (state.displayName.isNotBlank())
-                            "Chez ${state.displayName}" else "Mon foyer",
+                            stringResource(R.string.wizard_foyer_default_at_someones_format, state.displayName)
+                        else stringResource(R.string.settings_foyer_default_name),
                         onChange = viewModel::setFoyerName,
                         onNext = viewModel::nextStep,
                     )
@@ -180,13 +183,13 @@ private fun StepToi(
     onNext: () -> Unit,
 ) {
     Text(
-        text = "Comment tu t'appelles ?",
+        text = stringResource(R.string.onboarding_your_name_title),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Ton prenom (ou pseudo) — visible par les autres membres du foyer.",
+        text = stringResource(R.string.onboarding_your_name_help),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -194,7 +197,7 @@ private fun StepToi(
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
-        label = { Text("Ton prenom") },
+        label = { Text(stringResource(R.string.onboarding_your_name_label)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -202,10 +205,10 @@ private fun StepToi(
     Button(
         onClick = onNext,
         modifier = Modifier.fillMaxWidth(),
-    ) { Text("Continuer") }
+    ) { Text(stringResource(R.string.wizard_continue)) }
     Spacer(Modifier.height(8.dp))
     TextButton(onClick = onNext, modifier = Modifier.fillMaxWidth()) {
-        Text("Sauter cette etape")
+        Text(stringResource(R.string.wizard_skip_step))
     }
 }
 
@@ -217,13 +220,13 @@ private fun StepFoyer(
     onNext: () -> Unit,
 ) {
     Text(
-        text = "Comment s'appelle ton foyer ?",
+        text = stringResource(R.string.wizard_foyer_name_title),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Le nom de ta maison ou de ta colloc, pour t'y retrouver si tu en gere plusieurs.",
+        text = stringResource(R.string.wizard_foyer_name_help),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -231,7 +234,7 @@ private fun StepFoyer(
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
-        label = { Text("Nom du foyer") },
+        label = { Text(stringResource(R.string.foyer_name_label)) },
         placeholder = { Text(defaultHint) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
@@ -240,10 +243,10 @@ private fun StepFoyer(
     Button(
         onClick = onNext,
         modifier = Modifier.fillMaxWidth(),
-    ) { Text("Continuer") }
+    ) { Text(stringResource(R.string.wizard_continue)) }
     Spacer(Modifier.height(8.dp))
     TextButton(onClick = onNext, modifier = Modifier.fillMaxWidth()) {
-        Text("Sauter cette etape")
+        Text(stringResource(R.string.wizard_skip_step))
     }
 }
 
@@ -261,13 +264,13 @@ private fun StepPieces(
     onNext: () -> Unit,
 ) {
     Text(
-        text = "Quelles pieces tu as ?",
+        text = stringResource(R.string.wizard_rooms_title),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Selectionne les pieces qui correspondent a ton chez-toi. Ca permet de proposer les bonnes taches a l'etape suivante.",
+        text = stringResource(R.string.wizard_rooms_help),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -302,7 +305,7 @@ private fun StepPieces(
 
     Spacer(Modifier.height(20.dp))
     Text(
-        text = "Une piece qui n'est pas dans la liste ? Ajoute-la :",
+        text = stringResource(R.string.wizard_rooms_add_hint),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -315,7 +318,7 @@ private fun StepPieces(
         OutlinedTextField(
             value = newRoom,
             onValueChange = { newRoom = it },
-            label = { Text("Autre piece") },
+            label = { Text(stringResource(R.string.wizard_rooms_custom_label)) },
             singleLine = true,
             modifier = Modifier.weight(1f),
         )
@@ -326,7 +329,7 @@ private fun StepPieces(
                 newRoom = ""
             },
             enabled = newRoom.isNotBlank(),
-        ) { Text("Ajouter") }
+        ) { Text(stringResource(R.string.common_add)) }
     }
     if (customRooms.isNotEmpty()) {
         Spacer(Modifier.height(12.dp))
@@ -339,7 +342,7 @@ private fun StepPieces(
                 FilterChip(
                     selected = true,
                     onClick = { onRemoveCustomRoom(name) },
-                    label = { Text("$name  ✕") },
+                    label = { Text(stringResource(R.string.wizard_rooms_custom_chip_format, name)) },
                 )
             }
         }
@@ -349,10 +352,10 @@ private fun StepPieces(
     Button(
         onClick = onNext,
         modifier = Modifier.fillMaxWidth(),
-    ) { Text("Continuer") }
+    ) { Text(stringResource(R.string.wizard_continue)) }
     Spacer(Modifier.height(8.dp))
     TextButton(onClick = onNext, modifier = Modifier.fillMaxWidth()) {
-        Text("Sauter cette etape")
+        Text(stringResource(R.string.wizard_skip_step))
     }
 }
 
@@ -368,13 +371,13 @@ private fun StepTaches(
     onNext: () -> Unit,
 ) {
     Text(
-        text = "Quelles taches tu veux suivre ?",
+        text = stringResource(R.string.wizard_tasks_title),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Coche celles qui te concernent. Tu pourras toujours en ajouter ou en retirer plus tard.",
+        text = stringResource(R.string.wizard_tasks_help),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -390,7 +393,7 @@ private fun StepTaches(
 
         CatalogStatus.OK -> if (tasks.isEmpty()) {
             Text(
-                text = "Aucune tache disponible pour les pieces selectionnees. Tu pourras les ajouter manuellement plus tard.",
+                text = stringResource(R.string.wizard_tasks_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -424,9 +427,9 @@ private fun StepTaches(
                 color = MaterialTheme.colorScheme.onPrimary,
             )
             Spacer(Modifier.width(8.dp))
-            Text("Creation...")
+            Text(stringResource(R.string.wizard_tasks_creating))
         } else {
-            Text("Creer mon foyer")
+            Text(stringResource(R.string.wizard_tasks_submit))
         }
     }
     Spacer(Modifier.height(8.dp))
@@ -435,7 +438,7 @@ private fun StepTaches(
         enabled = !isSubmitting,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text("Sauter cette etape")
+        Text(stringResource(R.string.wizard_skip_step))
     }
 }
 
@@ -451,12 +454,12 @@ private fun CatalogErrorBox(onRetry: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Impossible de charger les suggestions (probleme de connexion ?). Tu peux reessayer, ou continuer sans : tout reste ajoutable plus tard depuis les Reglages.",
+                text = stringResource(R.string.wizard_catalog_error),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
             Spacer(Modifier.height(12.dp))
-            OutlinedButton(onClick = onRetry) { Text("Reessayer") }
+            OutlinedButton(onClick = onRetry) { Text(stringResource(R.string.wizard_retry)) }
         }
     }
 }
@@ -469,13 +472,13 @@ private fun StepRecovery(
     val context = LocalContext.current
 
     Text(
-        text = "Voici ton code de recuperation",
+        text = stringResource(R.string.wizard_recovery_title),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Il te permet de retrouver tes droits d'admin sur ton foyer si tu perds ton telephone. Note-le bien, il ne sera affiche qu'une seule fois.",
+        text = stringResource(R.string.wizard_recovery_help),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -487,7 +490,7 @@ private fun StepRecovery(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
-            text = recoveryCode ?: "...",
+            text = recoveryCode ?: stringResource(R.string.wizard_recovery_placeholder),
             style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -505,7 +508,7 @@ private fun StepRecovery(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
-            text = "⚠ Ne le partage avec personne d'autre que toi-meme. Toute personne qui possede ce code peut prendre le controle de ton foyer.",
+            text = stringResource(R.string.recovery_warning_dont_share_long),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onErrorContainer,
             modifier = Modifier.padding(12.dp),
@@ -526,7 +529,7 @@ private fun StepRecovery(
         ) {
             Icon(Icons.Default.ContentCopy, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Copier")
+            Text(stringResource(R.string.recovery_dialog_copy))
         }
         OutlinedButton(
             onClick = {
@@ -537,7 +540,7 @@ private fun StepRecovery(
         ) {
             Icon(Icons.Default.Share, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Partager")
+            Text(stringResource(R.string.recovery_dialog_share))
         }
     }
 
@@ -546,27 +549,27 @@ private fun StepRecovery(
         onClick = onContinue,
         modifier = Modifier.fillMaxWidth(),
         enabled = recoveryCode != null,
-    ) { Text("J'ai note mon code, continuer") }
+    ) { Text(stringResource(R.string.wizard_recovery_continue)) }
 }
 
 private fun copyToClipboard(context: Context, code: String) {
     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         ?: return
-    cm.setPrimaryClip(ClipData.newPlainText("Code de recuperation T&S", code))
+    cm.setPrimaryClip(
+        ClipData.newPlainText(context.getString(R.string.recovery_code_clipboard_label), code),
+    )
 }
 
 private fun shareCode(context: Context, code: String) {
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(
-            Intent.EXTRA_SUBJECT,
-            "Code de recuperation Torchons & Serviettes",
-        )
+        putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.recovery_share_subject))
         putExtra(
             Intent.EXTRA_TEXT,
-            "Voici mon code de recuperation pour mon foyer dans l'app Torchons & Serviettes : $code\n\n" +
-                "Garde-le precieusement, il me permet de retrouver mes droits d'admin si je perds mon telephone.",
+            context.getString(R.string.recovery_share_body_format, code),
         )
     }
-    context.startActivity(Intent.createChooser(send, "Partager le code"))
+    context.startActivity(
+        Intent.createChooser(send, context.getString(R.string.recovery_share_chooser)),
+    )
 }
