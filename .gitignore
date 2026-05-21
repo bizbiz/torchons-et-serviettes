@@ -11,6 +11,12 @@ backend/.venv/
 !.env.example
 !.env.prod.example
 
+# Postgres dumps (cutover, dry-run, backups) — peuvent contenir des
+# pseudos d'user et l'historique complet du foyer dogfood. Ne JAMAIS
+# committer.
+*.dump
+ts_dump_*
+
 # IDE
 .idea/
 .vscode/
