@@ -88,6 +88,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# E3.4 — Handler global pour LocalizedHTTPException : lit Accept-Language
+# et renvoie `{"detail": "<localized>"}` (backward-compat avec le
+# format HTTPException standard).
+from app.utils.errors import register_localized_error_handler
+
+register_localized_error_handler(app)
+
 # Routers
 from app.api.auth import router as auth_router
 from app.api.tasks import router as tasks_router

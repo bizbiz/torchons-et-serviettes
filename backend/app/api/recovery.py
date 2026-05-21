@@ -37,6 +37,7 @@ from app.models.foyer import Foyer
 from app.models.task_affinity import TaskAffinity
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
+from app.utils.errors import LocalizedHTTPException
 from app.utils.recovery_code import generate_code, hash_code, verify_code
 
 router = APIRouter(prefix="/api/recovery", tags=["recovery"])
@@ -91,11 +92,11 @@ def _decode_restore_token(token: str) -> str:
     try:
         claims = jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM])
     except JWTError:
-        raise HTTPException(
-            status_code=401, detail="Token de restauration invalide ou expire"
+        raise LocalizedHTTPException(
+            status_code=401, error_code="RECOVERY_TOKEN_INVALID"
         )
     if claims.get("scope") != _RESTORE_SCOPE:
-        raise HTTPException(status_code=401, detail="Scope token incorrect")
+        raise LocalizedHTTPException(status_code=401, error_code="RECOVERY_TOKEN_INVALID")
     return claims["sub"]
 
 
@@ -112,7 +113,7 @@ async def regenerate_recovery_code(
     user_result = await session.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     if user is None or user.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="USER_NOT_FOUND")
 
     new_code = generate_code()
     user.recovery_code_hash = hash_code(new_code)
@@ -146,9 +147,9 @@ async def restore(
             break
 
     if matched is None:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=404,
-            detail="Code de recuperation introuvable",
+            error_code="RECOVERY_CODE_NOT_FOUND",
         )
 
     # Resoud le foyer actif (si encore membre, sinon best-effort first foyer)
@@ -211,7 +212,7 @@ async def restore_confirm(
     user_result = await session.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     if user is None or user.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="USER_NOT_FOUND")
 
     user.recovery_code_last_used_at = datetime.now(timezone.utc)
 

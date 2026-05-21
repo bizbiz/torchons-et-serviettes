@@ -25,6 +25,7 @@ from app.models.foyer import Foyer
 from app.models.pairing_token import PairingToken
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
+from app.utils.errors import LocalizedHTTPException
 from app.utils.recovery_code import generate_code, hash_code
 
 router = APIRouter(prefix="/api/pairing", tags=["pairing"])
@@ -81,15 +82,15 @@ async def _create_pairing_token(
         )
     )
     if membership.scalar_one_or_none() is None:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=403,
-            detail="Tu n'es pas membre actif de ce foyer",
+            error_code="FOYER_NOT_ACTIVE_MEMBER",
         )
 
     foyer_result = await session.execute(select(Foyer).where(Foyer.id == foyer_id))
     foyer = foyer_result.scalar_one_or_none()
     if foyer is None or foyer.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Foyer introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="FOYER_NOT_FOUND")
 
     token_value = secrets.token_hex(16)  # 32 chars hex
     expires_at = datetime.now(timezone.utc) + _TOKEN_TTL
@@ -176,22 +177,22 @@ async def pairing_info(
     )
     pt = token_result.scalar_one_or_none()
     if pt is None:
-        raise HTTPException(status_code=404, detail="Code d'invitation invalide")
+        raise LocalizedHTTPException(status_code=404, error_code="PAIRING_TOKEN_INVALID")
     if pt.consumed_at is not None:
-        raise HTTPException(
-            status_code=409, detail="Ce code d'invitation a deja ete utilise"
+        raise LocalizedHTTPException(
+            status_code=409, error_code="PAIRING_TOKEN_USED"
         )
     now = datetime.now(timezone.utc)
     if pt.expires_at < now:
-        raise HTTPException(
-            status_code=410, detail="Ce code d'invitation a expire"
+        raise LocalizedHTTPException(
+            status_code=410, error_code="PAIRING_TOKEN_EXPIRED"
         )
 
     foyer_result = await session.execute(select(Foyer).where(Foyer.id == pt.foyer_id))
     foyer = foyer_result.scalar_one_or_none()
     if foyer is None or foyer.deleted_at is not None:
-        raise HTTPException(
-            status_code=410, detail="Le foyer associe a ce code n'existe plus"
+        raise LocalizedHTTPException(
+            status_code=410, error_code="PAIRING_FOYER_GONE"
         )
 
     return PairingInfoResponse(
@@ -224,25 +225,25 @@ async def join_pairing(
     )
     pt = token_result.scalar_one_or_none()
     if pt is None:
-        raise HTTPException(status_code=404, detail="Code d'invitation invalide")
+        raise LocalizedHTTPException(status_code=404, error_code="PAIRING_TOKEN_INVALID")
 
     # Validation TTL + single-use
     now = datetime.now(timezone.utc)
     if pt.consumed_at is not None:
-        raise HTTPException(
-            status_code=409, detail="Ce code d'invitation a deja ete utilise"
+        raise LocalizedHTTPException(
+            status_code=409, error_code="PAIRING_TOKEN_USED"
         )
     if pt.expires_at < now:
-        raise HTTPException(
-            status_code=410, detail="Ce code d'invitation a expire"
+        raise LocalizedHTTPException(
+            status_code=410, error_code="PAIRING_TOKEN_EXPIRED"
         )
 
     # Recupere foyer pour validation + retour
     foyer_result = await session.execute(select(Foyer).where(Foyer.id == pt.foyer_id))
     foyer = foyer_result.scalar_one_or_none()
     if foyer is None or foyer.deleted_at is not None:
-        raise HTTPException(
-            status_code=410, detail="Le foyer associe a ce code n'existe plus"
+        raise LocalizedHTTPException(
+            status_code=410, error_code="PAIRING_FOYER_GONE"
         )
 
     device_id = body.device_id or str(uuid.uuid4())
@@ -255,9 +256,9 @@ async def join_pairing(
         )
         existing_user = user_result.scalar_one_or_none()
         if existing_user is None or existing_user.deleted_at is not None:
-            raise HTTPException(
+            raise LocalizedHTTPException(
                 status_code=410,
-                detail="Le compte associe a ce code n'existe plus",
+                error_code="PAIRING_ACCOUNT_GONE",
             )
         pt.consumed_at = now
         await session.commit()
@@ -277,9 +278,9 @@ async def join_pairing(
 
     # Cas defaut foyer_join (existant v0.30)
     if not body.display_name.strip():
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=400,
-            detail="display_name est requis pour rejoindre un foyer",
+            error_code="PAIRING_DISPLAY_NAME_REQUIRED",
         )
 
     auto_username = f"u_{secrets.token_hex(6)}"

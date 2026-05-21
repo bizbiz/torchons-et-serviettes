@@ -18,6 +18,7 @@ from app.schemas.foyer import FoyerCreate, FoyerResponse, FoyerUpdate
 from app.services.lifecycle import soft_leave_foyer
 from app.services.presence import seed_initial_presence
 from app.utils.changelog import record_change
+from app.utils.errors import LocalizedHTTPException
 from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api/foyers", tags=["foyers"])
@@ -118,15 +119,15 @@ async def update_foyer(
     )
     uf = membership.scalar_one_or_none()
     if uf is None or uf.role != "admin":
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=403,
-            detail="Seul un admin du foyer peut modifier ses reglages",
+            error_code="FOYER_ADMIN_REQUIRED",
         )
 
     foyer_result = await session.execute(select(Foyer).where(Foyer.id == foyer_id))
     foyer = foyer_result.scalar_one_or_none()
     if foyer is None:
-        raise HTTPException(status_code=404, detail="Foyer introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="FOYER_NOT_FOUND")
 
     for key, val in body.model_dump(exclude_unset=True).items():
         setattr(foyer, key, val)
@@ -177,15 +178,15 @@ async def update_foyer_gamification(
     )
     uf = membership.scalar_one_or_none()
     if uf is None:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=403,
-            detail="Tu n'es pas membre de ce foyer",
+            error_code="FOYER_NOT_MEMBER",
         )
 
     foyer_result = await session.execute(select(Foyer).where(Foyer.id == foyer_id))
     foyer = foyer_result.scalar_one_or_none()
     if foyer is None:
-        raise HTTPException(status_code=404, detail="Foyer introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="FOYER_NOT_FOUND")
 
     foyer.gamification_enabled = body.enabled
     foyer.version += 1
@@ -237,16 +238,16 @@ async def switch_foyer(
         )
     )
     if membership.scalar_one_or_none() is None:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=403,
-            detail="Tu n'es pas membre de ce foyer",
+            error_code="FOYER_NOT_MEMBER",
         )
 
     # Met a jour last_active_foyer_id
     user_result = await session.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     if user is None:
-        raise HTTPException(status_code=404, detail="User introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="USER_NOT_FOUND")
     user.last_active_foyer_id = foyer_id
     await session.commit()
 
@@ -282,9 +283,9 @@ async def leave_foyer(
 
     actually_left = await soft_leave_foyer(session, user_id, foyer_id)
     if not actually_left:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=404,
-            detail="Tu n'es pas membre actif de ce foyer",
+            error_code="FOYER_NOT_ACTIVE_MEMBER",
         )
 
     # Si c'etait le foyer actif, bascule last_active sur un autre foyer ou null

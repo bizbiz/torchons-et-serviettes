@@ -1,5 +1,23 @@
 # Notes de version
 
+## v0.35.15 — 2026-05-21
+
+### Traduction EN — Messages d\'erreur backend
+- Les messages d\'erreur les plus visibles (33 cas) sont désormais
+  bilingues, traduits côté serveur en fonction de la langue du
+  téléphone. Concerne tous les flows critiques&#160;: **rejoindre un
+  foyer** (QR code expiré, déjà utilisé, etc.), **retrouver mon foyer**
+  (code invalide, etc.), **quitter / changer de foyer**, **valider une
+  tâche** (anti-doublon, participants hors foyer), **complétion d\'une
+  tâche** introuvable, etc.
+- Si ton téléphone est en anglais&#160;: «&#160;Invalid invitation
+  code&#160;» au lieu de «&#160;Code d\'invitation invalide&#160;»,
+  «&#160;Task already completed 5 min ago. Next slot at…&#160;» au lieu
+  de la version FR, etc.
+- Les ~60 autres messages backend restent en français pour l\'instant
+  (migration progressive — pas de régression&#160;: les anciens clients
+  voient toujours du FR).
+
 ## Site web v0.35.14b — 2026-05-21
 
 ### Site bilingue (partiel)

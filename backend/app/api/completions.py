@@ -39,6 +39,7 @@ from app.services.recurrence import (
     min_completion_gap_seconds,
 )
 from app.utils.changelog import record_change
+from app.utils.errors import LocalizedHTTPException
 from app.utils.scoping import current_foyer_uuid, scoped
 
 router = APIRouter(tags=["completions"])
@@ -153,7 +154,7 @@ async def complete_task(
     )
     task = result.scalar_one_or_none()
     if not task:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     completed_by = body.completed_by or UUID(current["user_id"])
 
@@ -177,16 +178,16 @@ async def complete_task(
         elapsed = datetime.now(timezone.utc) - last.completed_at
         retry_at = last.completed_at + timedelta(seconds=gap_seconds)
         elapsed_min = int(elapsed.total_seconds() // 60)
-        raise HTTPException(
+        # Anti-doublon : 409 localise. Anciennement detail={"message": ...,
+        # "retry_at": ...} dict — converti en string localise via le handler
+        # global. Le client n'utilisait pas la structure pour autre chose
+        # qu'un toast.
+        raise LocalizedHTTPException(
             status_code=409,
-            detail={
-                "message": (
-                    f"Tache deja completee il y a {elapsed_min} min. "
-                    f"Prochain creneau possible a {retry_at.isoformat()}."
-                ),
-                "last_completion_at": last.completed_at.isoformat(),
+            error_code="COMPLETION_DUPLICATE",
+            format_args={
+                "elapsed_min": elapsed_min,
                 "retry_at": retry_at.isoformat(),
-                "gap_seconds": gap_seconds,
             },
         )
 
@@ -276,12 +277,12 @@ async def complete_task_collective(
     )
     task = result.scalar_one_or_none()
     if not task:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     # 2. Validation : min 1 participant, tous distincts, tous membres du foyer
     participants = list(dict.fromkeys(body.participant_user_ids))  # dedup en preservant ordre
     if not participants:
-        raise HTTPException(status_code=400, detail="Aucun participant fourni")
+        raise LocalizedHTTPException(status_code=400, error_code="COMPLETION_NO_PARTICIPANTS")
 
     foyer_uuid = current_foyer_uuid(current)
     members_result = await session.execute(
@@ -293,9 +294,10 @@ async def complete_task_collective(
     valid_ids = {row[0] for row in members_result.all()}
     invalid = [p for p in participants if p not in valid_ids]
     if invalid:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=400,
-            detail=f"Participants hors du foyer : {[str(i) for i in invalid]}",
+            error_code="COMPLETION_PARTICIPANTS_OUTSIDE_FOYER",
+            format_args={"invalid": [str(i) for i in invalid]},
         )
 
     # 3. Anti-doublon atomique : pour chaque participant, verifier qu'aucune
@@ -313,26 +315,12 @@ async def complete_task_collective(
     )
     conflicts = conflict_result.scalars().all()
     if conflicts:
-        now = datetime.now(timezone.utc)
-        details = []
-        for c in conflicts:
-            elapsed_min = int((now - c.completed_at).total_seconds() // 60)
-            retry_at = c.completed_at + timedelta(seconds=gap_seconds)
-            details.append({
-                "user_id": str(c.completed_by),
-                "elapsed_min": elapsed_min,
-                "retry_at": retry_at.isoformat(),
-            })
-        raise HTTPException(
+        # Anti-doublon collectif : 409 localise. L'ancien detail etait un
+        # dict {message, conflicts, gap_seconds} mais le client n'utilisait
+        # que le message — converti en string localise via le handler.
+        raise LocalizedHTTPException(
             status_code=409,
-            detail={
-                "message": (
-                    "Impossible de valider : un ou plusieurs participants ont "
-                    "deja valide cette tache recemment."
-                ),
-                "conflicts": details,
-                "gap_seconds": gap_seconds,
-            },
+            error_code="COMPLETION_COLLECTIVE_DUPLICATE",
         )
 
     # 4. Base points : meme logique que le endpoint classique.
@@ -438,7 +426,7 @@ async def undo_completion(
     )
     comp = result.scalar_one_or_none()
     if not comp:
-        raise HTTPException(status_code=404, detail="Completion introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="COMPLETION_NOT_FOUND")
     comp.deleted_at = datetime.now(timezone.utc)
     await record_change(
         session, "task_completions", comp.id, "DELETE", current["user_id"],
@@ -476,7 +464,7 @@ async def undo_collective_completion(
     )
     rows = list(result.scalars().all())
     if not rows:
-        raise HTTPException(status_code=404, detail="Collectif introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="COLLECTIVE_NOT_FOUND")
 
     now = datetime.now(timezone.utc)
     for comp in rows:
@@ -553,7 +541,7 @@ async def completion_preview(
     )
     task = result.scalar_one_or_none()
     if not task:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     ca = completed_at or datetime.now(timezone.utc)
     if ca.tzinfo is None:

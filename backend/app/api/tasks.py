@@ -25,6 +25,7 @@ from app.services.frequency_vote import (
 )
 from app.services.presence import compute_absent_days_for_tasks
 from app.utils.changelog import record_change
+from app.utils.errors import LocalizedHTTPException
 from app.utils.scoping import current_foyer_uuid, scoped
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -141,7 +142,7 @@ async def get_task(
     )
     task = result.scalar_one_or_none()
     if not task:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
     absent_map = await compute_absent_days_for_tasks(
         session, current_foyer_uuid(current), [task]
     )
@@ -221,7 +222,7 @@ async def update_task(
     )
     task = result.scalar_one_or_none()
     if not task:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     updates = body.model_dump(exclude_unset=True)
 
@@ -364,7 +365,7 @@ async def get_task_history(
         scoped(Task, current).where(Task.id == task_id)
     )
     if ownership_check.scalar_one_or_none() is None:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     foyer_uuid = current_foyer_uuid(current)
     result = await session.execute(
@@ -468,7 +469,7 @@ async def delete_task(
     )
     task = result.scalar_one_or_none()
     if not task:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
     task.deleted_at = datetime.now(timezone.utc)
     task.version += 1
     await record_change(
