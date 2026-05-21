@@ -32,7 +32,12 @@ import com.torchons.app.data.model.UserPrompt
  * Types :
  * - BUMP_EFFORT : modal dedie avec liste completions + +1 effort.
  * - VOTE_RATING : delegate au flow de notation existant (callback).
- * - RESOLVE_PRESENCE : modal dedie de resolution presence.
+ * - RESOLVE_PRESENCE : delegue au caller via onOpenPresenceCalendar qui
+ *   ouvre StreakCalendarModal (one modal to rule them all, P4b.2). Le
+ *   modal edite la presence directement via PUT /presence (taps); a la
+ *   fermeture, le caller resout le prompt en ANSWERED (les changements
+ *   sont deja persistes). Remplace l'ancien ResolvePresenceDialog
+ *   (deprecated, gardé dead code pour minimiser le risque ce ship).
  * - VOTE_FREQUENCY (v0.28) : delegate au caller via onOpenFrequencyVote
  *   qui doit fetch /frequency-votes et ouvrir FrequencyVoteDialog avec
  *   le bandeau "X t'a demande de revoter" (requesterName du context).
@@ -44,8 +49,7 @@ fun PromptModal(
     onDismiss: () -> Unit,
     onBumpEffort: () -> Unit,
     onOpenRating: (taskId: String) -> Unit,
-    onResolvePresence: (payload: Map<String, Any?>) -> Unit = {},
-    onNavigateToFreezeSettings: () -> Unit = {},
+    onOpenPresenceCalendar: () -> Unit = {},
     onOpenFrequencyVote: (taskId: String, requesterName: String) -> Unit = { _, _ -> },
     onOpenEffortVote: (taskId: String, requesterName: String) -> Unit = { _, _ -> },
 ) {
@@ -62,12 +66,14 @@ fun PromptModal(
             // de resolve le prompt une fois la notation soumise.
             onOpenRating(prompt.context["task_id"]?.toString().orEmpty())
         }
-        "RESOLVE_PRESENCE" -> ResolvePresenceDialog(
-            prompt = prompt,
-            onResolve = onResolvePresence,
-            onDismiss = onDismiss,
-            onNavigateToSettings = onNavigateToFreezeSettings,
-        )
+        "RESOLVE_PRESENCE" -> {
+            // P4b.2 (one modal to rule them all) : delegue au caller pour
+            // ouvrir StreakCalendarModal au lieu d'un dialog dedie. Les
+            // edits de presence se font via PUT /presence (taps dans le
+            // modal); a la fermeture, le caller resout le prompt en
+            // ANSWERED sans payload (les jours sont deja persistes).
+            onOpenPresenceCalendar()
+        }
         "VOTE_FREQUENCY" -> {
             val taskId = prompt.context["task_id"]?.toString().orEmpty()
             val requester = prompt.context["requester_name"]?.toString() ?: "?"

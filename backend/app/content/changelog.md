@@ -1,5 +1,20 @@
 # Notes de version
 
+## v0.35.16 — 2026-05-21
+
+### Popup d\'absence unifiée avec le modal Présence & séries
+- La popup qui apparaît automatiquement à l\'ouverture quand l\'app
+  détecte des **jours d\'absence à confirmer** ouvre désormais le
+  **même modal éditable** que celui qu\'on a partout ailleurs
+  (écran Foyer, Stats, profil) — fini les 2 surfaces différentes
+  qui faisaient la même chose. Tu peux maintenant éditer
+  n\'importe quel jour (pas juste les jours détectés douteux),
+  voir tes séries / records, switcher entre membres du foyer,
+  changer de mois — tout en un seul endroit.
+- Les modifications sont enregistrées immédiatement à chaque tap.
+  À la fermeture du modal, le rappel se marque comme résolu et le
+  bandeau «&#160;jours non confirmés&#160;» disparaît de l\'accueil.
+
 ## v0.35.15 — 2026-05-21
 
 ### Traduction EN — Messages d\'erreur backend

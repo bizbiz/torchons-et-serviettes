@@ -177,6 +177,13 @@ fun HomeScreen(
 
     // Popup simulation projection (v0.8.0 magic buttons, multi-slider v0.8.1)
     var showProjectionDialog by remember { mutableStateOf(false) }
+    // P4b.2 — modal unique "Presence & series" pour resoudre les prompts
+    // RESOLVE_PRESENCE (cf bloc PromptModal + bloc d'ouverture plus bas).
+    // Le flag `fromPrompt` indique qu'on doit resoudre le prompt en ANSWERED
+    // quand l'user ferme le modal (les jours ont ete persistes via PUT
+    // direct lors des taps).
+    var streakCalendarUserId by remember { mutableStateOf<String?>(null) }
+    var streakCalendarFromPrompt by remember { mutableStateOf(false) }
     val currentProposition by viewModel.currentProposition.collectAsState()
     val propositionCelebration by viewModel.propositionCelebration.collectAsState()
     val propositionError by viewModel.propositionError.collectAsState()
@@ -237,6 +244,14 @@ fun HomeScreen(
 
     // Queue unifiee des prompts (BUMP_EFFORT / VOTE_RATING / RESOLVE_PRESENCE
     // / VOTE_FREQUENCY / VOTE_EFFORT v0.28).
+    //
+    // P4b.2 — RESOLVE_PRESENCE ouvre desormais le StreakCalendarModal
+    // unifie (au lieu de l'ancien ResolvePresenceDialog) : meme surface
+    // d'edition que l'ecran Foyer / Stats. Le prompt est resolu en
+    // ANSWERED quand l'user ferme le modal ; les jours edites sont deja
+    // persistes via PUT /presence direct (taps dans le modal). Cf state
+    // `streakCalendarUserId` + `streakCalendarFromPrompt` declares plus
+    // haut, et le bloc d'ouverture du modal apres ce PromptModal.
     if (uiState.showPromptModal && uiState.currentPrompt != null) {
         com.torchons.app.ui.common.PromptModal(
             prompt = uiState.currentPrompt!!,
@@ -247,15 +262,56 @@ fun HomeScreen(
             onOpenRating = { taskId ->
                 viewModel.resolveCurrentPrompt("ANSWERED")
             },
-            onResolvePresence = { payload ->
-                viewModel.resolveCurrentPrompt("ANSWERED", payload)
+            onOpenPresenceCalendar = {
+                // Ouvre StreakCalendarModal pre-positionne sur l'user
+                // courant. Le prompt reste 'active' en backend tant que le
+                // modal n'est pas ferme — on resout au close ci-dessous.
+                streakCalendarFromPrompt = true
+                streakCalendarUserId = userId
             },
-            onNavigateToFreezeSettings = onNavigateToSettings,
             onOpenFrequencyVote = { taskId, requester ->
                 viewModel.openFrequencyVoteFromPrompt(taskId, requester)
             },
             onOpenEffortVote = { taskId, requester ->
                 viewModel.openEffortVoteFromPrompt(taskId, requester)
+            },
+        )
+    }
+
+    // P4b.2 — StreakCalendarModal partage entre :
+    //  (a) prompt RESOLVE_PRESENCE (open via PromptModal callback ci-dessus,
+    //      streakCalendarFromPrompt = true)
+    //  (b) navigation manuelle future (carte stats Resume / profil — pas
+    //      branche depuis HomeScreen actuellement mais l'etat est pret).
+    // Au close : si fromPrompt -> resolve ANSWERED (les jours sont deja
+    // persistes via PUT /presence direct dans le modal). Sinon : juste
+    // fermer.
+    streakCalendarUserId?.let { uid ->
+        val members = remember(uiState.fairShare) {
+            uiState.fairShare
+                .map { com.torchons.app.ui.stats.StreakMember(it.userId, it.displayName) }
+                .distinctBy { it.userId }
+        }
+        com.torchons.app.ui.stats.StreakCalendarModal(
+            members = members,
+            initialUserId = uid,
+            onDismiss = {
+                val wasFromPrompt = streakCalendarFromPrompt
+                streakCalendarUserId = null
+                streakCalendarFromPrompt = false
+                if (wasFromPrompt) {
+                    // Resout le prompt RESOLVE_PRESENCE en ANSWERED sans
+                    // payload : les jours sont deja persistes via PUT
+                    // /presence (taps dans le modal). Le backend marque
+                    // le prompt comme repondu, le bandeau "jours non
+                    // confirmes" disparait.
+                    viewModel.resolveCurrentPrompt("ANSWERED")
+                } else {
+                    // Navigation manuelle : juste refresh la home pour que
+                    // les projections / urgences reflètent la nouvelle
+                    // presence (cache-conventions regle 1).
+                    viewModel.refresh()
+                }
             },
         )
     }
