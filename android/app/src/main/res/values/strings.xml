@@ -53,6 +53,8 @@
     <string name="common_name_label">Nom</string>
     <string name="common_color_label">Couleur</string>
     <string name="common_home_label">À la maison</string>
+    <string name="common_ok">OK</string>
+    <string name="common_import">Importer</string>
 
     <!-- CategoriesScreen -->
     <string name="categories_title">Catégories</string>
@@ -68,4 +70,388 @@
     <string name="rooms_dialog_delete_message">Les tâches de cette pièce n\'auront plus de pièce assignée.</string>
     <string name="rooms_dialog_emoji_label">Emoji (optionnel)</string>
     <string name="rooms_dialog_emoji_placeholder">Ex : 🛁</string>
+
+    <!-- ============================================================
+         E3.1.1 — CatalogScreen (templates d\'import). Inclut des
+         <plurals> pour le résumé d\'import et des recurrence labels
+         partagés (utilisés par catalog + futurs écrans tâche).
+         ============================================================ -->
+
+    <!-- CatalogScreen -->
+    <string name="catalog_title">Catalogue</string>
+    <string name="catalog_tab_tasks">Tâches</string>
+    <string name="catalog_tab_rooms">Pièces</string>
+    <string name="catalog_tab_categories">Catégories</string>
+    <string name="catalog_import_button_format">Importer %1$d</string>
+    <string name="catalog_import_success_title">Import réussi</string>
+    <string name="catalog_dialog_resolve_title">Rattachement</string>
+    <string name="catalog_dialog_resolve_empty">Rien à mapper, les tâches seront créées telles quelles.</string>
+    <string name="catalog_dialog_resolve_intro">Les tâches que tu importes référencent des pièces / catégories. Comment tu veux les rattacher ?</string>
+    <string name="catalog_dialog_resolve_room_label_format">Pièce : %1$s</string>
+    <string name="catalog_dialog_resolve_category_label_format">Catégorie : %1$s</string>
+    <string name="catalog_dialog_resolve_already_linked_format">Déjà rattaché à « %1$s ». Sera réutilisé.</string>
+    <string name="catalog_dialog_resolve_choice_create">Créer nouvelle</string>
+    <string name="catalog_dialog_resolve_choice_map_format">Mapper sur « %1$s »</string>
+
+    <!-- Plurals : résumé d\'import du catalogue -->
+    <plurals name="catalog_import_rooms_created">
+        <item quantity="one">- %d pièce créée</item>
+        <item quantity="other">- %d pièces créées</item>
+    </plurals>
+    <plurals name="catalog_import_categories_created">
+        <item quantity="one">- %d catégorie créée</item>
+        <item quantity="other">- %d catégories créées</item>
+    </plurals>
+    <plurals name="catalog_import_tasks_created">
+        <item quantity="one">- %d tâche créée</item>
+        <item quantity="other">- %d tâches créées</item>
+    </plurals>
+    <plurals name="catalog_import_skipped">
+        <item quantity="one">- %d ignorée</item>
+        <item quantity="other">- %d ignorées</item>
+    </plurals>
+
+    <!-- ============================================================
+         E3.1.1d — FoyerSettingsScreen (gros écran, ~70 strings).
+         ============================================================ -->
+
+    <!-- En-têtes de groupe + tooltip portée -->
+    <string name="foyer_group_this_foyer">Ce foyer</string>
+    <string name="foyer_group_account_scope">Mon compte · vaut pour tous mes foyers</string>
+    <string name="foyer_group_account_scope_tooltip_title">Périmètre&#160;: ton compte</string>
+    <string name="foyer_group_account_scope_tooltip_description">Les réglages de ce groupe sont attachés à TON compte, pas à ce foyer en particulier. Ils s\'appliquent donc de la même manière dans TOUS les foyers dont tu es membre.</string>
+
+    <!-- (1) Nom du foyer -->
+    <string name="foyer_name_label">Nom du foyer</string>
+    <string name="foyer_name_rename_action">Renommer</string>
+
+    <!-- (2) Inviter -->
+    <string name="foyer_invite_title">Inviter quelqu\'un</string>
+    <string name="foyer_invite_subtitle">Générer un QR code pour ajouter un membre au foyer</string>
+
+    <!-- (3) Changer de foyer -->
+    <string name="foyer_switch_title">Changer de foyer</string>
+    <string name="foyer_switch_subtitle">Basculer vers un autre de tes foyers</string>
+
+    <!-- (4) Pièces -->
+    <string name="foyer_rooms_title">Pièces</string>
+    <string name="foyer_rooms_subtitle">Cuisine, SDB, Chambre… + emoji et couleur</string>
+
+    <!-- (5) Catégories + tooltip gel -->
+    <string name="foyer_categories_title">Catégories</string>
+    <string name="foyer_categories_subtitle">Ajouter, modifier, supprimer</string>
+    <string name="foyer_categories_tooltip_title">Catégories et gel pendant l\'absence</string>
+    <string name="foyer_categories_tooltip_description">Une catégorie marquée «&#160;à la maison&#160;» contient des tâches qui ne peuvent être faites que sur place. Quand personne n\'est détecté à la maison (cf. bloc Présence &amp; absences), ces tâches sont gelées&#160;: elles arrêtent de vieillir et reprennent au retour.</string>
+
+    <!-- (6) Présence & absences -->
+    <string name="foyer_presence_section_title">Présence &amp; absences</string>
+    <string name="foyer_presence_section_tooltip_title">Présence &amp; absences</string>
+    <string name="foyer_presence_section_tooltip_description">Quand aucun membre du foyer n\'est détecté au WiFi maison depuis plus de 24h, les tâches des catégories «&#160;à la maison&#160;» arrêtent de vieillir (mise en pause). Elles reprennent normalement au retour.\n\nLa détection automatique repose sur le(s) réseau(x) WiFi déclarés ci-dessous. Elle est facultative&#160;: sans WiFi configuré, toutes les tâches restent visibles en permanence.</string>
+    <string name="foyer_presence_freeze_title">Mettre en pause si tout le monde est absent</string>
+    <string name="foyer_presence_freeze_subtitle">Les tâches «&#160;à la maison&#160;» arrêtent de vieillir quand personne n\'est détecté depuis 24h.</string>
+    <string name="foyer_presence_hide_off_wifi_section_title">Masquer hors WiFi</string>
+    <string name="foyer_presence_hide_off_wifi_tooltip_title">Masquer hors WiFi</string>
+    <string name="foyer_presence_hide_off_wifi_tooltip_description">S\'applique à TOI sur ce foyer (l\'autre membre a son propre réglage). Sans WiFi maison configuré ci-dessous, ce réglage n\'a aucun effet — tout reste visible.</string>
+    <string name="foyer_presence_hide_off_wifi_switch_title">Masquer les tâches maison hors WiFi</string>
+    <string name="foyer_presence_hide_off_wifi_switch_subtitle">Les tâches «&#160;à la maison&#160;» sont cachées de la liste quand tu n\'es pas connecté à ton WiFi maison.</string>
+    <string name="foyer_presence_wifi_section_title">WiFi maison</string>
+    <string name="foyer_presence_wifi_tooltip_title">WiFi maison</string>
+    <string name="foyer_presence_wifi_tooltip_description">Les tâches des catégories marquées «&#160;à la maison&#160;» ne seront suggérées que lorsque tu es connecté à un de ces réseaux WiFi.</string>
+    <string name="foyer_presence_wifi_empty">Aucun WiFi configuré — toutes les tâches sont visibles</string>
+    <string name="foyer_presence_wifi_remove_cd">Supprimer</string>
+    <string name="foyer_presence_wifi_add_button">Ajouter mon WiFi actuel</string>
+    <string name="foyer_presence_open_calendar_button">Ouvrir l\'agenda de présence &amp; séries</string>
+
+    <!-- (7) Gamification du foyer -->
+    <string name="foyer_gamif_section_title">Gamification de ce foyer</string>
+    <string name="foyer_gamif_tooltip_title">Gamification de ce foyer</string>
+    <string name="foyer_gamif_tooltip_description">Active ou désactive les points, stats et bonus pour TOUS les membres de ce foyer. C\'est un réglage partagé&#160;: le désactiver le retire aussi à l\'autre membre. Distinct de la gamification de ton compte (qui, elle, s\'applique à tous tes foyers).</string>
+    <string name="foyer_gamif_switch_label">Activer la gamification du foyer</string>
+    <string name="foyer_gamif_switch_subtitle_on">Activée — tous les membres voient les points dans ce foyer.</string>
+    <string name="foyer_gamif_switch_subtitle_off">Désactivée — personne ne voit les points dans ce foyer.</string>
+
+    <!-- (8) Simulation -->
+    <string name="foyer_simulation_title">Simuler le rattrapage du foyer</string>
+    <string name="foyer_simulation_subtitle">Tester un rythme et voir en combien de temps le retard est rattrapé</string>
+    <string name="foyer_simulation_button">Ouvrir la simulation</string>
+
+    <!-- (9) Bonus / Malus -->
+    <string name="foyer_bonus_section_title">Bonus / Malus de points</string>
+    <string name="foyer_bonus_section_tooltip_title">Bonus / Malus de points</string>
+    <string name="foyer_bonus_section_tooltip_description">Réglages avancés de la mécanique de points&#160;: bonus quand une tâche est faite en retard, malus quand elle est faite trop en avance, et détection des retards systématiques. Valeurs par défaut raisonnables — à ajuster seulement si tu sais ce que tu fais. Partagé entre tous les membres du foyer.</string>
+    <string name="foyer_bonus_group_late">Bonus retard</string>
+    <string name="foyer_bonus_pct_label">Bonus %</string>
+    <string name="foyer_bonus_pct_value_format">+%1$d%%</string>
+    <string name="foyer_bonus_pct_desc">Multiplicateur appliqué quand une tâche est en retard au-delà du seuil. +50%% = touche 1.5x les points.</string>
+    <string name="foyer_bonus_threshold_strict">Seuil bonus (Strict)</string>
+    <string name="foyer_bonus_threshold_normal">Seuil bonus (Normal)</string>
+    <string name="foyer_bonus_threshold_souple">Seuil bonus (Souple)</string>
+    <string name="foyer_bonus_threshold_strict_desc">%% du cycle de retard pour déclencher le bonus sur les tâches Strict.</string>
+    <string name="foyer_bonus_threshold_normal_desc">%% du cycle de retard pour déclencher le bonus sur les tâches Normal.</string>
+    <string name="foyer_bonus_threshold_souple_desc">%% du cycle de retard pour déclencher le bonus sur les tâches Souple.</string>
+    <string name="foyer_malus_group">Malus avance</string>
+    <string name="foyer_malus_floor_label">Plancher malus</string>
+    <string name="foyer_malus_floor_desc">Multiplicateur minimum à 100%% d\'avance (début du cycle). 50%% = au pire la moitié des points.</string>
+    <string name="foyer_malus_threshold_strict">Seuil malus (Strict)</string>
+    <string name="foyer_malus_threshold_normal">Seuil malus (Normal)</string>
+    <string name="foyer_malus_threshold_souple">Seuil malus (Souple)</string>
+    <string name="foyer_malus_threshold_strict_desc">%% du cycle en avance pour entrer en zone malus sur les tâches Strict.</string>
+    <string name="foyer_malus_threshold_normal_desc">%% du cycle en avance pour entrer en zone malus sur les tâches Normal.</string>
+    <string name="foyer_malus_threshold_souple_desc">%% du cycle en avance pour entrer en zone malus sur les tâches Souple.</string>
+    <string name="foyer_bump_group">Détection retards répétitifs</string>
+    <string name="foyer_bump_window_min">Fenêtre min</string>
+    <string name="foyer_bump_window_max">Fenêtre max</string>
+    <string name="foyer_bump_window_value_days_format">%1$d j</string>
+    <string name="foyer_bump_window_min_desc">Durée minimale de la fenêtre d\'analyse pour détecter un retard systématique.</string>
+    <string name="foyer_bump_window_max_desc">Durée maximale de la fenêtre d\'analyse (les vieilles données pourrissent).</string>
+    <string name="foyer_bump_min_completions">Complétions min</string>
+    <string name="foyer_bump_value_int_format">%1$d</string>
+    <string name="foyer_bump_min_completions_desc">Nombre minimum de complétions dans la fenêtre pour tirer une conclusion.</string>
+    <string name="foyer_bump_ratio">Ratio retard</string>
+    <string name="foyer_bump_value_pct_format">%1$d%%</string>
+    <string name="foyer_bump_ratio_desc">Pourcentage de complétions qui doivent être en zone bonus pour qualifier «&#160;systématiquement en retard&#160;».</string>
+    <string name="foyer_bump_grace">Grace period</string>
+    <string name="foyer_bump_grace_desc">Après proposition de bump, on attend ce %% de la fenêtre avant de ré-analyser.</string>
+
+    <!-- (10) Quitter le foyer -->
+    <string name="foyer_leave_title">Quitter le foyer</string>
+    <string name="foyer_leave_subtitle">Tu ne verras plus les tâches de ce foyer.</string>
+    <string name="foyer_leave_button">Quitter</string>
+
+    <!-- (11) Mes appareils -->
+    <string name="foyer_devices_title">Mes appareils</string>
+    <string name="foyer_devices_subtitle">Connecter une tablette ou un 2e téléphone à ton compte</string>
+
+    <!-- (12) Régénérer code récupération -->
+    <string name="foyer_recovery_title">Régénérer mon code de récupération</string>
+    <string name="foyer_recovery_subtitle">Te permet de retrouver ton foyer si tu perds ton tel.</string>
+    <string name="foyer_recovery_button">Générer</string>
+    <string name="foyer_recovery_tooltip_title">Code de récupération — irréversible</string>
+    <string name="foyer_recovery_tooltip_description">Ce code est le SEUL moyen de retrouver ton foyer si tu perds ton téléphone. En générer un nouveau invalide définitivement l\'ancien.\n\nIl n\'est affiché qu\'une seule fois, à la génération. Personne ne peut le récupérer ni le réinitialiser à ta place — pas même le développeur. Note-le immédiatement et garde-le en lieu sûr.</string>
+
+    <!-- (13) Renouvellement affinité -->
+    <string name="foyer_affinity_title_format">Renouvellement&#160;: %1$d mois</string>
+    <string name="foyer_affinity_tooltip_title">Renouvellement affinités/efforts</string>
+    <string name="foyer_affinity_tooltip_description">Après cette durée, l\'app te redemandera ton affinité et estimation d\'effort pour chaque tâche. Les anciennes valeurs restent valables tant qu\'elles ne sont pas remplacées.</string>
+
+    <!-- (14) Tolérance fair-share -->
+    <string name="foyer_fair_share_title_format">Tolérance fair-share&#160;: %1$d%%</string>
+    <string name="foyer_fair_share_tooltip_title">Tolérance fair-share</string>
+    <string name="foyer_fair_share_tooltip_description">L\'app te dit «&#160;tu as fait plus que ta part&#160;» quand tu as fait au moins X%% de plus que ton ratio cible. À 30%% (défaut) avec un ratio 50/50, l\'app te félicite quand tu as fait 65%% du boulot ou plus. À 0%%, l\'app te félicite dès que tu dépasses ton ratio. À 100%%, jamais (sauf si tu fais tout).</string>
+
+    <!-- Dialog WiFi explication -->
+    <string name="foyer_wifi_explanation_title">Détection WiFi maison</string>
+    <string name="foyer_wifi_explanation_message">L\'appli Torchons &amp; Serviettes peut afficher les tâches à faire à la maison uniquement lorsque vous y êtes.\n\nPour ce faire, l\'app a besoin d\'accéder à votre localisation lorsqu\'elle est ouverte.\n\nSi vous êtes intéressé par cette fonctionnalité, cliquez sur Continuer. Sinon, cliquez sur Annuler — vous pourrez réactiver cette fonctionnalité dans vos réglages plus tard.</string>
+    <string name="foyer_wifi_explanation_continue">Continuer</string>
+
+    <!-- Dialog confirmation désactivation gamif foyer -->
+    <string name="foyer_gamif_confirm_title">Désactiver la gamification du foyer&#160;?</string>
+    <string name="foyer_gamif_confirm_message_intro_format">Tu vas désactiver la gamification du foyer «&#160;%1$s&#160;».</string>
+    <string name="foyer_gamif_confirm_message_detail_format">%1$s et toi ne verrez plus les points, les stats ni les bonus dans ce foyer. Vous pourrez le réactiver à tout moment.</string>
+    <string name="foyer_gamif_confirm_other_member_fallback">l\'autre membre du foyer</string>
+    <string name="foyer_gamif_confirm_action">Désactiver</string>
+
+    <!-- Dialog renommer -->
+    <string name="foyer_rename_title">Renommer le foyer</string>
+
+    <!-- Dialog changer de foyer -->
+    <string name="foyer_switch_dialog_title">Changer de foyer</string>
+    <string name="foyer_switch_dialog_intro">Basculer videra le cache local et rechargera les données du foyer choisi. Ça prend quelques secondes.</string>
+    <string name="foyer_switch_dialog_current_cd">Foyer actif</string>
+    <string name="foyer_switch_dialog_close">Fermer</string>
+
+    <!-- Dialogs RecoveryAndLeaveDialogs -->
+    <string name="recovery_dialog_confirm_title">Régénérer ton code&#160;?</string>
+    <string name="recovery_dialog_confirm_message">Cela invalide ton ancien code de récupération s\'il existait. Tu recevras un nouveau code, à noter immédiatement — il ne sera affiché qu\'une seule fois.</string>
+    <string name="recovery_dialog_loading_title">Génération…</string>
+    <string name="recovery_dialog_success_title">Voici ton nouveau code</string>
+    <string name="recovery_dialog_warning">⚠ Note-le maintenant. Il ne sera plus jamais affiché.</string>
+    <string name="recovery_dialog_copy">Copier</string>
+    <string name="recovery_dialog_share">Partager</string>
+    <string name="recovery_dialog_noted">J\'ai noté</string>
+    <string name="recovery_dialog_error_title">Erreur</string>
+    <string name="leave_dialog_confirm_title">Quitter ce foyer&#160;?</string>
+    <string name="leave_dialog_confirm_message">Tu ne verras plus les tâches, votes, complétions de ce foyer. Tu peux le rejoindre à nouveau plus tard via un QR ou ton code de récupération.</string>
+    <string name="leave_dialog_confirm_action">Quitter</string>
+    <string name="leave_dialog_loading_title">Sortie en cours…</string>
+    <string name="leave_dialog_switched_title">C\'est fait</string>
+    <string name="leave_dialog_switched_message">Tu as basculé sur un autre foyer où tu es membre.</string>
+
+    <!-- ============================================================
+         E3.1.1e — SecuritySection + SupportDevCard.
+         ============================================================ -->
+
+    <string name="security_section_title">Sécurité du foyer</string>
+
+    <string name="support_dev_title">Soutenir / Discuter avec le dev</string>
+    <string name="support_dev_body">Cette app est faite par un dev solo, sur du temps libre. Le serveur et le domaine ont un coût mensuel. Si l\'app te plaît, ou si tu as une idée, un bug, une remarque, n\'hésite pas à écrire&#160;!</string>
+    <string name="support_dev_bmc_button">Payer un café</string>
+    <string name="support_dev_email_button">M\'écrire</string>
+
+    <!-- Clipboard / sharing du recovery code -->
+    <string name="recovery_code_clipboard_label">Code de récupération T&amp;S</string>
+    <string name="recovery_share_subject">Code de récupération Torchons &amp; Serviettes</string>
+    <string name="recovery_share_body_format">Voici mon code de récupération pour mon foyer dans l\'app Torchons &amp; Serviettes&#160;: %1$s\n\nGarde-le précieusement.</string>
+    <string name="recovery_share_chooser">Partager le code</string>
+
+    <string name="support_email_subject">Torchons &amp; Serviettes — feedback</string>
+
+    <!-- ============================================================
+         E3.1.1c — SettingsScreen (réglages user/compte/notifs).
+         ============================================================ -->
+
+    <string name="settings_title">Réglages</string>
+    <string name="settings_placeholder_loading">…</string>
+    <string name="settings_foyer_default_name">Mon foyer</string>
+    <string name="settings_foyer_card_title_format">🏠 %1$s</string>
+    <string name="settings_foyer_card_subtitle">Pièces, catégories, présence, gamification du foyer…</string>
+    <string name="settings_create_foyer_button">Créer un nouveau foyer</string>
+
+    <!-- Gamification user-level -->
+    <string name="settings_gamif_title">Gamification</string>
+    <string name="settings_gamif_switch_label">Activer la gamification pour mon compte</string>
+    <string name="settings_gamif_switch_subtitle">Si désactivée, tu ne verras plus les points, stats et bonus dans aucun de tes foyers.</string>
+    <string name="settings_gamif_why_no_points">Pourquoi je n\'ai pas de points pour certaines tâches&#160;?</string>
+
+    <!-- Nouveautés -->
+    <string name="settings_changelog_title">Nouveautés</string>
+    <string name="settings_changelog_subtitle">Notes de version et roadmap</string>
+
+    <!-- Notifications -->
+    <string name="settings_notif_section_title">Notifications</string>
+    <string name="settings_notif_daily_title">Résumé quotidien</string>
+    <string name="settings_notif_daily_subtitle">Recevoir un résumé de tes tâches chaque jour</string>
+    <string name="settings_notif_hour_format">Heure&#160;: %1$dh00</string>
+    <string name="settings_notif_urgent_title">Tâches urgentes</string>
+    <string name="settings_notif_urgent_subtitle">Notification quand une tâche passe en rouge</string>
+    <string name="settings_notif_solo_title">Quand quelqu\'un fait une tâche seul</string>
+    <string name="settings_notif_solo_subtitle">Notification quand l\'autre fait une tâche solo</string>
+    <string name="settings_notif_collective_with_me_title">Quand on fait une tâche ensemble (avec moi)</string>
+    <string name="settings_notif_collective_with_me_subtitle">Notification quand quelqu\'un enregistre un collectif qui t\'inclut</string>
+    <string name="settings_notif_collective_without_me_title">Quand une tâche est faite à plusieurs sans moi</string>
+    <string name="settings_notif_collective_without_me_subtitle">Notification quand un collectif te laisse de côté</string>
+
+    <!-- Popup affinité -->
+    <string name="settings_affinity_title">Popup affinité</string>
+    <string name="settings_affinity_switch_label">Activer</string>
+    <string name="settings_affinity_switch_subtitle">Demander ton affinité pour chaque tâche à l\'ouverture de l\'app</string>
+
+    <!-- Infos -->
+    <string name="settings_infos_title">Infos</string>
+    <string name="settings_infos_version">Version</string>
+    <string name="settings_infos_version_format">v%1$s</string>
+    <string name="settings_infos_build">Build</string>
+    <string name="settings_infos_backend">Backend</string>
+    <string name="settings_infos_backend_connected">Connecté</string>
+    <string name="settings_infos_backend_offline">Hors ligne</string>
+
+    <!-- Déconnexion -->
+    <string name="settings_logout">Déconnexion</string>
+
+    <!-- ============================================================
+         E3.1.1b — StatsScreen + sous-composants.
+         ============================================================ -->
+
+    <!-- Onglets principaux Stats -->
+    <string name="stats_tab_summary">Résumé</string>
+    <string name="stats_tab_badges">Badges</string>
+    <string name="stats_tab_history">Historique</string>
+
+    <!-- Bloc Streaks -->
+    <string name="stats_streaks_section_title">Streaks</string>
+    <string name="stats_streak_record_format">Record : %1$d jours</string>
+    <string name="stats_streak_current_days_format">%1$dj</string>
+    <string name="stats_streak_calendar_open_format">Voir le calendrier des séries de %1$s</string>
+
+    <!-- Fair-share sur-performance -->
+    <string name="stats_fair_share_over_format">Tu as fait plus que ta part ces 30 derniers jours&#160;! C\'est à %1$s de faire des tâches. Mais tu peux quand même continuer&#160;!</string>
+
+    <!-- Classement -->
+    <string name="stats_leaderboard_section_title">Classement</string>
+    <string name="stats_leaderboard_this_week">Cette semaine</string>
+    <string name="stats_leaderboard_this_month">Ce mois-ci</string>
+    <string name="stats_leaderboard_all_time">Total</string>
+    <string name="stats_leaderboard_rank_format">#%1$d</string>
+    <string name="stats_leaderboard_score_format">Score %1$d</string>
+    <string name="stats_leaderboard_breakdown_format">%1$d pts bruts · %2$d tâches</string>
+
+    <!-- Carte Statistiques (charts) -->
+    <string name="stats_charts_title">Statistiques</string>
+    <string name="stats_charts_swipe_hint">Glisse pour voir les autres graphiques</string>
+    <string name="stats_charts_tab_overdue">Retard</string>
+    <string name="stats_charts_tab_week">Semaine</string>
+    <string name="stats_charts_tab_month">Mois</string>
+    <string name="stats_charts_tab_alltime">Toujours</string>
+    <string name="stats_charts_tab_weekday">Par jour</string>
+    <string name="stats_charts_tab_category">Catégorie</string>
+    <string name="stats_charts_overdue_title">Retard du foyer (tâches en commun)</string>
+    <string name="stats_charts_points_week_title">Course de points · 7 jours</string>
+    <string name="stats_charts_points_month_title">Course de points · 30 jours</string>
+    <string name="stats_charts_points_all_title">Course de points · depuis toujours</string>
+    <string name="stats_charts_weekday_title">Tâches par jour de semaine</string>
+    <string name="stats_charts_category_title">Répartition par catégorie</string>
+
+    <!-- Carte "Cette semaine" (résumé hebdo) -->
+    <string name="stats_weekrecap_title">Cette semaine</string>
+    <string name="stats_weekrecap_points_label">pts</string>
+    <string name="stats_weekrecap_top_day_format">Top jour : %1$s</string>
+    <string name="stats_weekrecap_top_category_format">Top catégorie : %1$s</string>
+    <string name="stats_weekrecap_delta_same">= vs sem préc.</string>
+    <string name="stats_weekrecap_delta_zero_to_some">(c\'est parti&#160;!)</string>
+    <string name="stats_weekrecap_delta_positive_format">+%1$d%% vs sem préc.</string>
+    <string name="stats_weekrecap_delta_negative_format">%1$d%% vs sem préc.</string>
+
+    <!-- Jours de la semaine (pour weekdayLabels) -->
+    <string name="weekday_monday">Lundi</string>
+    <string name="weekday_tuesday">Mardi</string>
+    <string name="weekday_wednesday">Mercredi</string>
+    <string name="weekday_thursday">Jeudi</string>
+    <string name="weekday_friday">Vendredi</string>
+    <string name="weekday_saturday">Samedi</string>
+    <string name="weekday_sunday">Dimanche</string>
+
+    <!-- Onglet Badges -->
+    <string name="stats_badges_earned_format">Gagnés (%1$d)</string>
+    <string name="stats_badges_locked_format">À débloquer (%1$d)</string>
+
+    <!-- Onglet Historique -->
+    <string name="stats_history_day_filter_format">Activités du %1$s</string>
+    <string name="stats_history_clear_day_filter">Effacer le filtre</string>
+    <string name="stats_history_search_placeholder">Rechercher dans les titres de tâches…</string>
+    <string name="stats_history_clear_search">Effacer</string>
+    <string name="stats_history_filters_show">Filtres</string>
+    <string name="stats_history_filters_hide">Masquer les filtres</string>
+    <string name="stats_history_clear_filters">Effacer</string>
+    <string name="stats_history_filter_type">Type</string>
+    <string name="stats_history_filter_type_completions">Complétions</string>
+    <string name="stats_history_filter_type_votes">Votes</string>
+    <string name="stats_history_filter_type_modifications">Modifications</string>
+    <string name="stats_history_filter_actor">Acteur</string>
+    <string name="stats_history_filter_actor_all">Tous</string>
+    <string name="stats_history_filter_period">Période</string>
+    <string name="stats_history_filter_period_week">Cette semaine</string>
+    <string name="stats_history_filter_period_month">Ce mois</string>
+    <string name="stats_history_filter_period_three_months">3 derniers mois</string>
+    <string name="stats_history_filter_period_all">Tout</string>
+    <string name="stats_history_empty_filtered">Aucun résultat avec ces filtres</string>
+    <string name="stats_history_empty">Aucun historique</string>
+
+    <!-- Pluriels Stats -->
+    <plurals name="stats_top_day_count">
+        <item quantity="one">(%d tâche)</item>
+        <item quantity="other">(%d tâches)</item>
+    </plurals>
+    <plurals name="stats_top_category_count">
+        <item quantity="one">(%d tâche)</item>
+        <item quantity="other">(%d tâches)</item>
+    </plurals>
+
+    <!-- Labels de récurrence (partagés, utilisés dans catalog + écran tâche) -->
+    <string name="recurrence_label_once">Une seule fois</string>
+    <string name="recurrence_label_unknown">?</string>
+    <string name="recurrence_label_interval_short_format">Tous les %d j</string>
+    <string name="recurrence_label_weekdays">Jours de la semaine</string>
+    <string name="recurrence_label_monthly_format">Mensuel (jour %d)</string>
+    <string name="recurrence_label_monthly_variable">Selon le mois</string>
+    <string name="recurrence_label_uncertain">Irrégulière</string>
 </resources>

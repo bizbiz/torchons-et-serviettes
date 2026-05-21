@@ -45,9 +45,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 
 /**
  * URL Buy Me a Coffee du dev. Quand le user clique sur "Payer un cafe",
@@ -96,7 +98,7 @@ fun SecuritySection(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Securite du foyer",
+                text = stringResource(R.string.security_section_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
@@ -113,18 +115,18 @@ fun SecuritySection(
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Regenerer mon code de recuperation",
+                        text = stringResource(R.string.foyer_recovery_title),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
-                        text = "Te permet de retrouver ton foyer si tu perds ton tel.",
+                        text = stringResource(R.string.foyer_recovery_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Spacer(Modifier.width(8.dp))
                 OutlinedButton(onClick = { showRegenerateConfirm = true }) {
-                    Text("Generer", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.foyer_recovery_button), style = MaterialTheme.typography.labelSmall)
                 }
             }
 
@@ -141,11 +143,11 @@ fun SecuritySection(
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Quitter le foyer",
+                        text = stringResource(R.string.foyer_leave_title),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
-                        text = "Tu ne verras plus les taches de ce foyer.",
+                        text = stringResource(R.string.foyer_leave_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -157,7 +159,7 @@ fun SecuritySection(
                         contentColor = MaterialTheme.colorScheme.error,
                     ),
                 ) {
-                    Text("Quitter", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.foyer_leave_button), style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -167,25 +169,21 @@ fun SecuritySection(
     if (showRegenerateConfirm && regenerateState is SettingsViewModel.RegenerateState.Idle) {
         AlertDialog(
             onDismissRequest = { showRegenerateConfirm = false },
-            title = { Text("Regenerer ton code ?") },
+            title = { Text(stringResource(R.string.recovery_dialog_confirm_title)) },
             text = {
-                Text(
-                    "Cela invalide ton ancien code de recuperation s'il existait. " +
-                        "Tu recevras un nouveau code, a noter immediatement — il " +
-                        "ne sera affiche qu'une seule fois.",
-                )
+                Text(stringResource(R.string.recovery_dialog_confirm_message))
             },
             confirmButton = {
                 Button(onClick = {
                     showRegenerateConfirm = false
                     viewModel.regenerateRecoveryCode()
                 }) {
-                    Text("Generer")
+                    Text(stringResource(R.string.foyer_recovery_button))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRegenerateConfirm = false }) {
-                    Text("Annuler")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )
@@ -195,7 +193,7 @@ fun SecuritySection(
     if (regenerateState is SettingsViewModel.RegenerateState.Loading) {
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("Generation...") },
+            title = { Text(stringResource(R.string.recovery_dialog_loading_title)) },
             text = {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -213,7 +211,7 @@ fun SecuritySection(
     if (regenSuccess != null) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissRegenerate() },
-            title = { Text("Voici ton nouveau code") },
+            title = { Text(stringResource(R.string.recovery_dialog_success_title)) },
             text = {
                 Column {
                     Surface(
@@ -234,7 +232,7 @@ fun SecuritySection(
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "⚠ Note-le maintenant. Il ne sera plus jamais affiche.",
+                        text = stringResource(R.string.recovery_dialog_warning),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -246,7 +244,7 @@ fun SecuritySection(
                         ) {
                             Icon(Icons.Default.ContentCopy, contentDescription = null)
                             Spacer(Modifier.width(4.dp))
-                            Text("Copier")
+                            Text(stringResource(R.string.recovery_dialog_copy))
                         }
                         OutlinedButton(
                             onClick = { shareCode(context, regenSuccess.recoveryCode) },
@@ -254,14 +252,14 @@ fun SecuritySection(
                         ) {
                             Icon(Icons.Default.Share, contentDescription = null)
                             Spacer(Modifier.width(4.dp))
-                            Text("Partager")
+                            Text(stringResource(R.string.recovery_dialog_share))
                         }
                     }
                 }
             },
             confirmButton = {
                 Button(onClick = { viewModel.dismissRegenerate() }) {
-                    Text("J'ai note")
+                    Text(stringResource(R.string.recovery_dialog_noted))
                 }
             },
         )
@@ -271,10 +269,10 @@ fun SecuritySection(
     if (regenError != null) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissRegenerate() },
-            title = { Text("Erreur") },
+            title = { Text(stringResource(R.string.recovery_dialog_error_title)) },
             text = { Text(regenError.message) },
             confirmButton = {
-                Button(onClick = { viewModel.dismissRegenerate() }) { Text("OK") }
+                Button(onClick = { viewModel.dismissRegenerate() }) { Text(stringResource(R.string.common_ok)) }
             },
         )
     }
@@ -283,13 +281,9 @@ fun SecuritySection(
     if (showLeaveConfirm && leaveState is SettingsViewModel.LeaveState.Idle) {
         AlertDialog(
             onDismissRequest = { showLeaveConfirm = false },
-            title = { Text("Quitter ce foyer ?") },
+            title = { Text(stringResource(R.string.leave_dialog_confirm_title)) },
             text = {
-                Text(
-                    "Tu ne verras plus les taches, votes, completions de ce foyer. " +
-                        "Tu peux le rejoindre a nouveau plus tard via un QR ou ton " +
-                        "code de recuperation.",
-                )
+                Text(stringResource(R.string.leave_dialog_confirm_message))
             },
             confirmButton = {
                 Button(
@@ -301,12 +295,12 @@ fun SecuritySection(
                         containerColor = MaterialTheme.colorScheme.error,
                     ),
                 ) {
-                    Text("Quitter")
+                    Text(stringResource(R.string.leave_dialog_confirm_action))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLeaveConfirm = false }) {
-                    Text("Annuler")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )
@@ -315,7 +309,7 @@ fun SecuritySection(
     if (leaveState is SettingsViewModel.LeaveState.Loading) {
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("Sortie en cours...") },
+            title = { Text(stringResource(R.string.leave_dialog_loading_title)) },
             text = {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -331,10 +325,10 @@ fun SecuritySection(
     if (leaveState is SettingsViewModel.LeaveState.SwitchedFoyer) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissLeave() },
-            title = { Text("C'est fait") },
-            text = { Text("Tu as bascule sur un autre foyer ou tu es membre.") },
+            title = { Text(stringResource(R.string.leave_dialog_switched_title)) },
+            text = { Text(stringResource(R.string.leave_dialog_switched_message)) },
             confirmButton = {
-                Button(onClick = { viewModel.dismissLeave() }) { Text("OK") }
+                Button(onClick = { viewModel.dismissLeave() }) { Text(stringResource(R.string.common_ok)) }
             },
         )
     }
@@ -343,10 +337,10 @@ fun SecuritySection(
     if (leaveError != null) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissLeave() },
-            title = { Text("Erreur") },
+            title = { Text(stringResource(R.string.recovery_dialog_error_title)) },
             text = { Text(leaveError.message) },
             confirmButton = {
-                Button(onClick = { viewModel.dismissLeave() }) { Text("OK") }
+                Button(onClick = { viewModel.dismissLeave() }) { Text(stringResource(R.string.common_ok)) }
             },
         )
     }
@@ -370,16 +364,13 @@ fun SupportDevCard() {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Soutenir / Discuter avec le dev",
+                text = stringResource(R.string.support_dev_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Cette app est faite par un dev solo, sur du temps libre. " +
-                    "Le serveur et le domaine ont un cout mensuel. Si l'app te plait, " +
-                    "ou si tu as une idee, un bug, une remarque, n'hesite pas a " +
-                    "ecrire !",
+                text = stringResource(R.string.support_dev_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -391,7 +382,7 @@ fun SupportDevCard() {
                 ) {
                     Icon(Icons.Default.Coffee, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
-                    Text("Payer un cafe")
+                    Text(stringResource(R.string.support_dev_bmc_button))
                 }
                 OutlinedButton(
                     onClick = { sendSupportEmail(context) },
@@ -399,7 +390,7 @@ fun SupportDevCard() {
                 ) {
                     Icon(Icons.Default.Email, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
-                    Text("M'ecrire")
+                    Text(stringResource(R.string.support_dev_email_button))
                 }
             }
         }
@@ -409,20 +400,23 @@ fun SupportDevCard() {
 internal fun copyCode(context: Context, code: String) {
     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         ?: return
-    cm.setPrimaryClip(ClipData.newPlainText("Code de recuperation T&S", code))
+    cm.setPrimaryClip(
+        ClipData.newPlainText(context.getString(R.string.recovery_code_clipboard_label), code),
+    )
 }
 
 internal fun shareCode(context: Context, code: String) {
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, "Code de recuperation Torchons & Serviettes")
+        putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.recovery_share_subject))
         putExtra(
             Intent.EXTRA_TEXT,
-            "Voici mon code de recuperation pour mon foyer dans l'app Torchons & " +
-                "Serviettes : $code\n\nGarde-le precieusement.",
+            context.getString(R.string.recovery_share_body_format, code),
         )
     }
-    context.startActivity(Intent.createChooser(send, "Partager le code"))
+    context.startActivity(
+        Intent.createChooser(send, context.getString(R.string.recovery_share_chooser)),
+    )
 }
 
 private fun openUrl(context: Context, url: String) {
@@ -433,7 +427,7 @@ private fun openUrl(context: Context, url: String) {
 private fun sendSupportEmail(context: Context) {
     val intent = Intent(Intent.ACTION_SENDTO).apply {
         data = Uri.parse("mailto:$SUPPORT_EMAIL")
-        putExtra(Intent.EXTRA_SUBJECT, "Torchons & Serviettes — feedback")
+        putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.support_email_subject))
     }
     runCatching { context.startActivity(intent) }
 }

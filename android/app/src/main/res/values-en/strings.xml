@@ -50,6 +50,8 @@
     <string name="common_name_label">Name</string>
     <string name="common_color_label">Color</string>
     <string name="common_home_label">At home</string>
+    <string name="common_ok">OK</string>
+    <string name="common_import">Import</string>
 
     <!-- CategoriesScreen -->
     <string name="categories_title">Categories</string>
@@ -65,4 +67,386 @@
     <string name="rooms_dialog_delete_message">Tasks in this room will no longer have a room assigned.</string>
     <string name="rooms_dialog_emoji_label">Emoji (optional)</string>
     <string name="rooms_dialog_emoji_placeholder">E.g.: 🛁</string>
+
+    <!-- ============================================================
+         E3.1.1 — CatalogScreen (import templates).
+         ============================================================ -->
+
+    <!-- CatalogScreen -->
+    <string name="catalog_title">Catalog</string>
+    <string name="catalog_tab_tasks">Tasks</string>
+    <string name="catalog_tab_rooms">Rooms</string>
+    <string name="catalog_tab_categories">Categories</string>
+    <string name="catalog_import_button_format">Import %1$d</string>
+    <string name="catalog_import_success_title">Import successful</string>
+    <string name="catalog_dialog_resolve_title">Mapping</string>
+    <string name="catalog_dialog_resolve_empty">Nothing to map, tasks will be created as is.</string>
+    <string name="catalog_dialog_resolve_intro">The tasks you\'re importing reference rooms / categories. How do you want to link them?</string>
+    <string name="catalog_dialog_resolve_room_label_format">Room: %1$s</string>
+    <string name="catalog_dialog_resolve_category_label_format">Category: %1$s</string>
+    <string name="catalog_dialog_resolve_already_linked_format">Already linked to “%1$s”. Will be reused.</string>
+    <string name="catalog_dialog_resolve_choice_create">Create new</string>
+    <string name="catalog_dialog_resolve_choice_map_format">Map to “%1$s”</string>
+
+    <!-- Plurals: catalog import summary -->
+    <plurals name="catalog_import_rooms_created">
+        <item quantity="one">- %d room created</item>
+        <item quantity="other">- %d rooms created</item>
+    </plurals>
+    <plurals name="catalog_import_categories_created">
+        <item quantity="one">- %d category created</item>
+        <item quantity="other">- %d categories created</item>
+    </plurals>
+    <plurals name="catalog_import_tasks_created">
+        <item quantity="one">- %d task created</item>
+        <item quantity="other">- %d tasks created</item>
+    </plurals>
+    <plurals name="catalog_import_skipped">
+        <item quantity="one">- %d skipped</item>
+        <item quantity="other">- %d skipped</item>
+    </plurals>
+
+    <!-- ============================================================
+         E3.1.1d — FoyerSettingsScreen (large screen, ~70 strings).
+         ============================================================ -->
+
+    <!-- Group headers + scope tooltip -->
+    <string name="foyer_group_this_foyer">This household</string>
+    <string name="foyer_group_account_scope">My account · applies to all my households</string>
+    <string name="foyer_group_account_scope_tooltip_title">Scope: your account</string>
+    <string name="foyer_group_account_scope_tooltip_description">Settings in this group are attached to YOUR account, not to this household specifically. They apply the same way to ALL the households you belong to.</string>
+
+    <!-- (1) Household name -->
+    <string name="foyer_name_label">Household name</string>
+    <string name="foyer_name_rename_action">Rename</string>
+
+    <!-- (2) Invite -->
+    <string name="foyer_invite_title">Invite someone</string>
+    <string name="foyer_invite_subtitle">Generate a QR code to add a member to the household</string>
+
+    <!-- (3) Switch household -->
+    <string name="foyer_switch_title">Switch household</string>
+    <string name="foyer_switch_subtitle">Move to another of your households</string>
+
+    <!-- (4) Rooms -->
+    <string name="foyer_rooms_title">Rooms</string>
+    <string name="foyer_rooms_subtitle">Kitchen, bathroom, bedroom… + emoji and color</string>
+
+    <!-- (5) Categories + freeze tooltip -->
+    <string name="foyer_categories_title">Categories</string>
+    <string name="foyer_categories_subtitle">Add, edit, delete</string>
+    <string name="foyer_categories_tooltip_title">Categories and freeze during absence</string>
+    <string name="foyer_categories_tooltip_description">A category flagged \"at home\" contains tasks that can only be done on site. When no one is detected at home (see Presence &amp; absence block), these tasks are frozen: they stop aging and resume on return.</string>
+
+    <!-- (6) Presence & absence -->
+    <string name="foyer_presence_section_title">Presence &amp; absence</string>
+    <string name="foyer_presence_section_tooltip_title">Presence &amp; absence</string>
+    <string name="foyer_presence_section_tooltip_description">When no household member has been detected on the home WiFi for more than 24h, tasks in \"at home\" categories stop aging (paused). They resume normally on return.\n\nAutomatic detection relies on the WiFi network(s) declared below. It\'s optional: with no WiFi configured, all tasks stay visible permanently.</string>
+    <string name="foyer_presence_freeze_title">Pause when everyone is away</string>
+    <string name="foyer_presence_freeze_subtitle">\"At home\" tasks stop aging when no one has been detected for 24h.</string>
+    <string name="foyer_presence_hide_off_wifi_section_title">Hide when off WiFi</string>
+    <string name="foyer_presence_hide_off_wifi_tooltip_title">Hide when off WiFi</string>
+    <string name="foyer_presence_hide_off_wifi_tooltip_description">Applies to YOU on this household (the other member has their own setting). Without home WiFi configured below, this setting has no effect — everything stays visible.</string>
+    <string name="foyer_presence_hide_off_wifi_switch_title">Hide home tasks when off WiFi</string>
+    <string name="foyer_presence_hide_off_wifi_switch_subtitle">\"At home\" tasks are hidden from the list when you\'re not connected to your home WiFi.</string>
+    <string name="foyer_presence_wifi_section_title">Home WiFi</string>
+    <string name="foyer_presence_wifi_tooltip_title">Home WiFi</string>
+    <string name="foyer_presence_wifi_tooltip_description">Tasks in categories flagged \"at home\" will only be suggested when you\'re connected to one of these WiFi networks.</string>
+    <string name="foyer_presence_wifi_empty">No WiFi configured — all tasks are visible</string>
+    <string name="foyer_presence_wifi_remove_cd">Remove</string>
+    <string name="foyer_presence_wifi_add_button">Add my current WiFi</string>
+    <string name="foyer_presence_open_calendar_button">Open presence &amp; streaks calendar</string>
+
+    <!-- (7) Household gamification -->
+    <string name="foyer_gamif_section_title">Gamification for this household</string>
+    <string name="foyer_gamif_tooltip_title">Gamification for this household</string>
+    <string name="foyer_gamif_tooltip_description">Enable or disable points, stats and bonuses for ALL members of this household. It\'s a shared setting: disabling it removes it for the other member too. Distinct from your account gamification (which applies to all your households).</string>
+    <string name="foyer_gamif_switch_label">Enable household gamification</string>
+    <string name="foyer_gamif_switch_subtitle_on">Enabled — all members see points in this household.</string>
+    <string name="foyer_gamif_switch_subtitle_off">Disabled — no one sees points in this household.</string>
+
+    <!-- (8) Simulation -->
+    <string name="foyer_simulation_title">Simulate household catch-up</string>
+    <string name="foyer_simulation_subtitle">Test a pace and see how long it takes to clear the backlog</string>
+    <string name="foyer_simulation_button">Open simulation</string>
+
+    <!-- (9) Bonus / Malus -->
+    <string name="foyer_bonus_section_title">Points bonus / penalty</string>
+    <string name="foyer_bonus_section_tooltip_title">Points bonus / penalty</string>
+    <string name="foyer_bonus_section_tooltip_description">Advanced points mechanics: bonus when a task is done late, penalty when too early, and detection of systematic lateness. Reasonable defaults — tweak only if you know what you\'re doing. Shared across all household members.</string>
+    <string name="foyer_bonus_group_late">Late bonus</string>
+    <string name="foyer_bonus_pct_label">Bonus %</string>
+    <string name="foyer_bonus_pct_value_format">+%1$d%%</string>
+    <string name="foyer_bonus_pct_desc">Multiplier applied when a task is late past the threshold. +50%% = earns 1.5x points.</string>
+    <string name="foyer_bonus_threshold_strict">Bonus threshold (Strict)</string>
+    <string name="foyer_bonus_threshold_normal">Bonus threshold (Normal)</string>
+    <string name="foyer_bonus_threshold_souple">Bonus threshold (Loose)</string>
+    <string name="foyer_bonus_threshold_strict_desc">%% of the late cycle to trigger the bonus on Strict tasks.</string>
+    <string name="foyer_bonus_threshold_normal_desc">%% of the late cycle to trigger the bonus on Normal tasks.</string>
+    <string name="foyer_bonus_threshold_souple_desc">%% of the late cycle to trigger the bonus on Loose tasks.</string>
+    <string name="foyer_malus_group">Early penalty</string>
+    <string name="foyer_malus_floor_label">Penalty floor</string>
+    <string name="foyer_malus_floor_desc">Minimum multiplier at 100%% early (start of cycle). 50%% = at worst half the points.</string>
+    <string name="foyer_malus_threshold_strict">Penalty threshold (Strict)</string>
+    <string name="foyer_malus_threshold_normal">Penalty threshold (Normal)</string>
+    <string name="foyer_malus_threshold_souple">Penalty threshold (Loose)</string>
+    <string name="foyer_malus_threshold_strict_desc">%% of cycle early to enter penalty zone on Strict tasks.</string>
+    <string name="foyer_malus_threshold_normal_desc">%% of cycle early to enter penalty zone on Normal tasks.</string>
+    <string name="foyer_malus_threshold_souple_desc">%% of cycle early to enter penalty zone on Loose tasks.</string>
+    <string name="foyer_bump_group">Repeated lateness detection</string>
+    <string name="foyer_bump_window_min">Min window</string>
+    <string name="foyer_bump_window_max">Max window</string>
+    <string name="foyer_bump_window_value_days_format">%1$d d</string>
+    <string name="foyer_bump_window_min_desc">Minimum analysis window to detect systematic lateness.</string>
+    <string name="foyer_bump_window_max_desc">Maximum analysis window (old data goes stale).</string>
+    <string name="foyer_bump_min_completions">Min completions</string>
+    <string name="foyer_bump_value_int_format">%1$d</string>
+    <string name="foyer_bump_min_completions_desc">Minimum completions within the window to draw a conclusion.</string>
+    <string name="foyer_bump_ratio">Late ratio</string>
+    <string name="foyer_bump_value_pct_format">%1$d%%</string>
+    <string name="foyer_bump_ratio_desc">Percentage of completions that must fall in the bonus zone to qualify \"systematically late\".</string>
+    <string name="foyer_bump_grace">Grace period</string>
+    <string name="foyer_bump_grace_desc">After proposing a bump, wait this %% of the window before re-analysing.</string>
+
+    <!-- (10) Leave household -->
+    <string name="foyer_leave_title">Leave household</string>
+    <string name="foyer_leave_subtitle">You\'ll no longer see tasks from this household.</string>
+    <string name="foyer_leave_button">Leave</string>
+
+    <!-- (11) My devices -->
+    <string name="foyer_devices_title">My devices</string>
+    <string name="foyer_devices_subtitle">Connect a tablet or a 2nd phone to your account</string>
+
+    <!-- (12) Regenerate recovery code -->
+    <string name="foyer_recovery_title">Regenerate my recovery code</string>
+    <string name="foyer_recovery_subtitle">Lets you recover your household if you lose your phone.</string>
+    <string name="foyer_recovery_button">Generate</string>
+    <string name="foyer_recovery_tooltip_title">Recovery code — irreversible</string>
+    <string name="foyer_recovery_tooltip_description">This code is the ONLY way to recover your household if you lose your phone. Generating a new one permanently invalidates the previous one.\n\nIt\'s shown only once, at generation. No one can recover or reset it for you — not even the developer. Note it down immediately and keep it safe.</string>
+
+    <!-- (13) Affinity renewal -->
+    <string name="foyer_affinity_title_format">Renewal: %1$d months</string>
+    <string name="foyer_affinity_tooltip_title">Affinity/effort renewal</string>
+    <string name="foyer_affinity_tooltip_description">After this duration, the app will ask again for your affinity and effort estimate on each task. Existing values remain valid until replaced.</string>
+
+    <!-- (14) Fair-share tolerance -->
+    <string name="foyer_fair_share_title_format">Fair-share tolerance: %1$d%%</string>
+    <string name="foyer_fair_share_tooltip_title">Fair-share tolerance</string>
+    <string name="foyer_fair_share_tooltip_description">The app tells you \"you\'ve done more than your share\" when you\'ve done at least X%% more than your target ratio. At 30%% (default) with a 50/50 ratio, the app congratulates you when you\'ve done 65%% of the work or more. At 0%%, the app congratulates as soon as you exceed your ratio. At 100%%, never (unless you do everything).</string>
+
+    <!-- WiFi explanation dialog -->
+    <string name="foyer_wifi_explanation_title">Home WiFi detection</string>
+    <string name="foyer_wifi_explanation_message">The Torchons &amp; Serviettes app can show tasks to be done at home only when you\'re there.\n\nTo do this, the app needs access to your location while it\'s open.\n\nIf interested, tap Continue. Otherwise tap Cancel — you can re-enable this feature in your settings later.</string>
+    <string name="foyer_wifi_explanation_continue">Continue</string>
+
+    <!-- Disable household gamif confirm dialog -->
+    <string name="foyer_gamif_confirm_title">Disable household gamification?</string>
+    <string name="foyer_gamif_confirm_message_intro_format">You\'re about to disable gamification for the household \"%1$s\".</string>
+    <string name="foyer_gamif_confirm_message_detail_format">%1$s and you will no longer see points, stats or bonuses in this household. You can re-enable it any time.</string>
+    <string name="foyer_gamif_confirm_other_member_fallback">the other household member</string>
+    <string name="foyer_gamif_confirm_action">Disable</string>
+
+    <!-- Rename dialog -->
+    <string name="foyer_rename_title">Rename household</string>
+
+    <!-- Switch household dialog -->
+    <string name="foyer_switch_dialog_title">Switch household</string>
+    <string name="foyer_switch_dialog_intro">Switching will clear the local cache and reload data for the chosen household. Takes a few seconds.</string>
+    <string name="foyer_switch_dialog_current_cd">Active household</string>
+    <string name="foyer_switch_dialog_close">Close</string>
+
+    <!-- RecoveryAndLeaveDialogs -->
+    <string name="recovery_dialog_confirm_title">Regenerate your code?</string>
+    <string name="recovery_dialog_confirm_message">This invalidates your previous recovery code if it existed. You\'ll receive a new code, to note immediately — it\'ll be shown only once.</string>
+    <string name="recovery_dialog_loading_title">Generating…</string>
+    <string name="recovery_dialog_success_title">Here\'s your new code</string>
+    <string name="recovery_dialog_warning">⚠ Note it down now. It will never be shown again.</string>
+    <string name="recovery_dialog_copy">Copy</string>
+    <string name="recovery_dialog_share">Share</string>
+    <string name="recovery_dialog_noted">Got it</string>
+    <string name="recovery_dialog_error_title">Error</string>
+    <string name="leave_dialog_confirm_title">Leave this household?</string>
+    <string name="leave_dialog_confirm_message">You\'ll no longer see tasks, votes, completions for this household. You can rejoin later via a QR or your recovery code.</string>
+    <string name="leave_dialog_confirm_action">Leave</string>
+    <string name="leave_dialog_loading_title">Leaving…</string>
+    <string name="leave_dialog_switched_title">Done</string>
+    <string name="leave_dialog_switched_message">You\'ve switched to another household where you\'re a member.</string>
+
+    <!-- ============================================================
+         E3.1.1e — SecuritySection + SupportDevCard.
+         ============================================================ -->
+
+    <string name="security_section_title">Household security</string>
+
+    <string name="support_dev_title">Support / Talk to the dev</string>
+    <string name="support_dev_body">This app is made by a solo dev, on spare time. The server and domain have a monthly cost. If you like the app, or if you have an idea, a bug or a remark, feel free to write!</string>
+    <string name="support_dev_bmc_button">Buy me a coffee</string>
+    <string name="support_dev_email_button">Email me</string>
+
+    <!-- Recovery code clipboard / sharing -->
+    <string name="recovery_code_clipboard_label">T&amp;S recovery code</string>
+    <string name="recovery_share_subject">Torchons &amp; Serviettes recovery code</string>
+    <string name="recovery_share_body_format">Here\'s my recovery code for my household in the Torchons &amp; Serviettes app: %1$s\n\nKeep it safe.</string>
+    <string name="recovery_share_chooser">Share the code</string>
+
+    <string name="support_email_subject">Torchons &amp; Serviettes — feedback</string>
+
+    <!-- ============================================================
+         E3.1.1c — SettingsScreen (user/account/notifications).
+         ============================================================ -->
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_placeholder_loading">…</string>
+    <string name="settings_foyer_default_name">My household</string>
+    <string name="settings_foyer_card_title_format">🏠 %1$s</string>
+    <string name="settings_foyer_card_subtitle">Rooms, categories, presence, household gamification…</string>
+    <string name="settings_create_foyer_button">Create a new household</string>
+
+    <!-- User-level gamification -->
+    <string name="settings_gamif_title">Gamification</string>
+    <string name="settings_gamif_switch_label">Enable gamification for my account</string>
+    <string name="settings_gamif_switch_subtitle">When off, you won\'t see points, stats or bonuses in any of your households.</string>
+    <string name="settings_gamif_why_no_points">Why don\'t I get points for some tasks?</string>
+
+    <!-- Changelog -->
+    <string name="settings_changelog_title">What\'s new</string>
+    <string name="settings_changelog_subtitle">Release notes and roadmap</string>
+
+    <!-- Notifications -->
+    <string name="settings_notif_section_title">Notifications</string>
+    <string name="settings_notif_daily_title">Daily summary</string>
+    <string name="settings_notif_daily_subtitle">Receive a daily summary of your tasks</string>
+    <string name="settings_notif_hour_format">Time: %1$d:00</string>
+    <string name="settings_notif_urgent_title">Urgent tasks</string>
+    <string name="settings_notif_urgent_subtitle">Notify when a task turns red</string>
+    <string name="settings_notif_solo_title">When someone does a task alone</string>
+    <string name="settings_notif_solo_subtitle">Notify when someone else completes a solo task</string>
+    <string name="settings_notif_collective_with_me_title">When we do a task together (including me)</string>
+    <string name="settings_notif_collective_with_me_subtitle">Notify when someone logs a group task that includes you</string>
+    <string name="settings_notif_collective_without_me_title">When a task is done together without me</string>
+    <string name="settings_notif_collective_without_me_subtitle">Notify when a group task leaves you out</string>
+
+    <!-- Affinity popup -->
+    <string name="settings_affinity_title">Affinity popup</string>
+    <string name="settings_affinity_switch_label">Enable</string>
+    <string name="settings_affinity_switch_subtitle">Ask for your affinity on each task when opening the app</string>
+
+    <!-- Info -->
+    <string name="settings_infos_title">Info</string>
+    <string name="settings_infos_version">Version</string>
+    <string name="settings_infos_version_format">v%1$s</string>
+    <string name="settings_infos_build">Build</string>
+    <string name="settings_infos_backend">Backend</string>
+    <string name="settings_infos_backend_connected">Online</string>
+    <string name="settings_infos_backend_offline">Offline</string>
+
+    <!-- Sign out -->
+    <string name="settings_logout">Sign out</string>
+
+    <!-- ============================================================
+         E3.1.1b — StatsScreen + sub-components.
+         ============================================================ -->
+
+    <!-- Stats main tabs -->
+    <string name="stats_tab_summary">Summary</string>
+    <string name="stats_tab_badges">Badges</string>
+    <string name="stats_tab_history">History</string>
+
+    <!-- Streaks block -->
+    <string name="stats_streaks_section_title">Streaks</string>
+    <string name="stats_streak_record_format">Record: %1$d days</string>
+    <string name="stats_streak_current_days_format">%1$dd</string>
+    <string name="stats_streak_calendar_open_format">Open %1$s\'s streak calendar</string>
+
+    <!-- Fair-share over-performance -->
+    <string name="stats_fair_share_over_format">You\'ve done more than your share for the past 30 days! It\'s %1$s\'s turn now. But you can still keep going!</string>
+
+    <!-- Leaderboard -->
+    <string name="stats_leaderboard_section_title">Leaderboard</string>
+    <string name="stats_leaderboard_this_week">This week</string>
+    <string name="stats_leaderboard_this_month">This month</string>
+    <string name="stats_leaderboard_all_time">All time</string>
+    <string name="stats_leaderboard_rank_format">#%1$d</string>
+    <string name="stats_leaderboard_score_format">Score %1$d</string>
+    <string name="stats_leaderboard_breakdown_format">%1$d raw pts · %2$d tasks</string>
+
+    <!-- Stats charts card -->
+    <string name="stats_charts_title">Stats</string>
+    <string name="stats_charts_swipe_hint">Swipe to see other charts</string>
+    <string name="stats_charts_tab_overdue">Overdue</string>
+    <string name="stats_charts_tab_week">Week</string>
+    <string name="stats_charts_tab_month">Month</string>
+    <string name="stats_charts_tab_alltime">All time</string>
+    <string name="stats_charts_tab_weekday">By weekday</string>
+    <string name="stats_charts_tab_category">Category</string>
+    <string name="stats_charts_overdue_title">Household overdue (shared tasks)</string>
+    <string name="stats_charts_points_week_title">Points race · 7 days</string>
+    <string name="stats_charts_points_month_title">Points race · 30 days</string>
+    <string name="stats_charts_points_all_title">Points race · all time</string>
+    <string name="stats_charts_weekday_title">Tasks per weekday</string>
+    <string name="stats_charts_category_title">Breakdown by category</string>
+
+    <!-- "This week" recap card -->
+    <string name="stats_weekrecap_title">This week</string>
+    <string name="stats_weekrecap_points_label">pts</string>
+    <string name="stats_weekrecap_top_day_format">Top day: %1$s</string>
+    <string name="stats_weekrecap_top_category_format">Top category: %1$s</string>
+    <string name="stats_weekrecap_delta_same">= vs last week</string>
+    <string name="stats_weekrecap_delta_zero_to_some">(here we go!)</string>
+    <string name="stats_weekrecap_delta_positive_format">+%1$d%% vs last week</string>
+    <string name="stats_weekrecap_delta_negative_format">%1$d%% vs last week</string>
+
+    <!-- Weekday names (for weekdayLabels) -->
+    <string name="weekday_monday">Monday</string>
+    <string name="weekday_tuesday">Tuesday</string>
+    <string name="weekday_wednesday">Wednesday</string>
+    <string name="weekday_thursday">Thursday</string>
+    <string name="weekday_friday">Friday</string>
+    <string name="weekday_saturday">Saturday</string>
+    <string name="weekday_sunday">Sunday</string>
+
+    <!-- Badges tab -->
+    <string name="stats_badges_earned_format">Earned (%1$d)</string>
+    <string name="stats_badges_locked_format">Locked (%1$d)</string>
+
+    <!-- History tab -->
+    <string name="stats_history_day_filter_format">Activity on %1$s</string>
+    <string name="stats_history_clear_day_filter">Clear filter</string>
+    <string name="stats_history_search_placeholder">Search task titles…</string>
+    <string name="stats_history_clear_search">Clear</string>
+    <string name="stats_history_filters_show">Filters</string>
+    <string name="stats_history_filters_hide">Hide filters</string>
+    <string name="stats_history_clear_filters">Clear</string>
+    <string name="stats_history_filter_type">Type</string>
+    <string name="stats_history_filter_type_completions">Completions</string>
+    <string name="stats_history_filter_type_votes">Votes</string>
+    <string name="stats_history_filter_type_modifications">Edits</string>
+    <string name="stats_history_filter_actor">Actor</string>
+    <string name="stats_history_filter_actor_all">All</string>
+    <string name="stats_history_filter_period">Period</string>
+    <string name="stats_history_filter_period_week">This week</string>
+    <string name="stats_history_filter_period_month">This month</string>
+    <string name="stats_history_filter_period_three_months">Last 3 months</string>
+    <string name="stats_history_filter_period_all">All</string>
+    <string name="stats_history_empty_filtered">No results with these filters</string>
+    <string name="stats_history_empty">No history yet</string>
+
+    <!-- Stats plurals -->
+    <plurals name="stats_top_day_count">
+        <item quantity="one">(%d task)</item>
+        <item quantity="other">(%d tasks)</item>
+    </plurals>
+    <plurals name="stats_top_category_count">
+        <item quantity="one">(%d task)</item>
+        <item quantity="other">(%d tasks)</item>
+    </plurals>
+
+    <!-- Recurrence labels (shared, used in catalog + task screen) -->
+    <string name="recurrence_label_once">Once only</string>
+    <string name="recurrence_label_unknown">?</string>
+    <string name="recurrence_label_interval_short_format">Every %d d</string>
+    <string name="recurrence_label_weekdays">Weekdays</string>
+    <string name="recurrence_label_monthly_format">Monthly (day %d)</string>
+    <string name="recurrence_label_monthly_variable">Depending on the month</string>
+    <string name="recurrence_label_uncertain">Irregular</string>
 </resources>

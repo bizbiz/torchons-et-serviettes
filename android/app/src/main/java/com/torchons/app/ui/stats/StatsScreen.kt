@@ -60,6 +60,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -70,6 +72,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.filled.Favorite
+import com.torchons.app.R
 import com.torchons.app.data.model.BadgeInfo
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.LeaderboardEntry
@@ -91,7 +94,11 @@ fun StatsScreen(
     viewModel: StatsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val tabs = listOf("Resume", "Badges", "Historique")
+    val tabs = listOf(
+        stringResource(R.string.stats_tab_summary),
+        stringResource(R.string.stats_tab_badges),
+        stringResource(R.string.stats_tab_history),
+    )
 
     // Etat pour l'ouverture du modal profil utilisateur.
     var userProfileRequest by remember { mutableStateOf<UserProfileRequest?>(null) }
@@ -305,7 +312,7 @@ private fun ResumeTab(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Tu as fait plus que ta part ces 30 derniers jours ! C'est a ${otherFairShare!!.displayName} de faire des taches. Mais tu peux quand meme continuer !",
+                            text = stringResource(R.string.stats_fair_share_over_format, otherFairShare!!.displayName),
                             style = MaterialTheme.typography.bodyMedium,
                             color = TaskUrgencyCalculator.VERT
                         )
@@ -318,7 +325,7 @@ private fun ResumeTab(
         if (streaks.isNotEmpty()) {
             item {
                 Text(
-                    text = "Streaks",
+                    text = stringResource(R.string.stats_streaks_section_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -361,13 +368,13 @@ private fun ResumeTab(
                                 }
                             )
                             Text(
-                                text = "Record : ${streak.bestStreak} jours",
+                                text = stringResource(R.string.stats_streak_record_format, streak.bestStreak),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Text(
-                            text = "${streak.currentStreak}j",
+                            text = stringResource(R.string.stats_streak_current_days_format, streak.currentStreak),
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             color = if (streak.currentStreak > 0)
@@ -381,8 +388,7 @@ private fun ResumeTab(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.CalendarMonth,
-                                contentDescription =
-                                    "Voir le calendrier des series de ${streak.displayName}",
+                                contentDescription = stringResource(R.string.stats_streak_calendar_open_format, streak.displayName),
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                         }
@@ -429,14 +435,14 @@ private fun ResumeTab(
         item {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Classement",
+                text = stringResource(R.string.stats_leaderboard_section_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
         }
         item {
             Text(
-                text = "Cette semaine",
+                text = stringResource(R.string.stats_leaderboard_this_week),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -446,7 +452,7 @@ private fun ResumeTab(
         item {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Ce mois-ci",
+                text = stringResource(R.string.stats_leaderboard_this_month),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -456,7 +462,7 @@ private fun ResumeTab(
         item {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Total",
+                text = stringResource(R.string.stats_leaderboard_all_time),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -493,7 +499,14 @@ private fun ChartsCard(
 ) {
     // Retard foyer en 1ere position : c'est la metrique commune au foyer
     // (vs les courses de points qui sont per-user).
-    val titles = listOf("Retard", "Semaine", "Mois", "Toujours", "Par jour", "Categorie")
+    val titles = listOf(
+        stringResource(R.string.stats_charts_tab_overdue),
+        stringResource(R.string.stats_charts_tab_week),
+        stringResource(R.string.stats_charts_tab_month),
+        stringResource(R.string.stats_charts_tab_alltime),
+        stringResource(R.string.stats_charts_tab_weekday),
+        stringResource(R.string.stats_charts_tab_category),
+    )
     val pagerState = rememberPagerState(pageCount = { titles.size })
     val scope = rememberCoroutineScope()
 
@@ -504,13 +517,13 @@ private fun ChartsCard(
     ) {
         Column(modifier = Modifier.padding(vertical = 12.dp)) {
             Text(
-                text = "Statistiques",
+                text = stringResource(R.string.stats_charts_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
             Text(
-                text = "Glisse pour voir les autres graphiques",
+                text = stringResource(R.string.stats_charts_swipe_hint),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
@@ -543,36 +556,36 @@ private fun ChartsCard(
                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                     when (page) {
                         0 -> RetardContent(
-                            title = "Retard du foyer (taches en commun)",
+                            title = stringResource(R.string.stats_charts_overdue_title),
                             data = retardTimeline,
                             period = retardPeriod,
                             isLoading = isRetardLoading,
                             onPeriodChange = onRetardPeriodChange,
                         )
                         1 -> ChartContent(
-                            title = "Course de points · 7 jours",
+                            title = stringResource(R.string.stats_charts_points_week_title),
                             data = pointsWeek,
                             onPointTap = onPointTap,
                         )
                         2 -> ChartContent(
-                            title = "Course de points · 30 jours",
+                            title = stringResource(R.string.stats_charts_points_month_title),
                             data = pointsMonth,
                             onPointTap = onPointTap,
                         )
                         3 -> ChartContent(
-                            title = "Course de points · depuis toujours",
+                            title = stringResource(R.string.stats_charts_points_all_title),
                             data = pointsAll,
                             onPointTap = onPointTap,
                         )
                         4 -> WeekdayContent(
-                            title = "Taches par jour de semaine",
+                            title = stringResource(R.string.stats_charts_weekday_title),
                             data = weekdayFrequency,
                             period = weekdayPeriod,
                             isLoading = isWeekdayLoading,
                             onPeriodChange = onWeekdayPeriodChange,
                         )
                         5 -> CategoryContent(
-                            title = "Repartition par categorie",
+                            title = stringResource(R.string.stats_charts_category_title),
                             data = categoryFrequency,
                             period = categoryPeriod,
                             isLoading = isCategoryLoading,
@@ -741,7 +754,7 @@ private fun LeaderboardRow(
                     )
                 } else {
                     Text(
-                        text = "#${entry.rank}",
+                        text = stringResource(R.string.stats_leaderboard_rank_format, entry.rank),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -763,13 +776,13 @@ private fun LeaderboardRow(
             )
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "Score ${entry.normalizedScore.toInt()}",
+                    text = stringResource(R.string.stats_leaderboard_score_format, entry.normalizedScore.toInt()),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "${entry.points} pts bruts · ${entry.tasksCount} taches",
+                    text = stringResource(R.string.stats_leaderboard_breakdown_format, entry.points, entry.tasksCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -805,7 +818,13 @@ private fun WeekRecapCard(
     val topWeekdayIdx = if (weekdaySum.any { it > 0 })
         weekdaySum.indices.maxBy { weekdaySum[it] } else null
     val weekdayLabels = listOf(
-        "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"
+        stringResource(R.string.weekday_monday),
+        stringResource(R.string.weekday_tuesday),
+        stringResource(R.string.weekday_wednesday),
+        stringResource(R.string.weekday_thursday),
+        stringResource(R.string.weekday_friday),
+        stringResource(R.string.weekday_saturday),
+        stringResource(R.string.weekday_sunday),
     )
 
     // Top categorie cette semaine : la 1ere de la liste (deja triee desc backend).
@@ -823,7 +842,7 @@ private fun WeekRecapCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Cette semaine",
+                text = stringResource(R.string.stats_weekrecap_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
@@ -842,7 +861,7 @@ private fun WeekRecapCard(
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        text = "pts",
+                        text = stringResource(R.string.stats_weekrecap_points_label),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 6.dp),
@@ -872,15 +891,17 @@ private fun WeekRecapCard(
             // Ligne 2 : top jour + top categorie cote foyer (lecture rapide).
             if (topWeekdayIdx != null) {
                 val nbTop = weekdaySum[topWeekdayIdx]
+                val countLabel = pluralStringResource(R.plurals.stats_top_day_count, nbTop, nbTop)
                 Text(
-                    text = "Top jour : ${weekdayLabels[topWeekdayIdx]} ($nbTop tache${if (nbTop > 1) "s" else ""})",
+                    text = "${stringResource(R.string.stats_weekrecap_top_day_format, weekdayLabels[topWeekdayIdx])} $countLabel",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             if (topCategory != null) {
+                val countLabel = pluralStringResource(R.plurals.stats_top_category_count, topCategory.total, topCategory.total)
                 Text(
-                    text = "Top categorie : ${topCategory.categoryName} (${topCategory.total} tache${if (topCategory.total > 1) "s" else ""})",
+                    text = "${stringResource(R.string.stats_weekrecap_top_category_format, topCategory.categoryName)} $countLabel",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -890,14 +911,15 @@ private fun WeekRecapCard(
 }
 
 /** Formate "+15% vs sem prec." / "-20%" / "= vs sem prec." pour le recap. */
+@Composable
 private fun formatWeekDelta(current: Int, previous: Int): String {
-    if (previous == 0 && current == 0) return "= vs sem prec."
-    if (previous == 0) return "(c'est parti !)"
+    if (previous == 0 && current == 0) return stringResource(R.string.stats_weekrecap_delta_same)
+    if (previous == 0) return stringResource(R.string.stats_weekrecap_delta_zero_to_some)
     val pct = ((current - previous).toDouble() / previous.toDouble() * 100.0).toInt()
     return when {
-        pct == 0 -> "= vs sem prec."
-        pct > 0 -> "+${pct}% vs sem prec."
-        else -> "${pct}% vs sem prec."
+        pct == 0 -> stringResource(R.string.stats_weekrecap_delta_same)
+        pct > 0 -> stringResource(R.string.stats_weekrecap_delta_positive_format, pct)
+        else -> stringResource(R.string.stats_weekrecap_delta_negative_format, pct)
     }
 }
 
@@ -915,7 +937,7 @@ private fun BadgesTab(badges: List<BadgeInfo>) {
         if (earned.isNotEmpty()) {
             item {
                 Text(
-                    text = "Gagnes (${earned.size})",
+                    text = stringResource(R.string.stats_badges_earned_format, earned.size),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -927,7 +949,7 @@ private fun BadgesTab(badges: List<BadgeInfo>) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "A debloquer (${locked.size})",
+                    text = stringResource(R.string.stats_badges_locked_format, locked.size),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1020,9 +1042,9 @@ private fun HistoryTab(
             FilterChip(
                 selected = true,
                 onClick = { onClearFilters() },
-                label = { Text("Activites du $pretty") },
+                label = { Text(stringResource(R.string.stats_history_day_filter_format, pretty)) },
                 trailingIcon = {
-                    Icon(Icons.Filled.Clear, contentDescription = "Effacer le filtre", modifier = Modifier.size(16.dp))
+                    Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.stats_history_clear_day_filter), modifier = Modifier.size(16.dp))
                 },
                 modifier = Modifier.padding(bottom = 8.dp),
             )
@@ -1032,12 +1054,12 @@ private fun HistoryTab(
             value = filters.query,
             onValueChange = onQueryChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Rechercher dans les titres de taches…") },
+            placeholder = { Text(stringResource(R.string.stats_history_search_placeholder)) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
                 if (filters.query.isNotEmpty()) {
                     IconButton(onClick = { onQueryChange("") }) {
-                        Icon(Icons.Filled.Clear, contentDescription = "Effacer")
+                        Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.stats_history_clear_search))
                     }
                 }
             },
@@ -1058,7 +1080,10 @@ private fun HistoryTab(
                 OutlinedButton(onClick = { showFilters = !showFilters }) {
                     Icon(Icons.Filled.FilterList, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(if (showFilters) "Masquer les filtres" else "Filtres")
+                    Text(
+                        if (showFilters) stringResource(R.string.stats_history_filters_hide)
+                        else stringResource(R.string.stats_history_filters_show)
+                    )
                 }
             }
             if (filters.hasActiveFilters || filters.query.isNotEmpty()) {
@@ -1066,7 +1091,7 @@ private fun HistoryTab(
                 TextButton(onClick = {
                     onClearFilters()
                     if (filters.query.isNotEmpty()) onQueryChange("")
-                }) { Text("Effacer") }
+                }) { Text(stringResource(R.string.stats_history_clear_filters)) }
             }
         }
 
@@ -1075,16 +1100,16 @@ private fun HistoryTab(
             Column(modifier = Modifier.padding(top = 4.dp)) {
                 // --- Type (familles) ---
                 Text(
-                    "Type",
+                    stringResource(R.string.stats_history_filter_type),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(
-                        "completions" to "Completions",
-                        "votes" to "Votes",
-                        "modifications" to "Modifications",
+                        "completions" to stringResource(R.string.stats_history_filter_type_completions),
+                        "votes" to stringResource(R.string.stats_history_filter_type_votes),
+                        "modifications" to stringResource(R.string.stats_history_filter_type_modifications),
                     ).forEach { (key, label) ->
                         FilterChip(
                             selected = filters.families.contains(key),
@@ -1096,7 +1121,7 @@ private fun HistoryTab(
 
                 // --- Acteur ---
                 Text(
-                    "Acteur",
+                    stringResource(R.string.stats_history_filter_actor),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
@@ -1105,7 +1130,7 @@ private fun HistoryTab(
                     FilterChip(
                         selected = filters.actorId == null,
                         onClick = { onSetActor(null) },
-                        label = { Text("Tous") },
+                        label = { Text(stringResource(R.string.stats_history_filter_actor_all)) },
                     )
                     users.forEach { (uid, name) ->
                         FilterChip(
@@ -1118,17 +1143,17 @@ private fun HistoryTab(
 
                 // --- Periode ---
                 Text(
-                    "Periode",
+                    stringResource(R.string.stats_history_filter_period),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(
-                        HistoryPeriod.WEEK to "Cette semaine",
-                        HistoryPeriod.MONTH to "Ce mois",
-                        HistoryPeriod.THREE_MONTHS to "3 derniers mois",
-                        HistoryPeriod.ALL to "Tout",
+                        HistoryPeriod.WEEK to stringResource(R.string.stats_history_filter_period_week),
+                        HistoryPeriod.MONTH to stringResource(R.string.stats_history_filter_period_month),
+                        HistoryPeriod.THREE_MONTHS to stringResource(R.string.stats_history_filter_period_three_months),
+                        HistoryPeriod.ALL to stringResource(R.string.stats_history_filter_period_all),
                     ).forEach { (period, label) ->
                         FilterChip(
                             selected = filters.period == period,
@@ -1159,8 +1184,8 @@ private fun HistoryTab(
                     ) {
                         Text(
                             if (filters.hasActiveFilters || filters.query.isNotEmpty())
-                                "Aucun resultat avec ces filtres"
-                            else "Aucun historique",
+                                stringResource(R.string.stats_history_empty_filtered)
+                            else stringResource(R.string.stats_history_empty),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }

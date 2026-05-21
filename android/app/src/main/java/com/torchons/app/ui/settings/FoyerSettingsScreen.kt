@@ -65,9 +65,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 import com.torchons.app.ui.common.InfoTooltip
 import com.torchons.app.ui.common.PresenceCalendarGrid
 import com.torchons.app.ui.home.ProjectionSimulationDialog
@@ -117,7 +119,7 @@ fun FoyerSettingsScreen(
     // foyer cree/quitte ailleurs SANS refresh manuel.
     LaunchedEffect(Unit) { viewModel.refreshFoyers() }
 
-    val foyerName = currentFoyer?.name ?: "Mon foyer"
+    val foyerName = currentFoyer?.name ?: stringResource(R.string.settings_foyer_default_name)
     val homeSsids = s.homeSsids
     val affinityExpiry = s.affinityExpiry
     val fairShareTolerance = s.fairShareTolerance
@@ -164,7 +166,7 @@ fun FoyerSettingsScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            "Retour",
+                            stringResource(R.string.common_back),
                             tint = MaterialTheme.colorScheme.onPrimary,
                         )
                     }
@@ -185,7 +187,7 @@ fun FoyerSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // ================= GROUPE "Ce foyer" =================
-            GroupHeader(title = "Ce foyer")
+            GroupHeader(title = stringResource(R.string.foyer_group_this_foyer))
 
             // (1) Nom du foyer (edition inline)
             SettingCard {
@@ -199,7 +201,7 @@ fun FoyerSettingsScreen(
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Nom du foyer",
+                            text = stringResource(R.string.foyer_name_label),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -212,7 +214,7 @@ fun FoyerSettingsScreen(
                     IconButton(onClick = { showRenameDialog = true }) {
                         Icon(
                             Icons.Default.Edit,
-                            contentDescription = "Renommer",
+                            contentDescription = stringResource(R.string.foyer_name_rename_action),
                             tint = MaterialTheme.colorScheme.primary,
                         )
                     }
@@ -222,8 +224,8 @@ fun FoyerSettingsScreen(
             // (2) Inviter quelqu'un (QR)
             ActionCard(
                 icon = Icons.Default.PersonAdd,
-                title = "Inviter quelqu'un",
-                subtitle = "Generer un QR code pour ajouter un membre au foyer",
+                title = stringResource(R.string.foyer_invite_title),
+                subtitle = stringResource(R.string.foyer_invite_subtitle),
                 onClick = onInviteSomeone,
             )
 
@@ -231,8 +233,8 @@ fun FoyerSettingsScreen(
             if (allFoyers.size >= 2) {
                 ActionCard(
                     icon = Icons.Default.SwapHoriz,
-                    title = "Changer de foyer",
-                    subtitle = "Basculer vers un autre de tes foyers",
+                    title = stringResource(R.string.foyer_switch_title),
+                    subtitle = stringResource(R.string.foyer_switch_subtitle),
                     onClick = { showSwitchSheet = true },
                 )
             }
@@ -240,8 +242,8 @@ fun FoyerSettingsScreen(
             // (4) Pieces
             ActionCard(
                 icon = Icons.Default.MeetingRoom,
-                title = "Pieces",
-                subtitle = "Cuisine, SDB, Chambre... + emoji et couleur",
+                title = stringResource(R.string.foyer_rooms_title),
+                subtitle = stringResource(R.string.foyer_rooms_subtitle),
                 onClick = onManageRooms,
             )
 
@@ -262,23 +264,19 @@ fun FoyerSettingsScreen(
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Categories",
+                            text = stringResource(R.string.foyer_categories_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = "Ajouter, modifier, supprimer",
+                            text = stringResource(R.string.foyer_categories_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     InfoTooltip(
-                        title = "Categories et gel pendant l'absence",
-                        description = "Une categorie marquee 'a la maison' contient " +
-                            "des taches qui ne peuvent etre faites que sur place. " +
-                            "Quand personne n'est detecte a la maison (cf. bloc " +
-                            "Presence & absences), ces taches sont gelees : elles " +
-                            "arretent de vieillir et reprennent au retour.",
+                        title = stringResource(R.string.foyer_categories_tooltip_title),
+                        description = stringResource(R.string.foyer_categories_tooltip_description),
                     )
                 }
             }
@@ -287,30 +285,22 @@ fun FoyerSettingsScreen(
             SettingCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Presence & absences",
+                        text = stringResource(R.string.foyer_presence_section_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     Spacer(Modifier.width(4.dp))
                     InfoTooltip(
-                        title = "Presence & absences",
-                        description = "Quand aucun membre du foyer n'est detecte au " +
-                            "WiFi maison depuis plus de 24h, les taches des " +
-                            "categories \"a la maison\" arretent de vieillir " +
-                            "(mise en pause). Elles reprennent normalement au " +
-                            "retour.\n\nLa detection automatique repose sur le(s) " +
-                            "reseau(x) WiFi declares ci-dessous. Elle est " +
-                            "facultative : sans WiFi configure, toutes les taches " +
-                            "restent visibles en permanence.",
+                        title = stringResource(R.string.foyer_presence_section_tooltip_title),
+                        description = stringResource(R.string.foyer_presence_section_tooltip_description),
                     )
                 }
                 Spacer(Modifier.height(8.dp))
 
                 // Toggle mise en pause si absent (home freeze)
                 SettingSwitch(
-                    title = "Mettre en pause si tout le monde est absent",
-                    subtitle = "Les taches \"a la maison\" arretent de vieillir " +
-                        "quand personne n'est detecte depuis 24h.",
+                    title = stringResource(R.string.foyer_presence_freeze_title),
+                    subtitle = stringResource(R.string.foyer_presence_freeze_subtitle),
                     checked = homeFreezeEnabled,
                     onCheckedChange = { viewModel.setCurrentFoyerHomeFreezeEnabled(it) },
                 )
@@ -321,23 +311,19 @@ fun FoyerSettingsScreen(
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Masquer hors WiFi",
+                        text = stringResource(R.string.foyer_presence_hide_off_wifi_section_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(Modifier.width(4.dp))
                     InfoTooltip(
-                        title = "Masquer hors WiFi",
-                        description = "S'applique a TOI sur ce foyer (l'autre " +
-                            "membre a son propre reglage). Sans WiFi maison " +
-                            "configure ci-dessous, ce reglage n'a aucun effet — " +
-                            "tout reste visible.",
+                        title = stringResource(R.string.foyer_presence_hide_off_wifi_tooltip_title),
+                        description = stringResource(R.string.foyer_presence_hide_off_wifi_tooltip_description),
                     )
                 }
                 SettingSwitch(
-                    title = "Masquer les taches maison hors WiFi",
-                    subtitle = "Les taches \"a la maison\" sont cachees de la " +
-                        "liste quand tu n'es pas connecte a ton WiFi maison.",
+                    title = stringResource(R.string.foyer_presence_hide_off_wifi_switch_title),
+                    subtitle = stringResource(R.string.foyer_presence_hide_off_wifi_switch_subtitle),
                     checked = s.hideHomeTasksOffWifi,
                     onCheckedChange = { viewModel.setHideHomeTasksOffWifi(it) },
                 )
@@ -354,23 +340,21 @@ fun FoyerSettingsScreen(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "WiFi maison",
+                        text = stringResource(R.string.foyer_presence_wifi_section_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(Modifier.width(4.dp))
                     InfoTooltip(
-                        title = "WiFi maison",
-                        description = "Les taches des categories marquees 'a la " +
-                            "maison' ne seront suggerees que lorsque tu es " +
-                            "connecte a un de ces reseaux WiFi.",
+                        title = stringResource(R.string.foyer_presence_wifi_tooltip_title),
+                        description = stringResource(R.string.foyer_presence_wifi_tooltip_description),
                     )
                 }
                 Spacer(Modifier.height(8.dp))
 
                 if (homeSsids.isEmpty()) {
                     Text(
-                        text = "Aucun WiFi configure — toutes les taches sont visibles",
+                        text = stringResource(R.string.foyer_presence_wifi_empty),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -393,7 +377,7 @@ fun FoyerSettingsScreen(
                             ) {
                                 Icon(
                                     Icons.Default.Close,
-                                    "Supprimer",
+                                    stringResource(R.string.foyer_presence_wifi_remove_cd),
                                     modifier = Modifier.size(16.dp),
                                 )
                             }
@@ -420,7 +404,7 @@ fun FoyerSettingsScreen(
                 ) {
                     Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Ajouter mon WiFi actuel")
+                    Text(stringResource(R.string.foyer_presence_wifi_add_button))
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -439,7 +423,7 @@ fun FoyerSettingsScreen(
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Ouvrir l'agenda de présence & séries")
+                    Text(stringResource(R.string.foyer_presence_open_calendar_button))
                 }
             }
 
@@ -447,32 +431,28 @@ fun FoyerSettingsScreen(
             SettingCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Gamification de ce foyer",
+                        text = stringResource(R.string.foyer_gamif_section_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     Spacer(Modifier.width(4.dp))
                     InfoTooltip(
-                        title = "Gamification de ce foyer",
-                        description = "Active ou desactive les points, stats et " +
-                            "bonus pour TOUS les membres de ce foyer. C'est un " +
-                            "reglage partage : le desactiver le retire aussi a " +
-                            "l'autre membre. Distinct de la gamification de ton " +
-                            "compte (qui, elle, s'applique a tous tes foyers).",
+                        title = stringResource(R.string.foyer_gamif_tooltip_title),
+                        description = stringResource(R.string.foyer_gamif_tooltip_description),
                     )
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Activer la gamification du foyer",
+                            text = stringResource(R.string.foyer_gamif_switch_label),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
                             text = if (gamifFoyer)
-                                "Activee — tous les membres voient les points dans ce foyer."
+                                stringResource(R.string.foyer_gamif_switch_subtitle_on)
                             else
-                                "Desactivee — personne ne voit les points dans ce foyer.",
+                                stringResource(R.string.foyer_gamif_switch_subtitle_off),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -502,13 +482,12 @@ fun FoyerSettingsScreen(
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Simuler le rattrapage du foyer",
+                            text = stringResource(R.string.foyer_simulation_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = "Tester un rythme et voir en combien de temps " +
-                                "le retard est rattrape",
+                            text = stringResource(R.string.foyer_simulation_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -522,7 +501,7 @@ fun FoyerSettingsScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Ouvrir la simulation")
+                    Text(stringResource(R.string.foyer_simulation_button))
                 }
             }
 
@@ -536,19 +515,14 @@ fun FoyerSettingsScreen(
                         .clickable { showBonusMalus = !showBonusMalus },
                 ) {
                     Text(
-                        text = "Bonus / Malus de points",
+                        text = stringResource(R.string.foyer_bonus_section_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
                     InfoTooltip(
-                        title = "Bonus / Malus de points",
-                        description = "Reglages avances de la mecanique de points : " +
-                            "bonus quand une tache est faite en retard, malus " +
-                            "quand elle est faite trop en avance, et detection " +
-                            "des retards systematiques. Valeurs par defaut " +
-                            "raisonnables — a ajuster seulement si tu sais ce " +
-                            "que tu fais. Partage entre tous les membres du foyer.",
+                        title = stringResource(R.string.foyer_bonus_section_tooltip_title),
+                        description = stringResource(R.string.foyer_bonus_section_tooltip_description),
                     )
                     Spacer(Modifier.width(4.dp))
                     Icon(
@@ -563,112 +537,106 @@ fun FoyerSettingsScreen(
                     Spacer(Modifier.height(8.dp))
 
                     Text(
-                        "Bonus retard",
+                        stringResource(R.string.foyer_bonus_group_late),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(Modifier.height(4.dp))
                     BonusSlider(
-                        "Bonus %", "+${(cfg.bonusPct * 100).toInt()}%",
+                        stringResource(R.string.foyer_bonus_pct_label),
+                        stringResource(R.string.foyer_bonus_pct_value_format, (cfg.bonusPct * 100).toInt()),
                         cfg.bonusPct, 0f..2f, 19,
-                        "Multiplicateur applique quand une tache est en retard " +
-                            "au-dela du seuil. +50% = touche 1.5x les points.",
+                        stringResource(R.string.foyer_bonus_pct_desc),
                     ) { viewModel.updateBonusConfig("bonus_pct", it) }
                     BonusSlider(
-                        "Seuil bonus (Strict)",
-                        "${(cfg.seuilBonusStrict * 100).toInt()}%",
+                        stringResource(R.string.foyer_bonus_threshold_strict),
+                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.seuilBonusStrict * 100).toInt()),
                         cfg.seuilBonusStrict, 0f..1f, 19,
-                        "% du cycle de retard pour declencher le bonus sur les " +
-                            "taches Strict.",
+                        stringResource(R.string.foyer_bonus_threshold_strict_desc),
                     ) { viewModel.updateBonusConfig("seuil_bonus_strict", it) }
                     BonusSlider(
-                        "Seuil bonus (Normal)",
-                        "${(cfg.seuilBonusNormal * 100).toInt()}%",
+                        stringResource(R.string.foyer_bonus_threshold_normal),
+                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.seuilBonusNormal * 100).toInt()),
                         cfg.seuilBonusNormal, 0f..1f, 19,
-                        "% du cycle de retard pour declencher le bonus sur les " +
-                            "taches Normal.",
+                        stringResource(R.string.foyer_bonus_threshold_normal_desc),
                     ) { viewModel.updateBonusConfig("seuil_bonus_normal", it) }
                     BonusSlider(
-                        "Seuil bonus (Souple)",
-                        "${(cfg.seuilBonusSouple * 100).toInt()}%",
+                        stringResource(R.string.foyer_bonus_threshold_souple),
+                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.seuilBonusSouple * 100).toInt()),
                         cfg.seuilBonusSouple, 0f..1f, 19,
-                        "% du cycle de retard pour declencher le bonus sur les " +
-                            "taches Souple.",
+                        stringResource(R.string.foyer_bonus_threshold_souple_desc),
                     ) { viewModel.updateBonusConfig("seuil_bonus_souple", it) }
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                     Text(
-                        "Malus avance",
+                        stringResource(R.string.foyer_malus_group),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(Modifier.height(4.dp))
                     BonusSlider(
-                        "Plancher malus", "${(cfg.plancherMalus * 100).toInt()}%",
+                        stringResource(R.string.foyer_malus_floor_label),
+                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.plancherMalus * 100).toInt()),
                         cfg.plancherMalus, 0.1f..1f, 17,
-                        "Multiplicateur minimum a 100% d'avance (debut du cycle). " +
-                            "50% = au pire la moitie des points.",
+                        stringResource(R.string.foyer_malus_floor_desc),
                     ) { viewModel.updateBonusConfig("plancher_malus", it) }
                     BonusSlider(
-                        "Seuil malus (Strict)",
-                        "${(cfg.seuilMalusStrict * 100).toInt()}%",
+                        stringResource(R.string.foyer_malus_threshold_strict),
+                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.seuilMalusStrict * 100).toInt()),
                         cfg.seuilMalusStrict, 0f..1f, 19,
-                        "% du cycle en avance pour entrer en zone malus sur les " +
-                            "taches Strict.",
+                        stringResource(R.string.foyer_malus_threshold_strict_desc),
                     ) { viewModel.updateBonusConfig("seuil_malus_strict", it) }
                     BonusSlider(
-                        "Seuil malus (Normal)",
-                        "${(cfg.seuilMalusNormal * 100).toInt()}%",
+                        stringResource(R.string.foyer_malus_threshold_normal),
+                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.seuilMalusNormal * 100).toInt()),
                         cfg.seuilMalusNormal, 0f..1f, 19,
-                        "% du cycle en avance pour entrer en zone malus sur les " +
-                            "taches Normal.",
+                        stringResource(R.string.foyer_malus_threshold_normal_desc),
                     ) { viewModel.updateBonusConfig("seuil_malus_normal", it) }
                     BonusSlider(
-                        "Seuil malus (Souple)",
-                        "${(cfg.seuilMalusSouple * 100).toInt()}%",
+                        stringResource(R.string.foyer_malus_threshold_souple),
+                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.seuilMalusSouple * 100).toInt()),
                         cfg.seuilMalusSouple, 0f..1f, 19,
-                        "% du cycle en avance pour entrer en zone malus sur les " +
-                            "taches Souple.",
+                        stringResource(R.string.foyer_malus_threshold_souple_desc),
                     ) { viewModel.updateBonusConfig("seuil_malus_souple", it) }
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                     Text(
-                        "Detection retards repetitifs",
+                        stringResource(R.string.foyer_bump_group),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(Modifier.height(4.dp))
                     BonusSlider(
-                        "Fenetre min", "${cfg.bumpYMinDays} j",
+                        stringResource(R.string.foyer_bump_window_min),
+                        stringResource(R.string.foyer_bump_window_value_days_format, cfg.bumpYMinDays),
                         cfg.bumpYMinDays.toFloat(), 30f..365f, 10,
-                        "Duree minimale de la fenetre d'analyse pour detecter un " +
-                            "retard systematique.",
+                        stringResource(R.string.foyer_bump_window_min_desc),
                     ) { viewModel.updateBonusConfig("bump_y_min_days", it.toInt()) }
                     BonusSlider(
-                        "Fenetre max", "${cfg.bumpYMaxDays} j",
+                        stringResource(R.string.foyer_bump_window_max),
+                        stringResource(R.string.foyer_bump_window_value_days_format, cfg.bumpYMaxDays),
                         cfg.bumpYMaxDays.toFloat(), 180f..3650f, 10,
-                        "Duree maximale de la fenetre d'analyse (les vieilles " +
-                            "donnees pourrissent).",
+                        stringResource(R.string.foyer_bump_window_max_desc),
                     ) { viewModel.updateBonusConfig("bump_y_max_days", it.toInt()) }
                     BonusSlider(
-                        "Completions min", "${cfg.bumpZMin}",
+                        stringResource(R.string.foyer_bump_min_completions),
+                        stringResource(R.string.foyer_bump_value_int_format, cfg.bumpZMin),
                         cfg.bumpZMin.toFloat(), 1f..10f, 8,
-                        "Nombre minimum de completions dans la fenetre pour tirer " +
-                            "une conclusion.",
+                        stringResource(R.string.foyer_bump_min_completions_desc),
                     ) { viewModel.updateBonusConfig("bump_z_min", it.toInt()) }
                     BonusSlider(
-                        "Ratio retard", "${(cfg.bumpXRatio * 100).toInt()}%",
+                        stringResource(R.string.foyer_bump_ratio),
+                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.bumpXRatio * 100).toInt()),
                         cfg.bumpXRatio, 0.3f..1f, 13,
-                        "Pourcentage de completions qui doivent etre en zone " +
-                            "bonus pour qualifier 'systematiquement en retard'.",
+                        stringResource(R.string.foyer_bump_ratio_desc),
                     ) { viewModel.updateBonusConfig("bump_x_ratio", it) }
                     BonusSlider(
-                        "Grace period", "${(cfg.bumpGraceRatio * 100).toInt()}%",
+                        stringResource(R.string.foyer_bump_grace),
+                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.bumpGraceRatio * 100).toInt()),
                         cfg.bumpGraceRatio, 0.1f..2f, 18,
-                        "Apres proposition de bump, on attend ce % de la fenetre " +
-                            "avant de re-analyser.",
+                        stringResource(R.string.foyer_bump_grace_desc),
                     ) { viewModel.updateBonusConfig("bump_grace_ratio", it) }
                 }
             }
@@ -685,13 +653,13 @@ fun FoyerSettingsScreen(
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Quitter le foyer",
+                            text = stringResource(R.string.foyer_leave_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.error,
                         )
                         Text(
-                            text = "Tu ne verras plus les taches de ce foyer.",
+                            text = stringResource(R.string.foyer_leave_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -702,7 +670,7 @@ fun FoyerSettingsScreen(
                             contentColor = MaterialTheme.colorScheme.error,
                         ),
                     ) {
-                        Text("Quitter", style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.foyer_leave_button), style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -712,23 +680,20 @@ fun FoyerSettingsScreen(
             // ====== GROUPE "Mon compte · vaut pour tous mes foyers" ======
             Row(verticalAlignment = Alignment.CenterVertically) {
                 GroupHeader(
-                    title = "Mon compte · vaut pour tous mes foyers",
+                    title = stringResource(R.string.foyer_group_account_scope),
                     modifier = Modifier.weight(1f),
                 )
                 InfoTooltip(
-                    title = "Perimetre : ton compte",
-                    description = "Les reglages de ce groupe sont attaches a TON " +
-                        "compte, pas a ce foyer en particulier. Ils s'appliquent " +
-                        "donc de la meme maniere dans TOUS les foyers dont tu es " +
-                        "membre.",
+                    title = stringResource(R.string.foyer_group_account_scope_tooltip_title),
+                    description = stringResource(R.string.foyer_group_account_scope_tooltip_description),
                 )
             }
 
             // (11) Mes appareils (ajouter)
             ActionCard(
                 icon = Icons.Default.Devices,
-                title = "Mes appareils",
-                subtitle = "Connecter une tablette ou un 2eme telephone a ton compte",
+                title = stringResource(R.string.foyer_devices_title),
+                subtitle = stringResource(R.string.foyer_devices_subtitle),
                 onClick = onAddDevice,
             )
 
@@ -745,31 +710,24 @@ fun FoyerSettingsScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "Regenerer mon code de recuperation",
+                                text = stringResource(R.string.foyer_recovery_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                             )
                             Spacer(Modifier.width(4.dp))
                             InfoTooltip(
-                                title = "Code de recuperation — irreversible",
-                                description = "Ce code est le SEUL moyen de " +
-                                    "retrouver ton foyer si tu perds ton " +
-                                    "telephone. En generer un nouveau invalide " +
-                                    "definitivement l'ancien.\n\nIl n'est affiche " +
-                                    "qu'une seule fois, a la generation. Personne " +
-                                    "ne peut le recuperer ni le reinitialiser a ta " +
-                                    "place — pas meme le developpeur. Note-le " +
-                                    "immediatement et garde-le en lieu sur.",
+                                title = stringResource(R.string.foyer_recovery_tooltip_title),
+                                description = stringResource(R.string.foyer_recovery_tooltip_description),
                             )
                         }
                         Text(
-                            text = "Te permet de retrouver ton foyer si tu perds ton tel.",
+                            text = stringResource(R.string.foyer_recovery_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     OutlinedButton(onClick = { showRegenerateConfirm = true }) {
-                        Text("Generer", style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.foyer_recovery_button), style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -778,17 +736,14 @@ fun FoyerSettingsScreen(
             SettingCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Renouvellement : $affinityExpiry mois",
+                        text = stringResource(R.string.foyer_affinity_title_format, affinityExpiry),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
                     InfoTooltip(
-                        title = "Renouvellement affinites/efforts",
-                        description = "Apres cette duree, l'app te redemandera ton " +
-                            "affinite et estimation d'effort pour chaque tache. " +
-                            "Les anciennes valeurs restent valables tant qu'elles " +
-                            "ne sont pas remplacees.",
+                        title = stringResource(R.string.foyer_affinity_tooltip_title),
+                        description = stringResource(R.string.foyer_affinity_tooltip_description),
                     )
                 }
                 Slider(
@@ -811,19 +766,14 @@ fun FoyerSettingsScreen(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Tolerance fair-share : ${fairShareTolerance}%",
+                        text = stringResource(R.string.foyer_fair_share_title_format, fairShareTolerance),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
                     InfoTooltip(
-                        title = "Tolerance fair-share",
-                        description = "L'app te dit 'tu as fait plus que ta part' " +
-                            "quand tu as fait au moins X% de plus que ton ratio " +
-                            "cible. A 30% (defaut) avec un ratio 50/50, l'app te " +
-                            "felicite quand tu as fait 65% du boulot ou plus. A " +
-                            "0%, l'app te felicite des que tu depasses ton ratio. " +
-                            "A 100%, jamais (sauf si tu fais tout).",
+                        title = stringResource(R.string.foyer_fair_share_tooltip_title),
+                        description = stringResource(R.string.foyer_fair_share_tooltip_description),
                     )
                 }
                 Slider(
@@ -843,17 +793,9 @@ fun FoyerSettingsScreen(
     if (showWifiExplanation) {
         AlertDialog(
             onDismissRequest = { showWifiExplanation = false },
-            title = { Text("Detection WiFi maison") },
+            title = { Text(stringResource(R.string.foyer_wifi_explanation_title)) },
             text = {
-                Text(
-                    "L'appli Torchons & Serviettes peut afficher les taches a " +
-                        "faire a la maison uniquement lorsque vous y etes.\n\n" +
-                        "Pour ce faire, l'app a besoin d'acceder a votre " +
-                        "localisation lorsqu'elle est ouverte.\n\nSi vous etes " +
-                        "interesse par cette fonctionnalite, cliquez sur " +
-                        "Continuer. Sinon, cliquez sur Annuler — vous pourrez " +
-                        "reactiver cette fonctionnalite dans vos reglages plus tard.",
-                )
+                Text(stringResource(R.string.foyer_wifi_explanation_message))
             },
             confirmButton = {
                 Button(onClick = {
@@ -861,11 +803,11 @@ fun FoyerSettingsScreen(
                     locationPermissionLauncher.launch(
                         Manifest.permission.ACCESS_FINE_LOCATION,
                     )
-                }) { Text("Continuer") }
+                }) { Text(stringResource(R.string.foyer_wifi_explanation_continue)) }
             },
             dismissButton = {
                 OutlinedButton(onClick = { showWifiExplanation = false }) {
-                    Text("Annuler")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )
@@ -873,25 +815,23 @@ fun FoyerSettingsScreen(
 
     // --- Dialog confirmation desactivation gamif foyer ---
     if (showFoyerGamifConfirmDialog) {
+        val fallbackOther = stringResource(R.string.foyer_gamif_confirm_other_member_fallback)
         val otherMemberName = users
             .firstOrNull { it.displayName != displayName }
             ?.displayName
-            ?: "l'autre membre du foyer"
+            ?: fallbackOther
         AlertDialog(
             onDismissRequest = { showFoyerGamifConfirmDialog = false },
-            title = { Text("Desactiver la gamification du foyer ?") },
+            title = { Text(stringResource(R.string.foyer_gamif_confirm_title)) },
             text = {
                 Column {
                     Text(
-                        text = "Tu vas desactiver la gamification du foyer " +
-                            "\"$foyerName\".",
+                        text = stringResource(R.string.foyer_gamif_confirm_message_intro_format, foyerName),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "$otherMemberName et toi ne verrez plus les " +
-                            "points, les stats ni les bonus dans ce foyer. Vous " +
-                            "pourrez le reactiver a tout moment.",
+                        text = stringResource(R.string.foyer_gamif_confirm_message_detail_format, otherMemberName),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -901,11 +841,11 @@ fun FoyerSettingsScreen(
                 Button(onClick = {
                     viewModel.setCurrentFoyerGamificationEnabled(false)
                     showFoyerGamifConfirmDialog = false
-                }) { Text("Desactiver") }
+                }) { Text(stringResource(R.string.foyer_gamif_confirm_action)) }
             },
             dismissButton = {
                 OutlinedButton(onClick = { showFoyerGamifConfirmDialog = false }) {
-                    Text("Annuler")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )
@@ -916,12 +856,12 @@ fun FoyerSettingsScreen(
         var name by remember { mutableStateOf(foyerName) }
         AlertDialog(
             onDismissRequest = { showRenameDialog = false },
-            title = { Text("Renommer le foyer", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.foyer_rename_title), fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nom") },
+                    label = { Text(stringResource(R.string.common_name_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -933,10 +873,10 @@ fun FoyerSettingsScreen(
                         showRenameDialog = false
                     },
                     enabled = name.trim().isNotEmpty(),
-                ) { Text("Enregistrer") }
+                ) { Text(stringResource(R.string.common_save)) }
             },
             dismissButton = {
-                TextButton(onClick = { showRenameDialog = false }) { Text("Annuler") }
+                TextButton(onClick = { showRenameDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
@@ -945,12 +885,11 @@ fun FoyerSettingsScreen(
     if (showSwitchSheet) {
         AlertDialog(
             onDismissRequest = { showSwitchSheet = false },
-            title = { Text("Changer de foyer", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.foyer_switch_dialog_title), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Basculer videra le cache local et rechargera les " +
-                            "donnees du foyer choisi. Ca prend quelques secondes.",
+                        text = stringResource(R.string.foyer_switch_dialog_intro),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -995,7 +934,7 @@ fun FoyerSettingsScreen(
                                 if (f.isCurrent) {
                                     Icon(
                                         Icons.Default.Check,
-                                        contentDescription = "Foyer actif",
+                                        contentDescription = stringResource(R.string.foyer_switch_dialog_current_cd),
                                         tint = MaterialTheme.colorScheme.primary,
                                     )
                                 }
@@ -1005,7 +944,7 @@ fun FoyerSettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showSwitchSheet = false }) { Text("Fermer") }
+                TextButton(onClick = { showSwitchSheet = false }) { Text(stringResource(R.string.foyer_switch_dialog_close)) }
             },
         )
     }
@@ -1092,22 +1031,18 @@ private fun RecoveryAndLeaveDialogs(
     ) {
         AlertDialog(
             onDismissRequest = onDismissRegenerateConfirm,
-            title = { Text("Regenerer ton code ?") },
+            title = { Text(stringResource(R.string.recovery_dialog_confirm_title)) },
             text = {
-                Text(
-                    "Cela invalide ton ancien code de recuperation s'il existait. " +
-                        "Tu recevras un nouveau code, a noter immediatement — il " +
-                        "ne sera affiche qu'une seule fois.",
-                )
+                Text(stringResource(R.string.recovery_dialog_confirm_message))
             },
             confirmButton = {
                 Button(onClick = {
                     onDismissRegenerateConfirm()
                     viewModel.regenerateRecoveryCode()
-                }) { Text("Generer") }
+                }) { Text(stringResource(R.string.foyer_recovery_button)) }
             },
             dismissButton = {
-                TextButton(onClick = onDismissRegenerateConfirm) { Text("Annuler") }
+                TextButton(onClick = onDismissRegenerateConfirm) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
@@ -1115,7 +1050,7 @@ private fun RecoveryAndLeaveDialogs(
     if (regenerateState is SettingsViewModel.RegenerateState.Loading) {
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("Generation...") },
+            title = { Text(stringResource(R.string.recovery_dialog_loading_title)) },
             text = {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1132,7 +1067,7 @@ private fun RecoveryAndLeaveDialogs(
     if (regenSuccess != null) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissRegenerate() },
-            title = { Text("Voici ton nouveau code") },
+            title = { Text(stringResource(R.string.recovery_dialog_success_title)) },
             text = {
                 Column {
                     androidx.compose.material3.Surface(
@@ -1153,7 +1088,7 @@ private fun RecoveryAndLeaveDialogs(
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "⚠ Note-le maintenant. Il ne sera plus jamais affiche.",
+                        text = stringResource(R.string.recovery_dialog_warning),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -1168,7 +1103,7 @@ private fun RecoveryAndLeaveDialogs(
                                 contentDescription = null,
                             )
                             Spacer(Modifier.width(4.dp))
-                            Text("Copier")
+                            Text(stringResource(R.string.recovery_dialog_copy))
                         }
                         OutlinedButton(
                             onClick = { shareCode(context, regenSuccess.recoveryCode) },
@@ -1176,13 +1111,13 @@ private fun RecoveryAndLeaveDialogs(
                         ) {
                             Icon(Icons.Default.Share, contentDescription = null)
                             Spacer(Modifier.width(4.dp))
-                            Text("Partager")
+                            Text(stringResource(R.string.recovery_dialog_share))
                         }
                     }
                 }
             },
             confirmButton = {
-                Button(onClick = { viewModel.dismissRegenerate() }) { Text("J'ai note") }
+                Button(onClick = { viewModel.dismissRegenerate() }) { Text(stringResource(R.string.recovery_dialog_noted)) }
             },
         )
     }
@@ -1191,10 +1126,10 @@ private fun RecoveryAndLeaveDialogs(
     if (regenError != null) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissRegenerate() },
-            title = { Text("Erreur") },
+            title = { Text(stringResource(R.string.recovery_dialog_error_title)) },
             text = { Text(regenError.message) },
             confirmButton = {
-                Button(onClick = { viewModel.dismissRegenerate() }) { Text("OK") }
+                Button(onClick = { viewModel.dismissRegenerate() }) { Text(stringResource(R.string.common_ok)) }
             },
         )
     }
@@ -1203,13 +1138,9 @@ private fun RecoveryAndLeaveDialogs(
     if (showLeaveConfirm && leaveState is SettingsViewModel.LeaveState.Idle) {
         AlertDialog(
             onDismissRequest = onDismissLeaveConfirm,
-            title = { Text("Quitter ce foyer ?") },
+            title = { Text(stringResource(R.string.leave_dialog_confirm_title)) },
             text = {
-                Text(
-                    "Tu ne verras plus les taches, votes, completions de ce " +
-                        "foyer. Tu peux le rejoindre a nouveau plus tard via un " +
-                        "QR ou ton code de recuperation.",
-                )
+                Text(stringResource(R.string.leave_dialog_confirm_message))
             },
             confirmButton = {
                 Button(
@@ -1220,10 +1151,10 @@ private fun RecoveryAndLeaveDialogs(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                     ),
-                ) { Text("Quitter") }
+                ) { Text(stringResource(R.string.leave_dialog_confirm_action)) }
             },
             dismissButton = {
-                TextButton(onClick = onDismissLeaveConfirm) { Text("Annuler") }
+                TextButton(onClick = onDismissLeaveConfirm) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
@@ -1231,7 +1162,7 @@ private fun RecoveryAndLeaveDialogs(
     if (leaveState is SettingsViewModel.LeaveState.Loading) {
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("Sortie en cours...") },
+            title = { Text(stringResource(R.string.leave_dialog_loading_title)) },
             text = {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1247,10 +1178,10 @@ private fun RecoveryAndLeaveDialogs(
     if (leaveState is SettingsViewModel.LeaveState.SwitchedFoyer) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissLeave() },
-            title = { Text("C'est fait") },
-            text = { Text("Tu as bascule sur un autre foyer ou tu es membre.") },
+            title = { Text(stringResource(R.string.leave_dialog_switched_title)) },
+            text = { Text(stringResource(R.string.leave_dialog_switched_message)) },
             confirmButton = {
-                Button(onClick = { viewModel.dismissLeave() }) { Text("OK") }
+                Button(onClick = { viewModel.dismissLeave() }) { Text(stringResource(R.string.common_ok)) }
             },
         )
     }
@@ -1259,10 +1190,10 @@ private fun RecoveryAndLeaveDialogs(
     if (leaveError != null) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissLeave() },
-            title = { Text("Erreur") },
+            title = { Text(stringResource(R.string.recovery_dialog_error_title)) },
             text = { Text(leaveError.message) },
             confirmButton = {
-                Button(onClick = { viewModel.dismissLeave() }) { Text("OK") }
+                Button(onClick = { viewModel.dismissLeave() }) { Text(stringResource(R.string.common_ok)) }
             },
         )
     }

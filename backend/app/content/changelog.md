@@ -1,5 +1,14 @@
 # Notes de version
 
+## v0.35.10 — 2026-05-21
+
+### Traduction EN — Catalogue
+- L'écran **Catalogue** (import de templates pré-faits) est désormais
+  bilingue : titres d'onglets, dialog de rattachement et résumé d'import
+  s'affichent en anglais si ton téléphone est en anglais. Les pluriels
+  («&#8239;1 tâche créée&#8239;» vs «&#8239;3 tâches créées&#8239;»)
+  sont gérés correctement dans les deux langues.
+
 ## v0.35.9 — 2026-05-20
 
 ### Préparation app bilingue (FR + EN)

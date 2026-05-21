@@ -53,9 +53,11 @@ import com.torchons.app.ui.common.FoyerGamifState
 import com.torchons.app.ui.common.WhyNoPointsDialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 import kotlinx.coroutines.launch
 
 /**
@@ -104,7 +106,7 @@ fun SettingsScreen(
 
     var showWhyNoPointsDialog by remember { mutableStateOf(false) }
 
-    val foyerName = currentFoyer?.name ?: "Mon foyer"
+    val foyerName = currentFoyer?.name ?: stringResource(R.string.settings_foyer_default_name)
 
     LaunchedEffect(Unit) {
         viewModel.checkBackend()
@@ -123,7 +125,7 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            text = "Reglages",
+            text = stringResource(R.string.settings_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
@@ -153,7 +155,7 @@ fun SettingsScreen(
                     // qui n'est que la détection de session côté Welcome). Le
                     // canal effectif est visible dans Infos > Build.
                     Text(
-                        text = displayName ?: "...",
+                        text = displayName ?: stringResource(R.string.settings_placeholder_loading),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -187,12 +189,12 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "🏠 $foyerName",
+                        text = stringResource(R.string.settings_foyer_card_title_format, foyerName),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Pieces, categories, presence, gamification du foyer...",
+                        text = stringResource(R.string.settings_foyer_card_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -216,7 +218,7 @@ fun SettingsScreen(
         ) {
             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Creer un nouveau foyer")
+            Text(stringResource(R.string.settings_create_foyer_button))
         }
 
         // v0.32 : Gamification user-level + help link conditionnel.
@@ -232,7 +234,7 @@ fun SettingsScreen(
                     Text(text = "🎯", style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Gamification",
+                        text = stringResource(R.string.settings_gamif_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
@@ -241,11 +243,11 @@ fun SettingsScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Activer la gamification pour mon compte",
+                            text = stringResource(R.string.settings_gamif_switch_label),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
-                            text = "Si desactivee, tu ne verras plus les points, stats et bonus dans aucun de tes foyers.",
+                            text = stringResource(R.string.settings_gamif_switch_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -268,7 +270,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "Pourquoi je n'ai pas de points pour certaines taches ?",
+                            text = stringResource(R.string.settings_gamif_why_no_points),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.weight(1f),
@@ -305,12 +307,12 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Nouveautes",
+                        text = stringResource(R.string.settings_changelog_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Notes de version et roadmap",
+                        text = stringResource(R.string.settings_changelog_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -334,7 +336,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Notifications",
+                        text = stringResource(R.string.settings_notif_section_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -344,8 +346,8 @@ fun SettingsScreen(
 
                 // Resume quotidien
                 SettingSwitch(
-                    title = "Resume quotidien",
-                    subtitle = "Recevoir un resume de tes taches chaque jour",
+                    title = stringResource(R.string.settings_notif_daily_title),
+                    subtitle = stringResource(R.string.settings_notif_daily_subtitle),
                     checked = notifDaily,
                     onCheckedChange = { viewModel.setNotifDaily(it) }
                 )
@@ -372,7 +374,7 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Heure : ${pendingNotifHour}h00",
+                            text = stringResource(R.string.settings_notif_hour_format, pendingNotifHour),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f)
                         )
@@ -395,8 +397,8 @@ fun SettingsScreen(
 
                 // Taches urgentes
                 SettingSwitch(
-                    title = "Taches urgentes",
-                    subtitle = "Notification quand une tache passe en rouge",
+                    title = stringResource(R.string.settings_notif_urgent_title),
+                    subtitle = stringResource(R.string.settings_notif_urgent_subtitle),
                     checked = notifUrgent,
                     onCheckedChange = { viewModel.setNotifUrgent(it) }
                 )
@@ -407,8 +409,8 @@ fun SettingsScreen(
                 // ne gere plus un seul "notif_completed", l'utilisateur choisit
                 // par categorie.
                 SettingSwitch(
-                    title = "Quand quelqu'un fait une tache seul",
-                    subtitle = "Notification quand l'autre fait une tache solo",
+                    title = stringResource(R.string.settings_notif_solo_title),
+                    subtitle = stringResource(R.string.settings_notif_solo_subtitle),
                     checked = notifSolo,
                     onCheckedChange = { viewModel.setNotifSolo(it) }
                 )
@@ -416,8 +418,8 @@ fun SettingsScreen(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                 SettingSwitch(
-                    title = "Quand on fait une tache ensemble (avec moi)",
-                    subtitle = "Notification quand quelqu'un enregistre un collectif qui t'inclut",
+                    title = stringResource(R.string.settings_notif_collective_with_me_title),
+                    subtitle = stringResource(R.string.settings_notif_collective_with_me_subtitle),
                     checked = notifCollectiveWithMe,
                     onCheckedChange = { viewModel.setNotifCollectiveWithMe(it) }
                 )
@@ -426,8 +428,8 @@ fun SettingsScreen(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                     SettingSwitch(
-                        title = "Quand une tache est faite a plusieurs sans moi",
-                        subtitle = "Notification quand un collectif te laisse de cote",
+                        title = stringResource(R.string.settings_notif_collective_without_me_title),
+                        subtitle = stringResource(R.string.settings_notif_collective_without_me_subtitle),
                         checked = notifCollectiveWithoutMe,
                         onCheckedChange = { viewModel.setNotifCollectiveWithoutMe(it) }
                     )
@@ -451,15 +453,15 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Popup affinite",
+                        text = stringResource(R.string.settings_affinity_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 SettingSwitch(
-                    title = "Activer",
-                    subtitle = "Demander ton affinite pour chaque tache a l'ouverture de l'app",
+                    title = stringResource(R.string.settings_affinity_switch_label),
+                    subtitle = stringResource(R.string.settings_affinity_switch_subtitle),
                     checked = affinityPopup,
                     onCheckedChange = { viewModel.setAffinityPopup(it) }
                 )
@@ -475,7 +477,7 @@ fun SettingsScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Infos",
+                    text = stringResource(R.string.settings_infos_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -485,12 +487,12 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Version",
+                        text = stringResource(R.string.settings_infos_version),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        text = "v${com.torchons.app.BuildConfig.VERSION_NAME}",
+                        text = stringResource(R.string.settings_infos_version_format, com.torchons.app.BuildConfig.VERSION_NAME),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -505,7 +507,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Build",
+                            text = stringResource(R.string.settings_infos_build),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f)
                         )
@@ -521,7 +523,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Backend",
+                        text = stringResource(R.string.settings_infos_backend),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f)
                     )
@@ -533,7 +535,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (backendConnected) "Connecte" else "Hors ligne",
+                        text = if (backendConnected) stringResource(R.string.settings_infos_backend_connected) else stringResource(R.string.settings_infos_backend_offline),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (backendConnected) com.torchons.app.util.TaskUrgencyCalculator.VERT else com.torchons.app.util.TaskUrgencyCalculator.ROUGE
                     )
@@ -571,7 +573,7 @@ fun SettingsScreen(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Deconnexion",
+                text = stringResource(R.string.settings_logout),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )

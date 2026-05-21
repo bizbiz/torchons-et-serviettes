@@ -50,8 +50,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.CatalogCategoryView
 import com.torchons.app.data.model.CatalogResponse
@@ -89,7 +92,11 @@ fun CatalogScreen(
     var catalog by remember { mutableStateOf<CatalogResponse?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Taches", "Pieces", "Categories")
+    val tabs = listOf(
+        stringResource(R.string.catalog_tab_tasks),
+        stringResource(R.string.catalog_tab_rooms),
+        stringResource(R.string.catalog_tab_categories),
+    )
 
     // Selections (par key)
     val selectedTasks = remember { mutableStateMapOf<String, Boolean>() }
@@ -168,13 +175,21 @@ fun CatalogScreen(
                 selectedCategories.clear()
                 onBack()
             },
-            title = { Text("Import reussi", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.catalog_import_success_title), fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    if (r.createdRooms > 0) Text("- ${r.createdRooms} piece${if (r.createdRooms > 1) "s" else ""} creee${if (r.createdRooms > 1) "s" else ""}")
-                    if (r.createdCategories > 0) Text("- ${r.createdCategories} categorie${if (r.createdCategories > 1) "s" else ""} creee${if (r.createdCategories > 1) "s" else ""}")
-                    if (r.createdTasks > 0) Text("- ${r.createdTasks} tache${if (r.createdTasks > 1) "s" else ""} creee${if (r.createdTasks > 1) "s" else ""}")
-                    if (r.skipped > 0) Text("- ${r.skipped} ignore${if (r.skipped > 1) "s" else ""}")
+                    if (r.createdRooms > 0) Text(
+                        pluralStringResource(R.plurals.catalog_import_rooms_created, r.createdRooms, r.createdRooms)
+                    )
+                    if (r.createdCategories > 0) Text(
+                        pluralStringResource(R.plurals.catalog_import_categories_created, r.createdCategories, r.createdCategories)
+                    )
+                    if (r.createdTasks > 0) Text(
+                        pluralStringResource(R.plurals.catalog_import_tasks_created, r.createdTasks, r.createdTasks)
+                    )
+                    if (r.skipped > 0) Text(
+                        pluralStringResource(R.plurals.catalog_import_skipped, r.skipped, r.skipped)
+                    )
                 }
             },
             confirmButton = {
@@ -184,7 +199,7 @@ fun CatalogScreen(
                     selectedRooms.clear()
                     selectedCategories.clear()
                     onBack()
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.common_ok)) }
             },
         )
     }
@@ -196,12 +211,12 @@ fun CatalogScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Catalogue", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.catalog_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            "Retour",
+                            stringResource(R.string.common_back),
                             tint = MaterialTheme.colorScheme.onPrimary,
                         )
                     }
@@ -220,7 +235,10 @@ fun CatalogScreen(
                 ) {
                     Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.onPrimary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Importer $totalSelected", color = MaterialTheme.colorScheme.onPrimary)
+                    Text(
+                        stringResource(R.string.catalog_import_button_format, totalSelected),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
                 }
             }
         },
@@ -390,7 +408,7 @@ private fun CategoriesTab(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    "A la maison",
+                                    stringResource(R.string.common_home_label),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
@@ -435,20 +453,20 @@ private fun CatalogResolutionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rattachement", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.catalog_dialog_resolve_title), fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (resolution.rooms.isEmpty() && resolution.categories.isEmpty()) {
-                    Text("Rien a mapper, les tachs seront creees telles quelles.")
+                    Text(stringResource(R.string.catalog_dialog_resolve_empty))
                 } else {
                     Text(
-                        "Les taches que tu importes referencent des pieces / categories. Comment tu veux les rattacher ?",
+                        stringResource(R.string.catalog_dialog_resolve_intro),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
                 resolution.rooms.forEach { r ->
                     ResolutionItemBlock(
-                        label = "Piece : ${r.templateName}",
+                        label = stringResource(R.string.catalog_dialog_resolve_room_label_format, r.templateName),
                         resolved = r,
                         currentChoice = roomChoices[r.templateKey] ?: "create",
                         onChoiceChange = { roomChoices[r.templateKey] = it },
@@ -456,7 +474,7 @@ private fun CatalogResolutionDialog(
                 }
                 resolution.categories.forEach { c ->
                     ResolutionItemBlock(
-                        label = "Categorie : ${c.templateName}",
+                        label = stringResource(R.string.catalog_dialog_resolve_category_label_format, c.templateName),
                         resolved = c,
                         currentChoice = categoryChoices[c.templateKey] ?: "create",
                         onChoiceChange = { categoryChoices[c.templateKey] = it },
@@ -483,10 +501,10 @@ private fun CatalogResolutionDialog(
                     )
                 }
                 onConfirm(roomDecisions, categoryDecisions)
-            }) { Text("Importer") }
+            }) { Text(stringResource(R.string.common_import)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
@@ -502,7 +520,7 @@ private fun ResolutionItemBlock(
         Text(label, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
         if (resolved.strategy == "already_same_template") {
             Text(
-                "Deja rattache a \"${resolved.existingName}\". Sera reutilise.",
+                stringResource(R.string.catalog_dialog_resolve_already_linked_format, resolved.existingName ?: ""),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -512,7 +530,7 @@ private fun ResolutionItemBlock(
                     selected = currentChoice == "create",
                     onClick = { onChoiceChange("create") },
                 )
-                Text("Creer nouvelle", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.catalog_dialog_resolve_choice_create), style = MaterialTheme.typography.bodySmall)
             }
             if (resolved.existingId != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -521,7 +539,7 @@ private fun ResolutionItemBlock(
                         onClick = { onChoiceChange("map") },
                     )
                     Text(
-                        "Mapper sur \"${resolved.existingName}\"",
+                        stringResource(R.string.catalog_dialog_resolve_choice_map_format, resolved.existingName ?: ""),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -530,16 +548,17 @@ private fun ResolutionItemBlock(
     }
 }
 
+@Composable
 private fun recurrenceToLabel(rule: Map<String, Any>?): String {
-    if (rule == null) return "Une seule fois"
-    val type = rule["type"] as? String ?: return "?"
+    if (rule == null) return stringResource(R.string.recurrence_label_once)
+    val type = rule["type"] as? String ?: return stringResource(R.string.recurrence_label_unknown)
     return when (type) {
         "interval" -> {
             val n = (rule["every_n_days"] as? Number)?.toInt() ?: 1
-            "Tous les $n j"
+            stringResource(R.string.recurrence_label_interval_short_format, n)
         }
-        "monthly_variable" -> "Selon le mois"
-        "uncertain" -> "Irreguliere"
+        "monthly_variable" -> stringResource(R.string.recurrence_label_monthly_variable)
+        "uncertain" -> stringResource(R.string.recurrence_label_uncertain)
         else -> type
     }
 }
