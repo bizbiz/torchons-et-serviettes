@@ -74,8 +74,8 @@ android {
         applicationId = "com.torchons.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 90
-        versionName = "0.35.16"
+        versionCode = 91
+        versionName = "0.35.17"
 
         // SUPPORT_EMAIL commun aux flavors. API_BASE_URL + TAILSCALE_AUTOLOGIN
         // sont definis PAR FLAVOR (prod = public sans Tailscale, beta = test).
@@ -94,7 +94,7 @@ android {
     productFlavors {
         create("prod") {
             dimension = "channel"
-            resValue("string", "app_name", "Torchons &amp; Serviettes")
+            resValue("string", "app_name", "Torchons & Serviettes")
             buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrlProd\"")
             buildConfigField("boolean", "TAILSCALE_AUTOLOGIN", "false")
             // Pas de marqueur de build en prod public (release reproductible).
@@ -104,7 +104,7 @@ android {
             dimension = "channel"
             applicationIdSuffix = ".beta"
             versionNameSuffix = "-beta"
-            resValue("string", "app_name", "T&amp;S Beta")
+            resValue("string", "app_name", "T&S Beta")
             buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrlBeta\"")
             buildConfigField("boolean", "TAILSCALE_AUTOLOGIN", "true")
             buildConfigField("String", "BUILD_INFO", "\"$tsBuildStamp\"")

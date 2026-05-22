@@ -1,5 +1,16 @@
 # Release notes
 
+## v0.35.17 — 2026-05-22
+
+### i18n — countdown + app name fix
+- The countdown labels on home cards ("3d late", "in 5d", "Done 2d
+  ago"...) now follow the phone language — they were FR-only by
+  oversight in Lot 1.
+- The Android **app name** on the launcher ("Torchons & Serviettes"
+  prod, "T&S Beta" beta) no longer contains the "&amp;" artefact
+  introduced in 0.35.16 (double-escape of the ampersand in
+  `build.gradle.kts`).
+
 ## v0.35.16 — 2026-05-21
 
 ### Unified absence popup with the Presence & Streaks modal

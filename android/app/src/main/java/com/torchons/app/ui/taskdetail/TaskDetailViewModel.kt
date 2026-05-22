@@ -97,7 +97,9 @@ class TaskDetailViewModel @Inject constructor(
     private val apiService: ApiService,
     authRepository: AuthRepository,
     tokenManager: com.torchons.app.data.local.TokenManager,
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle,
+    @dagger.hilt.android.qualifiers.ApplicationContext
+    private val appContext: android.content.Context,
 ) : ViewModel() {
 
     private val taskId: String = savedStateHandle.get<String>("taskId")
@@ -150,7 +152,9 @@ class TaskDetailViewModel @Inject constructor(
                 val absentDays = cached.task?.absentDaysSinceLastCompletion ?: 0
                 val state = TaskUrgencyCalculator.computeState(dueDate, today, nominal, absentDays)
                 val daysUntilDue = TaskUrgencyCalculator.daysUntilDue(dueDate, today, absentDays)
-                val countdownLabel = TaskUrgencyCalculator.countdownLabel(dueDate, today, absentDays)
+                val countdownLabel = TaskUrgencyCalculator.countdownLabel(
+                    appContext.resources, dueDate, today, absentDays,
+                )
 
                 // Resolve la piece de la tache (si elle a un roomId).
                 val room = cached.task?.roomId?.let { rid ->

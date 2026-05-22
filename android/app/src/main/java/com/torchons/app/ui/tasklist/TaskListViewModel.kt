@@ -625,7 +625,9 @@ class TaskListViewModel @Inject constructor(
             val absentDays = task.absentDaysSinceLastCompletion
             val state = TaskUrgencyCalculator.computeState(dueDate, today, nominal, absentDays)
             val daysUntilDue = TaskUrgencyCalculator.daysUntilDue(dueDate, today, absentDays)
-            val countdownLabel = TaskUrgencyCalculator.countdownLabel(dueDate, today, absentDays)
+            val countdownLabel = TaskUrgencyCalculator.countdownLabel(
+                context.resources, dueDate, today, absentDays,
+            )
             val category = task.categoryId?.let { categoriesById[it] }
             val room = task.roomId?.let { roomsById[it] }
 

@@ -140,7 +140,9 @@ private fun WidgetTaskRow(suggestion: Suggestion) {
         "ORANGE" -> Color(0xFFF97316)
         else -> Color(0xFF10B981)
     }
-    val countdownLabel = com.torchons.app.util.TaskUrgencyCalculator.countdownLabelFromDays(suggestion.daysUntilDue)
+    val context = androidx.glance.LocalContext.current
+    val countdownLabel = com.torchons.app.util.TaskUrgencyCalculator
+        .countdownLabelFromDays(context.resources, suggestion.daysUntilDue)
 
     Row(
         modifier = GlanceModifier

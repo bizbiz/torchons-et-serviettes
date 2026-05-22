@@ -815,13 +815,15 @@ private fun SuggestionCard(
             // selon l'etat (vert/orange/rouge) renvoye par /api/suggestions.
             // Pour uncertain (v0.14) : libelle factuel "Fait il y a X j" au lieu
             // du countdown (pas de notion de retard, Q2/Q9).
+            val urgencyRes = androidx.compose.ui.platform.LocalContext.current.resources
             val countdownLabel = if (suggestion.reason == "uncertain") {
                 TaskUrgencyCalculator.uncertainCountdownLabel(
+                    res = urgencyRes,
                     lastCompletedAt = lastCompletedAt,
                     today = java.time.LocalDate.now(),
                 )
             } else {
-                TaskUrgencyCalculator.countdownLabelFromDays(suggestion.daysUntilDue)
+                TaskUrgencyCalculator.countdownLabelFromDays(urgencyRes, suggestion.daysUntilDue)
             }
             if (countdownLabel.isNotEmpty()) {
                 Text(

@@ -1022,6 +1022,18 @@
     </plurals>
     <string name="completion_preview_delta_negative_format">%1$d pt · %2$s</string>
 
+    <!-- TaskUrgencyCalculator — countdown labels -->
+    <string name="countdown_in_days_format">in %1$dd</string>
+    <string name="countdown_tomorrow">tomorrow</string>
+    <string name="countdown_today">to do today</string>
+    <string name="countdown_one_day_late">1d late</string>
+    <string name="countdown_days_late_format">%1$dd late</string>
+    <!-- Uncertain (no cadence) countdown -->
+    <string name="uncertain_not_done">Not done yet</string>
+    <string name="uncertain_done_today">Done today</string>
+    <string name="uncertain_done_yesterday">Done yesterday</string>
+    <string name="uncertain_done_days_ago_format">Done %1$dd ago</string>
+
     <!-- ============================================================
          Lot 2 i18n (post-launch) — Remaining dialogs / secondary screens.
          See docs/audit-i18n-final.md.

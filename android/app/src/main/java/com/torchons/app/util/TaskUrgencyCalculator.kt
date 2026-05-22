@@ -1,6 +1,8 @@
 package com.torchons.app.util
 
+import android.content.res.Resources
 import androidx.compose.ui.graphics.Color
+import com.torchons.app.R
 import com.torchons.app.data.model.RecurrenceRule
 import java.time.Instant
 import java.time.LocalDate
@@ -148,23 +150,28 @@ object TaskUrgencyCalculator {
         return (dueDate.toEpochDay() - effToday.toEpochDay()).toInt()
     }
 
-    /** Libelle FR humain du countdown ("dans 3 j", "à faire aujourd'hui", etc.). */
-    fun countdownLabel(dueDate: LocalDate?, today: LocalDate, absentDays: Int = 0): String {
+    /** Libelle localise du countdown ("dans 3 j", "à faire aujourd'hui", etc.). */
+    fun countdownLabel(
+        res: Resources,
+        dueDate: LocalDate?,
+        today: LocalDate,
+        absentDays: Int = 0,
+    ): String {
         if (dueDate == null) return ""
-        return countdownLabelFromDays(daysUntilDue(dueDate, today, absentDays))
+        return countdownLabelFromDays(res, daysUntilDue(dueDate, today, absentDays))
     }
 
     /** Variante prenant directement le delta en jours (utile pour SuggestionCard). */
-    fun countdownLabelFromDays(daysUntilDue: Int): String = when {
-        daysUntilDue > 1 -> "dans $daysUntilDue j"
-        daysUntilDue == 1 -> "demain"
-        daysUntilDue == 0 -> "à faire aujourd'hui"
-        daysUntilDue == -1 -> "en retard d'1 j"
-        else -> "en retard de ${-daysUntilDue} j"
+    fun countdownLabelFromDays(res: Resources, daysUntilDue: Int): String = when {
+        daysUntilDue > 1 -> res.getString(R.string.countdown_in_days_format, daysUntilDue)
+        daysUntilDue == 1 -> res.getString(R.string.countdown_tomorrow)
+        daysUntilDue == 0 -> res.getString(R.string.countdown_today)
+        daysUntilDue == -1 -> res.getString(R.string.countdown_one_day_late)
+        else -> res.getString(R.string.countdown_days_late_format, -daysUntilDue)
     }
 
     /**
-     * Libelle factuel FR pour une tache 'uncertain' (v0.14, Q9).
+     * Libelle factuel localise pour une tache 'uncertain' (v0.14, Q9).
      * Utilise pour les cartes de la 3e section "Sans cadence" du home.
      *
      * - null lastCompletedAt : "Pas encore faite"
@@ -173,17 +180,19 @@ object TaskUrgencyCalculator {
      * - sinon : "Fait il y a N j"
      */
     fun uncertainCountdownLabel(
+        res: Resources,
         lastCompletedAt: String?,
         today: LocalDate,
         zone: ZoneId = ZoneId.systemDefault(),
     ): String {
-        if (lastCompletedAt == null) return "Pas encore faite"
-        val lastDate = parseDate(lastCompletedAt, zone) ?: return "Pas encore faite"
+        if (lastCompletedAt == null) return res.getString(R.string.uncertain_not_done)
+        val lastDate = parseDate(lastCompletedAt, zone)
+            ?: return res.getString(R.string.uncertain_not_done)
         val delta = (today.toEpochDay() - lastDate.toEpochDay()).toInt()
         return when {
-            delta <= 0 -> "Fait aujourd'hui"
-            delta == 1 -> "Fait hier"
-            else -> "Fait il y a $delta j"
+            delta <= 0 -> res.getString(R.string.uncertain_done_today)
+            delta == 1 -> res.getString(R.string.uncertain_done_yesterday)
+            else -> res.getString(R.string.uncertain_done_days_ago_format, delta)
         }
     }
 

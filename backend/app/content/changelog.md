@@ -1,5 +1,17 @@
 # Notes de version
 
+## v0.35.17 — 2026-05-22
+
+### i18n — correctif countdown + nom d'app
+- Le countdown des cartes sur l'Accueil («&#160;en retard de 3 j&#160;»,
+  «&#160;dans 5 j&#160;», «&#160;Fait il y a 2 j&#160;»…) suit
+  désormais la langue du téléphone — il était resté FR-only par
+  oubli dans le Lot 1.
+- Le **nom d'app** affiché sur le launcher Android (« Torchons &
+  Serviettes » prod, « T&S Beta » beta) ne contient plus l'artefact
+  «&#160;`&amp;`&#160;» visible depuis le ship 0.35.16 (double-
+  escape de l'esperluette dans `build.gradle.kts`).
+
 ## v0.35.16 — 2026-05-21
 
 ### Popup d\'absence unifiée avec le modal Présence & séries
