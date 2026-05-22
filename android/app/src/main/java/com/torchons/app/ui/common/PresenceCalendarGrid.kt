@@ -54,7 +54,7 @@ import java.util.Locale
  *
  * Utilisee par DEUX surfaces :
  *  - l'ecran Foyer (sous-section "Calendrier de presence", mode editable),
- *  - le prompt RESOLVE_PRESENCE (ResolvePresenceDialog, day grid editable).
+ *  - le StreakCalendarModal (Stats / prompt RESOLVE_PRESENCE, mode editable).
  *
  * Etats de case (decision 4d) :
  *  - present     = vert,

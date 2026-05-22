@@ -243,10 +243,8 @@ fun HomeScreen(
     }
 
     // Queue unifiee des prompts (BUMP_EFFORT / VOTE_RATING / RESOLVE_PRESENCE
-    // / VOTE_FREQUENCY / VOTE_EFFORT v0.28).
-    //
-    // P4b.2 — RESOLVE_PRESENCE ouvre desormais le StreakCalendarModal
-    // unifie (au lieu de l'ancien ResolvePresenceDialog) : meme surface
+    // / VOTE_FREQUENCY / VOTE_EFFORT). RESOLVE_PRESENCE ouvre le
+    // StreakCalendarModal (one modal to rule them all) : meme surface
     // d'edition que l'ecran Foyer / Stats. Le prompt est resolu en
     // ANSWERED quand l'user ferme le modal ; les jours edites sont deja
     // persistes via PUT /presence direct (taps dans le modal). Cf state

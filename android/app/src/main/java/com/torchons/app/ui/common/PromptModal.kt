@@ -33,11 +33,10 @@ import com.torchons.app.data.model.UserPrompt
  * - BUMP_EFFORT : modal dedie avec liste completions + +1 effort.
  * - VOTE_RATING : delegate au flow de notation existant (callback).
  * - RESOLVE_PRESENCE : delegue au caller via onOpenPresenceCalendar qui
- *   ouvre StreakCalendarModal (one modal to rule them all, P4b.2). Le
- *   modal edite la presence directement via PUT /presence (taps); a la
+ *   ouvre StreakCalendarModal (one modal to rule them all). Le modal
+ *   edite la presence directement via PUT /presence (taps); a la
  *   fermeture, le caller resout le prompt en ANSWERED (les changements
- *   sont deja persistes). Remplace l'ancien ResolvePresenceDialog
- *   (deprecated, gardé dead code pour minimiser le risque ce ship).
+ *   sont deja persistes).
  * - VOTE_FREQUENCY (v0.28) : delegate au caller via onOpenFrequencyVote
  *   qui doit fetch /frequency-votes et ouvrir FrequencyVoteDialog avec
  *   le bandeau "X t'a demande de revoter" (requesterName du context).
