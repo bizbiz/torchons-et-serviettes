@@ -1,5 +1,6 @@
 package com.torchons.app.ui.common
 
+import android.content.res.Resources
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,10 +29,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.util.DurationFormat
 import com.torchons.app.util.DurationUnit
@@ -104,13 +109,19 @@ fun RatingDialog(
         mutableStateOf(DurationUnit.bestFor(currentDays))
     }
 
+    val res = LocalContext.current.resources
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Column {
                 if (pending.pendingTotal != null && pending.pendingTotal > 0) {
                     Text(
-                        text = "${pending.pendingTotal} tache(s) a noter",
+                        text = pluralStringResource(
+                            R.plurals.rating_pending_count,
+                            pending.pendingTotal,
+                            pending.pendingTotal,
+                        ),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -128,7 +139,7 @@ fun RatingDialog(
                     )
                 }
                 Text(
-                    text = formatLastRated(pending.lastRatedAt),
+                    text = formatLastRated(res, pending.lastRatedAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontStyle = if (pending.lastRatedAt == null) FontStyle.Italic else FontStyle.Normal,
@@ -137,13 +148,14 @@ fun RatingDialog(
         },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                // === Affinite ===
+                // === Affinity ===
+                val affinityLabel = stringResource(R.string.rating_affinity_label)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Affinite", style = MaterialTheme.typography.labelLarge)
+                    Text(affinityLabel, style = MaterialTheme.typography.labelLarge)
                     Spacer(modifier = Modifier.width(4.dp))
                     InfoTooltip(
-                        title = "Affinite",
-                        description = "Est-ce que tu aimes faire cette tache ? 1 = pas du tout, 10 = j'adore.",
+                        title = affinityLabel,
+                        description = stringResource(R.string.rating_affinity_tooltip_description),
                     )
                 }
                 Text(
@@ -160,19 +172,20 @@ fun RatingDialog(
                     steps = 8,
                 )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Pas du tout", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-                    Text("A fond !", style = MaterialTheme.typography.labelSmall, color = TaskUrgencyCalculator.VERT)
+                    Text(stringResource(R.string.rating_affinity_min), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.rating_affinity_max), style = MaterialTheme.typography.labelSmall, color = TaskUrgencyCalculator.VERT)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // === Effort ===
+                val effortLabel = stringResource(R.string.rating_effort_label)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Effort", style = MaterialTheme.typography.labelLarge)
+                    Text(effortLabel, style = MaterialTheme.typography.labelLarge)
                     Spacer(modifier = Modifier.width(4.dp))
                     InfoTooltip(
-                        title = "Effort",
-                        description = "Estimation du temps que prend cette tache. Sert a calculer les points.",
+                        title = effortLabel,
+                        description = stringResource(R.string.rating_effort_tooltip_description),
                     )
                 }
                 Text(
@@ -189,13 +202,13 @@ fun RatingDialog(
                     steps = 10,
                 )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("5min", style = MaterialTheme.typography.labelSmall)
-                    Text("1h", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.rating_effort_min), style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.rating_effort_max), style = MaterialTheme.typography.labelSmall)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // === Frequence ===
+                // === Frequency ===
                 // Helper local pour snapper la valeur sur les multiples de
                 // l'unite courante (1 j / 7 j / 30 j) — partage entre les
                 // deux branches isAlreadyInterval / makeRecurring.
@@ -208,13 +221,19 @@ fun RatingDialog(
                 if (isAlreadyInterval) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "Frequence : tous les ${DurationFormat.formatDaysHuman(daysValue.toInt(), long = true)}",
+                            stringResource(
+                                R.string.rating_frequency_value_format,
+                                DurationFormat.formatDaysHuman(res, daysValue.toInt(), long = true),
+                            ),
                             style = MaterialTheme.typography.labelLarge,
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         InfoTooltip(
-                            title = "Frequence",
-                            description = "Ajuste la frequence de la tache. Tu peux modifier de 50% a 200% de la valeur actuelle (${DurationFormat.formatDaysHuman(currentDays, long = true)}).",
+                            title = stringResource(R.string.rating_frequency_label),
+                            description = stringResource(
+                                R.string.rating_frequency_tooltip_description_format,
+                                DurationFormat.formatDaysHuman(res, currentDays, long = true),
+                            ),
                         )
                     }
                     UnitToggleRow(
@@ -232,15 +251,15 @@ fun RatingDialog(
                         valueRange = minDays..maxDays,
                     )
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(DurationFormat.formatDaysHuman(minDays.toInt()), style = MaterialTheme.typography.labelSmall)
-                        Text(DurationFormat.formatDaysHuman(maxDays.toInt()), style = MaterialTheme.typography.labelSmall)
+                        Text(DurationFormat.formatDaysHuman(res, minDays.toInt()), style = MaterialTheme.typography.labelSmall)
+                        Text(DurationFormat.formatDaysHuman(res, maxDays.toInt()), style = MaterialTheme.typography.labelSmall)
                     }
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Recurrente ?", style = MaterialTheme.typography.labelLarge)
+                            Text(stringResource(R.string.rating_recurring_switch_label), style = MaterialTheme.typography.labelLarge)
                             Text(
-                                "Faire revenir cette tache regulierement",
+                                stringResource(R.string.rating_recurring_switch_description),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -253,7 +272,10 @@ fun RatingDialog(
                     if (makeRecurring) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Tous les ${DurationFormat.formatDaysHuman(daysValue.toInt(), long = true)}",
+                            stringResource(
+                                R.string.rating_recurring_every_format,
+                                DurationFormat.formatDaysHuman(res, daysValue.toInt(), long = true),
+                            ),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -284,18 +306,18 @@ fun RatingDialog(
                             RatingRecurrence(true, daysValue.toInt())
                         } else null
                         onSubmitAndNext(affinityValue.toInt(), effortValue.toInt(), rec)
-                    }) { Text("Une autre !") }
+                    }) { Text(stringResource(R.string.rating_button_next)) }
                 }
                 Button(onClick = {
                     val rec = if (isAlreadyInterval || makeRecurring) {
                         RatingRecurrence(true, daysValue.toInt())
                     } else null
                     onSubmit(affinityValue.toInt(), effortValue.toInt(), rec)
-                }) { Text("Ok") }
+                }) { Text(stringResource(R.string.common_ok)) }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Plus tard") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.rating_button_later)) }
         },
     )
 }
@@ -320,19 +342,8 @@ private fun UnitToggleRow(
                 onClick = { onUnitChange(u) },
                 shape = SegmentedButtonDefaults.itemShape(idx, units.size),
                 enabled = sliderMaxDays >= u.days,
-            ) { Text(u.label) }
+            ) { Text(stringResource(u.labelRes)) }
         }
-    }
-}
-
-// effortPointsToTime extrait dans EffortVoteDialog.kt (v0.28) — utilise ici via
-// l'import implicite (meme package). Conserve cette signature privee comme
-// fallback si jamais l'extraction est annulee.
-private fun ratingDialogEffortPointsToTime(points: Int): String {
-    val minutes = points * 5
-    return when {
-        minutes >= 60 -> "${minutes / 60}h${if (minutes % 60 > 0) "%02d".format(minutes % 60) else ""}"
-        else -> "${minutes}min"
     }
 }
 
@@ -340,8 +351,8 @@ private fun ratingDialogEffortPointsToTime(points: Int): String {
  * Format relatif de la derniere notation (sans absolu en fallback, choix
  * UX deliberé). "Jamais note" si null. "A l'instant" si < 1min.
  */
-private fun formatLastRated(iso: String?): String {
-    if (iso == null) return "Jamais note"
+private fun formatLastRated(res: Resources, iso: String?): String {
+    if (iso == null) return res.getString(R.string.rating_last_rated_never)
     return try {
         val instant = try {
             Instant.parse(iso)
@@ -353,14 +364,20 @@ private fun formatLastRated(iso: String?): String {
         val hours = ChronoUnit.HOURS.between(instant, now)
         val days = ChronoUnit.DAYS.between(instant, now)
         when {
-            minutes < 1 -> "Derniere notation a l'instant"
-            minutes < 60 -> "Derniere notation il y a ${minutes}min"
-            hours < 24 -> "Derniere notation il y a ${hours}h"
-            days < 30 -> "Derniere notation il y a ${days}j"
-            days < 365 -> "Derniere notation il y a ${days / 30} mois"
-            else -> "Derniere notation il y a ${days / 365} an${if (days / 365 > 1) "s" else ""}"
+            minutes < 1 -> res.getString(R.string.rating_last_rated_just_now)
+            minutes < 60 -> res.getString(R.string.rating_last_rated_minutes_format, minutes.toInt())
+            hours < 24 -> res.getString(R.string.rating_last_rated_hours_format, hours.toInt())
+            days < 30 -> res.getString(R.string.rating_last_rated_days_format, days.toInt())
+            days < 365 -> {
+                val months = (days / 30).toInt()
+                res.getQuantityString(R.plurals.rating_last_rated_months, months, months)
+            }
+            else -> {
+                val years = (days / 365).toInt()
+                res.getQuantityString(R.plurals.rating_last_rated_years, years, years)
+            }
         }
     } catch (_: Exception) {
-        "Jamais note"
+        res.getString(R.string.rating_last_rated_never)
     }
 }

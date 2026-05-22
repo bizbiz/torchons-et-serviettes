@@ -185,10 +185,11 @@ private fun VoteRow(
     onToggleExpand: () -> Unit,
     actionButton: @Composable () -> Unit,
 ) {
+    val res = androidx.compose.ui.platform.LocalContext.current.resources
     val values = daysPerMonth.values.toList()
     val isVariable = values.isNotEmpty() && values.any { it != values.first() }
     val summary = if (isVariable) "variable selon le mois"
-    else values.firstOrNull()?.let { "tous les ${DurationFormat.formatDaysHuman(it)}" } ?: "?"
+    else values.firstOrNull()?.let { "tous les ${DurationFormat.formatDaysHuman(res, it)}" } ?: "?"
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(

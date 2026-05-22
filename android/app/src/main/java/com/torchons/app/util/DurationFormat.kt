@@ -1,5 +1,9 @@
 package com.torchons.app.util
 
+import android.content.res.Resources
+import androidx.annotation.StringRes
+import com.torchons.app.R
+
 /**
  * Format intelligent d'une duree en jours pour l'affichage utilisateur.
  *
@@ -14,37 +18,54 @@ package com.torchons.app.util
  *  - >= 7 j  : "1 semaine" + reste en jours (ex: 10 j -> "1 sem. 3 j")
  *  - < 7 j   : jours seuls (ex: 5 j -> "5 j")
  *
- * Pour un usage "long" (`long = true`), on ecrit "mois", "semaine(s)",
- * "jour(s)". Pour un usage "court" (defaut), on ecrit "mois", "sem.",
- * "j". Le pluriel sur "jour" et "semaine" suit la regle francaise
- * (>= 2 -> -s, mois invariable).
+ * L'argument `long` distingue affichage compact ("j" / "sem." / "mois") du
+ * long ("jour(s)" / "semaine(s)" / "mois"). Les libelles sont localises via
+ * `Resources` (cles `duration_*` dans strings.xml).
  */
 object DurationFormat {
 
-    fun formatDaysHuman(days: Int, long: Boolean = false): String {
-        if (days <= 0) return if (long) "0 jour" else "0 j"
-        val jLabel = if (long) (if (days == 1) "jour" else "jours") else "j"
-        val sLabel: (Int) -> String = { n -> if (long) (if (n == 1) "semaine" else "semaines") else "sem." }
-        val mLabel = "mois"
+    fun formatDaysHuman(res: Resources, days: Int, long: Boolean = false): String {
+        if (days <= 0) return res.getString(
+            if (long) R.string.duration_zero_long else R.string.duration_zero_short
+        )
+
+        val dayLabel: (Int) -> String = { n ->
+            if (long) res.getString(
+                if (n == 1) R.string.duration_long_day_singular
+                else R.string.duration_long_day_plural
+            ) else res.getString(R.string.duration_short_day)
+        }
+        val weekLabel: (Int) -> String = { n ->
+            if (long) res.getString(
+                if (n == 1) R.string.duration_long_week_singular
+                else R.string.duration_long_week_plural
+            ) else res.getString(R.string.duration_short_week)
+        }
+        val monthLabel: (Int) -> String = { n ->
+            if (long) res.getString(
+                if (n == 1) R.string.duration_long_month_singular
+                else R.string.duration_long_month_plural
+            ) else res.getString(R.string.duration_short_month)
+        }
 
         return when {
-            days < 7 -> "$days $jLabel"
+            days < 7 -> "$days ${dayLabel(days)}"
             days < 14 -> {
                 val rem = days - 7
-                if (rem == 0) "1 ${sLabel(1)}"
-                else "1 ${sLabel(1)} ${rem} ${if (long) (if (rem == 1) "jour" else "jours") else "j"}"
+                if (rem == 0) "1 ${weekLabel(1)}"
+                else "1 ${weekLabel(1)} $rem ${dayLabel(rem)}"
             }
             days < 30 -> {
                 val w = days / 7
                 val rem = days % 7
-                if (rem == 0) "$w ${sLabel(w)}"
-                else "$w ${sLabel(w)} ${rem} ${if (long) (if (rem == 1) "jour" else "jours") else "j"}"
+                if (rem == 0) "$w ${weekLabel(w)}"
+                else "$w ${weekLabel(w)} $rem ${dayLabel(rem)}"
             }
             else -> {
                 val m = days / 30
                 val rem = days % 30
-                if (rem == 0) "$m $mLabel"
-                else "$m $mLabel ${rem} ${if (long) (if (rem == 1) "jour" else "jours") else "j"}"
+                if (rem == 0) "$m ${monthLabel(m)}"
+                else "$m ${monthLabel(m)} $rem ${dayLabel(rem)}"
             }
         }
     }
@@ -57,11 +78,16 @@ object DurationFormat {
  * l'inverse via [fromDays] (avec arrondi a l'entier le plus proche).
  *
  * 1 mois = 30 j, 1 semaine = 7 j (cf. [DurationFormat]).
+ *
+ * Le libelle d'affichage est une `@StringRes` (cles
+ * `duration_unit_*_label` dans strings.xml) pour permettre l'i18n
+ * (l'enum lui-meme reste FR pour eviter de churn les call sites du
+ * type `DurationUnit.JOURS`).
  */
-enum class DurationUnit(val label: String, val days: Int) {
-    JOURS("Jours", 1),
-    SEMAINES("Semaines", 7),
-    MOIS("Mois", 30);
+enum class DurationUnit(@StringRes val labelRes: Int, val days: Int) {
+    JOURS(R.string.duration_unit_days_label, 1),
+    SEMAINES(R.string.duration_unit_weeks_label, 7),
+    MOIS(R.string.duration_unit_months_label, 30);
 
     fun toDays(value: Int): Int = (value * days).coerceAtLeast(1)
 

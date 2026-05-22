@@ -1,5 +1,6 @@
 package com.torchons.app.ui.common
 
+import android.content.res.Resources
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,8 +40,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.model.CompletionPreview
 import java.time.Instant
 import java.time.LocalDate
@@ -161,6 +166,8 @@ fun CompletionDialog(
         }
     }
 
+    val res = LocalContext.current.resources
+
     // Sub-modal DatePicker.
     if (showDatePickerSub) {
         val dpState = rememberDatePickerState(initialSelectedDateMillis = selectedDateMillis)
@@ -170,10 +177,10 @@ fun CompletionDialog(
                 TextButton(onClick = {
                     dpState.selectedDateMillis?.let { selectedDateMillis = it }
                     showDatePickerSub = false
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.common_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePickerSub = false }) { Text("Annuler") }
+                TextButton(onClick = { showDatePickerSub = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         ) { DatePicker(state = dpState) }
     }
@@ -184,8 +191,8 @@ fun CompletionDialog(
             Column {
                 Text(
                     text = when (mode) {
-                        CompletionDialogMode.Single -> "Deja fait"
-                        CompletionDialogMode.Multi -> "Fait ensemble"
+                        CompletionDialogMode.Single -> stringResource(R.string.completion_title_single)
+                        CompletionDialogMode.Multi -> stringResource(R.string.completion_title_multi)
                     },
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -210,7 +217,7 @@ fun CompletionDialog(
                         modifier = Modifier.width(20.dp),
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(formatDateFr(selectedDateMillis))
+                    Text(formatDateLocalized(res, selectedDateMillis))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -218,8 +225,8 @@ fun CompletionDialog(
                 // --- Participants ---
                 Text(
                     text = when (mode) {
-                        CompletionDialogMode.Single -> "Qui a fait ?"
-                        CompletionDialogMode.Multi -> "Qui a participe ?"
+                        CompletionDialogMode.Single -> stringResource(R.string.completion_picker_who_single)
+                        CompletionDialogMode.Multi -> stringResource(R.string.completion_picker_who_multi)
                     },
                     style = MaterialTheme.typography.labelLarge,
                 )
@@ -264,7 +271,7 @@ fun CompletionDialog(
                     TextButton(onClick = { showAllMembers = true }) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Ajouter un membre")
+                        Text(stringResource(R.string.completion_add_member))
                     }
                 }
 
@@ -276,7 +283,7 @@ fun CompletionDialog(
                     TextButton(onClick = onSwitchToMulti) {
                         Icon(Icons.Default.Groups, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("A plusieurs...")
+                        Text(stringResource(R.string.completion_switch_to_multi))
                     }
                 }
 
@@ -290,7 +297,7 @@ fun CompletionDialog(
         },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onDismiss) { Text("Annuler") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
                 Button(
                     enabled = canConfirm,
                     onClick = {
@@ -304,24 +311,30 @@ fun CompletionDialog(
                             preview,
                         )
                     },
-                ) { Text("Valider") }
+                ) { Text(stringResource(R.string.common_validate)) }
             }
         },
         dismissButton = {},
     )
 }
 
-/** Formate "15 avril 2026" pour affichage FR. */
-private fun formatDateFr(millis: Long): String {
+/**
+ * Formate la date selon la locale courante (ex: "15 avril 2026" en FR,
+ * "April 15, 2026" en EN), avec raccourcis "Aujourd'hui"/"Hier" pour
+ * les 2 dates les plus communes.
+ */
+private fun formatDateLocalized(res: Resources, millis: Long): String {
     val date = Instant.ofEpochMilli(millis)
         .atOffset(ZoneOffset.UTC)
         .toLocalDate()
     val today = LocalDate.now(ZoneOffset.UTC)
     val yesterday = today.minusDays(1)
     return when (date) {
-        today -> "Aujourd'hui"
-        yesterday -> "Hier"
-        else -> date.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRENCH))
+        today -> res.getString(R.string.completion_date_today)
+        yesterday -> res.getString(R.string.completion_date_yesterday)
+        else -> date.format(
+            DateTimeFormatter.ofPattern("d MMMM yyyy", res.configuration.locales.get(0) ?: Locale.getDefault())
+        )
     }
 }
 
@@ -346,7 +359,8 @@ private fun PreviewPointsLine(
     if (preview == null) {
         // Loader / fallback.
         Text(
-            text = if (failed) "Preview indisponible (offline ?)" else "Calcul...",
+            text = if (failed) stringResource(R.string.completion_preview_unavailable)
+            else stringResource(R.string.completion_preview_loading),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -354,9 +368,9 @@ private fun PreviewPointsLine(
     }
 
     val (emoji, reasonLabel, reasonColor) = when (preview.reason) {
-        "BONUS_RETARD" -> Triple("🔥", "bonus tache en retard", Color(0xFF2E7D32))
-        "MALUS_AVANCE" -> Triple("⏱", "malus tache en avance", Color(0xFFEF6C00))
-        "FIRST_COMPLETION" -> Triple("✨", "premiere fois — points pleins", Color(0xFF1976D2))
+        "BONUS_RETARD" -> Triple("🔥", stringResource(R.string.completion_preview_reason_bonus_late), Color(0xFF2E7D32))
+        "MALUS_AVANCE" -> Triple("⏱", stringResource(R.string.completion_preview_reason_malus_early), Color(0xFFEF6C00))
+        "FIRST_COMPLETION" -> Triple("✨", stringResource(R.string.completion_preview_reason_first), Color(0xFF1976D2))
         "PERSO" -> Triple(null, null, MaterialTheme.colorScheme.onSurfaceVariant)
         else -> Triple(null, null, MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -367,11 +381,11 @@ private fun PreviewPointsLine(
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "💰 Tu gagneras ",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                text = "${preview.finalPoints} pt${if (preview.finalPoints > 1) "s" else ""}",
+                text = pluralStringResource(
+                    R.plurals.completion_preview_earn,
+                    preview.finalPoints,
+                    preview.finalPoints,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = reasonColor,
@@ -381,7 +395,7 @@ private fun PreviewPointsLine(
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     imageVector = Icons.Outlined.Info,
-                    contentDescription = "Pourquoi 0 point ?",
+                    contentDescription = stringResource(R.string.completion_preview_solo_info_cd),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     modifier = Modifier
                         .size(18.dp)
@@ -398,8 +412,17 @@ private fun PreviewPointsLine(
                 }
                 val delta = preview.finalPoints - preview.basePoints
                 val deltaLabel = when {
-                    delta > 0 -> "+$delta pt${if (delta > 1) "s" else ""} · $reasonLabel"
-                    delta < 0 -> "$delta pt · $reasonLabel"
+                    delta > 0 -> pluralStringResource(
+                        R.plurals.completion_preview_delta_positive,
+                        delta,
+                        delta,
+                        reasonLabel,
+                    )
+                    delta < 0 -> stringResource(
+                        R.string.completion_preview_delta_negative_format,
+                        delta,
+                        reasonLabel,
+                    )
                     else -> reasonLabel
                 }
                 Text(

@@ -59,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -518,6 +519,8 @@ fun TaskEditScreen(
                 val canonicalDays = uiState.recurrenceFieldText.toIntOrNull()
                     ?.let { unit.toDays(it) } ?: 7
 
+                val res = LocalContext.current.resources
+
                 // Toggle d'unite [Jours | Semaines | Mois]
                 val units = DurationUnit.values().toList()
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -527,14 +530,14 @@ fun TaskEditScreen(
                             onClick = { viewModel.updateRecurrenceUnit(u) },
                             shape = SegmentedButtonDefaults.itemShape(idx, units.size),
                             enabled = !isVoteLocked,
-                        ) { Text(u.label) }
+                        ) { Text(stringResource(u.labelRes)) }
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
                     value = uiState.recurrenceFieldText,
                     onValueChange = { viewModel.updateRecurrenceFieldText(it) },
-                    label = { Text(stringResource(R.string.task_edit_every_n_format, unit.label.lowercase())) },
+                    label = { Text(stringResource(R.string.task_edit_every_n_format, stringResource(unit.labelRes).lowercase())) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     enabled = !isVoteLocked,
@@ -542,7 +545,7 @@ fun TaskEditScreen(
                 // Breakdown smart sous le champ — seulement si la valeur
                 // depasse l'unite (eviter "1 mois ≈ 1 mois").
                 if (canonicalDays >= 7) {
-                    val human = DurationFormat.formatDaysHuman(canonicalDays, long = true)
+                    val human = DurationFormat.formatDaysHuman(res, canonicalDays, long = true)
                     Text(
                         text = stringResource(R.string.task_edit_breakdown_format, human, canonicalDays),
                         style = MaterialTheme.typography.bodySmall,
@@ -553,7 +556,7 @@ fun TaskEditScreen(
                 if (isVoteLocked) {
                     val consensusDays = votes!!.consensusEveryNDays ?: 0
                     val consensusHuman = if (consensusDays > 0)
-                        DurationFormat.formatDaysHuman(consensusDays)
+                        DurationFormat.formatDaysHuman(res, consensusDays)
                     else stringResource(R.string.task_edit_consensus_unknown)
                     Text(
                         text = pluralStringResource(

@@ -33,6 +33,8 @@ import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -191,8 +193,9 @@ private fun SimpleModeBody(
     var daysValue by remember(state.taskId) { mutableFloatStateOf(initial.toFloat()) }
     var unit by remember(state.taskId) { mutableStateOf(DurationUnit.bestFor(initial)) }
 
+    val res = LocalContext.current.resources
     val daysInt = daysValue.toInt()
-    val daysLabel = DurationFormat.formatDaysHuman(daysInt, long = true)
+    val daysLabel = DurationFormat.formatDaysHuman(res, daysInt, long = true)
 
     // Re-enregistre le getter a chaque recomposition (capture daysValue a jour).
     registerGetter { daysValue.toInt() }
@@ -210,7 +213,7 @@ private fun SimpleModeBody(
                 },
                 shape = SegmentedButtonDefaults.itemShape(idx, units.size),
                 enabled = sliderMax >= u.days,
-            ) { Text(u.label) }
+            ) { Text(stringResource(u.labelRes)) }
         }
     }
     Spacer(Modifier.height(8.dp))
@@ -301,12 +304,13 @@ private fun VariableModeBody(
 
 @Composable
 private fun ConsensusFooter(state: FrequencyVotesState) {
+    val res = LocalContext.current.resources
     val rule = state.consensusRule
     if (state.votesCount > 0 && rule != null) {
         val s = if (state.votesCount > 1) "s" else ""
         val human = when (rule.type) {
             "interval" -> rule.everyNDays?.let {
-                "tous les ${DurationFormat.formatDaysHuman(it)}"
+                "tous les ${DurationFormat.formatDaysHuman(res, it)}"
             } ?: "?"
             "monthly_variable" -> "variable selon le mois"
             else -> "?"
@@ -323,7 +327,7 @@ private fun ConsensusFooter(state: FrequencyVotesState) {
             val isVar = isVariableDpm(other.daysPerMonth)
             val label = if (isVar) "variable selon le mois"
             else other.daysPerMonth.values.firstOrNull()?.let {
-                "tous les ${DurationFormat.formatDaysHuman(it)}"
+                "tous les ${DurationFormat.formatDaysHuman(res, it)}"
             } ?: "?"
             Text(
                 text = "${other.displayName} : $label",

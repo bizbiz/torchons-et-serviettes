@@ -1509,9 +1509,10 @@ private fun joinFr(names: List<String>): String = when {
  */
 @Composable
 private fun formatRecurrence(rule: com.torchons.app.data.model.RecurrenceRule): String {
+    val res = LocalContext.current.resources
     return when (rule.type) {
         "interval" -> rule.everyNDays?.let {
-            stringResource(R.string.task_recurrence_every_n_days_format, DurationFormat.formatDaysHuman(it, long = true))
+            stringResource(R.string.task_recurrence_every_n_days_format, DurationFormat.formatDaysHuman(res, it, long = true))
         } ?: stringResource(R.string.task_recurrence_every_unknown)
         "monthly_variable" -> stringResource(R.string.task_recurrence_monthly_variable)
         "uncertain" -> stringResource(R.string.task_recurrence_uncertain)

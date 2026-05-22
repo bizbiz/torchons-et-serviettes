@@ -930,4 +930,87 @@
     <string name="recurrence_label_monthly_format">Monthly (day %d)</string>
     <string name="recurrence_label_monthly_variable">Depending on the month</string>
     <string name="recurrence_label_uncertain">Irregular</string>
+
+    <!-- ============================================================
+         Lot 1 i18n (post-launch) — DurationFormat utility +
+         RatingDialog + CompletionDialog.
+         ============================================================ -->
+
+    <!-- DurationFormat — human-readable duration unit labels -->
+    <string name="duration_zero_short">0 d</string>
+    <string name="duration_zero_long">0 days</string>
+    <string name="duration_short_day">d</string>
+    <string name="duration_short_week">wk</string>
+    <string name="duration_short_month">mo</string>
+    <string name="duration_long_day_singular">day</string>
+    <string name="duration_long_day_plural">days</string>
+    <string name="duration_long_week_singular">week</string>
+    <string name="duration_long_week_plural">weeks</string>
+    <string name="duration_long_month_singular">month</string>
+    <string name="duration_long_month_plural">months</string>
+
+    <!-- DurationUnit — enum labels (segmented button) -->
+    <string name="duration_unit_days_label">Days</string>
+    <string name="duration_unit_weeks_label">Weeks</string>
+    <string name="duration_unit_months_label">Months</string>
+
+    <!-- RatingDialog -->
+    <plurals name="rating_pending_count">
+        <item quantity="one">%d task to rate</item>
+        <item quantity="other">%d tasks to rate</item>
+    </plurals>
+    <string name="rating_affinity_label">Affinity</string>
+    <string name="rating_affinity_tooltip_description">Do you enjoy this task? 1 = not at all, 10 = love it.</string>
+    <string name="rating_affinity_min">Not at all</string>
+    <string name="rating_affinity_max">Love it!</string>
+    <string name="rating_effort_label">Effort</string>
+    <string name="rating_effort_tooltip_description">Estimate of how long this task takes. Used to compute points.</string>
+    <string name="rating_effort_min">5min</string>
+    <string name="rating_effort_max">1h</string>
+    <string name="rating_frequency_label">Frequency</string>
+    <string name="rating_frequency_value_format">Frequency: every %1$s</string>
+    <string name="rating_frequency_tooltip_description_format">Adjust the task frequency. You can change from 50%% to 200%% of the current value (%1$s).</string>
+    <string name="rating_recurring_switch_label">Recurring?</string>
+    <string name="rating_recurring_switch_description">Bring this task back regularly</string>
+    <string name="rating_recurring_every_format">Every %1$s</string>
+    <string name="rating_button_next">Next!</string>
+    <string name="rating_button_later">Later</string>
+    <string name="rating_last_rated_never">Never rated</string>
+    <string name="rating_last_rated_just_now">Last rated just now</string>
+    <string name="rating_last_rated_minutes_format">Last rated %1$dmin ago</string>
+    <string name="rating_last_rated_hours_format">Last rated %1$dh ago</string>
+    <string name="rating_last_rated_days_format">Last rated %1$dd ago</string>
+    <plurals name="rating_last_rated_months">
+        <item quantity="one">Last rated %d month ago</item>
+        <item quantity="other">Last rated %d months ago</item>
+    </plurals>
+    <plurals name="rating_last_rated_years">
+        <item quantity="one">Last rated %d year ago</item>
+        <item quantity="other">Last rated %d years ago</item>
+    </plurals>
+
+    <!-- CompletionDialog -->
+    <string name="completion_title_single">Already done</string>
+    <string name="completion_title_multi">Done together</string>
+    <string name="completion_picker_who_single">Who did it?</string>
+    <string name="completion_picker_who_multi">Who participated?</string>
+    <string name="completion_add_member">Add a member</string>
+    <string name="completion_switch_to_multi">With others…</string>
+    <string name="completion_date_today">Today</string>
+    <string name="completion_date_yesterday">Yesterday</string>
+    <string name="completion_preview_unavailable">Preview unavailable (offline?)</string>
+    <string name="completion_preview_loading">Computing…</string>
+    <string name="completion_preview_reason_bonus_late">late task bonus</string>
+    <string name="completion_preview_reason_malus_early">early task penalty</string>
+    <string name="completion_preview_reason_first">first time — full points</string>
+    <plurals name="completion_preview_earn">
+        <item quantity="one">💰 You\'ll earn %d pt</item>
+        <item quantity="other">💰 You\'ll earn %d pts</item>
+    </plurals>
+    <string name="completion_preview_solo_info_cd">Why 0 points?</string>
+    <plurals name="completion_preview_delta_positive">
+        <item quantity="one">+%1$d pt · %2$s</item>
+        <item quantity="other">+%1$d pts · %2$s</item>
+    </plurals>
+    <string name="completion_preview_delta_negative_format">%1$d pt · %2$s</string>
 </resources>
