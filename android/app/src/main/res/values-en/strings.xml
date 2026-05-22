@@ -989,6 +989,14 @@
         <item quantity="other">Last rated %d years ago</item>
     </plurals>
 
+    <!-- Common — close button + understood + network errors, reused -->
+    <string name="common_close">Close</string>
+    <string name="common_understood">Got it</string>
+    <string name="common_understood_excl">Got it!</string>
+    <string name="common_error_network">Network error</string>
+    <string name="common_error_code_format">Error %1$d</string>
+    <string name="common_info_cd">Info</string>
+
     <!-- CompletionDialog -->
     <string name="completion_title_single">Already done</string>
     <string name="completion_title_multi">Done together</string>
@@ -1013,4 +1021,221 @@
         <item quantity="other">+%1$d pts · %2$s</item>
     </plurals>
     <string name="completion_preview_delta_negative_format">%1$d pt · %2$s</string>
+
+    <!-- ============================================================
+         Lot 2 i18n (post-launch) — Remaining dialogs / secondary screens.
+         See docs/audit-i18n-final.md.
+         ============================================================ -->
+
+    <!-- WhyNoPointsDialog (v0.32) -->
+    <string name="why_no_points_title">Why am I not earning points?</string>
+    <string name="why_no_points_two_causes">Two causes are stacked:</string>
+    <string name="why_no_points_bullet_user_off">You disabled gamification for your account.</string>
+    <string name="why_no_points_bullet_one_foyer_off_format">The household “%1$s” also has gamification disabled.</string>
+    <string name="why_no_points_bullet_many_foyers_off_format">Several of your households also have gamification disabled (%1$s).</string>
+    <string name="why_no_points_two_causes_help">Re-enabling just one cause won\'t be enough — you must enable gamification on BOTH the account side AND the household side to see points.</string>
+    <string name="why_no_points_user_off_message">You disabled gamification for your account in Settings.</string>
+    <string name="why_no_points_user_off_help">Your households all have gamification enabled, but your personal choice takes precedence — you won\'t see points, stats or bonuses until you re-enable it.</string>
+    <string name="why_no_points_multi_mixed_message">Your account has gamification enabled, but some of your households don\'t. You see points in active households and nothing in the others.</string>
+    <string name="why_no_points_your_foyers">Your households:</string>
+    <string name="why_no_points_single_foyer_off_format">Gamification is disabled in the household “%1$s”.</string>
+    <string name="why_no_points_single_foyer_off_help">You or another member can re-enable it in Settings &gt; Advanced &gt; Household gamification.</string>
+    <string name="why_no_points_button_reactivate_account">Re-enable my account</string>
+    <string name="why_no_points_button_reactivate_now">Re-enable now</string>
+    <string name="why_no_points_button_reactivate_foyer_format">Re-enable household “%1$s”</string>
+    <string name="why_no_points_fallback">No reason detected. If you see this message while you have pending points, try a refresh or contact the other member of your household.</string>
+    <string name="why_no_points_foyer_current_suffix"> (current)</string>
+    <string name="why_no_points_foyer_enabled">Enabled</string>
+    <string name="why_no_points_foyer_disabled">Disabled</string>
+    <string name="why_no_points_foyer_reactivate_compact">Re-enable</string>
+
+    <!-- ObjectivesCard (v0.31) -->
+    <string name="objectives_title">My goals</string>
+    <string name="objectives_new_cd">New goal</string>
+    <string name="objectives_empty_help">No goals yet. Tap + to create one (e.g., 3 tasks per week).</string>
+    <string name="objectives_dialog_new_title">New goal</string>
+    <string name="objectives_dialog_title_label">Title</string>
+    <string name="objectives_dialog_title_placeholder">E.g.: Clean the kitchen</string>
+    <string name="objectives_dialog_period_label">Period</string>
+    <string name="objectives_dialog_period_day">Per day</string>
+    <string name="objectives_dialog_period_week">Per week</string>
+    <string name="objectives_dialog_period_month">Per month</string>
+    <plurals name="objectives_dialog_target_format">
+        <item quantity="one">Target: %d task</item>
+        <item quantity="other">Target: %d tasks</item>
+    </plurals>
+    <string name="objectives_dialog_button_create">Create</string>
+    <string name="objectives_dialog_delete_title">Delete this goal?</string>
+    <string name="objectives_dialog_delete_message_format">“%1$s” — this action is permanent.</string>
+
+    <!-- AffinityInfoDialog (v0.28) -->
+    <string name="affinity_info_title">Affinity: how does it work?</string>
+    <string name="affinity_info_message">Your affinity is your personal preference for this task (from 1 = I hate it to 10 = I love it). It personalises YOUR suggestions, but doesn\'t affect others\' suggestions. Nobody can ask you to re-vote — it\'s your feeling.</string>
+    <string name="affinity_info_me_label">You</string>
+    <string name="affinity_info_button_edit_my">Edit my affinity</string>
+    <string name="affinity_info_not_rated">Not yet rated</string>
+    <string name="affinity_info_row_format">%1$d/10 — %2$s</string>
+    <string name="affinity_label_hate">I hate it</string>
+    <string name="affinity_label_meh">meh</string>
+    <string name="affinity_label_neutral">neutral</string>
+    <string name="affinity_label_like">I like it</string>
+    <string name="affinity_label_love">I love it</string>
+
+    <!-- EffortInfoDialog (v0.29) -->
+    <string name="effort_info_title">Effort: how does it work?</string>
+    <string name="effort_info_message_gamif">Effort is the average time a task takes, voted on by each member of the household. It\'s used to compute the points earned when the task is validated — these feed the fair-share split between you and the household\'s overall backlog. The more votes, the more accurate. You can adjust your vote or ask another member to re-vote.</string>
+    <string name="effort_info_message_no_gamif">Effort is the average time a task takes, voted on by each member of the household. It helps better estimate the required time and prioritise between short and long tasks. The more votes, the more accurate. You can adjust your vote or ask another member to re-vote.</string>
+
+    <!-- Common vote dialogs (Effort + Frequency Info) -->
+    <string name="vote_info_me_label">You</string>
+    <string name="vote_info_button_edit_my">Edit my vote</string>
+    <string name="vote_info_button_ask_revote">Ask to re-vote</string>
+    <string name="vote_info_button_ask_to_vote">Ask to vote</string>
+    <string name="vote_info_button_request_pending">Request sent</string>
+    <string name="vote_info_no_votes_yet">Hasn\'t voted yet</string>
+    <string name="vote_info_voted_on_format">voted on %1$s</string>
+
+    <!-- FrequencyInfoDialog (v0.28) -->
+    <string name="frequency_info_title">Frequency: how does it work?</string>
+    <string name="frequency_info_message">The displayed frequency is the average of votes from each household member. The more votes, the more representative. You can adjust your vote or ask another member to re-vote.</string>
+    <string name="frequency_info_variable_label">varies by month</string>
+    <string name="frequency_info_interval_format">every %1$s</string>
+    <string name="frequency_info_unknown">?</string>
+    <string name="frequency_info_show_months">Show 12 months</string>
+    <string name="frequency_info_hide_months">Hide detail</string>
+    <string name="frequency_info_month_short_format">%1$s: %2$dd</string>
+
+    <!-- Month short labels -->
+    <string name="month_short_jan">Jan</string>
+    <string name="month_short_feb">Feb</string>
+    <string name="month_short_mar">Mar</string>
+    <string name="month_short_apr">Apr</string>
+    <string name="month_short_may">May</string>
+    <string name="month_short_jun">Jun</string>
+    <string name="month_short_jul">Jul</string>
+    <string name="month_short_aug">Aug</string>
+    <string name="month_short_sep">Sep</string>
+    <string name="month_short_oct">Oct</string>
+    <string name="month_short_nov">Nov</string>
+    <string name="month_short_dec">Dec</string>
+    <!-- Month full labels — used by FrequencyVoteDialog -->
+    <string name="month_full_jan">January</string>
+    <string name="month_full_feb">February</string>
+    <string name="month_full_mar">March</string>
+    <string name="month_full_apr">April</string>
+    <string name="month_full_may">May</string>
+    <string name="month_full_jun">June</string>
+    <string name="month_full_jul">July</string>
+    <string name="month_full_aug">August</string>
+    <string name="month_full_sep">September</string>
+    <string name="month_full_oct">October</string>
+    <string name="month_full_nov">November</string>
+    <string name="month_full_dec">December</string>
+
+    <!-- FrequencyVoteDialog (v0.27) -->
+    <string name="frequency_vote_title">My frequency vote</string>
+    <string name="frequency_vote_requester_format">%1$s asked you to re-vote on this task.</string>
+    <string name="frequency_vote_mode_simple">Regular</string>
+    <string name="frequency_vote_mode_variable">By month</string>
+    <string name="frequency_vote_prompt">How often do you think this task should be done?</string>
+    <string name="frequency_vote_every_format">Every %1$s</string>
+    <string name="frequency_vote_variable_header">Cadence per month (days between two)</string>
+    <plurals name="frequency_vote_consensus_format">
+        <item quantity="one">Current consensus: %1$s (%2$d vote)</item>
+        <item quantity="other">Current consensus: %1$s (%2$d votes)</item>
+    </plurals>
+    <string name="frequency_vote_other_format">%1$s: %2$s</string>
+    <string name="frequency_vote_no_vote_yet">You haven\'t voted yet — the value above will become your vote.</string>
+    <string name="frequency_vote_button_vote">Vote</string>
+    <string name="frequency_vote_value_short_j_format">%1$dd</string>
+
+    <!-- EffortVoteDialog (v0.28) -->
+    <string name="effort_vote_title">My effort vote</string>
+    <string name="effort_vote_requester_format">%1$s asked you to re-vote on this task.</string>
+    <string name="effort_vote_prompt">How long do you think this task takes?</string>
+    <plurals name="effort_vote_consensus_format">
+        <item quantity="one">Current consensus: %1$s (%2$d vote)</item>
+        <item quantity="other">Current consensus: %1$s (%2$d votes)</item>
+    </plurals>
+    <string name="effort_vote_other_format">%1$s: %2$s</string>
+    <string name="effort_vote_no_vote_yet">You haven\'t voted yet — the value above will become your vote.</string>
+    <string name="effort_vote_button_vote">Vote</string>
+
+    <!-- SoloPointsInfoDialog -->
+    <string name="solo_points_title">Why 0 points?</string>
+    <string name="solo_points_message_compare">Points are used to compare each household member\'s contribution (fair-share).</string>
+    <string name="solo_points_message_solo">This task has only one participant: there\'s nobody to compare with, so it doesn\'t earn any points.</string>
+    <string name="solo_points_message_still_useful">Validating it is still useful: it resets the overdue counter to zero and keeps your history up to date. 👍</string>
+
+    <!-- InfoTooltip — TOLERANCE_INFO_TEXT -->
+    <string name="tolerance_info_text">Tolerance doesn\'t change the displayed state of a task (green / orange / red) nor when it becomes overdue. It only affects the priority of the “most urgent” selector on the home page:\n\n• STRICT: shown first as soon as it\'s overdue.\n• NORMAL: shown if no strict task is overdue.\n• LOOSE: shown last, when no other task is overdue.\n\nTo make a task turn red sooner, shorten its recurrence interval — not its tolerance.</string>
+
+    <!-- PromptModal — BumpEffortDialog -->
+    <string name="bump_effort_title">Often late task</string>
+    <string name="bump_effort_stats_format">%1$d%% of completions are late over the last %2$d days</string>
+    <string name="bump_effort_last_completions">Latest completions</string>
+    <string name="bump_effort_late_tag">late</string>
+    <string name="bump_effort_help">This task might not be worth enough points. Bump effort by one notch?</string>
+    <string name="bump_effort_button_bump">⬆ Bump effort (+1)</string>
+    <string name="bump_effort_button_edit_rating">Edit ratings</string>
+    <string name="bump_effort_button_later">Later</string>
+
+    <!-- ChangelogScreen -->
+    <string name="changelog_screen_title">What\'s new</string>
+    <string name="changelog_screen_title_with_version_format">What\'s new (v%1$s)</string>
+    <string name="changelog_back_cd">Back</string>
+    <string name="changelog_tab_release_notes">Release notes</string>
+    <string name="changelog_tab_roadmap">Roadmap</string>
+    <string name="changelog_empty">No content.</string>
+    <string name="changelog_load_error">Loading error</string>
+
+    <!-- UserProfileDialog -->
+    <string name="user_profile_stat_actions">Actions</string>
+    <string name="user_profile_stat_completions">Completions</string>
+    <string name="user_profile_stat_points">Points</string>
+    <string name="user_profile_stat_points_value_format">+%1$d</string>
+    <string name="user_profile_streak_calendar_link">View streak calendar →</string>
+    <string name="user_profile_section_split">Split</string>
+    <string name="user_profile_split_week">This week</string>
+    <string name="user_profile_split_total">All-time</string>
+    <string name="user_profile_section_history">Recent history</string>
+    <string name="user_profile_empty_history">No history yet</string>
+    <string name="user_profile_couple_title">Household total</string>
+    <string name="user_profile_couple_streak_format">🔥 %1$d-day streak</string>
+    <string name="user_profile_couple_week">This week</string>
+    <string name="user_profile_couple_month">This month</string>
+    <string name="user_profile_couple_total">All-time</string>
+    <string name="user_profile_couple_points_format">%1$d pts</string>
+    <string name="user_profile_split_legend_format">%1$s %2$d%% (%3$d pts)</string>
+    <string name="user_profile_split_zero_points">0 points</string>
+    <string name="user_profile_unknown_initial">?</string>
+
+    <!-- StatsCharts -->
+    <string name="chart_empty">No data yet</string>
+    <string name="chart_period_week">Wk</string>
+    <string name="chart_period_month">Mo</string>
+    <string name="chart_period_three_months">3 mo</string>
+    <string name="chart_period_all">All</string>
+    <string name="chart_retard_period_all">Since start</string>
+    <string name="chart_retard_period_month">Last 30 days</string>
+    <string name="chart_retard_toggle_minutes">Minutes</string>
+    <string name="chart_retard_toggle_tasks">Tasks</string>
+    <string name="chart_retard_today">Today</string>
+    <string name="chart_retard_vs_start">vs start</string>
+    <string name="chart_points_format">%1$d pts</string>
+    <string name="chart_points_delta_equal">= vs before</string>
+    <string name="chart_points_delta_inf">+∞ vs before</string>
+    <string name="chart_points_delta_pos_format">+%1$d%% vs before</string>
+    <string name="chart_points_delta_neg_format">%1$d%% vs before</string>
+    <string name="chart_weekday_sublabel_format">Wk %1$d · WE %2$d</string>
+    <string name="chart_top_category_format">Top: %1$s (%2$d)</string>
+    <string name="chart_top_category_none">—</string>
+    <!-- Weekday short labels — M T W T F S S -->
+    <string name="weekday_short_monday">M</string>
+    <string name="weekday_short_tuesday">T</string>
+    <string name="weekday_short_wednesday">W</string>
+    <string name="weekday_short_thursday">T</string>
+    <string name="weekday_short_friday">F</string>
+    <string name="weekday_short_saturday">S</string>
+    <string name="weekday_short_sunday">S</string>
 </resources>

@@ -10,7 +10,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 
 /**
  * Modal pedago "pourquoi 0 point ?" pour les taches solo (un seul assignee).
@@ -27,28 +29,28 @@ import androidx.compose.ui.unit.dp
 fun SoloPointsInfoDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Pourquoi 0 point ?") },
+        title = { Text(stringResource(R.string.solo_points_title)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Les points servent a comparer l'investissement de chaque membre du foyer (fair-share).",
+                    text = stringResource(R.string.solo_points_message_compare),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "Cette tache n'a qu'un seul participant : il n'y a personne avec qui comparer, donc elle ne rapporte pas de points.",
+                    text = stringResource(R.string.solo_points_message_solo),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "La valider reste utile : ca remet le compteur de retard a zero et ca garde l'historique a jour. 👍",
+                    text = stringResource(R.string.solo_points_message_still_useful),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Compris") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_understood)) }
         },
     )
 }

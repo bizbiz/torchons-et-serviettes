@@ -913,7 +913,7 @@ fun TaskDetailScreen(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     com.torchons.app.ui.common.InfoTooltip(
                                         title = stringResource(R.string.task_detail_tolerance_help_title),
-                                        description = com.torchons.app.ui.common.TOLERANCE_INFO_TEXT,
+                                        description = com.torchons.app.ui.common.toleranceInfoText(),
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))

@@ -19,10 +19,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.model.EffortVotesState
 import kotlin.math.roundToInt
 
@@ -52,12 +55,12 @@ fun EffortVoteDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Mon vote sur l'effort") },
+        title = { Text(stringResource(R.string.effort_vote_title)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (requesterName != null) {
                     Text(
-                        text = "$requesterName t'a demande de revoter sur cette tache.",
+                        text = stringResource(R.string.effort_vote_requester_format, requesterName),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -71,7 +74,7 @@ fun EffortVoteDialog(
                 Spacer(Modifier.height(12.dp))
 
                 Text(
-                    text = "Selon toi, combien de temps prend cette tache ?",
+                    text = stringResource(R.string.effort_vote_prompt),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -94,15 +97,19 @@ fun EffortVoteDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("5min", style = MaterialTheme.typography.labelSmall)
-                    Text("1h", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.rating_effort_min), style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.rating_effort_max), style = MaterialTheme.typography.labelSmall)
                 }
                 Spacer(Modifier.height(8.dp))
 
                 if (state.votesCount > 0 && state.consensusPoints != null) {
-                    val s = if (state.votesCount > 1) "s" else ""
                     Text(
-                        text = "Consensus actuel : ${effortPointsToTime(state.consensusPoints)} (${state.votesCount} vote$s)",
+                        text = pluralStringResource(
+                            R.plurals.effort_vote_consensus_format,
+                            state.votesCount,
+                            effortPointsToTime(state.consensusPoints),
+                            state.votesCount,
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -111,7 +118,11 @@ fun EffortVoteDialog(
                     Spacer(Modifier.height(4.dp))
                     state.others.forEach { other ->
                         Text(
-                            text = "${other.displayName} : ${effortPointsToTime(other.points)}",
+                            text = stringResource(
+                                R.string.effort_vote_other_format,
+                                other.displayName,
+                                effortPointsToTime(other.points),
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -120,7 +131,7 @@ fun EffortVoteDialog(
                 if (state.myPoints == null) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Tu n'as pas encore vote — la valeur ci-dessus deviendra ton vote.",
+                        text = stringResource(R.string.effort_vote_no_vote_yet),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -128,10 +139,10 @@ fun EffortVoteDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { onSubmit(pointsInt) }) { Text("Voter") }
+            Button(onClick = { onSubmit(pointsInt) }) { Text(stringResource(R.string.effort_vote_button_vote)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }

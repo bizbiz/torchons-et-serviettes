@@ -34,10 +34,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.model.FrequencyRequest
 import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.util.DurationFormat
@@ -47,9 +49,22 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 private val MONTH_KEYS = (1..12).map { it.toString() }
-private val MONTH_LABELS = listOf(
-    "Janvier", "Fevrier", "Mars", "Avril", "Mai", "Juin",
-    "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre",
+
+/** Liste des labels de mois complets, localises via stringResource. */
+@Composable
+private fun monthFullLabels(): List<String> = listOf(
+    stringResource(R.string.month_full_jan),
+    stringResource(R.string.month_full_feb),
+    stringResource(R.string.month_full_mar),
+    stringResource(R.string.month_full_apr),
+    stringResource(R.string.month_full_may),
+    stringResource(R.string.month_full_jun),
+    stringResource(R.string.month_full_jul),
+    stringResource(R.string.month_full_aug),
+    stringResource(R.string.month_full_sep),
+    stringResource(R.string.month_full_oct),
+    stringResource(R.string.month_full_nov),
+    stringResource(R.string.month_full_dec),
 )
 
 /** True si le dict de vote a des valeurs differentes selon le mois. */
@@ -88,17 +103,13 @@ fun FrequencyVoteDialog(
         mutableStateOf(if (initialIsVariable) VoteMode.VARIABLE else VoteMode.SIMPLE)
     }
 
-    // Etat partage entre l'enfant (slider/grille) et le bouton Voter du
-    // parent : le bouton Voter clique declenche le submit du mode actif.
-    // On stocke le getter de la valeur courante dans une `mutableStateOf`
-    // pour que le bouton Voter le lise au moment du clic.
     val pendingSubmit = remember(state.taskId) {
         mutableStateOf<(() -> FrequencyRequest)?>(null)
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Mon vote sur la frequence") },
+        title = { Text(stringResource(R.string.frequency_vote_title)) },
         text = {
             Column(
                 modifier = Modifier
@@ -108,7 +119,7 @@ fun FrequencyVoteDialog(
             ) {
                 if (requesterName != null) {
                     Text(
-                        text = "$requesterName t'a demande de revoter sur cette tache.",
+                        text = stringResource(R.string.frequency_vote_requester_format, requesterName),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -127,17 +138,17 @@ fun FrequencyVoteDialog(
                         selected = voteMode == VoteMode.SIMPLE,
                         onClick = { voteMode = VoteMode.SIMPLE },
                         shape = SegmentedButtonDefaults.itemShape(0, 2),
-                    ) { Text("Reguliere") }
+                    ) { Text(stringResource(R.string.frequency_vote_mode_simple)) }
                     SegmentedButton(
                         selected = voteMode == VoteMode.VARIABLE,
                         onClick = { voteMode = VoteMode.VARIABLE },
                         shape = SegmentedButtonDefaults.itemShape(1, 2),
-                    ) { Text("Selon le mois") }
+                    ) { Text(stringResource(R.string.frequency_vote_mode_variable)) }
                 }
                 Spacer(Modifier.height(12.dp))
 
                 Text(
-                    text = "Selon toi, tous les combien faut-il faire cette tache ?",
+                    text = stringResource(R.string.frequency_vote_prompt),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -164,10 +175,10 @@ fun FrequencyVoteDialog(
         confirmButton = {
             Button(onClick = {
                 pendingSubmit.value?.invoke()?.let(onSubmit)
-            }) { Text("Voter") }
+            }) { Text(stringResource(R.string.frequency_vote_button_vote)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
@@ -178,7 +189,6 @@ private fun SimpleModeBody(
     consensusInt: Int,
     registerGetter: (() -> Int) -> Unit,
 ) {
-    // Initiale = vote actuel uniforme si dispo, sinon consensus.
     val myUniform = state.myDaysPerMonth?.values?.takeIf {
         it.isNotEmpty() && it.all { v -> v == it.first() }
     }?.first()
@@ -197,7 +207,6 @@ private fun SimpleModeBody(
     val daysInt = daysValue.toInt()
     val daysLabel = DurationFormat.formatDaysHuman(res, daysInt, long = true)
 
-    // Re-enregistre le getter a chaque recomposition (capture daysValue a jour).
     registerGetter { daysValue.toInt() }
 
     val units = DurationUnit.values().toList()
@@ -218,7 +227,10 @@ private fun SimpleModeBody(
     }
     Spacer(Modifier.height(8.dp))
 
-    Text("Tous les $daysLabel", style = MaterialTheme.typography.titleMedium)
+    Text(
+        stringResource(R.string.frequency_vote_every_format, daysLabel),
+        style = MaterialTheme.typography.titleMedium,
+    )
     Slider(
         value = daysValue,
         onValueChange = { v ->
@@ -241,7 +253,6 @@ private fun VariableModeBody(
     consensusInt: Int,
     registerGetter: (() -> Map<String, Int>) -> Unit,
 ) {
-    // Init : copie du vote courant, sinon consensus rempli sur 12 mois.
     val perMonth: SnapshotStateMap<String, Int> = remember(state.taskId) {
         mutableStateMapOf<String, Int>().apply {
             for (m in MONTH_KEYS) {
@@ -255,8 +266,10 @@ private fun VariableModeBody(
 
     registerGetter { perMonth.toMap() }
 
+    val monthLabels = monthFullLabels()
+
     Text(
-        text = "Cadence par mois (jours entre 2 fois)",
+        text = stringResource(R.string.frequency_vote_variable_header),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -268,7 +281,7 @@ private fun VariableModeBody(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = MONTH_LABELS[idx],
+                text = monthLabels[idx],
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.width(80.dp),
             )
@@ -281,7 +294,7 @@ private fun VariableModeBody(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "${value}j",
+                    text = stringResource(R.string.frequency_vote_value_short_j_format, value),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -307,16 +320,20 @@ private fun ConsensusFooter(state: FrequencyVotesState) {
     val res = LocalContext.current.resources
     val rule = state.consensusRule
     if (state.votesCount > 0 && rule != null) {
-        val s = if (state.votesCount > 1) "s" else ""
         val human = when (rule.type) {
             "interval" -> rule.everyNDays?.let {
-                "tous les ${DurationFormat.formatDaysHuman(res, it)}"
-            } ?: "?"
-            "monthly_variable" -> "variable selon le mois"
-            else -> "?"
+                stringResource(R.string.frequency_info_interval_format, DurationFormat.formatDaysHuman(res, it))
+            } ?: stringResource(R.string.frequency_info_unknown)
+            "monthly_variable" -> stringResource(R.string.frequency_info_variable_label)
+            else -> stringResource(R.string.frequency_info_unknown)
         }
         Text(
-            text = "Consensus actuel : $human (${state.votesCount} vote$s)",
+            text = pluralStringResource(
+                R.plurals.frequency_vote_consensus_format,
+                state.votesCount,
+                human,
+                state.votesCount,
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -325,12 +342,12 @@ private fun ConsensusFooter(state: FrequencyVotesState) {
         Spacer(Modifier.height(4.dp))
         state.others.forEach { other ->
             val isVar = isVariableDpm(other.daysPerMonth)
-            val label = if (isVar) "variable selon le mois"
+            val label = if (isVar) stringResource(R.string.frequency_info_variable_label)
             else other.daysPerMonth.values.firstOrNull()?.let {
-                "tous les ${DurationFormat.formatDaysHuman(res, it)}"
-            } ?: "?"
+                stringResource(R.string.frequency_info_interval_format, DurationFormat.formatDaysHuman(res, it))
+            } ?: stringResource(R.string.frequency_info_unknown)
             Text(
-                text = "${other.displayName} : $label",
+                text = stringResource(R.string.frequency_vote_other_format, other.displayName, label),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -339,7 +356,7 @@ private fun ConsensusFooter(state: FrequencyVotesState) {
     if (state.myDaysPerMonth == null) {
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Tu n'as pas encore vote — la valeur ci-dessus deviendra ton vote.",
+            text = stringResource(R.string.frequency_vote_no_vote_yet),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

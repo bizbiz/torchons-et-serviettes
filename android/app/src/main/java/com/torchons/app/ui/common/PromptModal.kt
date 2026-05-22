@@ -21,8 +21,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.model.UserPrompt
 
 /**
@@ -117,7 +119,7 @@ private fun BumpEffortDialog(
         title = {
             Column {
                 Text(
-                    text = "Tache souvent en retard",
+                    text = stringResource(R.string.bump_effort_title),
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFC2410C),
                 )
@@ -132,15 +134,18 @@ private fun BumpEffortDialog(
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    text = "${(bonusRatio * 100).toInt()}% des completions sont en retard " +
-                        "sur les $windowDays derniers jours",
+                    text = stringResource(
+                        R.string.bump_effort_stats_format,
+                        (bonusRatio * 100).toInt(),
+                        windowDays,
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Dernieres completions",
+                    text = stringResource(R.string.bump_effort_last_completions),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -166,7 +171,7 @@ private fun BumpEffortDialog(
                         )
                         if (isBonus) {
                             Text(
-                                text = "en retard",
+                                text = stringResource(R.string.bump_effort_late_tag),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color(0xFFC2410C),
                             )
@@ -178,8 +183,7 @@ private fun BumpEffortDialog(
                 HorizontalDivider()
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Cette tache rapporte peut-etre pas assez de points. " +
-                        "Augmenter l'effort d'un cran ?",
+                    text = stringResource(R.string.bump_effort_help),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -192,17 +196,17 @@ private fun BumpEffortDialog(
                 Button(
                     onClick = onBump,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("⬆ Bumper l'effort (+1)") }
+                ) { Text(stringResource(R.string.bump_effort_button_bump)) }
 
                 OutlinedButton(
                     onClick = onEditRating,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Modifier les notes") }
+                ) { Text(stringResource(R.string.bump_effort_button_edit_rating)) }
 
                 TextButton(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Plus tard") }
+                ) { Text(stringResource(R.string.bump_effort_button_later)) }
             }
         },
         dismissButton = {},

@@ -15,8 +15,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 
 /**
  * Dialog dynamique "Pourquoi je n'ai pas de points pour certaines taches ?"
@@ -65,28 +67,31 @@ fun WhyNoPointsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Pourquoi je n'ai pas de points ?") },
+        title = { Text(stringResource(R.string.why_no_points_title)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 when {
                     // Cas 4 : userOff + au moins un foyer off
                     userOff && foyersOff.isNotEmpty() -> {
                         Text(
-                            text = "Deux causes se cumulent :",
+                            text = stringResource(R.string.why_no_points_two_causes),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Spacer(Modifier.height(8.dp))
-                        Bullet("Tu as desactive la gamification pour ton compte.")
+                        Bullet(stringResource(R.string.why_no_points_bullet_user_off))
                         Bullet(
                             if (foyersOff.size == 1)
-                                "Le foyer \"${foyersOff[0].name}\" a aussi sa gamification desactivee."
+                                stringResource(R.string.why_no_points_bullet_one_foyer_off_format, foyersOff[0].name)
                             else
-                                "Plusieurs de tes foyers ont aussi leur gamification desactivee (${foyersOff.joinToString(", ") { it.name }})."
+                                stringResource(
+                                    R.string.why_no_points_bullet_many_foyers_off_format,
+                                    foyersOff.joinToString(", ") { it.name },
+                                )
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "Reactiver une seule cause ne suffira pas — il faut activer la gamification cote compte ET cote foyer pour voir les points.",
+                            text = stringResource(R.string.why_no_points_two_causes_help),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -94,17 +99,17 @@ fun WhyNoPointsDialog(
                         OutlinedButton(
                             onClick = onReactivateUser,
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text("Reactiver mon compte") }
+                        ) { Text(stringResource(R.string.why_no_points_button_reactivate_account)) }
                     }
                     // Cas 1 : userOff seul
                     userOff -> {
                         Text(
-                            text = "Tu as desactive la gamification pour ton compte dans tes Reglages.",
+                            text = stringResource(R.string.why_no_points_user_off_message),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "Tes foyers ont tous leur gamification activee, mais ton choix personnel prend le dessus — tu ne vois pas de points, de stats ni de bonus tant que tu n'as pas reactive.",
+                            text = stringResource(R.string.why_no_points_user_off_help),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -112,17 +117,20 @@ fun WhyNoPointsDialog(
                         OutlinedButton(
                             onClick = onReactivateUser,
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text("Reactiver maintenant") }
+                        ) { Text(stringResource(R.string.why_no_points_button_reactivate_now)) }
                     }
                     // Cas 3 : multi-foyer mixte (ton compte est ON, mais
                     // certains foyers sont OFF)
                     multiFoyer && foyersOff.isNotEmpty() -> {
                         Text(
-                            text = "Ton compte a la gamification activee, mais certains de tes foyers ne l'ont pas. Tu vois des points dans les foyers actives, et rien dans les autres.",
+                            text = stringResource(R.string.why_no_points_multi_mixed_message),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Spacer(Modifier.height(12.dp))
-                        Text("Tes foyers :", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            stringResource(R.string.why_no_points_your_foyers),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
                         Spacer(Modifier.height(6.dp))
                         foyersOff.forEach { f ->
                             FoyerStateRow(
@@ -147,13 +155,13 @@ fun WhyNoPointsDialog(
                     foyersOff.isNotEmpty() -> {
                         val f = foyersOff[0]
                         Text(
-                            text = "La gamification est desactivee dans le foyer \"${f.name}\".",
+                            text = stringResource(R.string.why_no_points_single_foyer_off_format, f.name),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "Toi ou un autre membre du foyer peut la reactiver dans Reglages > Options avancees > Gamification du foyer.",
+                            text = stringResource(R.string.why_no_points_single_foyer_off_help),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -161,13 +169,15 @@ fun WhyNoPointsDialog(
                         OutlinedButton(
                             onClick = { onReactivateFoyer(f.id) },
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text("Reactiver le foyer \"${f.name}\"") }
+                        ) {
+                            Text(stringResource(R.string.why_no_points_button_reactivate_foyer_format, f.name))
+                        }
                     }
                     // Fallback (ne devrait pas etre atteint vu la condition
                     // d'affichage du lien, mais defensif)
                     else -> {
                         Text(
-                            text = "Aucune raison detectee. Si tu vois ce message alors que tu as des points en attente, tente un refresh ou contacte l'autre membre du foyer.",
+                            text = stringResource(R.string.why_no_points_fallback),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -175,7 +185,7 @@ fun WhyNoPointsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Fermer") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         },
     )
 }
@@ -207,18 +217,22 @@ private fun FoyerStateRow(
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = name + if (isCurrent) " (actuel)" else "",
+                text = name + if (isCurrent) stringResource(R.string.why_no_points_foyer_current_suffix) else "",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                text = if (enabled) "Activee" else "Desactivee",
+                text = if (enabled) stringResource(R.string.why_no_points_foyer_enabled)
+                else stringResource(R.string.why_no_points_foyer_disabled),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         if (!enabled) {
             OutlinedButton(onClick = onAction) {
-                Text("Reactiver", style = MaterialTheme.typography.labelSmall)
+                Text(
+                    stringResource(R.string.why_no_points_foyer_reactivate_compact),
+                    style = MaterialTheme.typography.labelSmall,
+                )
             }
         }
     }

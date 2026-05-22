@@ -643,7 +643,7 @@ fun TaskEditScreen(
                     Spacer(modifier = Modifier.width(4.dp))
                     InfoTooltip(
                         title = stringResource(R.string.task_detail_tolerance_help_title),
-                        description = com.torchons.app.ui.common.TOLERANCE_INFO_TEXT,
+                        description = com.torchons.app.ui.common.toleranceInfoText(),
                     )
                 }
                 val tolerances = listOf(

@@ -32,12 +32,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.torchons.app.R
 import com.torchons.app.data.api.ApiService
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -89,26 +91,30 @@ fun ChangelogScreen(onBack: () -> Unit) {
                 roadmapText = r.body()?.get("content") as? String
             }
             if (!c.isSuccessful && !r.isSuccessful) {
-                error = "Erreur de chargement"
+                error = "load_error"  // signal interne, resolu en stringResource a l'affichage
             }
         } catch (e: Exception) {
-            error = e.message ?: "Erreur reseau"
+            error = e.message ?: "network_error"
         } finally {
             loading = false
         }
     }
 
+    val loadErrorText = stringResource(R.string.changelog_load_error)
+    val networkErrorText = stringResource(R.string.common_error_network)
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = if (version != null) "Nouveautes (v$version)" else "Nouveautes"
+                        text = if (version != null)
+                            stringResource(R.string.changelog_screen_title_with_version_format, version!!)
+                        else stringResource(R.string.changelog_screen_title)
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.changelog_back_cd))
                     }
                 }
             )
@@ -123,12 +129,12 @@ fun ChangelogScreen(onBack: () -> Unit) {
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Notes de version") }
+                    text = { Text(stringResource(R.string.changelog_tab_release_notes)) }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Roadmap") }
+                    text = { Text(stringResource(R.string.changelog_tab_roadmap)) }
                 )
             }
 
@@ -140,12 +146,17 @@ fun ChangelogScreen(onBack: () -> Unit) {
                     ) { CircularProgressIndicator() }
                 }
                 error != null -> {
+                    val msg = when (error) {
+                        "load_error" -> loadErrorText
+                        "network_error" -> networkErrorText
+                        else -> error ?: ""
+                    }
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = error ?: "",
+                            text = msg,
                             color = MaterialTheme.colorScheme.error
                         )
                     }
@@ -160,7 +171,7 @@ fun ChangelogScreen(onBack: () -> Unit) {
                     ) {
                         if (content.isNullOrBlank()) {
                             Text(
-                                text = "Aucun contenu.",
+                                text = stringResource(R.string.changelog_empty),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {

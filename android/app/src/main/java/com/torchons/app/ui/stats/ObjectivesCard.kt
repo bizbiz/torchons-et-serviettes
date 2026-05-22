@@ -39,8 +39,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -166,13 +169,13 @@ fun ObjectivesCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "Mes objectifs",
+                    text = stringResource(R.string.objectives_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = { showCreate = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "Nouvel objectif")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.objectives_new_cd))
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -186,7 +189,7 @@ fun ObjectivesCard(
                 }
                 state.objectives.isEmpty() -> {
                     Text(
-                        text = "Aucun objectif. Tape sur + pour en creer un (ex: 3 taches par semaine).",
+                        text = stringResource(R.string.objectives_empty_help),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -218,16 +221,16 @@ fun ObjectivesCard(
     pendingDelete?.let { obj ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("Supprimer cet objectif ?") },
-            text = { Text("\"${obj.title}\" — cette action est definitive.") },
+            title = { Text(stringResource(R.string.objectives_dialog_delete_title)) },
+            text = { Text(stringResource(R.string.objectives_dialog_delete_message_format, obj.title)) },
             confirmButton = {
                 Button(onClick = {
                     viewModel.delete(obj.id)
                     pendingDelete = null
-                }) { Text("Supprimer") }
+                }) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) { Text("Annuler") }
+                TextButton(onClick = { pendingDelete = null }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
@@ -297,35 +300,43 @@ private fun CreateObjectiveDialog(
     var title by remember { mutableStateOf("") }
     var period by remember { mutableStateOf("week") }
     var target by remember { mutableStateOf(3f) }
+    val periodOptions = listOf(
+        "day" to stringResource(R.string.objectives_dialog_period_day),
+        "week" to stringResource(R.string.objectives_dialog_period_week),
+        "month" to stringResource(R.string.objectives_dialog_period_month),
+    )
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nouvel objectif") },
+        title = { Text(stringResource(R.string.objectives_dialog_new_title)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Intitule") },
-                    placeholder = { Text("Ex: Nettoyer la cuisine") },
+                    label = { Text(stringResource(R.string.objectives_dialog_title_label)) },
+                    placeholder = { Text(stringResource(R.string.objectives_dialog_title_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(12.dp))
-                Text("Periode", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.objectives_dialog_period_label), style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("day" to "Par jour", "week" to "Par semaine", "month" to "Par mois")
-                        .forEach { (k, label) ->
-                            FilterChip(
-                                selected = period == k,
-                                onClick = { period = k },
-                                label = { Text(label) },
-                            )
-                        }
+                    periodOptions.forEach { (k, label) ->
+                        FilterChip(
+                            selected = period == k,
+                            onClick = { period = k },
+                            label = { Text(label) },
+                        )
+                    }
                 }
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "Cible : ${target.roundToInt()} tache(s)",
+                    text = pluralStringResource(
+                        R.plurals.objectives_dialog_target_format,
+                        target.roundToInt(),
+                        target.roundToInt(),
+                    ),
                     style = MaterialTheme.typography.labelMedium,
                 )
                 Slider(
@@ -340,17 +351,18 @@ private fun CreateObjectiveDialog(
             Button(
                 onClick = { onCreate(title, period, target.roundToInt()) },
                 enabled = !isCreating && title.isNotBlank(),
-            ) { Text("Creer") }
+            ) { Text(stringResource(R.string.objectives_dialog_button_create)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
 
+@Composable
 private fun periodLabel(period: String): String = when (period) {
-    "day" -> "Par jour"
-    "week" -> "Par semaine"
-    "month" -> "Par mois"
+    "day" -> stringResource(R.string.objectives_dialog_period_day)
+    "week" -> stringResource(R.string.objectives_dialog_period_week)
+    "month" -> stringResource(R.string.objectives_dialog_period_month)
     else -> period
 }

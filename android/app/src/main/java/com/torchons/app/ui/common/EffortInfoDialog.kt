@@ -1,5 +1,6 @@
 package com.torchons.app.ui.common
 
+import android.content.res.Resources
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,8 +21,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.model.EffortVotesState
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -52,6 +56,7 @@ fun EffortInfoDialog(
      *  de points / fair-share du texte pedago — focus sur "temps moyen". */
     gamificationVisible: Boolean = true,
 ) {
+    val res = LocalContext.current.resources
     // Set des user_ids ayant vote (moi inclus si myPoints != null).
     val voterIds = buildSet {
         state.myPoints?.let { currentUserId?.let { id -> add(id) } }
@@ -61,7 +66,7 @@ fun EffortInfoDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Effort : comment ca marche ?") },
+        title = { Text(stringResource(R.string.effort_info_title)) },
         text = {
             Column(
                 modifier = Modifier
@@ -69,16 +74,9 @@ fun EffortInfoDialog(
                     .heightIn(max = 540.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
-                // Pedago : explique a quoi sert le vote. Texte different
-                // selon que la gamification est activee ou non (v0.32) — si
-                // l'user n'a pas de points, le pedago "points/fair-share" est
-                // dissonant. On garde le pedago "temps moyen" qui reste valide.
                 Text(
-                    text = if (gamificationVisible) {
-                        "L'effort est le temps moyen que prend la tache, vote par chaque membre du foyer. Il sert a calculer les points gagnes quand la tache est validee — ces points alimentent le partage equitable (fair-share) entre vous et le retard global du foyer. Plus il y a de votes, plus l'estimation est juste. Tu peux ajuster ton vote ou demander a un autre membre de revoter."
-                    } else {
-                        "L'effort est le temps moyen que prend la tache, vote par chaque membre du foyer. Il sert a mieux estimer le temps requis et a prioriser entre taches courtes et longues. Plus il y a de votes, plus l'estimation est juste. Tu peux ajuster ton vote ou demander a un autre membre de revoter."
-                    },
+                    text = if (gamificationVisible) stringResource(R.string.effort_info_message_gamif)
+                    else stringResource(R.string.effort_info_message_no_gamif),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -87,13 +85,16 @@ fun EffortInfoDialog(
                 // Mon vote (si vote)
                 if (state.myPoints != null && currentUserId != null) {
                     EffortVoteRow(
-                        name = "Toi",
+                        name = stringResource(R.string.vote_info_me_label),
                         points = state.myPoints,
                         updatedAt = state.myUpdatedAt,
                         isMe = true,
                         actionButton = {
                             OutlinedButton(onClick = onEditMyVote) {
-                                Text("Modifier mon vote", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    stringResource(R.string.vote_info_button_edit_my),
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
                             }
                         },
                     )
@@ -116,7 +117,8 @@ fun EffortInfoDialog(
                                 enabled = !isPending,
                             ) {
                                 Text(
-                                    text = if (isPending) "Demande envoyee" else "Demander revote",
+                                    text = if (isPending) stringResource(R.string.vote_info_button_request_pending)
+                                    else stringResource(R.string.vote_info_button_ask_revote),
                                     style = MaterialTheme.typography.labelSmall,
                                 )
                             }
@@ -131,7 +133,7 @@ fun EffortInfoDialog(
                     HorizontalDivider()
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "Pas encore vote",
+                        text = stringResource(R.string.vote_info_no_votes_yet),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -154,7 +156,8 @@ fun EffortInfoDialog(
                                 enabled = !isPending,
                             ) {
                                 Text(
-                                    text = if (isPending) "Demande envoyee" else "Demander a voter",
+                                    text = if (isPending) stringResource(R.string.vote_info_button_request_pending)
+                                    else stringResource(R.string.vote_info_button_ask_to_vote),
                                     style = MaterialTheme.typography.labelSmall,
                                 )
                             }
@@ -164,7 +167,7 @@ fun EffortInfoDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Fermer") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         },
     )
 }
@@ -177,6 +180,7 @@ private fun EffortVoteRow(
     isMe: Boolean,
     actionButton: @Composable () -> Unit,
 ) {
+    val res = LocalContext.current.resources
     val summary = effortPointsToTime(points)
 
     Row(
@@ -190,7 +194,7 @@ private fun EffortVoteRow(
                 fontWeight = if (isMe) FontWeight.Bold else FontWeight.Medium,
             )
             Text(
-                text = summary + (formatVoteDate(updatedAt)?.let { " · $it" } ?: ""),
+                text = summary + (formatVoteDate(res, updatedAt)?.let { " · $it" } ?: ""),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -202,11 +206,11 @@ private fun EffortVoteRow(
 
 private val DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
-private fun formatVoteDate(iso: String?): String? {
+internal fun formatVoteDate(res: Resources, iso: String?): String? {
     if (iso.isNullOrBlank()) return null
     return try {
         val odt = OffsetDateTime.parse(iso)
-        "vote le ${odt.format(DATE_FMT)}"
+        res.getString(R.string.vote_info_voted_on_format, odt.format(DATE_FMT))
     } catch (_: Exception) {
         null
     }

@@ -36,9 +36,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.CoupleTotalsResponse
 import com.torchons.app.data.model.LeaderboardEntry
@@ -111,7 +113,7 @@ fun UserProfileDialog(
             if (resp.isSuccessful) {
                 history = resp.body() ?: emptyList()
             } else {
-                error = "Erreur ${resp.code()}"
+                error = context.getString(R.string.common_error_code_format, resp.code())
             }
             // Fetchs paralleles pour les leaderboards (best-effort).
             try {
@@ -128,7 +130,7 @@ fun UserProfileDialog(
                 if (ct.isSuccessful) coupleTotals = ct.body()
             } catch (_: Exception) { /* silencieux */ }
         } catch (e: Exception) {
-            error = e.message ?: "Erreur reseau"
+            error = e.message ?: context.getString(R.string.common_error_network)
         } finally {
             loading = false
         }
@@ -145,7 +147,7 @@ fun UserProfileDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Fermer") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -158,7 +160,8 @@ fun UserProfileDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = request.userName.firstOrNull()?.uppercase() ?: "?",
+                        text = request.userName.firstOrNull()?.uppercase()
+                            ?: stringResource(R.string.user_profile_unknown_initial),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -179,9 +182,9 @@ fun UserProfileDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    StatPill(label = "Actions", value = history.size.toString())
-                    StatPill(label = "Completions", value = completionsCount.toString())
-                    StatPill(label = "Points", value = "+$totalPoints")
+                    StatPill(label = stringResource(R.string.user_profile_stat_actions), value = history.size.toString())
+                    StatPill(label = stringResource(R.string.user_profile_stat_completions), value = completionsCount.toString())
+                    StatPill(label = stringResource(R.string.user_profile_stat_points), value = stringResource(R.string.user_profile_stat_points_value_format, totalPoints))
                 }
 
                 // P3 (decision 10) : lien vers le calendrier des series de ce
@@ -193,7 +196,7 @@ fun UserProfileDialog(
                         onClick = onOpenStreakCalendar,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Voir le calendrier des streaks →")
+                        Text(stringResource(R.string.user_profile_streak_calendar_link))
                     }
                 }
 
@@ -210,14 +213,14 @@ fun UserProfileDialog(
                 if (leaderboardWeek.size >= 2 || leaderboardAll.size >= 2) {
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "Repartition",
+                        text = stringResource(R.string.user_profile_section_split),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(Modifier.height(6.dp))
                     if (leaderboardWeek.size >= 2) {
                         FoyerSplitBar(
-                            label = "Cette semaine",
+                            label = stringResource(R.string.user_profile_split_week),
                             entries = leaderboardWeek,
                             highlightedUserId = request.userId,
                         )
@@ -225,7 +228,7 @@ fun UserProfileDialog(
                     if (leaderboardAll.size >= 2) {
                         Spacer(Modifier.height(8.dp))
                         FoyerSplitBar(
-                            label = "Au total",
+                            label = stringResource(R.string.user_profile_split_total),
                             entries = leaderboardAll,
                             highlightedUserId = request.userId,
                         )
@@ -234,7 +237,7 @@ fun UserProfileDialog(
 
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "Historique recent",
+                    text = stringResource(R.string.user_profile_section_history),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -259,7 +262,7 @@ fun UserProfileDialog(
                     }
                     history.isEmpty() -> {
                         Text(
-                            text = "Aucun historique pour l'instant",
+                            text = stringResource(R.string.user_profile_empty_history),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -318,7 +321,7 @@ private fun FoyerSplitBar(
         Spacer(Modifier.height(4.dp))
         if (total <= 0) {
             Text(
-                text = "0 point",
+                text = stringResource(R.string.user_profile_split_zero_points),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -353,7 +356,7 @@ private fun FoyerSplitBar(
                 val pct = (e.points * 100.0 / total).toInt()
                 val isMe = e.userId == highlightedUserId
                 Text(
-                    text = "${e.displayName} $pct% (${e.points} pts)",
+                    text = stringResource(R.string.user_profile_split_legend_format, e.displayName, pct, e.points),
                     style = MaterialTheme.typography.labelSmall,
                     color = FoyerPalette[i % FoyerPalette.size],
                     fontWeight = if (isMe) FontWeight.Bold else FontWeight.Normal,
@@ -459,14 +462,14 @@ private fun CoupleTotalsCard(totals: com.torchons.app.data.model.CoupleTotalsRes
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "Total du foyer",
+                    text = stringResource(R.string.user_profile_couple_title),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
                 if (totals.coupleStreakDays > 0) {
                     Text(
-                        text = "🔥 ${totals.coupleStreakDays}j d'affilee",
+                        text = stringResource(R.string.user_profile_couple_streak_format, totals.coupleStreakDays),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -479,17 +482,17 @@ private fun CoupleTotalsCard(totals: com.torchons.app.data.model.CoupleTotalsRes
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 CoupleStatColumn(
-                    title = "Cette semaine",
+                    title = stringResource(R.string.user_profile_couple_week),
                     completions = totals.foyerWeekCompletions,
                     points = totals.foyerWeekPoints,
                 )
                 CoupleStatColumn(
-                    title = "Ce mois",
+                    title = stringResource(R.string.user_profile_couple_month),
                     completions = totals.foyerMonthCompletions,
                     points = totals.foyerMonthPoints,
                 )
                 CoupleStatColumn(
-                    title = "Au total",
+                    title = stringResource(R.string.user_profile_couple_total),
                     completions = totals.foyerTotalCompletions,
                     points = totals.foyerTotalPoints,
                 )
@@ -514,7 +517,7 @@ private fun CoupleStatColumn(title: String, completions: Int, points: Int) {
             color = MaterialTheme.colorScheme.primary,
         )
         Text(
-            text = "$points pts",
+            text = stringResource(R.string.user_profile_couple_points_format, points),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

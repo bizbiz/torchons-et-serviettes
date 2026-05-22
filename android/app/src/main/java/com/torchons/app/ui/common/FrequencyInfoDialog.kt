@@ -1,6 +1,5 @@
 package com.torchons.app.ui.common
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -25,12 +23,13 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.util.DurationFormat
-import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
 
 /**
  * Modal "+ d'info" sur la frequence d'une tache (v0.28).
@@ -70,7 +69,7 @@ fun FrequencyInfoDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Frequence : comment ca marche ?") },
+        title = { Text(stringResource(R.string.frequency_info_title)) },
         text = {
             Column(
                 modifier = Modifier
@@ -78,9 +77,8 @@ fun FrequencyInfoDialog(
                     .heightIn(max = 540.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
-                // F1 — pedago
                 Text(
-                    text = "La frequence affichee est la moyenne des votes de chaque membre du foyer. Plus il y a de votes, plus elle est representative. Tu peux ajuster ton vote ou demander a un autre membre de revoter.",
+                    text = stringResource(R.string.frequency_info_message),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -89,7 +87,7 @@ fun FrequencyInfoDialog(
                 // Mon vote (si vote)
                 if (state.myDaysPerMonth != null && currentUserId != null) {
                     VoteRow(
-                        name = "Toi",
+                        name = stringResource(R.string.vote_info_me_label),
                         daysPerMonth = state.myDaysPerMonth,
                         updatedAt = state.myUpdatedAt,
                         isMe = true,
@@ -97,7 +95,10 @@ fun FrequencyInfoDialog(
                         onToggleExpand = { expanded[currentUserId] = !(expanded[currentUserId] ?: false) },
                         actionButton = {
                             OutlinedButton(onClick = onEditMyVote) {
-                                Text("Modifier mon vote", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    stringResource(R.string.vote_info_button_edit_my),
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
                             }
                         },
                     )
@@ -122,7 +123,8 @@ fun FrequencyInfoDialog(
                                 enabled = !isPending,
                             ) {
                                 Text(
-                                    text = if (isPending) "Demande envoyee" else "Demander revote",
+                                    text = if (isPending) stringResource(R.string.vote_info_button_request_pending)
+                                    else stringResource(R.string.vote_info_button_ask_revote),
                                     style = MaterialTheme.typography.labelSmall,
                                 )
                             }
@@ -137,7 +139,7 @@ fun FrequencyInfoDialog(
                     HorizontalDivider()
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "Pas encore vote",
+                        text = stringResource(R.string.vote_info_no_votes_yet),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -160,7 +162,8 @@ fun FrequencyInfoDialog(
                                 enabled = !isPending,
                             ) {
                                 Text(
-                                    text = if (isPending) "Demande envoyee" else "Demander a voter",
+                                    text = if (isPending) stringResource(R.string.vote_info_button_request_pending)
+                                    else stringResource(R.string.vote_info_button_ask_to_vote),
                                     style = MaterialTheme.typography.labelSmall,
                                 )
                             }
@@ -170,7 +173,7 @@ fun FrequencyInfoDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Fermer") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         },
     )
 }
@@ -185,11 +188,13 @@ private fun VoteRow(
     onToggleExpand: () -> Unit,
     actionButton: @Composable () -> Unit,
 ) {
-    val res = androidx.compose.ui.platform.LocalContext.current.resources
+    val res = LocalContext.current.resources
     val values = daysPerMonth.values.toList()
     val isVariable = values.isNotEmpty() && values.any { it != values.first() }
-    val summary = if (isVariable) "variable selon le mois"
-    else values.firstOrNull()?.let { "tous les ${DurationFormat.formatDaysHuman(res, it)}" } ?: "?"
+    val summary = if (isVariable) stringResource(R.string.frequency_info_variable_label)
+    else values.firstOrNull()?.let {
+        stringResource(R.string.frequency_info_interval_format, DurationFormat.formatDaysHuman(res, it))
+    } ?: stringResource(R.string.frequency_info_unknown)
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -203,7 +208,7 @@ private fun VoteRow(
                     fontWeight = if (isMe) FontWeight.Bold else FontWeight.Medium,
                 )
                 Text(
-                    text = summary + (formatVoteDate(updatedAt)?.let { " · $it" } ?: ""),
+                    text = summary + (formatVoteDate(res, updatedAt)?.let { " · $it" } ?: ""),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -214,7 +219,8 @@ private fun VoteRow(
         if (isVariable) {
             TextButton(onClick = onToggleExpand) {
                 Text(
-                    text = if (isExpanded) "Masquer le detail" else "Voir les 12 mois",
+                    text = if (isExpanded) stringResource(R.string.frequency_info_hide_months)
+                    else stringResource(R.string.frequency_info_show_months),
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
@@ -227,7 +233,20 @@ private fun VoteRow(
 
 @Composable
 private fun MonthDetailGrid(daysPerMonth: Map<String, Int>) {
-    val labels = listOf("Jan", "Fev", "Mar", "Avr", "Mai", "Juin", "Jul", "Aou", "Sep", "Oct", "Nov", "Dec")
+    val labels = listOf(
+        stringResource(R.string.month_short_jan),
+        stringResource(R.string.month_short_feb),
+        stringResource(R.string.month_short_mar),
+        stringResource(R.string.month_short_apr),
+        stringResource(R.string.month_short_may),
+        stringResource(R.string.month_short_jun),
+        stringResource(R.string.month_short_jul),
+        stringResource(R.string.month_short_aug),
+        stringResource(R.string.month_short_sep),
+        stringResource(R.string.month_short_oct),
+        stringResource(R.string.month_short_nov),
+        stringResource(R.string.month_short_dec),
+    )
     Column {
         // 4 colonnes x 3 rangees
         for (row in 0 until 3) {
@@ -242,7 +261,7 @@ private fun MonthDetailGrid(daysPerMonth: Map<String, Int>) {
                             .padding(horizontal = 2.dp),
                     ) {
                         Text(
-                            text = "${labels[idx]}: ${v}j",
+                            text = stringResource(R.string.frequency_info_month_short_format, labels[idx], v),
                             style = MaterialTheme.typography.labelSmall,
                             modifier = Modifier.padding(4.dp),
                         )
@@ -250,17 +269,5 @@ private fun MonthDetailGrid(daysPerMonth: Map<String, Int>) {
                 }
             }
         }
-    }
-}
-
-private val DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-
-private fun formatVoteDate(iso: String?): String? {
-    if (iso.isNullOrBlank()) return null
-    return try {
-        val odt = OffsetDateTime.parse(iso)
-        "vote le ${odt.format(DATE_FMT)}"
-    } catch (_: Exception) {
-        null
     }
 }

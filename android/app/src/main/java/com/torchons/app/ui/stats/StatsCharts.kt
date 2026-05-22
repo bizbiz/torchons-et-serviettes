@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.ui.input.pointer.pointerInput
+import com.torchons.app.R
 import com.torchons.app.data.model.CategoryFrequencyResponse
 import com.torchons.app.data.model.PointsTimelineResponse
 import com.torchons.app.data.model.RetardTimelineResponse
@@ -112,6 +114,7 @@ fun PointsTimelineChart(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontSize = 10.sp,
     )
+    val chartEmptyMsg = stringResource(R.string.chart_empty)
 
     // Filtrer les users sans aucun point
     val users = data.users.filter { it.points.isNotEmpty() }
@@ -155,7 +158,7 @@ fun PointsTimelineChart(
 
         Canvas(modifier = canvasMod) {
             if (users.isEmpty() || xCount < 2 || maxY <= 0) {
-                drawCenterMessage(measurer, "Pas encore de donnees", labelStyle)
+                drawCenterMessage(measurer, chartEmptyMsg, labelStyle)
                 return@Canvas
             }
 
@@ -243,7 +246,7 @@ fun PointsTimelineChart(
                 val previous = u.pointsPrevious
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "$total pts",
+                        text = stringResource(R.string.chart_points_format, total),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = colorFor(i),
@@ -278,14 +281,15 @@ fun PointsTimelineChart(
 }
 
 /** Formate "+X% vs avant" ou "= vs avant" pour le footer comparatif. */
+@Composable
 private fun formatDeltaPct(current: Int, previous: Int): String {
-    if (previous == 0 && current == 0) return "= vs avant"
-    if (previous == 0) return "+∞ vs avant"   // reference nulle, on a fait quelque chose
+    if (previous == 0 && current == 0) return stringResource(R.string.chart_points_delta_equal)
+    if (previous == 0) return stringResource(R.string.chart_points_delta_inf)
     val pct = ((current - previous).toDouble() / previous.toDouble() * 100.0).roundToInt()
     return when {
-        pct == 0 -> "= vs avant"
-        pct > 0 -> "+${pct}% vs avant"
-        else -> "${pct}% vs avant"
+        pct == 0 -> stringResource(R.string.chart_points_delta_equal)
+        pct > 0 -> stringResource(R.string.chart_points_delta_pos_format, pct)
+        else -> stringResource(R.string.chart_points_delta_neg_format, pct)
     }
 }
 
@@ -309,11 +313,20 @@ fun WeekdayFrequencyChart(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontSize = 10.sp,
     )
+    val chartEmptyMsg = stringResource(R.string.chart_empty)
 
     val users = data.users.filter { it.counts.size == 7 }
     val maxY = users.flatMap { it.counts }.maxOrNull() ?: 0
 
-    val dayLabels = listOf("L", "M", "M", "J", "V", "S", "D")
+    val dayLabels = listOf(
+        stringResource(R.string.weekday_short_monday),
+        stringResource(R.string.weekday_short_tuesday),
+        stringResource(R.string.weekday_short_wednesday),
+        stringResource(R.string.weekday_short_thursday),
+        stringResource(R.string.weekday_short_friday),
+        stringResource(R.string.weekday_short_saturday),
+        stringResource(R.string.weekday_short_sunday),
+    )
 
     Column(modifier = modifier) {
         if (onPeriodChange != null) {
@@ -338,7 +351,7 @@ fun WeekdayFrequencyChart(
                 .padding(horizontal = 4.dp),
         ) {
             if (users.isEmpty() || maxY <= 0) {
-                drawCenterMessage(measurer, "Pas encore de donnees", labelStyle)
+                drawCenterMessage(measurer, chartEmptyMsg, labelStyle)
                 return@Canvas
             }
 
@@ -419,7 +432,7 @@ fun WeekdayFrequencyChart(
                         color = colorFor(i),
                     )
                     Text(
-                        text = "Sem $weekday · WE $weekend",
+                        text = stringResource(R.string.chart_weekday_sublabel_format, weekday, weekend),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -452,6 +465,7 @@ fun RetardTimelineChart(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontSize = 10.sp,
     )
+    val chartEmptyMsg = stringResource(R.string.chart_empty)
     // Couleur "alerte" pour le retard — code couleur retard.rouge sur la
     // home, mais en variation un peu plus violette pour ne pas confondre
     // avec les "tasks rouges en retard" du jour.
@@ -474,13 +488,13 @@ fun RetardTimelineChart(
                 FilterChip(
                     selected = period == RetardPeriod.ALL,
                     onClick = { if (period != RetardPeriod.ALL) onPeriodChange(RetardPeriod.ALL) },
-                    label = { Text("Depuis le debut") },
+                    label = { Text(stringResource(R.string.chart_retard_period_all)) },
                 )
                 Spacer(Modifier.width(8.dp))
                 FilterChip(
                     selected = period == RetardPeriod.MONTH,
                     onClick = { if (period != RetardPeriod.MONTH) onPeriodChange(RetardPeriod.MONTH) },
-                    label = { Text("30 derniers jours") },
+                    label = { Text(stringResource(R.string.chart_retard_period_month)) },
                 )
             }
             if (isLoading) {
@@ -497,13 +511,13 @@ fun RetardTimelineChart(
             FilterChip(
                 selected = showMinutes,
                 onClick = { showMinutes = true },
-                label = { Text("Minutes") },
+                label = { Text(stringResource(R.string.chart_retard_toggle_minutes)) },
             )
             Spacer(Modifier.width(8.dp))
             FilterChip(
                 selected = !showMinutes,
                 onClick = { showMinutes = false },
-                label = { Text("Taches") },
+                label = { Text(stringResource(R.string.chart_retard_toggle_tasks)) },
             )
         }
 
@@ -514,7 +528,7 @@ fun RetardTimelineChart(
                 .padding(horizontal = 4.dp),
         ) {
             if (points.size < 2 || maxY <= 0) {
-                drawCenterMessage(measurer, "Pas encore de donnees", labelStyle)
+                drawCenterMessage(measurer, chartEmptyMsg, labelStyle)
                 return@Canvas
             }
 
@@ -621,7 +635,7 @@ fun RetardTimelineChart(
                     color = retardColor,
                 )
                 Text(
-                    text = "Aujourd'hui",
+                    text = stringResource(R.string.chart_retard_today),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -645,7 +659,7 @@ fun RetardTimelineChart(
                         color = deltaColor,
                     )
                     Text(
-                        text = "vs debut",
+                        text = stringResource(R.string.chart_retard_vs_start),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -671,10 +685,10 @@ fun PeriodChips(
     modifier: Modifier = Modifier,
 ) {
     val opts = listOf(
-        WeekdayPeriod.WEEK to "Sem",
-        WeekdayPeriod.MONTH to "Mois",
-        WeekdayPeriod.THREE_MONTHS to "3 mois",
-        WeekdayPeriod.ALL to "Tout",
+        WeekdayPeriod.WEEK to stringResource(R.string.chart_period_week),
+        WeekdayPeriod.MONTH to stringResource(R.string.chart_period_month),
+        WeekdayPeriod.THREE_MONTHS to stringResource(R.string.chart_period_three_months),
+        WeekdayPeriod.ALL to stringResource(R.string.chart_period_all),
     )
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -713,6 +727,8 @@ fun CategoryFrequencyChart(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontSize = 10.sp,
     )
+    val chartEmptyMsg = stringResource(R.string.chart_empty)
+    val topCategoryNone = stringResource(R.string.chart_top_category_none)
 
     val cats = data.categories
     val users = data.users
@@ -741,7 +757,7 @@ fun CategoryFrequencyChart(
                 .padding(horizontal = 4.dp),
         ) {
             if (cats.isEmpty() || users.isEmpty() || maxY <= 0) {
-                drawCenterMessage(measurer, "Pas encore de donnees", labelStyle)
+                drawCenterMessage(measurer, chartEmptyMsg, labelStyle)
                 return@Canvas
             }
 
@@ -823,8 +839,8 @@ fun CategoryFrequencyChart(
                         color = colorFor(i),
                     )
                     val label = if (top != null && topCount > 0) {
-                        "Top : ${top.categoryName} ($topCount)"
-                    } else "—"
+                        stringResource(R.string.chart_top_category_format, top.categoryName, topCount)
+                    } else topCategoryNone
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelSmall,

@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,8 +18,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 
 /** Ligne de notation affinite per-user, telle qu'exposee par GET /ratings. */
 data class AffinityRatingRow(
@@ -54,7 +55,7 @@ fun AffinityInfoDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Affinite : comment ca marche ?") },
+        title = { Text(stringResource(R.string.affinity_info_title)) },
         text = {
             Column(
                 modifier = Modifier
@@ -63,7 +64,7 @@ fun AffinityInfoDialog(
                     .verticalScroll(rememberScrollState()),
             ) {
                 Text(
-                    text = "Ton affinite est ta preference personnelle pour cette tache (de 1 = je deteste a 10 = j'adore). Elle sert a personnaliser TES suggestions, mais n'influence pas celles des autres membres du foyer. Personne ne peut donc te demander de la revoter — c'est ton ressenti.",
+                    text = stringResource(R.string.affinity_info_message),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -71,12 +72,15 @@ fun AffinityInfoDialog(
 
                 if (myRow != null) {
                     AffinityRow(
-                        name = "Toi",
+                        name = stringResource(R.string.affinity_info_me_label),
                         score = myRow.affinity,
                         isMe = true,
                         actionButton = {
                             OutlinedButton(onClick = onEditMyAffinity) {
-                                Text("Modifier mon affinite", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    stringResource(R.string.affinity_info_button_edit_my),
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
                             }
                         },
                     )
@@ -97,7 +101,7 @@ fun AffinityInfoDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Fermer") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         },
     )
 }
@@ -120,7 +124,9 @@ private fun AffinityRow(
                 fontWeight = if (isMe) FontWeight.Bold else FontWeight.Medium,
             )
             Text(
-                text = score?.let { "$it/10 — ${affinityLabel(it)}" } ?: "Pas encore note",
+                text = score?.let {
+                    stringResource(R.string.affinity_info_row_format, it, affinityLabel(it))
+                } ?: stringResource(R.string.affinity_info_not_rated),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -132,11 +138,14 @@ private fun AffinityRow(
     }
 }
 
-/** Resume textuel d'un score d'affinite 1..10. */
-private fun affinityLabel(score: Int): String = when {
-    score <= 2 -> "je deteste"
-    score <= 4 -> "bof"
-    score <= 6 -> "neutre"
-    score <= 8 -> "j'aime bien"
-    else -> "j'adore"
-}
+/** Resume textuel localise d'un score d'affinite 1..10. */
+@Composable
+private fun affinityLabel(score: Int): String = stringResource(
+    when {
+        score <= 2 -> R.string.affinity_label_hate
+        score <= 4 -> R.string.affinity_label_meh
+        score <= 6 -> R.string.affinity_label_neutral
+        score <= 8 -> R.string.affinity_label_like
+        else -> R.string.affinity_label_love
+    }
+)
