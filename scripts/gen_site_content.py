@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""Génère site/changelog.html + site/roadmap.html depuis la SOURCE UNIQUE.
+"""Génère site/{changelog,roadmap}.html (FR) + site/en/{changelog,roadmap}.html (EN)
+depuis la SOURCE UNIQUE.
 
-Source de vérité = `backend/app/content/changelog.md` et `roadmap.md`,
-exactement les mêmes fichiers que l'app sert via `GET /api/changelog` et
-`GET /api/roadmap` (cf `backend/app/api/content.py`). Le site et l'app
-affichent donc le MÊME contenu — aucun décalage possible entre versions.
+Source de vérité :
+- FR : `backend/app/content/changelog.md` et `roadmap.md` (servies
+  par `GET /api/changelog` et `GET /api/roadmap` avec Accept-Language: fr).
+- EN : `backend/app/content/changelog.en.md` et `roadmap.en.md` (servies
+  avec Accept-Language: en).
 
-À relancer chaque fois que ces .md changent (typiquement à chaque release,
-quand on met à jour le changelog). Idempotent. Stdlib uniquement, aucune
-dépendance — cohérent avec le principe « site statique, zéro build lourd,
-zéro requête externe au runtime » (le markdown est figé en HTML ici, pas
-fetché côté client).
+Le site et l'app affichent donc le MÊME contenu — aucun décalage
+possible entre versions. Si le fichier EN est absent, on saute la
+génération EN (mais on garde FR).
+
+À relancer chaque fois que ces .md changent (typiquement à chaque
+release, quand on met à jour le changelog). Idempotent. Stdlib
+uniquement.
 
 Usage : python scripts/gen_site_content.py
 """
@@ -25,8 +29,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CONTENT = ROOT / "backend" / "app" / "content"
 SITE = ROOT / "site"
+SITE_EN = SITE / "en"
 
-PAGE = """<!DOCTYPE html>
+# Template FR — historique, garde le lang-switch "EN bientôt" pour
+# rester cohérent avec le reste du site. Désormais on génère
+# vraiment les pages EN, donc le switch peut pointer dessus.
+PAGE_FR = """<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -38,8 +46,10 @@ PAGE = """<!DOCTYPE html>
 <meta property="og:site_name" content="Torchons & Serviettes">
 <meta property="og:title" content="{title} — Torchons & Serviettes">
 <meta property="og:description" content="{desc}">
-<meta property="og:url" content="https://torchonsetserviettes.app/{slug}">
+<meta property="og:url" content="https://torchonsetserviettes.app/{slug}.html">
 <meta name="twitter:card" content="summary">
+<link rel="alternate" hreflang="fr" href="https://torchonsetserviettes.app/{slug}.html">
+<link rel="alternate" hreflang="en" href="https://torchonsetserviettes.app/en/{slug}.html">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -51,7 +61,7 @@ PAGE = """<!DOCTYPE html>
       <a href="faq.html">FAQ</a>
       <a href="privacy.html">Confidentialité</a>
       <a href="contact.html">Contact</a>
-      <span class="lang-switch" title="English translation pending"><span style="opacity:.4">EN</span> · <strong>FR</strong></span>
+      <span class="lang-switch"><a href="en/{slug}.html">EN</a> · <strong>FR</strong></span>
     </nav>
   </div>
 </header>
@@ -76,6 +86,67 @@ PAGE = """<!DOCTYPE html>
       <a href="changelog.html">Nouveautés</a> ·
       <a href="roadmap.html">Feuille de route</a> ·
       <a href="privacy.html">Confidentialité</a> ·
+      <a href="contact.html">Contact</a>
+    </span>
+  </div>
+</footer>
+<script>document.getElementById('y').textContent=new Date().getFullYear();</script>
+</body>
+</html>
+"""
+
+PAGE_EN = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title} — Torchons &amp; Serviettes</title>
+<meta name="description" content="{desc}">
+<meta name="theme-color" content="#0f766e">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Torchons & Serviettes">
+<meta property="og:title" content="{title} — Torchons & Serviettes">
+<meta property="og:description" content="{desc}">
+<meta property="og:url" content="https://torchonsetserviettes.app/en/{slug}.html">
+<meta name="twitter:card" content="summary">
+<link rel="alternate" hreflang="fr" href="https://torchonsetserviettes.app/{slug}.html">
+<link rel="alternate" hreflang="en" href="https://torchonsetserviettes.app/en/{slug}.html">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>Torchons &amp; Serviettes</a>
+    <nav class="site">
+      <a href="about.html">About</a>
+      <a href="faq.html">FAQ</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="contact.html">Contact</a>
+      <span class="lang-switch"><strong>EN</strong> · <a href="../{slug}.html">FR</a></span>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>{title}</h1>
+    <p class="lead">{lead}</p>
+    <p class="meta">Auto-generated from the same source as the
+      application — no drift between versions.
+      <small>(updated: {today})</small></p>
+{body}
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <span>© <span id="y">2026</span> Torchons &amp; Serviettes</span>
+    <span>
+      <a href="about.html">About</a> ·
+      <a href="faq.html">FAQ</a> ·
+      <a href="changelog.html">What's new</a> ·
+      <a href="roadmap.html">Roadmap</a> ·
+      <a href="privacy.html">Privacy</a> ·
       <a href="contact.html">Contact</a>
     </span>
   </div>
@@ -161,9 +232,25 @@ def md_to_html(md: str) -> str:
     return "\n".join(parts)
 
 
-def build(src_name: str, slug: str, title: str, desc: str, lead: str) -> Path:
-    md = (CONTENT / src_name).read_text(encoding="utf-8")
-    out = PAGE.format(
+def build(
+    src_name: str,
+    slug: str,
+    title: str,
+    desc: str,
+    lead: str,
+    template: str,
+    out_dir: Path,
+) -> Path | None:
+    """Génère un .html à partir du markdown source.
+
+    Retourne le path écrit, ou None si le fichier source n'existe pas
+    (cas du fallback EN absent — on saute proprement sans casser).
+    """
+    src = CONTENT / src_name
+    if not src.is_file():
+        return None
+    md = src.read_text(encoding="utf-8")
+    out = template.format(
         title=title,
         desc=desc,
         slug=slug,
@@ -171,26 +258,58 @@ def build(src_name: str, slug: str, title: str, desc: str, lead: str) -> Path:
         today=date.today().isoformat(),
         body=md_to_html(md),
     )
-    dest = SITE / f"{slug}.html"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    dest = out_dir / f"{slug}.html"
     dest.write_text(out, encoding="utf-8", newline="\n")
     return dest
 
 
 def main() -> None:
-    a = build(
-        "changelog.md", "changelog", "Nouveautés",
-        "Les dernières évolutions de Torchons & Serviettes, version par version.",
-        "Les dernières évolutions de l'application, version par version. "
-        "Même contenu que l'écran « Nouveautés » de l'app.",
+    written: list[Path] = []
+
+    # --- FR ---
+    written.append(
+        build(
+            "changelog.md", "changelog", "Nouveautés",
+            "Les dernières évolutions de Torchons & Serviettes, version par version.",
+            "Les dernières évolutions de l'application, version par version. "
+            "Même contenu que l'écran « Nouveautés » de l'app.",
+            PAGE_FR, SITE,
+        )
     )
-    b = build(
-        "roadmap.md", "roadmap", "Feuille de route",
-        "Les idées et fonctionnalités prévues pour Torchons & Serviettes.",
-        "Les idées et chantiers prévus pour la suite. Susceptible d'évoluer "
-        "selon vos retours.",
+    written.append(
+        build(
+            "roadmap.md", "roadmap", "Feuille de route",
+            "Les idées et fonctionnalités prévues pour Torchons & Serviettes.",
+            "Les idées et chantiers prévus pour la suite. Susceptible d'évoluer "
+            "selon vos retours.",
+            PAGE_FR, SITE,
+        )
     )
-    print(f"généré : {a.relative_to(ROOT)}")
-    print(f"généré : {b.relative_to(ROOT)}")
+
+    # --- EN ---
+    written.append(
+        build(
+            "changelog.en.md", "changelog", "What's new",
+            "Latest updates to Torchons & Serviettes, version by version.",
+            "The latest updates to the app, version by version. "
+            "Same content as the \"What's new\" screen in the app.",
+            PAGE_EN, SITE_EN,
+        )
+    )
+    written.append(
+        build(
+            "roadmap.en.md", "roadmap", "Roadmap",
+            "Planned ideas and features for Torchons & Serviettes.",
+            "Ideas and upcoming work. Subject to change based on your feedback.",
+            PAGE_EN, SITE_EN,
+        )
+    )
+
+    for path in written:
+        if path is None:
+            continue
+        print(f"généré : {path.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

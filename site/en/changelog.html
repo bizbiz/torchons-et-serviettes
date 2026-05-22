@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What's new — Torchons &amp; Serviettes</title>
+<meta name="description" content="Latest updates to Torchons & Serviettes, version by version.">
+<meta name="theme-color" content="#0f766e">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Torchons & Serviettes">
+<meta property="og:title" content="What's new — Torchons & Serviettes">
+<meta property="og:description" content="Latest updates to Torchons & Serviettes, version by version.">
+<meta property="og:url" content="https://torchonsetserviettes.app/en/changelog.html">
+<meta name="twitter:card" content="summary">
+<link rel="alternate" hreflang="fr" href="https://torchonsetserviettes.app/changelog.html">
+<link rel="alternate" hreflang="en" href="https://torchonsetserviettes.app/en/changelog.html">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>Torchons &amp; Serviettes</a>
+    <nav class="site">
+      <a href="about.html">About</a>
+      <a href="faq.html">FAQ</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="contact.html">Contact</a>
+      <span class="lang-switch"><strong>EN</strong> · <a href="../changelog.html">FR</a></span>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <h1>What's new</h1>
+    <p class="lead">The latest updates to the app, version by version. Same content as the "What's new" screen in the app.</p>
+    <p class="meta">Auto-generated from the same source as the
+      application — no drift between versions.
+      <small>(updated: 2026-05-22)</small></p>
+<h2>v0.35.16 — 2026-05-21</h2>
+<h3>Unified absence popup with the Presence &amp; Streaks modal</h3>
+<ul>
+<li>The popup that appears automatically on launch when the app detects <strong>days of absence to confirm</strong> now opens the <strong>same editable modal</strong> used everywhere else (Household, Stats, profile) — no more two separate surfaces doing the same thing. You can now edit any day (not just those flagged as uncertain), see your streaks / records, switch between household members, change month — all in one place.</li>
+<li>Edits are saved immediately on each tap. When you close the modal, the reminder is marked as resolved and the &quot;unconfirmed days&quot; banner disappears from the home screen.</li>
+</ul>
+<h2>v0.35.15 — 2026-05-21</h2>
+<h3>EN translation — Backend error messages</h3>
+<ul>
+<li>The most visible error messages (33 cases) are now bilingual, translated server-side based on your phone&#x27;s language. Covers all critical flows: <strong>joining a household</strong> (expired QR code, already used, etc.), <strong>recovering my household</strong> (invalid code, etc.), <strong>leaving / switching household</strong>, <strong>validating a task</strong> (anti-duplicate, participants outside household), <strong>task completion</strong> not found, etc.</li>
+<li>If your phone is in English: &quot;Invalid invitation code&quot; instead of &quot;Code d&#x27;invitation invalide&quot;, &quot;Task already completed 5 min ago. Next slot at…&quot; instead of the FR version, etc.</li>
+<li>The ~60 other backend messages remain in French for now (progressive migration — no regression: older clients still see FR).</li>
+</ul>
+<h2>Website v0.35.14b — 2026-05-21</h2>
+<h3>Bilingual website (partial)</h3>
+<ul>
+<li>The torchonsetserviettes.app website is now available in English on the main pages: <strong>home</strong>, <strong>About</strong>, <strong>Contact</strong> and <strong>404 page</strong>. Language switcher in the menu.</li>
+<li><strong>FAQ</strong>, <strong>Privacy policy</strong>, <strong>What&#x27;s new</strong> and <strong>Roadmap</strong> pages remain in French for now (the switcher marks them &quot;FR&quot; with a small &quot;EN coming&quot;). Translation planned in a dedicated upcoming ship — sensitive legal content that deserves careful review.</li>
+</ul>
+<h2>v0.35.14 — 2026-05-21</h2>
+<h3>EN translation — Template catalog</h3>
+<ul>
+<li>The <strong>room names</strong> (Cuisine→Kitchen, Salle de bain→Bathroom, Buanderie→Laundry room, …), the <strong>categories</strong> (Ménage→Cleaning, Linge→Laundry, Administratif→Admin, Soin personnel→Personal care, …) and the <strong>41 catalog tasks</strong> (Faire la vaisselle→Do the dishes, Passer l&#x27;aspirateur→Vacuum, Détartrer la cafetière→Descale the coffee maker, …) are now translated to English.</li>
+<li>The app automatically sends your phone&#x27;s language to the server, so importing from the &quot;Catalog&quot; screen will create tasks in English if your phone is in English, in French otherwise.</li>
+</ul>
+<h2>v0.35.13 — 2026-05-21</h2>
+<h3>EN translation — Complete onboarding</h3>
+<ul>
+<li>The onboarding screens are now bilingual: <strong>Welcome</strong> (3 buttons Create / Join / Recover), <strong>Login</strong> (Tailscale fallback, user selection), full <strong>Create household wizard</strong> (5 steps: first name, household name, rooms, tasks, recovery code), <strong>Join a household</strong> (QR scan + first name + add device + recovery code screen), **Recover my household** (code entry + identity confirmation with plurals), and <strong>Invite someone</strong> (QR code + variants for add-device vs guest).</li>
+<li>The roles in the restore screen (&quot;admin / former member / member&quot;) are localised.</li>
+<li><strong>The Android app is now fully bilingual FR + EN.</strong> Switch your phone&#x27;s language and you&#x27;ll see the whole app change. Still to translate: backend error messages, task template catalog, and website.</li>
+</ul>
+<h2>v0.35.12 — 2026-05-21</h2>
+<h3>EN translation — Task detail &amp; edit</h3>
+<ul>
+<li>The <strong>Task detail</strong> screen is now bilingual: urgency state, &quot;For…&quot; banner, &quot;you haven&#x27;t voted&quot; banner, Effort &amp; Affinity card with &quot;+ info&quot; links, frequency, tolerance, completion history (individual and collective cards) and modification history (votes + edits) with field names translated.</li>
+<li>The <strong>Edit / Create task</strong> screen is bilingual: title, &quot;Duplicated from…&quot; chip, suggestions, category / room / frequency dropdowns, &quot;every how often&quot; field, smart breakdown, consensus with plurals, 12-month table (localised month names), tolerance and effort.</li>
+<li>The app is now translated to about 95%. Still to translate: onboarding screens (Welcome / Login / household creation / QR scan), template catalog and website.</li>
+</ul>
+<h2>v0.35.11 — 2026-05-21</h2>
+<h3>EN translation — Home &amp; Tasks</h3>
+<ul>
+<li>The <strong>Home</strong> and <strong>Tasks</strong> tabs are now bilingual: title, greeting, &quot;Me&quot;/&quot;Household&quot; cards, suggestions, buttons (Done / Already done / Together), tri-state filters, search, and all proposition dialogs between members display in English if your phone is in English. Plurals (1 day vs N days, 1 pt vs N pts) are handled correctly in both languages.</li>
+<li>The <strong>Task detail</strong> and <strong>Edit</strong> screens remain in FR for now — their translation lands in the next version.</li>
+</ul>
+<h2>v0.35.10 — 2026-05-21</h2>
+<h3>EN translation — Catalog</h3>
+<ul>
+<li>The <strong>Catalog</strong> screen (pre-built template import) is now bilingual: tab titles, attachment dialog and import summary display in English if your phone is in English. Plurals (&quot;1 task created&quot; vs &quot;3 tasks created&quot;) are handled correctly in both languages.</li>
+</ul>
+<h2>v0.35.9 — 2026-05-20</h2>
+<h3>Bilingual app preparation (FR + EN)</h3>
+<ul>
+<li>Starting the EN translation of the app: the <strong>Categories</strong> and <strong>Rooms</strong> screens (from the Household screen) are the first translated. Switch your phone to English: these 2 screens display in English. Other screens remain in French during the progressive migration.</li>
+</ul>
+<h2>v0.35.8 — 2026-05-20</h2>
+<h3>Home &amp; Tasks auto-refresh</h3>
+<ul>
+<li>The <strong>Home</strong> tab refreshes on each open (projections, prompts, fair-share) — no more pull-to-refresh after a change elsewhere.</li>
+<li>The <strong>Tasks</strong> tab: same, urgencies/lateness refresh on open if you&#x27;ve changed presence or anything else in another surface.</li>
+</ul>
+<h2>v0.35.7 — 2026-05-20</h2>
+<h3>Stats auto-refresh</h3>
+<ul>
+<li>The Stats tab refreshes automatically every time you open it: if you&#x27;ve completed a task, modified a presence or changed anything elsewhere in the app, your streak, leaderboard and badges reflect these changes without pull-to-refresh.</li>
+</ul>
+<h2>v0.35.6 — 2026-05-20</h2>
+<h3>Up-to-date display &amp; labels</h3>
+<ul>
+<li>The &quot;Connected via Tailscale&quot; subtitle in the profile (Settings) is removed: misleading on beta which uses Scaleway. The effective channel remains visible in Settings &gt; About &gt; Build.</li>
+<li>After editing presence in the &quot;Presence &amp; streaks&quot; modal, the Streak block of the Summary (Stats tab) refreshes automatically on modal close — no more pull-to-refresh.</li>
+</ul>
+<h2>v0.35.5 — 2026-05-19</h2>
+<h3>Enriched suggestion catalog</h3>
+<ul>
+<li>Two new suggested categories: &quot;Personal care&quot; (face mask, hairdresser/dentist/doctor appointment) and &quot;Pet&quot; (water, litter box, bowls, basket).</li>
+<li>&quot;Maintenance&quot; category finally supplied: washing machine / dishwasher filters, descale the coffee maker, sharpen knives, defrost the freezer, clean the vacuum, light switches…</li>
+<li>More Gardening suggestions (prune, repot, season) and Admin (taxes, declare my hours, subscriptions, paperwork).</li>
+<li>The &quot;Groceries&quot; category and its suggestion are removed (other apps do this better).</li>
+</ul>
+<h2>v0.35.4 — 2026-05-19</h2>
+<h3>Household creation: actually fixed (database constraint)</h3>
+<ul>
+<li>The real blocker for &quot;empty household&quot; was a too-strict database constraint: a room or category name had to be unique across the ENTIRE app, instead of being unique per household. Creating a household with rooms/tasks already present in another of your households failed. Now the same room/category name can exist in multiple households — the &quot;Create a household&quot; import works.</li>
+</ul>
+<h2>v0.35.3 — 2026-05-19</h2>
+<h3>Household creation: rooms/tasks finally created (server fix)</h3>
+<ul>
+<li>Fix for the bug where creating a household (while already a member of another) left it <strong>empty</strong>: the import failed server-side when two catalog elements had the same name. Rooms, categories and tasks chosen during the wizard are now properly created.</li>
+</ul>
+<h2>v0.35.2 — 2026-05-19</h2>
+<h3>Household creation: visible errors</h3>
+<ul>
+<li>If room/task import fails during &quot;Create a household&quot;, an explicit error message now appears (before: the household could remain empty with no explanation).</li>
+</ul>
+<h2>v0.35.1 — 2026-05-19</h2>
+<h3>Household creation fix</h3>
+<ul>
+<li>Rooms and tasks chosen during the &quot;Create a household&quot; wizard now appear immediately in the new household (before: you had to switch households and come back for them to display).</li>
+</ul>
+<h2>v0.35.0 — 2026-05-19</h2>
+<h3>Create a household: real guided wizard</h3>
+<ul>
+<li>&quot;Create a new household&quot; now opens the same wizard as first creation (household name, then rooms, then tasks) instead of just a &quot;name&quot; field. The household is ready to use and the app switches to it automatically. Your first name and recovery code are not re-asked (existing account).</li>
+</ul>
+<h2>v0.34.4 — 2026-05-19</h2>
+<h3>Household name up to date in Settings</h3>
+<ul>
+<li>In Settings, the &quot;🏠 &lt;household name&gt;&quot; line now updates when you switch household or leave one from the Household screen (before: it could display an already-left household until the Household screen was reopened).</li>
+</ul>
+<h2>v0.34.3 — 2026-05-19</h2>
+<h3>Left households hidden from &quot;Switch household&quot;</h3>
+<ul>
+<li>Households you&#x27;ve left no longer appear in the &quot;Switch household&quot; list (before: they remained displayed as &quot;Former member&quot;).</li>
+</ul>
+<h2>v0.34.2 — 2026-05-19</h2>
+<h3>Households: up-to-date display without refresh</h3>
+<ul>
+<li>After creating a household, the &quot;Switch household&quot; option appears immediately in the Household screen (no need to come back or reload).</li>
+<li>When you leave a household, it disappears immediately from the &quot;Switch household&quot; list. Trying to leave an already-left household no longer shows an error (404).</li>
+</ul>
+<h2>v0.34.1 — 2026-05-19</h2>
+<h3>Streaks: fixed calculation + clear display</h3>
+<ul>
+<li>The streak was no longer calculated correctly when it spanned two months (e.g., April 19 to May 6) and the record was wrong. Fixed: streak and record are now calculated over the full history (no more truncation to the displayed month).</li>
+<li>New visual cue in the calendar: a <strong>gold</strong> border surrounds the days of your <strong>best streak (record)</strong>, an <strong>indigo</strong> border those of the <strong>current streak</strong>. Cell background remains the presence (green / soft red / grey) and the star marks days when a task was done. Legend updated.</li>
+</ul>
+<h2>v0.34.0 — 2026-05-18</h2>
+<h3>Presence &amp; streaks: a single calendar</h3>
+<ul>
+<li>The presence calendar and the streaks calendar are now one: a single &quot;Presence &amp; streaks&quot; screen where you set present / absent days, see stars for days when a task was done and the connecting streak. Openable from the Household screen (&quot;Open presence &amp; streaks calendar&quot; button), from Stats (streak block in the summary) and from a member&#x27;s profile.</li>
+<li>The Household screen no longer contains a duplicate calendar: it keeps the presence settings (pause when absent, home Wi-Fi) and a button to the calendar.</li>
+<li>Editing a presence day immediately recalculates household task lateness and the streak.</li>
+</ul>
+<h2>v0.33.1 — 2026-05-18</h2>
+<h3>Fixes (Household screen / presence / streaks)</h3>
+<ul>
+<li>The household name displays immediately when opening the Household screen (no more brief &quot;My household&quot; while loading).</li>
+<li>Streaks calendar: stars and streak line now stay inside the calendar (no more marks overflowing outside the grid).</li>
+<li>Editing presence (present / absent) immediately recalculates household task lateness and the streak: the display is up to date without having to reload.</li>
+</ul>
+<h2>v0.33.0 — 2026-05-18</h2>
+<h3>Dedicated Household screen</h3>
+<ul>
+<li>Household-related settings are now grouped in a dedicated &quot;Household&quot; screen (title = household name), accessible from the household line in Settings and from the &quot;Household&quot; card on the home screen. Two clear groups: &quot;This household&quot; (shared between members) and &quot;My account&quot; (applies to all your households), with an (i) explaining the scope.</li>
+<li>The old &quot;My households&quot; screen disappears: &quot;Create a new household&quot; is a button in Settings (automatic switch to the created household), and &quot;Switch household&quot; is a selection sheet directly in the Household screen — shown only if you have at least two households.</li>
+<li>Rooms and Categories are now stored under the Household screen. A &quot;Simulate catch-up&quot; button opens the same simulator as the &quot;Household&quot; card.</li>
+</ul>
+<h3>Editable presence calendar</h3>
+<ul>
+<li>A calendar in the Household screen lets you set or clear present / absent days, in the past as in the future (plan an absence ahead). Three states: green = present, soft red = absent (home tasks frozen that day), grey = unset (counts as absent by default). An icon indicates the source: Wi-Fi (detected) or hand (set manually).</li>
+<li>A day set by hand is never overwritten by Wi-Fi auto-detection (manual priority). Legend and detailed (i) under the grid. Same grid as the &quot;Days to confirm&quot; reminder, with a &quot;View full calendar&quot; link from that reminder.</li>
+</ul>
+<h3>Streaks calendar</h3>
+<ul>
+<li>From the Stats tab (streak block in summary) and a member&#x27;s profile, a read-only streaks calendar: a star on each day when the member did at least one task, and a line connecting active days. The streak passes through confirmed absent days (a legitimate absence doesn&#x27;t break the streak) and breaks on an uncertain day or a present day without a task. Integrated member selector; &quot;Edit presence&quot; link to the Household screen.</li>
+</ul>
+<h2>v0.32.0 — 2026-05-12</h2>
+<h3>Gamification — can be disabled</h3>
+<ul>
+<li>New switch &quot;Enable gamification for my account&quot; at the top of Settings. If disabled, you no longer see points, bonuses, stats, leaderboard, badges, streaks and fair-share in any of your households. The Stats tab disappears from the navigation bar for a cleaner app.</li>
+<li>New switch &quot;Gamification in this household&quot; in Settings &gt; Advanced. Any member can toggle it — a confirmation dialog reminds you that the other member will also be affected before applying.</li>
+<li>When gamification is disabled, the celebration after a validated task remains (confetti + emoji + encouragement message) but without &quot;+X pts&quot;.</li>
+<li>New link &quot;Why am I not earning points for some tasks?&quot; in Settings — visible only if you&#x27;re in a state without gamification (yourself OR at least one of your households). It explains the precise cause (you, one household, multiple stacked causes, multi-household mixed) and offers a button to re-enable directly.</li>
+<li>The text of the task effort info popup adapts its wording: if gamification is disabled, points and fair-share are no longer mentioned, only time estimate is discussed.</li>
+</ul>
+<h2>v0.31.3 — 2026-05-12</h2>
+<h3>Gamification — points readability</h3>
+<ul>
+<li>Display of predicted points on each home screen card (&quot;💰 N pts&quot;), with mention of the late bonus when applicable (&quot;🔥 +M pts late bonus&quot;)</li>
+<li>Clickable (i) icon next to solo tasks (0 points) that opens an explanatory popup: why a single participant = no points, and why validating the task is still useful</li>
+<li>Same popup available in the &quot;Done!&quot; dialog when the task won&#x27;t earn points</li>
+</ul>
+<h2>v0.31.2 — 2026-05-12</h2>
+<h3>Absences (home freeze)</h3>
+<ul>
+<li>The &quot;Days to confirm&quot; dialog now pre-checks all days as absent by default. No need to toggle everything after a long absence — just mark the few days when you were actually here.</li>
+<li>&quot;At home&quot; tasks no longer display as late during confirmed absence days. Lateness is frozen and resumes when you return, without unfair &quot;debt&quot; accumulation.</li>
+<li>Stats (weekly, monthly, total, leaderboard, long-term, household totals, weekly summary) now ignore completions falling on an absent day — consistent with the freeze applied to tasks.</li>
+<li>After resolving an absence prompt, tasks are automatically recomputed: the display is always correct, no more visual inconsistency.</li>
+</ul>
+<h2>v0.31.1 — 2026-05-01</h2>
+<h3>Under the hood</h3>
+<ul>
+<li>Server-side CSV history export (completions + tasks) set up. Accessible only via curl with JWT for now; a &quot;My data&quot; screen in Settings will follow in a future iteration.</li>
+<li>This release also includes v0.31.0 (weekly stats + household totals + long-term + goals + add-device) which had never been installed on the device.</li>
+</ul>
+<h2>v0.31.0 — 2026-04-30</h2>
+<h3>Weekly statistics</h3>
+<ul>
+<li>A new &quot;This week&quot; card at the top of the Stats tab summarises your household week: number of tasks, accumulated points, ranking by member with 🏆 emoji on the top, and top 3 most-done tasks. Left/right arrows to navigate past weeks.</li>
+</ul>
+<h3>Household-wide statistics</h3>
+<ul>
+<li>The user profile modal (tap on a name in Stats) now displays a &quot;Household total&quot; card with 3 columns (this week / this month / all-time). If the household chains several days in a row with &gt;=1 task done by anyone, a &quot;🔥 N-day streak&quot; counter appears. The &quot;Split&quot; section (bars per member) is kept as a complement.</li>
+</ul>
+<h3>Long-term stats by room</h3>
+<ul>
+<li>New &quot;Split by room&quot; card on Stats: horizontal bars to visualise which room concentrates the most tasks over the period (Month / Quarter / Year). Also displays estimated cumulated time (deduced from the effort consensus of each task, 1pt = 5min).</li>
+</ul>
+<h3>Personal and shared goals</h3>
+<ul>
+<li>New &quot;My goals&quot; card on Stats. Tap + to create a goal (e.g., 3 tasks per week), with period choice (per day/week/month) and target (1 to 30). Progress is calculated automatically and displayed with a progress bar per goal. Long-press to delete.</li>
+</ul>
+<h3>Add one of my devices</h3>
+<ul>
+<li>A new &quot;Add one of my devices&quot; card in Settings lets you generate a QR to connect a tablet or a second phone to your account without creating a new household member.</li>
+</ul>
+<h2>v0.30.1 — 2026-04-30</h2>
+<h3>Household security (Settings)</h3>
+<ul>
+<li>New &quot;Household security&quot; section in Settings with two actions:</li>
+<li>&quot;Regenerate my recovery code&quot;: replaces your old code with a new one, displayed only once with Copy and Share buttons. Useful if you didn&#x27;t have a code yet, or if you suspect the old one leaked.</li>
+<li>&quot;Leave household&quot;: you exit the household while preserving your server-side history. If you&#x27;re a member of another household, you switch to it automatically; otherwise you return to the home screen.</li>
+</ul>
+<h3>Support / Chat with the dev</h3>
+<ul>
+<li>New card at the bottom of Settings with a word from the dev (solo author). Two buttons: &quot;Buy a coffee&quot; (opens the Buy Me a Coffee page in your browser) and &quot;Write to me&quot; (opens the mail app with a draft to the dev). Feedback, ideas and bugs are welcome.</li>
+</ul>
+<h2>v0.30.0 — 2026-04-29</h2>
+<h3>Invite someone to the household</h3>
+<ul>
+<li>A new &quot;Invite someone&quot; card in Settings lets you generate a QR invitation code valid for 15 minutes. The invited person installs the app, chooses &quot;Join a household&quot; and scans the QR to become a household member.</li>
+</ul>
+<h3>Onboarding without an account</h3>
+<ul>
+<li>On first app open (or after uninstall), a welcome screen offers three choices: &quot;Create a household&quot;, &quot;Join a household&quot; (QR scan), or &quot;Recover my household&quot; (recovery code). No more need to create an account with a username.</li>
+<li>The &quot;Create a household&quot; flow guides in 5 steps: your first name, household name, your home&#x27;s rooms, the tasks you want to track (drawn from the catalog), then your recovery code.</li>
+<li>For now the home Tailscale network continues to log you in automatically as before — you&#x27;ll only see the new welcome if you reinstall the app.</li>
+</ul>
+<h3>Recovery code</h3>
+<ul>
+<li>On household creation or join, a unique 8-character code (XXXX-XXXX) is displayed. Note it down: it lets you recover your household + admin rights if you lose your phone. Shown only once, shareable via mail/messaging through a dedicated button.</li>
+</ul>
+<h2>v0.29.0 — 2026-04-29</h2>
+<h3>&quot;+ info&quot; modal on effort</h3>
+<ul>
+<li>On a task&#x27;s detail, in the &quot;Effort &amp; Affinity&quot; section, a new &quot;Effort &amp; points · + info&quot; link opens a modal explaining what the effort vote is for: calculation of points earned when the task is validated, fair-share between members, and overall household backlog.</li>
+<li>The modal lists each member&#x27;s effort vote with the vote date. &quot;Edit my vote&quot; buttons on your row, &quot;Ask to re-vote&quot; on others, and &quot;Ask to vote&quot; for assigned members who haven&#x27;t voted yet.</li>
+<li>Mirror of the &quot;+ info&quot; modal already existing for frequency.</li>
+</ul>
+<h2>v0.28.2 — 2026-04-29</h2>
+<h3>Recognisable notification icon</h3>
+<ul>
+<li>Notifications now display the wizard&#x27;s hat silhouette in the status bar, instead of a generic white square. The background pill uses the app&#x27;s indigo colour on Android 8+.</li>
+</ul>
+<h2>v0.28.1 — 2026-04-28</h2>
+<h3>Push notifications finally reliable</h3>
+<ul>
+<li>The notification token is now re-synced on app start, no longer only after login. Before this fix, a user logged in for a long time via Tailscale never re-sent their token to the server — result: no notifications arrived. Opening the app is now enough to fix this.</li>
+</ul>
+<h2>v0.28.0 — 2026-04-28</h2>
+<h3>&quot;You haven&#x27;t voted&quot; banner on task detail</h3>
+<ul>
+<li>On task detail, a blue banner appears when you haven&#x27;t yet expressed your opinion (frequency, affinity, or effort). Tapping opens the vote form, pre-filled with already-entered values. It&#x27;s purely an invitation: feel free to ignore.</li>
+<li>The subtext under frequency changes based on vote state: &quot;Average of your and the other member&#x27;s votes&quot;, or &quot;Other member&#x27;s vote · you haven&#x27;t voted&quot;, or &quot;Nobody has voted yet&quot;.</li>
+</ul>
+<h3>&quot;+ info&quot; modals on frequency and affinity</h3>
+<ul>
+<li>A &quot;+ info&quot; link under frequency opens a modal explaining the voting mechanism, shows each person&#x27;s value with date, and lets you edit your vote or ask another member to re-vote.</li>
+<li>An equivalent modal on affinity explains why it&#x27;s a personal preference (only influences your own suggestions), and lets you edit your opinion. No &quot;ask someone else&quot; button for affinity: it&#x27;s subjective and personal.</li>
+</ul>
+<h3>Ask someone to re-vote</h3>
+<ul>
+<li>From the &quot;+ info&quot; frequency modal, an &quot;Ask to re-vote&quot; button on a user&#x27;s side sends a request to their queue. When the other opens the app, the vote form pops with a &quot;X asked you to re-vote on this task&quot; message. Same for effort.</li>
+<li>An already-sent request is visible (greyed &quot;Request sent&quot; button) to avoid sending the same one 10 times.</li>
+</ul>
+<h2>v0.27.0 — 2026-04-28</h2>
+<h3>Task frequency: a vote, simple and clear</h3>
+<ul>
+<li>On task creation, we now explicitly speak of &quot;vote&quot;: your input is your vote on the frequency, not an imposed rule. If you&#x27;re alone voting, your vote becomes the displayed frequency.</li>
+<li>Four task type choices, in plain words: &quot;Regular&quot;, &quot;By month&quot;, &quot;Irregular&quot;, &quot;Once only&quot;. Three old technical types (fixed weekdays, monthly on fixed day, every N weeks) disappear — they weren&#x27;t used and cluttered the interface.</li>
+<li>The &quot;Edit my vote&quot; mini-dialog offers two modes: &quot;Regular&quot; (a single slider) or &quot;By month&quot; (12 monthly sliders). Useful for seasonal tasks: mow the lawn every 7 days in summer and every 30 in winter, for example.</li>
+<li>The creation slider asks the right question: *&quot;How often, in your opinion, should this task be done?&quot;*</li>
+</ul>
+<h2>v0.26.0 — 2026-04-27</h2>
+<h3>Task list filters in plain words</h3>
+<ul>
+<li>The six filters at the top of the list (to do / loved / long / recurring / home / solo) are no longer icons but text chips. No need to guess what the flame or heart mean.</li>
+<li>Three states instead of two: one click activates the positive filter (red background, &quot;To do&quot;), a second click switches to the inverse filter (green background, &quot;Not to do&quot;), a third click removes it (just text with an outline).</li>
+<li>The chips scroll horizontally when there are too many for the screen width.</li>
+</ul>
+<h2>v0.25.1 — 2026-04-27</h2>
+<h3>Tweaks to the Home retard mini-chart</h3>
+<ul>
+<li>The household backlog card now removes the initial backlog creation phase (same first filtered points as on the Stats screen), for a clearer reading of the last 30 useful days.</li>
+<li>The card is repositioned at the very bottom of Home, under urgent tasks: it&#x27;s a contextual reading, not an action to take.</li>
+</ul>
+<h2>v0.25.0 — 2026-04-27</h2>
+<h3>Household backlog on Home</h3>
+<ul>
+<li>Home now displays a mini-chart of the household backlog over the last 30 rolling days, under the &quot;Pace&quot; and &quot;Backlog&quot; cards. Lets you see the recent trend at a glance without going to Stats.</li>
+<li>No cheating on the creation phase for this view: we show the real last 30 days, unlike the &quot;Since start&quot; view in stats which begins at the peak.</li>
+</ul>
+<h3>Period selector on the Backlog chart</h3>
+<ul>
+<li>In Stats, the &quot;Backlog&quot; chart gains two chips at the top: &quot;Since start&quot; (default, trims the creation phase) and &quot;Last 30 days&quot; (recent rolling view).</li>
+</ul>
+<h2>v0.24.0 — 2026-04-27</h2>
+<h3>&quot;This week&quot; recap at the top of stats</h3>
+<ul>
+<li>A new card at the top of the Summary tab shows your points for the week, your &quot;+/- X% vs last week&quot;, the day when the household did the most tasks, and the most active category.</li>
+<li>Card automatically hidden if nothing to show (brand new household or start of week).</li>
+</ul>
+<h3>Household stats in the user profile</h3>
+<ul>
+<li>When you tap someone&#x27;s name (in a history card, ranking, etc.), the profile modal now also displays the split between members for the week and all-time, with a coloured bar.</li>
+<li>The opened user&#x27;s name is bold in the legend for instant identification.</li>
+</ul>
+<h2>v0.23.0 — 2026-04-27</h2>
+<h3>Enriched statistics</h3>
+<ul>
+<li>On the 7-day and 30-day points races, a coloured &quot;+/- X% vs before&quot; (green if progressing, red if regressing) compares to the previous period.</li>
+<li>A new &quot;Split by category&quot; chart arrives at the last position of the swiper: top 8 categories you do the most, with a per-user breakdown. Integrated period selector (Week / Month / 3 months / All).</li>
+<li>The &quot;By weekday&quot; chart gains the same period selector to zoom on recent evolution vs total history.</li>
+<li>The &quot;All-time&quot; points race automatically switches to monthly buckets beyond a year of history to stay readable.</li>
+</ul>
+<h3>Tap on a chart point</h3>
+<ul>
+<li>Touching a point on the points races opens the history filtered on the corresponding day directly. Useful to investigate a peak or a dip.</li>
+</ul>
+<h2>v0.22.0 — 2026-04-27</h2>
+<h3>Refined notifications for completions</h3>
+<ul>
+<li>Three independent settings replace the old &quot;Completed tasks&quot;: &quot;When someone does a task alone&quot;, &quot;When we do a task together (with me)&quot;, and &quot;When a task is done together without me&quot; (visible only with 3+ members in the household).</li>
+<li>Collective notifs are personalised: &quot;Alex did the dishes with you&quot;, &quot;Alex, Sam &amp; you did…&quot;, or &quot;Alex &amp; Sam did…&quot; depending on whether you participate or not.</li>
+</ul>
+<h3>Task history redesigned for collectives</h3>
+<ul>
+<li>A &quot;done together&quot; event appears as a single card with all participants (&quot;A, B &amp; C&quot;) instead of one line per person.</li>
+<li>Group icon distinct from solo completions, and each name is clickable to the participant&#x27;s profile.</li>
+<li>Long-press on a collective deletes the whole event at once.</li>
+</ul>
+<h3>Statistics tab redesigned</h3>
+<ul>
+<li>Streaks moved up first in Summary.</li>
+<li>New &quot;Statistics&quot; card with five swipeable charts: household backlog over time, cumulative points race over 7 days, 30 days, all-time, and task frequency by weekday.</li>
+<li>The &quot;Backlog&quot; chart (in 1st position) shows the household backlog evolution since the start, on shared tasks only (tasks assigned to a single person are excluded). Minutes / Tasks toggle to switch the unit. The delta vs start is shown in green when backlog has decreased.</li>
+<li>Ranking (Week / Month / Total) merged into Summary — the &quot;Ranking&quot; tab disappears.</li>
+</ul>
+<h2>v0.21.0 — 2026-04-26</h2>
+<h3>Recurrence: choose the unit (days, weeks, months)</h3>
+<ul>
+<li>On the task edit form, the frequency input unit toggles between Days, Weeks and Months via three small buttons. Useful to create a monthly task without having to compute &quot;30 days&quot;.</li>
+<li>The cadence vote mini-dialog and the rating popup (post-completion) also have this unit switch: voting &quot;every 3 months&quot; no longer requires mental math.</li>
+<li>When you change unit, the value adapts intelligently (92 d becomes &quot;3 months&quot;, i.e., 90 d) — the conversion is explicit and the breakdown is displayed clearly.</li>
+</ul>
+<h3>Human-readable duration display</h3>
+<ul>
+<li>Long durations are displayed in the most readable form: &quot;3 months 2 d&quot; rather than &quot;92 days&quot;, &quot;1 wk 3 d&quot; rather than &quot;10 days&quot;.</li>
+<li>Visible everywhere cadence appears: task detail screen, edit form, vote popup, rating popup, other members&#x27; votes.</li>
+</ul>
+<h2>v0.20.0 — 2026-04-25</h2>
+<h3>Auto-archive of one-shot tasks</h3>
+<ul>
+<li>One-shot tasks (no recurrence) completed more than 7 days ago are automatically hidden from the main list.</li>
+<li>History is preserved: completions remain visible in stats, leaderboard and pace.</li>
+<li>No restore button: if an archived task becomes relevant again, just recreate it (the duplication autocomplete still suggests it).</li>
+</ul>
+<h3>Duplicate an existing task</h3>
+<ul>
+<li>New &quot;Duplicate&quot; button at the top of a task&#x27;s detail screen: creates a new task pre-filled with the same parameters, which you just need to adjust (e.g., change the room) before validating.</li>
+<li>In the new task creation form, suggestions appear as soon as 2 characters are typed in the title: selecting a suggestion fills the whole form at once.</li>
+<li>A &quot;Duplicated from [title]&quot; chip indicates you&#x27;re cloning; tap it to cancel duplication and start from a blank form.</li>
+<li>The clone inherits the cadence consensus and effort split from the original task, but starts with empty history (individual votes are not copied, everyone will re-vote on the next prompt).</li>
+</ul>
+<h2>v0.19.0 — 2026-04-24</h2>
+<h3>History: filters and search</h3>
+<ul>
+<li>A search bar lets you filter history by task title. Type &quot;sink&quot; and you&#x27;ll only see what touches the &quot;Clean the sink&quot; task.</li>
+<li>A &quot;Filters&quot; button opens a foldable panel with:</li>
+<li>Event type (3 multi-select chips: Completions, Votes, Modifications) to see only one family at a time.</li>
+<li>Actor (All, by household member) to filter by person.</li>
+<li>Period (This week, This month, 3 last months, All) to scope the time window.</li>
+<li>Filters are combinable and a counter on the &quot;Filters&quot; button indicates how many are active. A &quot;Clear&quot; button resets everything.</li>
+</ul>
+<h3>History: better readability</h3>
+<ul>
+<li>Cadence modifications now display the full transition: &quot;modified the recurrence of &#x27;Vacuum&#x27; (recurrence): every 7d → every 10d&quot;, instead of a simple &quot;(recurrence)&quot; without context.</li>
+<li>Permanently deleted tasks keep their title followed by &quot;(deleted)&quot; instead of appearing as &#x27;?&#x27; in history.</li>
+<li>Frequency votes no longer appear in duplicate: before, each vote was visible as both a &quot;vote&quot; and a &quot;recurrence modification&quot;. Now one event per vote.</li>
+</ul>
+<h2>v0.18.1 — 2026-04-24</h2>
+<h3>Tweak</h3>
+<ul>
+<li>The slider in the &quot;Edit via vote&quot; mini-dialog now offers a range adapted to the task&#x27;s cadence (from 30% to 300% of the current consensus) instead of always showing 1 to 365 days. On a 5-day task, you now see a slider from 2 to 15 days, and your current vote is visible in the middle of the bar instead of glued to the left. If you&#x27;d already voted very differently from the current consensus, the range is extended to include your value — no silent truncation.</li>
+</ul>
+<h2>v0.18.0 — 2026-04-24</h2>
+<h3>Task cadence: finally fully vote-driven</h3>
+<ul>
+<li>You can no longer overwrite a task&#x27;s cadence (&quot;every X days&quot; field) by editing directly in the task: the field is greyed and shows &quot;Consensus: 7 d (2 votes)&quot;. To modify the cadence, an &quot;Edit via vote&quot; button opens a dedicated mini-dialog where you can place your vote, which enters the consensus calculation with the other household members&#x27;.</li>
+<li>The mini-dialog shows the current consensus and other members&#x27; votes (&quot;Alex: 7 d&quot;) so you see why the cadence is what it is before voting.</li>
+<li>On creation of a &quot;every X days&quot; recurring task, the value you enter automatically becomes your initial vote — no more &quot;ghost&quot; cadence that matches no vote.</li>
+<li>If you change the recurrence type (e.g., switch from &quot;every 7 days&quot; to &quot;variable by month&quot;), your votes are kept dormant. If you come back to &quot;every X days&quot; later, they come back to life automatically and the cadence is recalculated.</li>
+</ul>
+<h2>v0.17.0 — 2026-04-23</h2>
+<h3>Vacation mode</h3>
+<ul>
+<li>Streaks (consecutive days) are no longer broken by absence days: if you&#x27;re on vacation and your days are marked absent (via the presence resolution dialog), your streak continues as if nothing happened. The counter stays honest: it always shows the real number of active days, but the absence no longer breaks the streak.</li>
+<li>Same rule for &quot;Regular&quot; / &quot;Perfect week&quot; / &quot;Two weeks&quot; / &quot;Perfect month&quot; badges: they remain unlockable after a vacation period, without having to restart from zero.</li>
+<li>Only <strong>explicitly</strong> marked absent days freeze the streak. &quot;To confirm&quot; days (uncertain) still break it — think about resolving via the dialog on next app launch so your vacation is properly counted.</li>
+</ul>
+<h2>v0.16.2 — 2026-04-23</h2>
+<h3>Fix</h3>
+<ul>
+<li>When you create a new task, you&#x27;re no longer prompted instantly to rate it (affinity + effort). The app now waits for the task to have been done at least 2 times and the last completion to be at least 1 day ago before offering rating. Avoids the double work &quot;I fill the creation form then I fill the rating form&quot; and gives time to experience the task to rate it honestly.</li>
+<li>One-shot tasks (no recurrence) are never proposed for rating: rating a one-shot task has no long-term value.</li>
+</ul>
+<h2>v0.16.1 — 2026-04-23</h2>
+<h3>Fix</h3>
+<ul>
+<li>The daily summary time chosen in Settings is now actually respected as soon as you move the slider: move, release, the next notif fires at the new time. No more need to kill and relaunch the app.</li>
+</ul>
+<h2>v0.16.0 — 2026-04-22</h2>
+<h3>New</h3>
+<ul>
+<li>Button to dismiss a suggestion on the home screen: each card now has a small cross at the top right that hides the task and displays the next one in the same tier. Dismisses are purely local and reset on each app restart.</li>
+<li>When all suggestions of a tier (urgent / affinity / no cadence) have been dismissed, a message appears and dismissed tasks become visible again — nothing is ever lost.</li>
+</ul>
+<h2>v0.15.5 — 2026-04-20</h2>
+<h3>Fixes</h3>
+<ul>
+<li>The daily notification fired at an arbitrary time instead of the time set in parameters. Cause: the old schedule created by a previous version persisted even after update. Fixed: each version bump reschedules the reminder with the time chosen in Settings.</li>
+</ul>
+<h2>v0.15.4 — 2026-04-19</h2>
+<h3>Tweaks</h3>
+<ul>
+<li>The frequency vote slider in the rating popup no longer exceeds 365 days, even when the task had a very long cadence. Avoids proposing votes the server would reject.</li>
+</ul>
+<h2>v0.15.3 — 2026-04-19</h2>
+<h3>Fixes</h3>
+<ul>
+<li>The &quot;Sync in progress&quot; banner that stayed permanently visible is fixed. Some frequency votes entered via the slider (e.g., switching to every 120 days) were rejected by the server and the app replayed them in a loop without ever giving up, leaving the banner displayed indefinitely.</li>
+<li>The cap on frequency votes goes from 60 to 365 days. You can now vote for tasks that come back yearly (car inspection, Christmas decorations, etc.).</li>
+</ul>
+<h2>v0.15.2 — 2026-04-19</h2>
+<h3>Notifications</h3>
+<ul>
+<li>The daily reminder of tasks to do works again: the worker that sends the notification wasn&#x27;t authenticated and systematically received a server error, so no notification was produced.</li>
+<li>New: the daily notification time is now respected. Choose the time in Settings -&gt; Notifications (slider 6h-22h), the notif will arrive around this time the next day. Before, WorkManager picked an arbitrary window in the day.</li>
+<li>The &quot;Daily notification&quot; toggle in Settings correctly disables the reminder (no more need to restart the app).</li>
+</ul>
+<h2>v0.15.1 — 2026-04-19</h2>
+<h3>Fixes</h3>
+<ul>
+<li>Fix for a bug that made some recurring tasks appear as &quot;late&quot; in the list when they had been done recently (example: a task every 45 days done 10 days ago could display as 11 days late). The detail screen displayed the right info — only the list was misled.</li>
+</ul>
+<h2>v0.15.0 — 2026-04-19</h2>
+<h3>Task list</h3>
+<ul>
+<li>New Solo / Group filter (👤 icon) to separate tasks attributed to me alone from shared tasks.</li>
+</ul>
+<h3>Task edit</h3>
+<ul>
+<li>You can now change the recurrence type while editing an existing task (e.g., switch from a regular recurrence to &quot;When necessary&quot;, or vice versa).</li>
+<li>Tolerance for lateness is no longer displayed for &quot;When necessary&quot; tasks — it didn&#x27;t apply to this type and was confusing.</li>
+</ul>
+<h3>Fixes</h3>
+<ul>
+<li>Notifications finally work on Android 13+: the app requests permission on launch (it was declared but never requested, Android silently rejected them).</li>
+</ul>
+<h2>v0.14.0 — 2026-04-19</h2>
+<h3>&quot;No cadence&quot; recurrence</h3>
+<ul>
+<li>New choice in the recurrence picker: &quot;When necessary&quot; — for tasks done irregularly without fixed rhythm (e.g., laundry, shopping list).</li>
+<li>&quot;No cadence&quot; tasks appear in a dedicated 3rd section on home, always green, with a factual label (&quot;Not yet done&quot; or &quot;Done X d ago&quot;) instead of a countdown.</li>
+<li>The app automatically learns how often you do this task and ranks it at the top when it hasn&#x27;t been suggested to you for a while.</li>
+<li>Vacation freeze still applies (absence days don&#x27;t count).</li>
+</ul>
+<h3>Task detail: respect for assignments</h3>
+<ul>
+<li>On a task assigned to a single person, the detail screen now displays a &quot;For one member only&quot; banner (with their first name) at the top.</li>
+<li>The other person no longer sees their own &quot;Effort &amp; Affinity&quot; insert for this task (it was misleading: rating a task you don&#x27;t do doesn&#x27;t make sense).</li>
+<li>The &quot;Edit&quot; button for affinity/effort rating is hidden for anyone not assigned.</li>
+</ul>
+<h2>v0.13.1 — 2026-04-18</h2>
+<h3>Search fix</h3>
+<ul>
+<li>The search field cursor went backwards when typing fast: fixed. Typed text display is now synchronous, independent of the time filtering takes in the background.</li>
+</ul>
+<h2>v0.13.0 — 2026-04-18</h2>
+<h3>Search in tasks</h3>
+<ul>
+<li>New magnifying glass in the Tasks screen, top right of the filter row. Clicking the magnifying glass replaces the filter chips with a search field that takes the full width.</li>
+<li>By default, search ignores all active filters (including &quot;To do&quot;) and searches in all tasks.</li>
+<li>A small funnel button next to the field lets you reapply current filters if needed.</li>
+<li>Search matches title, description, category name and room name. Accent-insensitive (typing &quot;ecole&quot; finds &quot;École&quot;) and case-insensitive.</li>
+<li>Multi-word search: &quot;kitchen laundry&quot; finds tasks containing both.</li>
+</ul>
+<h3>Presence detection overhaul</h3>
+<ul>
+<li>The automatic background detection (which required the app to run permanently) is removed: Android throttled it too much for it to be reliable.</li>
+<li>New behaviour: the app detects your presence on launch when it sees the home Wi-Fi. Days when nobody launched the app are marked &quot;to confirm&quot;.</li>
+<li>New resolution dialog: when days are uncertain, the app offers on launch a calendar grid where each day can be marked present (green) or absent (grey). For long absences (&gt;30 days), a simplified mode &quot;I was absent since X&quot; appears instead.</li>
+<li>Background location permissions are therefore no longer necessary — you can remove them in Android settings if you want.</li>
+</ul>
+<h2>v0.12.0 — 2026-04-17</h2>
+<h3>Points bonuses and penalties</h3>
+<ul>
+<li>Late tasks now earn a points bonus (+50% by default) when they exceed a configurable threshold. A &quot;🔥 +50%&quot; pill appears on affected suggestions.</li>
+<li>Conversely, completing a task very early applies a progressive penalty (up to -50% of points). The earlier you do it in the cycle, the stronger the penalty.</li>
+<li>The first completion of a task always gives full points (no bonus or penalty).</li>
+<li>The &quot;Already done&quot; / &quot;Done together&quot; dialog now displays a points preview line before validation: you see how much you&#x27;ll earn and why (late bonus, early penalty, first time).</li>
+<li>The celebration after validation displays the earned points (+X pts) with the reason for the bonus or penalty.</li>
+<li>A task&#x27;s detail sheet shows the current bonus or penalty next to the urgency state.</li>
+</ul>
+<h3>Detection of tedious tasks</h3>
+<ul>
+<li>When a task is systematically late (more than 70% of completions in the bonus zone over a rolling window), the app automatically offers each household member to bump the task&#x27;s effort by +1.</li>
+<li>The bump modal displays the list of recent completions with their status, and offers either a quick bump or to edit the ratings (affinity/effort).</li>
+<li>A single prompt is displayed on app open (no spam). After a prompt, 2h minimum of silence.</li>
+</ul>
+<h3>Advanced settings</h3>
+<ul>
+<li>New &quot;Points bonuses / penalties&quot; panel in Settings Advanced, with all thresholds configurable per household (14 sliders with explanations).</li>
+</ul>
+<h2>v0.11.1 — 2026-04-15</h2>
+<h3>End of the &quot;flash&quot; after a completion on home</h3>
+<ul>
+<li>Before: after validating a task on home, the celebration animation played, then the same task briefly reappeared for 1-2 seconds before being replaced by another. This was due to the server not yet having seen the validation (sync in progress) and returning the same suggestion.</li>
+<li>Now: home loads a buffer of multiple suggestions ahead in the background (5 urgent + 5 affinities). When you validate a task, the next one appears instantly after the animation, without waiting for the server. The task you just validated is automatically hidden client-side until sync catches up.</li>
+<li>In case of a completion burst (5 in a row without sync keeping up), a small &quot;Next suggestion on the way...&quot; card displays while the backend catches up, rather than showing emptiness or a fake task.</li>
+</ul>
+<h2>v0.11.0 — 2026-04-15</h2>
+<h3>&quot;Done together&quot; — share tasks and points</h3>
+<ul>
+<li>New <strong>Done together</strong> button (group icon) on each task, present on home, the task list and the detail view. It lets you say &quot;we didn&#x27;t do it alone&quot;: points are shared equally between participants and each one progresses their counter.</li>
+<li>In a 2-person household: clicking opens a date selector directly, both members are automatically included (no need to tick).</li>
+<li>In a 3+ person household: a popup appears with the assigned members pre-ticked, an &quot;Add a member&quot; button to include someone else from the household, and a date selector. Minimum 1 ticked participant to validate.</li>
+<li>If someone has already validated the task in the anti-duplicate window, the collective validation is refused as a whole (no row created) and a message explains.</li>
+</ul>
+<h3>&quot;Already done&quot; on the task detail view</h3>
+<ul>
+<li>The <strong>Already done</strong> button (calendar icon) is now also present on the task detail screen, in addition to home and the list. Until now it was missing from this location.</li>
+<li>In the &quot;Already done&quot; popup, a new &quot;With others...&quot; button lets you switch to the &quot;Done together&quot; flow without starting over.</li>
+</ul>
+<h3>Unified completion popup</h3>
+<ul>
+<li>The two old separate popups (choose who then choose when) are replaced by a single clear popup with the date and participant list in the same place. Faster to validate.</li>
+</ul>
+<h3>Home cleanup</h3>
+<ul>
+<li>The &quot;In progress&quot; section of home (which displayed started but not-yet-validated tasks) is removed. It was almost never used and cluttered the screen.</li>
+</ul>
+<h2>v0.10.2 — 2026-04-15</h2>
+<h3>End of crashes after update</h3>
+<ul>
+<li>The app now automatically purges its local home screen cache on each new version install. This avoids crashes like the one in v0.10.0: when the data format changes from one version to another, the old cached content could crash the app on first launch. Now, the first open after an update restarts from an empty cache and refills on the first network refresh.</li>
+</ul>
+<h2>v0.10.1 — 2026-04-15</h2>
+<h3>Startup crash fix</h3>
+<ul>
+<li>Fix for an app startup crash after the v0.10.0 update (screen closing immediately on app open). Cause: old suggestions still in local cache didn&#x27;t have the new state field; the app tried to display them before refresh and crashed. Now rendering is tolerant to this case and displays neutral while waiting for the refresh.</li>
+</ul>
+<h2>v0.10.0 — 2026-04-15</h2>
+<h3>Freshness model rework — no more half-life, hello due dates</h3>
+<ul>
+<li>Before: each task had a &quot;freshness&quot; score that decayed exponentially (half-life). Problem: not intuitive. A &quot;litter every 2 days&quot; task done 4 days ago was still only orange, while mentally it&#x27;s &quot;2 days late&quot;.</li>
+<li>Now: each task has a <strong>due date</strong> (`due_date = last_completion + interval`) and the state is calculated in days:</li>
+<li><strong>Green</strong>: not yet due (far from the due date)</li>
+<li><strong>Orange</strong>: due today or soon (window of <code>floor(interval * 0.10)</code> days before due date — for 7d it&#x27;s 0 days, for 30d it&#x27;s 3 days, for 60d it&#x27;s 6 days)</li>
+<li><strong>Red</strong>: late (after the due date)</li>
+<li>On cards: colour + countdown text (&quot;in 3d&quot;, &quot;to do today&quot;, &quot;late by 2 d&quot;) shown systematically.</li>
+<li>Along the way, the original scenario is corrected: litter 2d done on April 11 -&gt; red &quot;late by 2 d&quot; on April 15 (before: still orange, which made no sense).</li>
+</ul>
+<h3>Tolerance repurposed — only for the &quot;most urgent&quot; selector</h3>
+<ul>
+<li>Tolerance (STRICT / NORMAL / LOOSE) no longer changes anything in the displayed state of a task nor when it becomes late.</li>
+<li>Its only role: prioritise the &quot;most urgent task&quot; selector on the home page:</li>
+<li>STRICT late goes before NORMAL late, which goes before LOOSE late. Within a tier, we pick the one with the largest ratio (days late / interval).</li>
+<li>If no task is late, fallback on Oranges (all tolerances mixed, closest to due date first).</li>
+<li>An ℹ bubble next to the tolerance selector (in detail/edit/create) explains all this.</li>
+</ul>
+<h3>Cleanup</h3>
+<ul>
+<li>Removed the &quot;Suggestion threshold&quot; knob in advanced settings (the model is now deterministic, no need to configure it).</li>
+</ul>
+<h2>v0.9.0 — 2026-04-14</h2>
+<h3>Template catalog</h3>
+<ul>
+<li>New &quot;Catalog&quot; screen accessible via a small magic button next to the &quot;+&quot; in the tasks screen. It offers a library of ready-to-use tasks, rooms and categories (dishes, vacuum, clean the bathroom, kitchen, living room, cleaning, laundry, ...) in three tabs.</li>
+<li>Multi-selection (you tick what you want) and &quot;Import N&quot; button at the bottom. When the tasks you import reference rooms or categories, an attachment popup offers either to create them or to map them to existing elements of your household (with automatic detection of similar names — &quot;Kitchen&quot; vs &quot;kitchen&quot; vs &quot;The kitchen&quot; are detected as the same).</li>
+<li>Useful to populate an empty household in a few clicks, or to inspire you and add tasks you wouldn&#x27;t have thought of.</li>
+</ul>
+<h2>v0.8.1 — 2026-04-14</h2>
+<h3>Household goal proposal</h3>
+<ul>
+<li>The simulation popup (tap on the &quot;Me&quot; or &quot;Household&quot; cards) now contains a slider per household member: you can simulate a full plan by adjusting each person&#x27;s rhythms and see live how many days the backlog would be caught up. The &quot;Just for me&quot; button is still available to save only your goal.</li>
+<li>New &quot;Propose to household&quot; button (active as soon as you move at least one other member&#x27;s slider): it sends your proposal live to the rest of the household. The others receive a blocking modal with your proposal, they have 3 minutes to accept or refuse. Meanwhile, you see a waiting screen listing live who has approved, with a &quot;Cancel proposal&quot; button if you change your mind.</li>
+<li>When everyone accepts, the goals are saved for each one and a celebration popup appears on all members&#x27; apps (&quot;You&#x27;re on your way to a clean household!&quot;) with an easter egg to discover by clicking the link at the bottom.</li>
+<li>If someone refuses or the deadline expires, the proposal is cancelled, no goal is saved, and everyone is notified.</li>
+</ul>
+<h2>v0.8.0 — 2026-04-14</h2>
+<h3>Backlog catch-up forecast</h3>
+<ul>
+<li>Two new cards at the top of home: &quot;Me&quot; (minutes done today, progress bar towards the daily goal, estimated number of catch-up days) and &quot;Household&quot; (current household backlog, number of days to reach zero, maintenance rhythm once cleared).</li>
+<li>Simulation popup: tap on a card opens a slider to set your target rhythm in minutes or tasks per day, with live feedback on the number of catch-up days. The &quot;Set as goal&quot; button saves your personal commitment.</li>
+<li>The display unit (minutes or tasks) is choosable in the popup and saved per household.</li>
+</ul>
+<h3>More compact Home</h3>
+<ul>
+<li>Removed the red border and progress bar on task suggestions: the red pill was already enough to signal urgency.</li>
+<li>Removed the &quot;Suggestions&quot; title (obvious from context).</li>
+<li>Moved the &quot;You&#x27;ve done more than your share...&quot; message from home to the &quot;Summary&quot; tab of Stats — so that task cards and forecast cards fit on a single screen.</li>
+</ul>
+<h2>v0.7.4 — 2026-04-14</h2>
+<h3>Pausing &quot;at home&quot; tasks during absence</h3>
+<ul>
+<li>When nobody is detected on the home Wi-Fi for more than 24h, tasks in categories marked &quot;at home&quot; stop aging until return. Beyond the 24h tolerance, the counter is frozen — no more backlog accumulated during vacations.</li>
+<li>&quot;Welcome back home!&quot; popup on return, with the number of absence days and a reminder that affected tasks were paused.</li>
+<li>Automatic Wi-Fi presence detection in the background every 6h and on app launch.</li>
+</ul>
+<h3>Household setting</h3>
+<ul>
+<li>&quot;Edit&quot; button on each household (admins only) in Settings &gt; My households: lets you rename the household and enable/disable the &quot;at home&quot; task pause during absence.</li>
+</ul>
+<h3>Adaptive &quot;at home&quot; tooltip</h3>
+<ul>
+<li>The info tooltip next to &quot;At home only&quot; (category editing) now explains the actual freeze state: if the pause is disabled, if you haven&#x27;t configured your home Wi-Fi, if we&#x27;re waiting for your first connection, or if other household members are still blocking detection.</li>
+</ul>
+<h2>v0.7.3 — 2026-04-14</h2>
+<h3>Multi-household: users + home wifi isolation</h3>
+<ul>
+<li>The user lists in pickers (task assignment, &quot;who did it?&quot;, fair-share, stats, leaderboard) only display members of the active household. Before, all base users appeared even in a household they weren&#x27;t in.</li>
+<li>Home Wi-Fi SSIDs are now stored per household: at your home you configure your SSIDs, at a friend&#x27;s coloc you configure others, without mixing. When you switched household, the other household&#x27;s SSIDs appeared — fixed.</li>
+</ul>
+<h2>v0.7.2 — 2026-04-14</h2>
+<h3>Multi-household: per-household isolated stats</h3>
+<ul>
+<li>Statistics (points, completed tasks, leaderboard, streaks, badges, history) no longer mix data from all your households: each stats screen displays only the figures of the active household.</li>
+<li>Earned badges are specific to each household (the same badge can be earned in multiple households separately).</li>
+</ul>
+<h2>v0.7.0 — 2026-04-14</h2>
+<h3>Multi-household (invisible but fundamental rework)</h3>
+<ul>
+<li>The app is now ready to manage multiple households: you can create a new household (for example for a friends&#x27; coloc) and switch between your households without losing the data of the other.</li>
+<li>New <strong>Settings → My households</strong> screen: you see the list of households you belong to, you can create a new one via the + button and switch by clicking on it. On switch, the app empties its local cache and reloads the new household&#x27;s data (a few seconds).</li>
+<li>For now existing members share a single &quot;Home&quot; household — all existing tasks, categories and rooms were automatically migrated to it.</li>
+<li>Inviting friends by QR code to create a shared household will be added in a future version (it requires public deployment infrastructure).</li>
+</ul>
+<h3>Visible one-shot tasks</h3>
+<ul>
+<li>A task created without recurrence (one-shot) now appears in the &quot;to do&quot; list and in home suggestions as long as it hasn&#x27;t been done. Before, it was invisible until the &quot;to do&quot; filter was disabled.</li>
+</ul>
+<h3>Properly saved room</h3>
+<ul>
+<li>When you create or edit a task and assign it a room, the room is now properly saved. Before, the chosen room could be lost after save.</li>
+</ul>
+<h3>Less intrusive rating popup</h3>
+<ul>
+<li>The popup that asks you to rate the affinity/effort of a task no longer reappears every time you return to home. It displays on app open and on return from multitasking, then no more until the next session.</li>
+</ul>
+<h2>v0.6.2 — 2026-04-13</h2>
+<h3>Congratulations on each validated task</h3>
+<ul>
+<li>When you validate a task (anywhere: home, list or detail sheet, and whether &quot;done&quot; or &quot;already done&quot;), the card now displays a congratulations emoji (&quot;Well done!&quot;, &quot;Nice!&quot;, etc.) and confetti falls on the screen for 2 seconds before the task disappears / next one appears. No more invisible validation.</li>
+</ul>
+<h2>v0.6.1 — 2026-04-13</h2>
+<h3>Rooms visible everywhere</h3>
+<ul>
+<li>On home, the &quot;Suggestions&quot; and &quot;In progress&quot; cards now display the room (with its emoji if you&#x27;ve defined one) and the category as a coloured pill under the title.</li>
+<li>Very late suggestion cards have a red border around to attract the eye.</li>
+<li>The task detail sheet also displays the room (read-only — to modify it, use the pencil at the top right).</li>
+<li>The rating popup displays the room under the task title for visual reminder.</li>
+</ul>
+<h2>v0.6.0 — 2026-04-13</h2>
+<h3>Rooms: new management</h3>
+<ul>
+<li>House rooms are now first-class entities (Kitchen, Bathroom, Bedroom, Living room, etc.) instead of being hidden in task titles.</li>
+<li>New &quot;Manage rooms&quot; screen in Settings: add, edit, delete your rooms. Each one has a name, a colour and an optional emoji.</li>
+<li>When you create or edit a task, a &quot;Room&quot; selector appears next to &quot;Category&quot;.</li>
+<li>Room filters in the list now display the emoji next to the name.</li>
+<li>In the task list, the room name (with its emoji if defined) appears under the title.</li>
+<li>Automatic migration: your 29 existing tasks were linked to rooms extracted from their titles. Titles have been cleaned of the &quot; — Room&quot; suffix. The 13 tasks without suffix remain without room, you can edit them to assign one.</li>
+</ul>
+<h2>v0.5.8 — 2026-04-13</h2>
+<h3>Task list</h3>
+<ul>
+<li>No more superfluous air at the top of the screen: the 1st filter row actually sticks to the Android status bar (double padding correction).</li>
+</ul>
+<h2>v0.5.7 — 2026-04-13</h2>
+<h3>Task list</h3>
+<ul>
+<li>Even smoother scroll (internal optimisations: Compose can now detect unchanged cards and not redraw them unnecessarily when the list updates).</li>
+</ul>
+<h2>v0.5.6 — 2026-04-13</h2>
+<h3>Task list</h3>
+<ul>
+<li>Top margin of the list reduced: the 1st filter row sticks directly below the Android status bar (before: too much air at the top).</li>
+<li>Significantly smoother scrolling thanks to several internal optimisations (filtering pipeline offloaded outside the main thread, callbacks stabilised to avoid unnecessary recompositions).</li>
+</ul>
+<h2>v0.5.5 — 2026-04-13</h2>
+<h3>Task list: visual rework</h3>
+<ul>
+<li>The purple &quot;Torchons &amp; Serviettes&quot; banner at the top was removed — it took space without offering anything clickable.</li>
+<li>New thin and discreet sync bar at the very top, appearing during loads (instead of a big full-screen spinner that masked the tasks).</li>
+<li>Spacing between filter rows revised: more air at the top, uniform spacing between rows.</li>
+<li>Simplified task cards: we now only keep the name, the room and a late indicator as a coloured border on the left (green/yellow/orange/red). No more category badge, stars, progress bar or &quot;Red X%&quot; text. Cards are more compact, we see more of them on screen and scrolling is smoother.</li>
+</ul>
+<h2>v0.5.4 — 2026-04-13</h2>
+<h3>Task list</h3>
+<ul>
+<li>On app startup, the &quot;🔥 To do&quot; filter is now active by default: you see urgent tasks directly, without scrolling through the whole list. You can disable the filter by tapping the red chip if you want to see all tasks.</li>
+</ul>
+<h2>v0.5.3 — 2026-04-13</h2>
+<h3>Task list</h3>
+<ul>
+<li>Swipe to validate a task is removed — it sometimes triggered accidental validations.</li>
+<li>The two action buttons on each card (calendar &quot;already done&quot; and check &quot;validate&quot;) are larger, with a coloured background (green to validate, grey for the calendar) and clearly identifiable as clickable buttons.</li>
+<li>List scrolling is significantly smoother, especially when there are many tasks.</li>
+</ul>
+<h2>v0.5.2 — 2026-04-13</h2>
+<h3>Unified rating</h3>
+<ul>
+<li>The &quot;Edit&quot; button on a task&#x27;s sheet now opens the same rating popup as the home one — with affinity, effort AND frequency in a single screen.</li>
+<li>Previous values are correctly preloaded (before, the &quot;Edit&quot; button always displayed 5/10 and 15min by default).</li>
+<li>Display of last rating date above the settings: &quot;Last rating 3 days ago&quot; / &quot;Never rated&quot;.</li>
+</ul>
+<h3>Frequency</h3>
+<ul>
+<li>The frequency of an existing task can no longer be modified from the task edit screen: you must go through the rating popup (everyone votes their frequency and the average is used).</li>
+<li>On task creation, the choice of frequency remains available.</li>
+<li>The effort slider is capped at 1h max (before: 1h30 on the detail sheet, 1h on home — inconsistent).</li>
+</ul>
+<h2>v0.5.1 — 2026-04-13</h2>
+<h3>Fixes</h3>
+<ul>
+<li>The app no longer crashes on startup after the v0.5.0 update (local schema incompatibility on the history table).</li>
+</ul>
+<h2>v0.5.0 — 2026-04-13</h2>
+<h3>Modification history</h3>
+<ul>
+<li>New &quot;Modification history&quot; section in a task&#x27;s detail sheet, below the completion history: shows who voted what and how the consensus evolved (affinity, effort, frequency).</li>
+<li>Each vote displays with its impact on the average: for example &quot;Alex voted 7d frequency → consensus 6d&quot; or &quot;Sam voted 3/10 affinity → consensus 4/10&quot;.</li>
+<li>Direct modifications to the task (title, recurrence, category, tolerance, assignment changes) also appear in this timeline.</li>
+</ul>
+<h3>Votable frequency</h3>
+<ul>
+<li>When the rating popup offers to adjust a task&#x27;s frequency, it&#x27;s now an individual vote: each participant has their own value and the displayed consensus is the average of votes.</li>
+<li>Before, the last person who adjusted the frequency overwrote the value for everyone — no longer the case.</li>
+</ul>
+<h2>v0.4.1 — 2026-04-12</h2>
+<h3>Fixes</h3>
+<ul>
+<li>Settings (home Wi-Fi, notifications, suggestion threshold, etc.) are now correctly saved — before, changes could be lost on app reopen.</li>
+<li>The affinity rating popup no longer appears in duplicate on app open.</li>
+<li>The &quot;Another one&quot; button in the rating popup works: it properly moves to the next task instead of simply closing the popup.</li>
+<li>The &quot;?&quot; button now displays a different task on each use (before, it always showed the same one).</li>
+<li>The rating popup displays the number of remaining tasks to rate.</li>
+<li>When all tasks are already rated, a message confirms it instead of doing nothing.</li>
+</ul>
+<h2>v0.4.0 — 2026-04-12</h2>
+<h3>Whole app works offline</h3>
+<ul>
+<li>The Tasks and Task detail screens now display the last known data even when the backend doesn&#x27;t respond (before, they stayed empty).</li>
+<li>The &quot;Offline&quot; banner displays the date and time of the last data (&quot;data from 04/12 14:32&quot;).</li>
+<li>When the connection returns, data refreshes automatically without having to close and reopen the screen.</li>
+</ul>
+<h3>Task creation and validation without network</h3>
+<ul>
+<li>You can now create, edit, delete and validate tasks even without backend connection.</li>
+<li>Operations apply instantly in the app and synchronise automatically when the connection returns.</li>
+<li>An &quot;X operation(s) pending&quot; badge displays in the banner when operations haven&#x27;t yet been sent to the server.</li>
+<li>When sync happens, a &quot;Sync in progress...&quot; indicator briefly displays.</li>
+</ul>
+<h2>v0.3.0 — 2026-04-11</h2>
+<h3>Offline mode on home</h3>
+<ul>
+<li>Home now displays the last known data even when the backend doesn&#x27;t respond, instead of remaining stuck or lying with &quot;Everything&#x27;s fresh!&quot; when nothing could load.</li>
+<li>When the backend is unreachable, an orange &quot;Offline&quot; banner appears at the top of the app with a &quot;Retry&quot; button.</li>
+<li>When the backend comes back (e.g., after server restart), the app detects it automatically and the banner disappears on its own.</li>
+<li>If home really has no data to display due to no backend, it displays a clear &quot;Data unavailable&quot; message instead of the misleading &quot;Everything&#x27;s fresh!&quot;.</li>
+</ul>
+<h3>Faster startup</h3>
+<ul>
+<li>The app no longer waits 30 seconds blank on startup if the backend is slow or unreachable. After a few seconds it switches directly to offline mode.</li>
+</ul>
+<h2>v0.2.2 — 2026-04-11</h2>
+<h3>Lateness tolerance on recurring tasks</h3>
+<ul>
+<li>You can now choose, for each recurring task, how strict the app is about lateness: Strict, Normal or Loose. The choice is in the task edit form, just after the recurrence.</li>
+<li>Strict: the task turns orange/red before the due date.</li>
+<li>Normal (default): the task is yellow at the due date — current behaviour.</li>
+<li>Loose: the task stays green even a bit after the due date.</li>
+</ul>
+<h3>Smarter fair-share congratulations</h3>
+<ul>
+<li>The &quot;You&#x27;ve done more than your share&quot; message on home now arrives only when you&#x27;ve done <em>really</em> more than your share, not at the slightest gap. By default you must have done 30% more than your target ratio.</li>
+<li>This tolerance threshold is adjustable in advanced settings (&quot;Fair-share tolerance&quot;, from 0% to 100%).</li>
+<li>The message no longer displays when the app doesn&#x27;t have enough data (less than 10 completed tasks total over the last 30 days).</li>
+<li>The message text now says &quot;these last 30 days&quot; instead of &quot;this month&quot;, more accurate compared to the actual calculation.</li>
+</ul>
+<h2>v0.2.1 — 2026-04-11</h2>
+<h3>Maintenance</h3>
+<ul>
+<li>Internal improvements to sensitive configuration storage. Transparent for the user.</li>
+</ul>
+<h2>v0.2.0 — 2026-04-11</h2>
+<h3>Powerful filters on the task list</h3>
+<ul>
+<li>Five quick filters at the top of the list: &quot;To do&quot; (red), Affinity (loved / hated), Effort (long / short), Recurrence (recurring / one-shot), Home (at home / outside home).</li>
+<li>Each filter is tri-state: one click activates &quot;top&quot;, two clicks activates &quot;bottom&quot;, three clicks disables.</li>
+<li>Per-room filter, automatically extracted from task titles (e.g., &quot;— Kitchen&quot;, &quot;— Living room&quot;).</li>
+<li>Ability to select multiple categories at the same time instead of just one.</li>
+<li>Empty categories are no longer displayed in the filter bar.</li>
+<li>A small recap of active filters appears above the list.</li>
+</ul>
+<h3>Enriched rating popup</h3>
+<ul>
+<li>The affinity and effort popup now pre-fills with your last rating (or the household average if you&#x27;ve never rated).</li>
+<li>For a one-shot task, you can transform it into a recurring task directly from the popup, and choose the frequency.</li>
+<li>For an already recurring task, you can adjust its frequency (from 50% to 200% of the current value).</li>
+</ul>
+<h3>&quot;Who did this task?&quot;</h3>
+<ul>
+<li>When you validate a task in &quot;already done&quot; mode (past date), a new selector asks you who (among members) did it, in addition to the date.</li>
+<li>The selector is automatically skipped if only one person is assigned to the task.</li>
+</ul>
+<h3>Clickable user profile everywhere</h3>
+<ul>
+<li>You can now click on the name of any member anywhere in the app: history feed, ranking, stats summary, streaks, task completions.</li>
+<li>A modal opens with their personal history, their number of completions and total points.</li>
+<li>Tasks in this history are themselves clickable to go to their detail.</li>
+</ul>
+<h3>Cleaned history</h3>
+<ul>
+<li>No more duplicates on affinities and efforts: saves without real change no longer pollute the flow.</li>
+<li>When a task is modified, the feed now precisely indicates which fields changed (title, category, recurrence, etc.) instead of an opaque &quot;modified&quot;.</li>
+<li>Clicking on a feed card opens the corresponding task directly.</li>
+</ul>
+<h3>Anti-double-validation</h3>
+<ul>
+<li>Impossible to validate the same task twice in the same hour.</li>
+<li>For weekly or longer tasks, blocking is on the whole day.</li>
+<li>Avoids accidental double taps on the &quot;Done&quot; button.</li>
+</ul>
+<h3>What&#x27;s new &amp; Roadmap in the app</h3>
+<ul>
+<li>New &quot;What&#x27;s new&quot; entry in Settings.</li>
+<li>Displays the current version, release notes and roadmap of planned features.</li>
+</ul>
+<h3>Cosmetics</h3>
+<ul>
+<li>New app icon: a wizard&#x27;s hat on a mop, on a starry midnight blue background.</li>
+<li>The app version displayed at the bottom of home and in Settings is now read dynamically (no more hardcoded &quot;v1.0.0&quot;).</li>
+</ul>
+<h2>v0.1.0 — 2026-04-08</h2>
+<h3>First version</h3>
+<ul>
+<li>CRUD tasks with recurrence (interval, weekdays, monthly, custom).</li>
+<li>Categories, assignment, completions with points.</li>
+<li>Bidirectional offline sync.</li>
+<li>Gamification: freshness score, streaks, leaderboard, badges.</li>
+<li>Fair-share: configurable ratio per couple.</li>
+<li>Firebase push notifications + local reminders.</li>
+<li>Initial import of 39 tasks from the Home Assistant config.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <span>© <span id="y">2026</span> Torchons &amp; Serviettes</span>
+    <span>
+      <a href="about.html">About</a> ·
+      <a href="faq.html">FAQ</a> ·
+      <a href="changelog.html">What's new</a> ·
+      <a href="roadmap.html">Roadmap</a> ·
+      <a href="privacy.html">Privacy</a> ·
+      <a href="contact.html">Contact</a>
+    </span>
+  </div>
+</footer>
+<script>document.getElementById('y').textContent=new Date().getFullYear();</script>
+</body>
+</html>
