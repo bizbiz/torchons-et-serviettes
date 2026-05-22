@@ -23,9 +23,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
@@ -101,19 +104,20 @@ fun LongTermCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Repartition par pieces",
+                text = stringResource(R.string.longterm_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(8.dp))
 
             // Selecteur de periode
+            val periods = listOf(
+                "month" to stringResource(R.string.longterm_period_month),
+                "quarter" to stringResource(R.string.longterm_period_quarter),
+                "year" to stringResource(R.string.longterm_period_year),
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    "month" to "Mois",
-                    "quarter" to "Trimestre",
-                    "year" to "Annee",
-                ).forEach { (key, label) ->
+                periods.forEach { (key, label) ->
                     FilterChip(
                         selected = state.period == key,
                         onClick = { viewModel.load(key) },
@@ -147,7 +151,7 @@ fun LongTermCard(
 
                     if (totalCompletions == 0) {
                         Text(
-                            text = "Pas encore de tache validee sur cette periode.",
+                            text = stringResource(R.string.longterm_empty),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -158,13 +162,20 @@ fun LongTermCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(
-                                text = "$totalCompletions taches",
+                                text = pluralStringResource(
+                                    R.plurals.longterm_total_tasks_format,
+                                    totalCompletions,
+                                    totalCompletions,
+                                ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             if (totalMinutes > 0) {
                                 Text(
-                                    text = "≈ ${formatMinutes(totalMinutes)} cumulees",
+                                    text = stringResource(
+                                        R.string.longterm_cumulated_format,
+                                        formatMinutes(totalMinutes),
+                                    ),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.SemiBold,
@@ -211,8 +222,15 @@ private fun RoomBar(
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = if (minutes > 0) "$completions taches · ${formatMinutes(minutes)}"
-                else "$completions taches · $points pts",
+                text = if (minutes > 0) stringResource(
+                    R.string.longterm_room_minutes_format,
+                    completions,
+                    formatMinutes(minutes),
+                ) else stringResource(
+                    R.string.longterm_room_points_format,
+                    completions,
+                    points,
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

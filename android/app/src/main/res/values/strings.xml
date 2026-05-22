@@ -1032,6 +1032,36 @@
     </plurals>
     <string name="completion_preview_delta_negative_format">%1$d pt · %2$s</string>
 
+    <!-- WeeklySummaryCard (carte "Cette semaine" en haut de Stats) -->
+    <string name="weekly_summary_this_week">Cette semaine</string>
+    <string name="weekly_summary_last_week">Semaine dernière</string>
+    <plurals name="weekly_summary_weeks_ago_format">
+        <item quantity="one">Il y a %d semaine</item>
+        <item quantity="other">Il y a %d semaines</item>
+    </plurals>
+    <string name="weekly_summary_prev_week_cd">Semaine précédente</string>
+    <string name="weekly_summary_next_week_cd">Semaine suivante</string>
+    <string name="weekly_summary_period_format">du %1$s au %2$s</string>
+    <string name="weekly_summary_stat_tasks">tâches</string>
+    <string name="weekly_summary_stat_points">points</string>
+    <string name="weekly_summary_empty">Pas encore de tâche cette semaine. Allez&#160;!</string>
+    <string name="weekly_summary_per_user_format">%1$d tâches · %2$d pts</string>
+    <string name="weekly_summary_top_tasks">Top tâches</string>
+
+    <!-- LongTermCard ("Répartition par pièces" sur Stats) -->
+    <string name="longterm_title">Répartition par pièces</string>
+    <string name="longterm_period_month">Mois</string>
+    <string name="longterm_period_quarter">Trimestre</string>
+    <string name="longterm_period_year">Année</string>
+    <string name="longterm_empty">Pas encore de tâche validée sur cette période.</string>
+    <plurals name="longterm_total_tasks_format">
+        <item quantity="one">%d tâche</item>
+        <item quantity="other">%d tâches</item>
+    </plurals>
+    <string name="longterm_cumulated_format">≈ %1$s cumulées</string>
+    <string name="longterm_room_minutes_format">%1$d tâches · %2$s</string>
+    <string name="longterm_room_points_format">%1$d tâches · %2$d pts</string>
+
     <!-- TaskUrgencyCalculator — countdown labels (Home suggestions, TaskList, TaskDetail) -->
     <string name="countdown_in_days_format">dans %1$d j</string>
     <string name="countdown_tomorrow">demain</string>

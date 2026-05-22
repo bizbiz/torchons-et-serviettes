@@ -1,5 +1,22 @@
 # Release notes
 
+## v0.35.18 — 2026-05-22
+
+### i18n — Stats, history, badges
+- **"This week" card** (top of Stats): title, date range "from X to
+  Y", per-member stats, Top tasks, empty message — now bilingual,
+  with proper French accents.
+- **"Split by room" card** (long-term Stats): title, Month / Quarter
+  / Year chips, bar labels, empty message — bilingual.
+- **Activity history** (profile modal + Stats history tab): the
+  server-generated descriptions ("X completed: Y (+Z pts)",
+  "X rated affinity of Y at S/10", "X edited task Y (recurrence)",
+  etc.) are now translated based on `Accept-Language`. No more
+  forced FR.
+- **Badges**: the 12 catalog badges (First task, Steady, King of
+  toil, etc.) are now translated server-side based on the phone's
+  language.
+
 ## v0.35.17 — 2026-05-22
 
 ### i18n — countdown + app name fix

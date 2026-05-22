@@ -5,9 +5,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone, date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 
 from app.utils.errors import LocalizedHTTPException
+from app.utils.locale import pick_locale_from_header
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, or_, select, case, extract
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -78,20 +79,39 @@ class BadgeInfo(BaseModel):
 
 # --- Catalogue de badges ---
 
-BADGE_CATALOG = {
-    "first_task": ("Première tâche", "Compléter sa première tâche"),
-    "tasks_10": ("Débutant", "Compléter 10 tâches"),
-    "tasks_50": ("Habitué", "Compléter 50 tâches"),
-    "tasks_100": ("Expert", "Compléter 100 tâches"),
-    "tasks_500": ("Légende", "Compléter 500 tâches"),
-    "streak_3": ("Régulier", "3 jours consécutifs"),
-    "streak_7": ("Semaine parfaite", "7 jours consécutifs"),
-    "streak_14": ("Deux semaines", "14 jours consécutifs"),
-    "streak_30": ("Mois parfait", "30 jours consécutifs"),
-    "weight_king": ("Roi de la pénibilité", "Compléter une tâche de poids 10"),
-    "early_bird": ("Matinal", "Compléter une tâche avant 8h"),
-    "night_owl": ("Noctambule", "Compléter une tâche après 22h"),
+BADGE_CATALOG_BY_LOCALE: dict[str, dict[str, tuple[str, str]]] = {
+    "fr": {
+        "first_task": ("Première tâche", "Compléter sa première tâche"),
+        "tasks_10": ("Débutant", "Compléter 10 tâches"),
+        "tasks_50": ("Habitué", "Compléter 50 tâches"),
+        "tasks_100": ("Expert", "Compléter 100 tâches"),
+        "tasks_500": ("Légende", "Compléter 500 tâches"),
+        "streak_3": ("Régulier", "3 jours consécutifs"),
+        "streak_7": ("Semaine parfaite", "7 jours consécutifs"),
+        "streak_14": ("Deux semaines", "14 jours consécutifs"),
+        "streak_30": ("Mois parfait", "30 jours consécutifs"),
+        "weight_king": ("Roi de la pénibilité", "Compléter une tâche de poids 10"),
+        "early_bird": ("Matinal", "Compléter une tâche avant 8h"),
+        "night_owl": ("Noctambule", "Compléter une tâche après 22h"),
+    },
+    "en": {
+        "first_task": ("First task", "Complete your first task"),
+        "tasks_10": ("Beginner", "Complete 10 tasks"),
+        "tasks_50": ("Regular", "Complete 50 tasks"),
+        "tasks_100": ("Expert", "Complete 100 tasks"),
+        "tasks_500": ("Legend", "Complete 500 tasks"),
+        "streak_3": ("Steady", "3 days in a row"),
+        "streak_7": ("Perfect week", "7 days in a row"),
+        "streak_14": ("Two weeks", "14 days in a row"),
+        "streak_30": ("Perfect month", "30 days in a row"),
+        "weight_king": ("King of toil", "Complete a weight-10 task"),
+        "early_bird": ("Early bird", "Complete a task before 8 AM"),
+        "night_owl": ("Night owl", "Complete a task after 10 PM"),
+    },
 }
+
+# Backward-compat alias : ancien nom utilise par d'autres modules eventuels.
+BADGE_CATALOG = BADGE_CATALOG_BY_LOCALE["fr"]
 
 
 # --- Edition completions ---
@@ -488,6 +508,7 @@ async def get_streaks(
 
 @router.get("/badges", response_model=list[BadgeInfo])
 async def get_badges(
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
@@ -550,9 +571,11 @@ async def get_badges(
 
     await session.commit()
 
-    # Construire la reponse
+    # Construire la reponse localisee selon Accept-Language.
+    locale = pick_locale_from_header(request.headers.get("accept-language"))
+    catalog = BADGE_CATALOG_BY_LOCALE.get(locale) or BADGE_CATALOG_BY_LOCALE["fr"]
     badges = []
-    for badge_type, (label, desc) in BADGE_CATALOG.items():
+    for badge_type, (label, desc) in catalog.items():
         badges.append(BadgeInfo(
             badge_type=badge_type,
             label=label,
@@ -1112,18 +1135,88 @@ _TASK_TECHNICAL_FIELDS = {
     "next_due_at",
 }
 
-# Libelles francais des champs metier pour les descriptions.
-_TASK_FIELD_LABELS = {
-    "title": "titre",
-    "description": "description",
-    "category_id": "categorie",
-    "assigned_to_ids": "attribution",
-    "points_value": "points",
-    "weight": "poids",
-    "recurrence_rule": "recurrence",
-    "tolerance": "tolerance",
-    "deleted_at": "suppression",
+# Libellés des champs métier pour les descriptions, par locale.
+_TASK_FIELD_LABELS_BY_LOCALE: dict[str, dict[str, str]] = {
+    "fr": {
+        "title": "titre",
+        "description": "description",
+        "category_id": "catégorie",
+        "assigned_to_ids": "attribution",
+        "points_value": "points",
+        "weight": "poids",
+        "recurrence_rule": "récurrence",
+        "tolerance": "tolérance",
+        "deleted_at": "suppression",
+    },
+    "en": {
+        "title": "title",
+        "description": "description",
+        "category_id": "category",
+        "assigned_to_ids": "assignment",
+        "points_value": "points",
+        "weight": "weight",
+        "recurrence_rule": "recurrence",
+        "tolerance": "tolerance",
+        "deleted_at": "deletion",
+    },
 }
+
+
+# Templates de description d'evenements historique, par locale.
+_HISTORY_TEMPLATES: dict[str, dict[str, str]] = {
+    "fr": {
+        "completion_solo": "{who} a complété : {title} (+{points} pts)",
+        "completion_collective": "{joined} ont fait : {title} (+{points} pts chacun)",
+        "affinity": "{who} a noté l'affinité de '{title}' à {score}/10",
+        "effort": "{who} a estimé l'effort de '{title}' à {minutes}",
+        "task_created": "{who} a créé la tâche '{title}'",
+        "task_deleted": "{who} a supprimé la tâche '{title}'",
+        "task_updated": "{who} a modifié la tâche '{title}' ({fields}){detail}",
+        "completion_action_update": "modifié",
+        "completion_action_delete": "supprimé",
+        "completion_edited_or_deleted": "{who} a {action} une complétion de '{title}'",
+        "category_action_insert": "créé",
+        "category_action_update": "modifié",
+        "category_action_delete": "supprimé",
+        "category_changed": "{who} a {action} une catégorie",
+        "task_deleted_suffix": " (supprimée)",
+        "recurrence_interval_format": "tous les {n}j",
+        "recurrence_monthly_variable": "variable selon le mois",
+        "recurrence_uncertain": "irrégulière",
+        "recurrence_none": "ponctuelle",
+    },
+    "en": {
+        "completion_solo": "{who} completed: {title} (+{points} pts)",
+        "completion_collective": "{joined} did: {title} (+{points} pts each)",
+        "affinity": "{who} rated affinity of '{title}' at {score}/10",
+        "effort": "{who} estimated effort of '{title}' at {minutes}",
+        "task_created": "{who} created task '{title}'",
+        "task_deleted": "{who} deleted task '{title}'",
+        "task_updated": "{who} edited task '{title}' ({fields}){detail}",
+        "completion_action_update": "edited",
+        "completion_action_delete": "deleted",
+        "completion_edited_or_deleted": "{who} {action} a completion of '{title}'",
+        "category_action_insert": "created",
+        "category_action_update": "edited",
+        "category_action_delete": "deleted",
+        "category_changed": "{who} {action} a category",
+        "task_deleted_suffix": " (deleted)",
+        "recurrence_interval_format": "every {n}d",
+        "recurrence_monthly_variable": "varies by month",
+        "recurrence_uncertain": "irregular",
+        "recurrence_none": "one-shot",
+    },
+}
+
+
+def _t(locale: str, key: str, **kwargs) -> str:
+    """Format un template d'historique dans la locale demandee (fallback FR)."""
+    bucket = _HISTORY_TEMPLATES.get(locale) or _HISTORY_TEMPLATES["fr"]
+    template = bucket.get(key) or _HISTORY_TEMPLATES["fr"].get(key) or key
+    try:
+        return template.format(**kwargs)
+    except (KeyError, IndexError):
+        return template
 
 
 def _format_minutes(points: int) -> str:
@@ -1153,20 +1246,20 @@ _TYPES_FROM_COMPLETIONS_LOG = {"completion_edited", "completion_deleted"}
 _TYPES_FROM_CATEGORIES_LOG = {"category_changed"}
 
 
-def _format_recurrence_rule(rule: dict | None) -> str | None:
-    """Rend une recurrence_rule lisible pour l'historique. None si vide."""
+def _format_recurrence_rule(rule: dict | None, locale: str = "fr") -> str | None:
+    """Rend une recurrence_rule lisible pour l'historique, localisé. None si vide."""
     if not rule:
         return None
     rtype = rule.get("type")
     if rtype == "interval":
         n = rule.get("every_n_days")
-        return f"tous les {n}j" if n else "interval"
+        return _t(locale, "recurrence_interval_format", n=n) if n else "interval"
     if rtype == "monthly_variable":
-        return "variable par mois"
+        return _t(locale, "recurrence_monthly_variable")
     if rtype == "uncertain":
-        return "incertain"
+        return _t(locale, "recurrence_uncertain")
     if rtype == "none":
-        return "ponctuelle"
+        return _t(locale, "recurrence_none")
     return rtype or "?"
 
 
@@ -1179,6 +1272,7 @@ async def _build_history(
     event_types: set[str] | None = None,
     since: datetime | None = None,
     q: str | None = None,
+    locale: str = "fr",
 ) -> list[dict]:
     """Construit le feed d'historique, filtrable par actor + type + periode +
     recherche titre. Scope foyer.
@@ -1319,7 +1413,7 @@ async def _build_history(
             events.append({
                 "type": "completion",
                 "date": head.completed_at,
-                "description": f"{who} a complete : {title} (+{head.points_earned} pts)",
+                "description": _t(locale, "completion_solo", who=who, title=title, points=head.points_earned),
                 "user": who,
                 "actor": actor,
                 "task": {"id": str(head.task_id), "title": title},
@@ -1332,7 +1426,7 @@ async def _build_history(
             events.append({
                 "type": "completion",
                 "date": head.completed_at,
-                "description": f"{joined} ont fait : {title} (+{pts} pts chacun)",
+                "description": _t(locale, "completion_collective", joined=joined, title=title, points=pts),
                 "user": joined,
                 "actor": _actor(head.completed_by),  # le recorder
                 "task": {"id": str(head.task_id), "title": title},
@@ -1371,7 +1465,7 @@ async def _build_history(
         events.append({
             "type": "affinity",
             "date": aff.updated_at,
-            "description": f"{who} a note l'affinite de '{title}' a {aff.score}/10",
+            "description": _t(locale, "affinity", who=who, title=title, score=aff.score),
             "user": who,
             "actor": actor,
             "task": {"id": str(aff.task_id), "title": title},
@@ -1405,7 +1499,7 @@ async def _build_history(
         events.append({
             "type": "effort",
             "date": eff.updated_at,
-            "description": f"{who} a estime l'effort de '{title}' a {_format_minutes(eff.points)}",
+            "description": _t(locale, "effort", who=who, title=title, minutes=_format_minutes(eff.points)),
             "user": who,
             "actor": actor,
             "task": {"id": str(eff.task_id), "title": title},
@@ -1492,7 +1586,7 @@ async def _build_history(
                 seen.add(row_id)
                 title = (new_data or {}).get("title")
                 if title:
-                    task_titles[row_id] = f"{title} (supprimee)"
+                    task_titles[row_id] = f"{title}{_t(locale, 'task_deleted_suffix')}"
 
     completion_task_titles: dict[UUID, tuple[UUID, str]] = {}
     if completion_ids_needed:
@@ -1515,11 +1609,11 @@ async def _build_history(
 
             if log.operation == "INSERT":
                 event_type = "task_created"
-                desc = f"{who} a cree la tache '{title}'"
+                desc = _t(locale, "task_created", who=who, title=title)
                 meta = {}
             elif log.operation == "DELETE":
                 event_type = "task_deleted"
-                desc = f"{who} a supprime la tache '{title}'"
+                desc = _t(locale, "task_deleted", who=who, title=title)
                 meta = {}
             else:  # UPDATE
                 # Dedup vote/recurrence : un tasks/UPDATE qui ne touche QUE
@@ -1549,18 +1643,24 @@ async def _build_history(
                 meaningful = [f for f in raw_fields if f not in _TASK_TECHNICAL_FIELDS]
                 if not meaningful:
                     continue
-                labels = [_TASK_FIELD_LABELS.get(f, f) for f in meaningful]
+                field_labels = _TASK_FIELD_LABELS_BY_LOCALE.get(locale) or _TASK_FIELD_LABELS_BY_LOCALE["fr"]
+                labels = [field_labels.get(f, f) for f in meaningful]
                 event_type = "task_updated"
                 # Detail enrichi pour recurrence_rule : "tous les 5j -> tous les 7j".
                 detail_extra = ""
                 if "recurrence_rule" in meaningful:
-                    old_rec = _format_recurrence_rule((log.old_data or {}).get("recurrence_rule"))
-                    new_rec = _format_recurrence_rule((log.new_data or {}).get("recurrence_rule"))
+                    old_rec = _format_recurrence_rule((log.old_data or {}).get("recurrence_rule"), locale)
+                    new_rec = _format_recurrence_rule((log.new_data or {}).get("recurrence_rule"), locale)
                     if old_rec and new_rec and old_rec != new_rec:
                         detail_extra = f" : {old_rec} → {new_rec}"
                     elif new_rec:
                         detail_extra = f" : {new_rec}"
-                desc = f"{who} a modifie la tache '{title}' ({', '.join(labels)}){detail_extra}"
+                desc = _t(
+                    locale, "task_updated",
+                    who=who, title=title,
+                    fields=", ".join(labels),
+                    detail=detail_extra,
+                )
                 meta = {"fields": meaningful}
 
             # Filtres a grain fin (event_types + q) pour les events partageant
@@ -1593,7 +1693,10 @@ async def _build_history(
                 task_id, title = info
                 task_info = {"id": str(task_id), "title": title}
             event_type = "completion_edited" if log.operation == "UPDATE" else "completion_deleted"
-            action = "modifie" if log.operation == "UPDATE" else "supprime"
+            action = _t(
+                locale,
+                "completion_action_update" if log.operation == "UPDATE" else "completion_action_delete",
+            )
 
             if event_types is not None and event_type not in event_types:
                 continue
@@ -1603,7 +1706,7 @@ async def _build_history(
             events.append({
                 "type": event_type,
                 "date": log.changed_at,
-                "description": f"{who} a {action} une completion de '{title}'",
+                "description": _t(locale, "completion_edited_or_deleted", who=who, action=action, title=title),
                 "user": who,
                 "actor": actor,
                 "task": task_info,
@@ -1613,12 +1716,16 @@ async def _build_history(
         elif log.table_name == "categories":
             # Les category_changed n'ont pas de titre de tache : pas de filtre
             # `q` applicable (deja exclu en amont si `q` fourni).
-            action_map = {"INSERT": "cree", "UPDATE": "modifie", "DELETE": "supprime"}
-            action = action_map.get(log.operation, log.operation.lower())
+            action_key_map = {
+                "INSERT": "category_action_insert",
+                "UPDATE": "category_action_update",
+                "DELETE": "category_action_delete",
+            }
+            action = _t(locale, action_key_map.get(log.operation, "category_action_update"))
             events.append({
                 "type": "category_changed",
                 "date": log.changed_at,
-                "description": f"{who} a {action} une categorie",
+                "description": _t(locale, "category_changed", who=who, action=action),
                 "user": who,
                 "actor": actor,
                 "task": None,
@@ -1637,6 +1744,7 @@ async def _build_history(
 
 @router.get("/history")
 async def global_history(
+    request: Request,
     limit: int = 50,
     before: datetime | None = None,
     since: datetime | None = None,
@@ -1672,6 +1780,7 @@ async def global_history(
     else:
         event_types = None
 
+    locale = pick_locale_from_header(request.headers.get("accept-language"))
     return await _build_history(
         session,
         foyer_uuid=current_foyer_uuid(current),
@@ -1681,24 +1790,28 @@ async def global_history(
         event_types=event_types,
         since=since,
         q=q,
+        locale=locale,
     )
 
 
 @router.get("/users/{user_id}/history")
 async def user_history(
     user_id: UUID,
+    request: Request,
     limit: int = 50,
     before: datetime | None = None,
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
     """Historique personnel d'un utilisateur dans le foyer actif."""
+    locale = pick_locale_from_header(request.headers.get("accept-language"))
     return await _build_history(
         session,
         foyer_uuid=current_foyer_uuid(current),
         limit=limit,
         before=before,
         actor_id=user_id,
+        locale=locale,
     )
 
 

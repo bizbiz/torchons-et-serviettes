@@ -1022,6 +1022,36 @@
     </plurals>
     <string name="completion_preview_delta_negative_format">%1$d pt · %2$s</string>
 
+    <!-- WeeklySummaryCard -->
+    <string name="weekly_summary_this_week">This week</string>
+    <string name="weekly_summary_last_week">Last week</string>
+    <plurals name="weekly_summary_weeks_ago_format">
+        <item quantity="one">%d week ago</item>
+        <item quantity="other">%d weeks ago</item>
+    </plurals>
+    <string name="weekly_summary_prev_week_cd">Previous week</string>
+    <string name="weekly_summary_next_week_cd">Next week</string>
+    <string name="weekly_summary_period_format">from %1$s to %2$s</string>
+    <string name="weekly_summary_stat_tasks">tasks</string>
+    <string name="weekly_summary_stat_points">points</string>
+    <string name="weekly_summary_empty">No tasks yet this week. Come on!</string>
+    <string name="weekly_summary_per_user_format">%1$d tasks · %2$d pts</string>
+    <string name="weekly_summary_top_tasks">Top tasks</string>
+
+    <!-- LongTermCard -->
+    <string name="longterm_title">Split by room</string>
+    <string name="longterm_period_month">Month</string>
+    <string name="longterm_period_quarter">Quarter</string>
+    <string name="longterm_period_year">Year</string>
+    <string name="longterm_empty">No tasks validated in this period yet.</string>
+    <plurals name="longterm_total_tasks_format">
+        <item quantity="one">%d task</item>
+        <item quantity="other">%d tasks</item>
+    </plurals>
+    <string name="longterm_cumulated_format">≈ %1$s cumulated</string>
+    <string name="longterm_room_minutes_format">%1$d tasks · %2$s</string>
+    <string name="longterm_room_points_format">%1$d tasks · %2$d pts</string>
+
     <!-- TaskUrgencyCalculator — countdown labels -->
     <string name="countdown_in_days_format">in %1$dd</string>
     <string name="countdown_tomorrow">tomorrow</string>

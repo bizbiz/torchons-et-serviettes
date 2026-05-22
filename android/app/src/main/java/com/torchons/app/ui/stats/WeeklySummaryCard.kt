@@ -30,9 +30,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
@@ -119,7 +122,7 @@ fun WeeklySummaryCard(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                        contentDescription = "Semaine precedente",
+                        contentDescription = stringResource(R.string.weekly_summary_prev_week_cd),
                     )
                 }
                 Column(modifier = Modifier.weight(1f)) {
@@ -143,7 +146,7 @@ fun WeeklySummaryCard(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Semaine suivante",
+                        contentDescription = stringResource(R.string.weekly_summary_next_week_cd),
                     )
                 }
             }
@@ -179,14 +182,20 @@ private fun SummaryBody(data: WeeklySummaryResponse) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        StatBig(value = data.foyerTotalCompletions.toString(), label = "taches")
-        StatBig(value = data.foyerTotalPoints.toString(), label = "points")
+        StatBig(
+            value = data.foyerTotalCompletions.toString(),
+            label = stringResource(R.string.weekly_summary_stat_tasks),
+        )
+        StatBig(
+            value = data.foyerTotalPoints.toString(),
+            label = stringResource(R.string.weekly_summary_stat_points),
+        )
     }
 
     if (data.perUser.isEmpty() || data.foyerTotalCompletions == 0) {
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "Pas encore de tache cette semaine. Allez !",
+            text = stringResource(R.string.weekly_summary_empty),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -210,7 +219,11 @@ private fun SummaryBody(data: WeeklySummaryResponse) {
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = "${user.completionsCount} taches · ${user.pointsEarned} pts",
+                text = stringResource(
+                    R.string.weekly_summary_per_user_format,
+                    user.completionsCount,
+                    user.pointsEarned,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -220,7 +233,7 @@ private fun SummaryBody(data: WeeklySummaryResponse) {
     if (data.topTasks.isNotEmpty()) {
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "Top taches",
+            text = stringResource(R.string.weekly_summary_top_tasks),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
         )
@@ -260,20 +273,29 @@ private fun StatBig(value: String, label: String) {
     }
 }
 
+@Composable
 private fun headerLabel(weekOffset: Int): String = when (weekOffset) {
-    0 -> "Cette semaine"
-    -1 -> "Semaine derniere"
-    else -> "Il y a ${-weekOffset} semaines"
+    0 -> stringResource(R.string.weekly_summary_this_week)
+    -1 -> stringResource(R.string.weekly_summary_last_week)
+    else -> pluralStringResource(
+        R.plurals.weekly_summary_weeks_ago_format,
+        -weekOffset,
+        -weekOffset,
+    )
 }
 
 private val DATE_FMT = DateTimeFormatter.ofPattern("dd/MM")
 
+@Composable
 private fun weekRange(weekStart: String, weekEnd: String): String? {
-    return try {
-        val start = LocalDate.parse(weekStart)
-        val end = LocalDate.parse(weekEnd)
-        "du ${start.format(DATE_FMT)} au ${end.format(DATE_FMT)}"
+    val parsed: Pair<String, String>? = try {
+        val start = LocalDate.parse(weekStart).format(DATE_FMT)
+        val end = LocalDate.parse(weekEnd).format(DATE_FMT)
+        start to end
     } catch (_: Exception) {
         null
+    }
+    return parsed?.let { (s, e) ->
+        stringResource(R.string.weekly_summary_period_format, s, e)
     }
 }

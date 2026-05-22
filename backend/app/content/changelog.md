@@ -1,5 +1,24 @@
 # Notes de version
 
+## v0.35.18 — 2026-05-22
+
+### i18n — Stats, historique, badges
+- Carte **« Cette semaine »** (haut de Stats) : titre, plage de
+  dates « du X au Y », statistiques par membre, Top tâches, message
+  « Pas encore de tâche cette semaine » — désormais bilingues et
+  avec les accents propres en français.
+- Carte **« Répartition par pièces »** (Stats long-terme) : titre,
+  chips Mois / Trimestre / Année, libellés des barres, message vide
+  — bilingues.
+- **Historique des activités** (modal profil + onglet Historique
+  des Stats) : les descriptions générées côté serveur
+  (« X a complété : Y (+Z pts) », « X a noté l'affinité de Y à
+  S/10 », « X a modifié la tâche Y (récurrence) », etc.) sont
+  désormais traduites selon `Accept-Language`. Plus de FR forcé.
+- **Badges** : les 12 badges du catalogue (Première tâche, Régulier,
+  Roi de la pénibilité, etc.) sont désormais traduits côté serveur
+  selon la langue du téléphone.
+
 ## v0.35.17 — 2026-05-22
 
 ### i18n — correctif countdown + nom d'app
