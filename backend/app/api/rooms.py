@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +13,7 @@ from app.auth import get_current_user
 from app.database import get_session
 from app.models.room import Room
 from app.models.task import Task
+from app.utils.errors import LocalizedHTTPException
 from app.schemas.room import RoomCreate, RoomResponse, RoomUpdate
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid, scoped
@@ -70,7 +71,7 @@ async def update_room(
     )
     room = result.scalar_one_or_none()
     if not room:
-        raise HTTPException(status_code=404, detail="Piece introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="ROOM_NOT_FOUND")
     for key, val in body.model_dump(exclude_unset=True).items():
         setattr(room, key, val)
     room.version += 1
@@ -95,7 +96,7 @@ async def delete_room(
     )
     room = result.scalar_one_or_none()
     if not room:
-        raise HTTPException(status_code=404, detail="Piece introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="ROOM_NOT_FOUND")
 
     # Detache les taches de cette piece (scope foyer)
     result_tasks = await session.execute(

@@ -26,7 +26,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
+
+from app.utils.errors import LocalizedHTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,15 +90,15 @@ async def verify_purchase(
     )
     uf = membership.scalar_one_or_none()
     if uf is None or uf.role != "admin":
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=403,
-            detail="Seul un admin du foyer peut activer le premium",
+            error_code="BILLING_ADMIN_REQUIRED",
         )
 
     foyer_result = await session.execute(select(Foyer).where(Foyer.id == foyer_id))
     foyer = foyer_result.scalar_one_or_none()
     if foyer is None or foyer.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Foyer introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="FOYER_NOT_FOUND")
 
     # STUB : on simule un abonnement mensuel.
     foyer.is_premium = True

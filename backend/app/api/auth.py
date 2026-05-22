@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +15,7 @@ from app.config import settings
 from app.database import get_session
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
+from app.utils.errors import LocalizedHTTPException
 from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -31,7 +32,11 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)
     result = await session.execute(select(User).where(User.username == body.username))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=401, detail=f"Utilisateur inconnu: {body.username}")
+        raise LocalizedHTTPException(
+            status_code=401,
+            error_code="AUTH_USER_UNKNOWN_FORMAT",
+            format_args={"username": body.username},
+        )
     foyer_id = str(user.last_active_foyer_id) if user.last_active_foyer_id else None
     token = create_token(str(user.id), body.device_id, foyer_id=foyer_id)
     return {
@@ -81,7 +86,11 @@ async def auto_login(request: Request, session: AsyncSession = Depends(get_sessi
     result = await session.execute(select(User).where(User.username == username))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail=f"Utilisateur '{username}' introuvable")
+        raise LocalizedHTTPException(
+            status_code=404,
+            error_code="AUTH_USER_NOT_FOUND_FORMAT",
+            format_args={"username": username},
+        )
 
     foyer_id = str(user.last_active_foyer_id) if user.last_active_foyer_id else None
     token = create_token(str(user.id), f"tailscale-{client_ip}", foyer_id=foyer_id)
@@ -105,7 +114,11 @@ async def claim_ip(request: Request, body: ClaimIP, session: AsyncSession = Depe
     result = await session.execute(select(User).where(User.username == body.username))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail=f"Utilisateur '{body.username}' introuvable")
+        raise LocalizedHTTPException(
+            status_code=404,
+            error_code="AUTH_USER_NOT_FOUND_FORMAT",
+            format_args={"username": body.username},
+        )
 
     # Enregistrer le mapping
     ip_map[client_ip] = body.username
@@ -128,7 +141,7 @@ async def me(
     result = await session.execute(select(User).where(User.id == UUID(current["user_id"])))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="USER_NOT_FOUND")
     return {"id": str(user.id), "username": user.username, "display_name": user.display_name}
 
 

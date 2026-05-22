@@ -22,6 +22,7 @@ from app.models.category import Category
 from app.models.enums import PromptResolution, PromptType
 from app.models.presence_day import PresenceDay
 from app.models.task import Task
+from app.utils.errors import LocalizedHTTPException
 from app.models.task_effort import TaskEffort
 from app.models.user_prompt import UserPrompt
 from app.utils.scoping import current_foyer_uuid
@@ -120,7 +121,7 @@ async def mark_shown(
     )
     prompt = result.scalar_one_or_none()
     if prompt is None:
-        raise HTTPException(status_code=404, detail="Prompt introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="PROMPT_NOT_FOUND")
 
     if prompt.shown_at is None:
         prompt.shown_at = datetime.now(timezone.utc)
@@ -153,7 +154,7 @@ async def resolve_prompt(
     )
     prompt = result.scalar_one_or_none()
     if prompt is None:
-        raise HTTPException(status_code=404, detail="Prompt introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="PROMPT_NOT_FOUND")
 
     if prompt.resolved_at is not None:
         return {"ok": True, "already_resolved": True}
@@ -161,7 +162,7 @@ async def resolve_prompt(
     # Resolution
     resolution = body.resolution.upper()
     if resolution not in ("DISMISSED", "ANSWERED"):
-        raise HTTPException(status_code=400, detail="resolution must be DISMISSED or ANSWERED")
+        raise LocalizedHTTPException(status_code=400, error_code="PROMPT_INVALID_RESOLUTION")
 
     prompt.resolved_at = datetime.now(timezone.utc)
     prompt.resolution = PromptResolution(resolution)
@@ -232,7 +233,7 @@ async def request_revote(
     )
     task = task_r.scalar_one_or_none()
     if task is None:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     # 2. Validation : target user appartient au foyer.
     member_r = await session.execute(
@@ -242,11 +243,11 @@ async def request_revote(
         )
     )
     if member_r.scalar_one_or_none() is None:
-        raise HTTPException(status_code=404, detail="Membre introuvable dans le foyer")
+        raise LocalizedHTTPException(status_code=404, error_code="FOYER_MEMBER_NOT_FOUND")
 
     # 3. Pas de demande a soi-meme (UI ne devrait pas le proposer mais on protege).
     if body.target_user_id == requester_id:
-        raise HTTPException(status_code=400, detail="Tu peux modifier ton propre vote directement")
+        raise LocalizedHTTPException(status_code=400, error_code="PROMPT_OWN_VOTE")
 
     # 4. Mapping kind -> PromptType.
     if body.kind == "frequency":
@@ -254,7 +255,7 @@ async def request_revote(
     elif body.kind == "effort":
         prompt_type = PromptType.VOTE_EFFORT
     else:
-        raise HTTPException(status_code=400, detail="kind must be 'frequency' or 'effort'")
+        raise LocalizedHTTPException(status_code=400, error_code="PROMPT_INVALID_KIND")
 
     # 5. Idempotence : prompt actif du meme type (user, task) existant ?
     now = datetime.now(timezone.utc)

@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +23,7 @@ from app.auth import get_current_user
 from app.database import get_session
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
+from app.utils.errors import LocalizedHTTPException
 from app.services.lifecycle import soft_leave_foyer
 
 router = APIRouter(prefix="/api/me", tags=["me"])
@@ -39,7 +40,7 @@ async def delete_me(
     user_result = await session.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     if user is None or user.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="USER_NOT_FOUND")
 
     # Liste les memberships actives a quitter
     memberships_result = await session.execute(

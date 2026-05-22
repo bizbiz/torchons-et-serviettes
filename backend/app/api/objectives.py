@@ -22,13 +22,14 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
+from app.utils.errors import LocalizedHTTPException
 from app.models.completion import TaskCompletion
 from app.models.objective import Objective
 from app.models.task import Task
@@ -180,9 +181,9 @@ async def create_objective(
     """Cree un objectif. Si kind=personal, assigned_to_user_id est requis."""
     foyer_uuid = current_foyer_uuid(current)
     if body.kind == "personal" and body.assigned_to_user_id is None:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=400,
-            detail="assigned_to_user_id requis pour un objectif personnel",
+            error_code="OBJECTIVE_PERSONAL_REQUIRES_USER",
         )
 
     obj = Objective(
@@ -228,13 +229,13 @@ async def update_objective(
     )
     obj = result.scalar_one_or_none()
     if obj is None:
-        raise HTTPException(status_code=404, detail="Objectif introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="OBJECTIVE_NOT_FOUND")
 
     updates = body.model_dump(exclude_unset=True)
     if updates.get("kind") == "personal" and updates.get("assigned_to_user_id") is None and obj.assigned_to_user_id is None:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=400,
-            detail="assigned_to_user_id requis pour un objectif personnel",
+            error_code="OBJECTIVE_PERSONAL_REQUIRES_USER",
         )
     for key, val in updates.items():
         setattr(obj, key, val)
@@ -268,7 +269,7 @@ async def delete_objective(
     )
     obj = result.scalar_one_or_none()
     if obj is None:
-        raise HTTPException(status_code=404, detail="Objectif introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="OBJECTIVE_NOT_FOUND")
 
     obj.deleted_at = datetime.now(timezone.utc)
     obj.is_active = False

@@ -25,13 +25,14 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
+from app.utils.errors import LocalizedHTTPException
 from app.models.completion import TaskCompletion
 from app.models.task import Task
 from app.models.user import User
@@ -329,7 +330,7 @@ async def get_objective(
     )
     uf = result.scalar_one_or_none()
     if uf is None:
-        raise HTTPException(status_code=404, detail="User foyer introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="USER_FOYER_NOT_FOUND")
     return ObjectiveResponse(
         daily_objective_minutes=uf.daily_objective_minutes,
         display_unit=uf.objective_display_unit or "min",
@@ -354,7 +355,7 @@ async def update_objective(
     )
     uf = result.scalar_one_or_none()
     if uf is None:
-        raise HTTPException(status_code=404, detail="User foyer introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="USER_FOYER_NOT_FOUND")
 
     if "daily_objective_minutes" in body.model_fields_set:
         uf.daily_objective_minutes = body.daily_objective_minutes

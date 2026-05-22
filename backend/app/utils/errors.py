@@ -153,6 +153,137 @@ ERROR_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "Participants hors du foyer : {invalid}",
         "en": "Participants outside the household: {invalid}",
     },
+    # ============================================================
+    # Lot 3 i18n (post-launch) — reste des HTTPException backend.
+    # ============================================================
+    # Auth
+    "AUTH_USER_UNKNOWN_FORMAT": {
+        "fr": "Utilisateur inconnu: {username}",
+        "en": "Unknown user: {username}",
+    },
+    "AUTH_USER_NOT_FOUND_FORMAT": {
+        "fr": "Utilisateur '{username}' introuvable",
+        "en": "User '{username}' not found",
+    },
+    # Categories / Rooms / Tasks / Completions / Objectives — generic "X not found"
+    "CATEGORY_NOT_FOUND": {
+        "fr": "Categorie introuvable",
+        "en": "Category not found",
+    },
+    "ROOM_NOT_FOUND": {
+        "fr": "Piece introuvable",
+        "en": "Room not found",
+    },
+    "OBJECTIVE_NOT_FOUND": {
+        "fr": "Objectif introuvable",
+        "en": "Goal not found",
+    },
+    "OBJECTIVE_PERSONAL_REQUIRES_USER": {
+        "fr": "assigned_to_user_id requis pour un objectif personnel",
+        "en": "assigned_to_user_id is required for a personal goal",
+    },
+    "USER_FOYER_NOT_FOUND": {
+        "fr": "User foyer introuvable",
+        "en": "User-household link not found",
+    },
+    "CONTENT_FILE_NOT_FOUND_FORMAT": {
+        "fr": "Fichier introuvable : {filename}",
+        "en": "File not found: {filename}",
+    },
+    # Gamification / Votes
+    "GAMIF_NOT_ASSIGNED_VOTE": {
+        "fr": "Vous n'etes pas assigne a cette tache — vote non accepte.",
+        "en": "You're not assigned to this task — vote rejected.",
+    },
+    "GAMIF_INVALID_FREQUENCY_FIELDS": {
+        "fr": "Fournir exactement un des champs : every_n_days ou days_per_month.",
+        "en": "Provide exactly one of: every_n_days or days_per_month.",
+    },
+    "VALIDATION_ERROR_FORMAT": {
+        "fr": "{message}",
+        "en": "{message}",
+    },
+    # Billing
+    "BILLING_ADMIN_REQUIRED": {
+        "fr": "Seul un admin du foyer peut activer le premium",
+        "en": "Only a household admin can activate premium",
+    },
+    # Presence
+    "PRESENCE_FROM_GT_TO": {
+        "fr": "from doit etre <= to",
+        "en": "from must be <= to",
+    },
+    "PRESENCE_RANGE_TOO_LARGE_FORMAT": {
+        "fr": "Plage trop large (max {max_days} jours)",
+        "en": "Range too large (max {max_days} days)",
+    },
+    "PRESENCE_INVALID_STATUS_FORMAT": {
+        "fr": "status invalide: {status}",
+        "en": "Invalid status: {status}",
+    },
+    # Prompts
+    "PROMPT_NOT_FOUND": {
+        "fr": "Prompt introuvable",
+        "en": "Prompt not found",
+    },
+    "PROMPT_INVALID_RESOLUTION": {
+        "fr": "resolution must be DISMISSED or ANSWERED",
+        "en": "resolution must be DISMISSED or ANSWERED",
+    },
+    "PROMPT_INVALID_KIND": {
+        "fr": "kind must be 'frequency' or 'effort'",
+        "en": "kind must be 'frequency' or 'effort'",
+    },
+    "PROMPT_OWN_VOTE": {
+        "fr": "Tu peux modifier ton propre vote directement",
+        "en": "You can edit your own vote directly",
+    },
+    "FOYER_MEMBER_NOT_FOUND": {
+        "fr": "Membre introuvable dans le foyer",
+        "en": "Member not found in household",
+    },
+    # Propositions
+    "PROPOSITION_NOT_FOUND": {
+        "fr": "Proposition introuvable",
+        "en": "Proposal not found",
+    },
+    "PROPOSITION_MISSING_SLIDERS_FORMAT": {
+        "fr": "slider_values manque des users du foyer : {missing}",
+        "en": "slider_values is missing some household users: {missing}",
+    },
+    "PROPOSITION_EXPIRED": {
+        "fr": "Proposition expiree",
+        "en": "Proposal expired",
+    },
+    "PROPOSITION_ALREADY_FORMAT": {
+        "fr": "Proposition deja {status}",
+        "en": "Proposal already {status}",
+    },
+    "PROPOSITION_IS_PROPOSER": {
+        "fr": "Tu es le proposer",
+        "en": "You're the proposer",
+    },
+    "PROPOSITION_ALREADY_RESPONDED": {
+        "fr": "Deja repondu",
+        "en": "Already answered",
+    },
+    "PROPOSITION_ONLY_PROPOSER_CANCELS": {
+        "fr": "Seul le proposer peut annuler",
+        "en": "Only the proposer can cancel",
+    },
+    # Sync
+    "SYNC_UNKNOWN_TABLE_FORMAT": {
+        "fr": "Table inconnue: {table}",
+        "en": "Unknown table: {table}",
+    },
+    "SYNC_UNKNOWN_OPERATION_FORMAT": {
+        "fr": "Operation inconnue: {operation}",
+        "en": "Unknown operation: {operation}",
+    },
+    "SYNC_UNSUPPORTED_OPERATION_FORMAT": {
+        "fr": "Operation non supportee pour {scope}: {operation}",
+        "en": "Unsupported operation for {scope}: {operation}",
+    },
 }
 
 

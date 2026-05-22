@@ -26,13 +26,14 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
+from app.utils.errors import LocalizedHTTPException
 from app.models.objective_proposition import (
     ObjectiveProposition,
     ObjectivePropositionResponse,
@@ -208,7 +209,7 @@ async def create_proposition(
         )
     )
     if membership.scalar_one_or_none() is None:
-        raise HTTPException(status_code=403, detail="Pas membre du foyer")
+        raise LocalizedHTTPException(status_code=403, error_code="FOYER_NOT_MEMBER")
 
     # Expire les anciennes propositions pending du foyer (une seule active a la fois)
     old_result = await session.execute(
@@ -230,9 +231,10 @@ async def create_proposition(
     body_user_ids = set(body.slider_values.keys())
     if not foyer_user_ids.issubset(body_user_ids):
         missing = foyer_user_ids - body_user_ids
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=400,
-            detail=f"slider_values manque des users du foyer : {missing}",
+            error_code="PROPOSITION_MISSING_SLIDERS_FORMAT",
+            format_args={"missing": missing},
         )
 
     now = datetime.now(timezone.utc)
@@ -289,7 +291,7 @@ async def respond_to_proposition(
     )
     prop = result.scalar_one_or_none()
     if prop is None:
-        raise HTTPException(status_code=404, detail="Proposition introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="PROPOSITION_NOT_FOUND")
 
     # Check : user est membre du foyer concerne
     membership = await session.execute(
@@ -299,7 +301,7 @@ async def respond_to_proposition(
         )
     )
     if membership.scalar_one_or_none() is None:
-        raise HTTPException(status_code=403, detail="Pas membre de ce foyer")
+        raise LocalizedHTTPException(status_code=403, error_code="FOYER_NOT_MEMBER")
 
     # Check : proposition toujours active (pending non expiree)
     if await _expire_if_needed(session, prop):
@@ -317,13 +319,17 @@ async def respond_to_proposition(
                 "proposition_id": str(prop.id),
             },
         )
-        raise HTTPException(status_code=410, detail="Proposition expiree")
+        raise LocalizedHTTPException(status_code=410, error_code="PROPOSITION_EXPIRED")
     if prop.status != "pending":
-        raise HTTPException(status_code=409, detail=f"Proposition deja {prop.status}")
+        raise LocalizedHTTPException(
+            status_code=409,
+            error_code="PROPOSITION_ALREADY_FORMAT",
+            format_args={"status": prop.status},
+        )
 
     # Le proposer ne peut pas respondre a sa propre proposition (auto-accepted)
     if user_id == prop.proposer_id:
-        raise HTTPException(status_code=400, detail="Tu es le proposer")
+        raise LocalizedHTTPException(status_code=400, error_code="PROPOSITION_IS_PROPOSER")
 
     # Store la reponse (unique par user_id - on a la PK composite)
     existing_result = await session.execute(
@@ -334,7 +340,7 @@ async def respond_to_proposition(
     )
     existing = existing_result.scalar_one_or_none()
     if existing is not None:
-        raise HTTPException(status_code=409, detail="Deja repondu")
+        raise LocalizedHTTPException(status_code=409, error_code="PROPOSITION_ALREADY_RESPONDED")
 
     session.add(
         ObjectivePropositionResponse(
@@ -469,11 +475,15 @@ async def cancel_proposition(
     )
     prop = result.scalar_one_or_none()
     if prop is None:
-        raise HTTPException(status_code=404, detail="Proposition introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="PROPOSITION_NOT_FOUND")
     if prop.proposer_id != user_id:
-        raise HTTPException(status_code=403, detail="Seul le proposer peut annuler")
+        raise LocalizedHTTPException(status_code=403, error_code="PROPOSITION_ONLY_PROPOSER_CANCELS")
     if prop.status != "pending":
-        raise HTTPException(status_code=409, detail=f"Proposition deja {prop.status}")
+        raise LocalizedHTTPException(
+            status_code=409,
+            error_code="PROPOSITION_ALREADY_FORMAT",
+            format_args={"status": prop.status},
+        )
 
     prop.status = "cancelled"
     await session.commit()
@@ -510,7 +520,7 @@ async def get_proposition(
     )
     prop = result.scalar_one_or_none()
     if prop is None:
-        raise HTTPException(status_code=404, detail="Proposition introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="PROPOSITION_NOT_FOUND")
     # Check : user est membre du foyer
     membership = await session.execute(
         select(UserFoyer).where(
@@ -519,7 +529,7 @@ async def get_proposition(
         )
     )
     if membership.scalar_one_or_none() is None:
-        raise HTTPException(status_code=403, detail="Pas membre de ce foyer")
+        raise LocalizedHTTPException(status_code=403, error_code="FOYER_NOT_MEMBER")
 
     await _expire_if_needed(session, prop)
     return await _build_proposition_view(session, prop)

@@ -5,13 +5,14 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
+from app.utils.errors import LocalizedHTTPException
 from app.models.category import Category
 from app.models.completion import TaskCompletion
 from app.models.enums import TaskTolerance, UrgencyState
@@ -59,9 +60,9 @@ async def _ensure_user_assigned(
         )
     )
     if existing.scalar_one_or_none() is None:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=403,
-            detail="Vous n'etes pas assigne a cette tache — vote non accepte.",
+            error_code="GAMIF_NOT_ASSIGNED_VOTE",
         )
 
 
@@ -442,13 +443,13 @@ async def set_frequency(
     )
     task = task_result.scalar_one_or_none()
     if not task:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     # Normaliser l'entree : exactement l'un des 2 champs doit etre fourni.
     if (body.every_n_days is None) == (body.days_per_month is None):
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=422,
-            detail="Fournir exactement un des champs : every_n_days ou days_per_month.",
+            error_code="GAMIF_INVALID_FREQUENCY_FIELDS",
         )
     if body.every_n_days is not None:
         days_per_month = expand_interval(body.every_n_days)
@@ -456,7 +457,11 @@ async def set_frequency(
         try:
             days_per_month = normalize_days_per_month(body.days_per_month)
         except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+            raise LocalizedHTTPException(
+                status_code=422,
+                error_code="VALIDATION_ERROR_FORMAT",
+                format_args={"message": str(exc)},
+            ) from exc
 
     old_rule = dict(task.recurrence_rule) if task.recurrence_rule else None
     rule_before, rule_after = await upsert_vote_and_sync_consensus(
@@ -507,7 +512,7 @@ async def get_frequency_votes(
     )
     task = task_r.scalar_one_or_none()
     if not task:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     # Votes + display_name des voteurs (forme canonique 12 mois v0.27).
     votes_r = await session.execute(
@@ -610,7 +615,7 @@ async def get_effort_votes(
     )
     task = task_r.scalar_one_or_none()
     if not task:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     votes_r = await session.execute(
         select(TaskEffort, User)
@@ -680,7 +685,7 @@ async def task_rating_context(
     )
     task = result.scalar_one_or_none()
     if not task:
-        raise HTTPException(status_code=404, detail="Tache introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
     return await _build_pending_payload(session, task, user_id)
 
 

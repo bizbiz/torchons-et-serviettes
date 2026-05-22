@@ -18,13 +18,14 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
+from app.utils.errors import LocalizedHTTPException
 from app.models.completion import TaskCompletion
 from app.models.enums import PromptType
 from app.models.presence_day import PresenceDay
@@ -100,11 +101,12 @@ async def get_presence(
     n'apparaissent simplement pas dans la reponse (le client les rend gris).
     """
     if from_date > to_date:
-        raise HTTPException(status_code=400, detail="from doit etre <= to")
+        raise LocalizedHTTPException(status_code=400, error_code="PRESENCE_FROM_GT_TO")
     if (to_date - from_date).days > PRESENCE_RANGE_MAX_DAYS:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=400,
-            detail=f"Plage trop large (max {PRESENCE_RANGE_MAX_DAYS} jours)",
+            error_code="PRESENCE_RANGE_TOO_LARGE_FORMAT",
+            format_args={"max_days": PRESENCE_RANGE_MAX_DAYS},
         )
 
     foyer_uuid = current_foyer_uuid(current)
@@ -148,11 +150,12 @@ async def get_activity_days(
     pas de fuite cross-foyer). Plage bornee comme GET /presence (anti-abus).
     """
     if from_date > to_date:
-        raise HTTPException(status_code=400, detail="from doit etre <= to")
+        raise LocalizedHTTPException(status_code=400, error_code="PRESENCE_FROM_GT_TO")
     if (to_date - from_date).days > PRESENCE_RANGE_MAX_DAYS:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=400,
-            detail=f"Plage trop large (max {PRESENCE_RANGE_MAX_DAYS} jours)",
+            error_code="PRESENCE_RANGE_TOO_LARGE_FORMAT",
+            format_args={"max_days": PRESENCE_RANGE_MAX_DAYS},
         )
 
     foyer_uuid = current_foyer_uuid(current)
@@ -215,9 +218,10 @@ async def put_presence(
 
     for item in days:
         if item.status not in ("present", "absent", "clear"):
-            raise HTTPException(
+            raise LocalizedHTTPException(
                 status_code=400,
-                detail=f"status invalide: {item.status}",
+                error_code="PRESENCE_INVALID_STATUS_FORMAT",
+                format_args={"status": item.status},
             )
 
         existing = await session.execute(

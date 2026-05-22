@@ -6,13 +6,14 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
+from app.utils.errors import LocalizedHTTPException
 from app.models.category import Category
 from app.models.completion import TaskCompletion
 from app.models.enums import CompletionReason
@@ -177,7 +178,11 @@ async def _apply_op(
     }
     handler = handlers.get(op.table)
     if handler is None:
-        raise HTTPException(status_code=400, detail=f"Table inconnue: {op.table}")
+        raise LocalizedHTTPException(
+            status_code=400,
+            error_code="SYNC_UNKNOWN_TABLE_FORMAT",
+            format_args={"table": op.table},
+        )
 
     server_row_id = await handler(session, op, user_id, foyer_id)
 
@@ -291,7 +296,11 @@ async def _handle_task(
             row.version += 1
         return op.row_id
 
-    raise HTTPException(status_code=400, detail=f"Operation inconnue: {op.operation}")
+    raise LocalizedHTTPException(
+        status_code=400,
+        error_code="SYNC_UNKNOWN_OPERATION_FORMAT",
+        format_args={"operation": op.operation},
+    )
 
 
 async def _handle_category(
@@ -352,7 +361,11 @@ async def _handle_category(
             row.version += 1
         return op.row_id
 
-    raise HTTPException(status_code=400, detail=f"Operation inconnue: {op.operation}")
+    raise LocalizedHTTPException(
+        status_code=400,
+        error_code="SYNC_UNKNOWN_OPERATION_FORMAT",
+        format_args={"operation": op.operation},
+    )
 
 
 async def _handle_completion(
@@ -457,7 +470,11 @@ async def _handle_completion(
             row.version += 1
         return op.row_id
 
-    raise HTTPException(status_code=400, detail=f"Operation non supportee pour completions: {op.operation}")
+    raise LocalizedHTTPException(
+        status_code=400,
+        error_code="SYNC_UNSUPPORTED_OPERATION_FORMAT",
+        format_args={"scope": "completions", "operation": op.operation},
+    )
 
 
 async def _handle_settings(
@@ -485,7 +502,11 @@ async def _handle_settings(
                 setattr(row, key, val)
         return uid
 
-    raise HTTPException(status_code=400, detail=f"Operation non supportee pour settings: {op.operation}")
+    raise LocalizedHTTPException(
+        status_code=400,
+        error_code="SYNC_UNSUPPORTED_OPERATION_FORMAT",
+        format_args={"scope": "settings", "operation": op.operation},
+    )
 
 
 def _row_to_dict(row) -> dict:

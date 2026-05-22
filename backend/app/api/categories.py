@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +13,7 @@ from app.auth import get_current_user
 from app.database import get_session
 from app.models.category import Category
 from app.models.task import Task
+from app.utils.errors import LocalizedHTTPException
 from app.schemas.category import CategoryCreate, CategoryResponse, CategoryUpdate
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid, scoped
@@ -67,7 +68,7 @@ async def update_category(
     )
     cat = result.scalar_one_or_none()
     if not cat:
-        raise HTTPException(status_code=404, detail="Categorie introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="CATEGORY_NOT_FOUND")
     for key, val in body.model_dump(exclude_unset=True).items():
         setattr(cat, key, val)
     cat.version += 1
@@ -91,7 +92,7 @@ async def delete_category(
     )
     cat = result.scalar_one_or_none()
     if not cat:
-        raise HTTPException(status_code=404, detail="Categorie introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="CATEGORY_NOT_FOUND")
     # Deplacer les taches de cette categorie en "sans categorie" (scope foyer)
     from sqlalchemy import update
     result_tasks = await session.execute(

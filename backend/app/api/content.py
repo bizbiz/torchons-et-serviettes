@@ -9,9 +9,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app.auth import get_current_user
+from app.utils.errors import LocalizedHTTPException
 
 router = APIRouter(prefix="/api", tags=["content"])
 
@@ -48,7 +49,11 @@ def _read_markdown(filename: str) -> str:
     """Lit un fichier markdown du dossier content/, ou 404 s'il manque."""
     path = _CONTENT_DIR / filename
     if not path.is_file():
-        raise HTTPException(status_code=404, detail=f"Fichier introuvable : {filename}")
+        raise LocalizedHTTPException(
+            status_code=404,
+            error_code="CONTENT_FILE_NOT_FOUND_FORMAT",
+            format_args={"filename": filename},
+        )
     return path.read_text(encoding="utf-8")
 
 

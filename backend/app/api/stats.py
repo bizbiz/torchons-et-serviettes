@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone, date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
+
+from app.utils.errors import LocalizedHTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, or_, select, case, extract
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -113,7 +115,7 @@ async def update_completion(
     )
     comp = result.scalar_one_or_none()
     if not comp:
-        raise HTTPException(status_code=404, detail="Completion introuvable")
+        raise LocalizedHTTPException(status_code=404, error_code="COMPLETION_NOT_FOUND")
 
     old_data = {
         "completed_by": str(comp.completed_by),
