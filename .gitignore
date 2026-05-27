@@ -41,11 +41,10 @@ android/local.properties
 *.jks
 *.keystore
 
-# Assets Play exportés (captures/feature graphic) : atelier local, peuvent
-# contenir des données — uploadés direct dans la Play Console, pas versionnés.
-docs/play-assets/*.png
-docs/play-assets/*.jpg
-docs/play-assets/*.jpeg
+# Local ops / personal: runbooks Scaleway, Play Console pack, audits
+# point-in-time, design docs internes, snapshots, utilitaires perso.
+# Pas pertinent pour les contributeurs externes — atelier local de Quentin.
+local-ops/
 
 # Firebase
 backend/firebase-key.json

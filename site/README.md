@@ -1,9 +1,8 @@
 # site/ — site statique public Torchons & Serviettes
 
-Pages légales + vitrine, déployées sur **Cloudflare Pages** (Phase E/F du
-`docs/roadmap-dev-public-launch.md`). Zéro build, zéro dépendance, zéro
-requête externe (cohérent avec la politique de confidentialité : pas de
-Google Fonts/CDN/analytics).
+Pages légales + vitrine, déployées sur **Cloudflare Pages**. Zéro
+build, zéro dépendance, zéro requête externe (cohérent avec la
+politique de confidentialité : pas de Google Fonts/CDN/analytics).
 
 ## Contenu
 
@@ -28,8 +27,8 @@ locale (`file://` ou `python -m http.server`).
 3. **Build output directory** : `site`
 4. Domaine : rattacher `torchonsetserviettes.app` (et/ou `www`) au projet
    Pages. Le sous-domaine API (`api.torchonsetserviettes.app`) reste géré
-   séparément par Caddy sur le serveur (cf. `docs/runbook-cutover.md`) —
-   ne pas le faire pointer sur Pages.
+   séparément par le reverse proxy backend (Caddy) — ne pas le faire
+   pointer sur Pages.
 
 ## À compléter avant mise en ligne (placeholders `TODO ops` dans les pages)
 

@@ -6,10 +6,8 @@ relou : on suggère ce qu'il faut faire en priorité, on compte les
 points pour vérifier que la charge est partagée équitablement, et
 on adapte les cadences à mesure que la vie change.
 
-> **État** : pré-public. Backend en self-hosted (Tailscale) chez le
-> dev solo et son foyer dogfood. La transition vers une instance
-> publique (Scaleway + Play Store) est planifiée — voir
-> [`docs/roadmap-dev-public-launch.md`](docs/roadmap-dev-public-launch.md).
+> **État** : pré-public, en route vers Play Store. Backend self-hosted
+> par le dev solo et son foyer dogfood pendant la phase de stabilisation.
 
 ## Ce que ça fait
 
@@ -91,17 +89,12 @@ android/
     ui/               # Compose screens + ViewModels
     worker/           # WorkManager (daily notif, sync)
 docs/
-  design-onboarding-public.md
-  roadmap-dev-public-launch.md
+  cache-conventions.md  # règles offline-first / sync / refresh
 ```
 
-## Statut & roadmap
+## Statut
 
-Le développement actuel se concentre sur la préparation à un lancement
-public (Play Store + serveur Scaleway). Voir
-[`docs/roadmap-dev-public-launch.md`](docs/roadmap-dev-public-launch.md)
-pour les phases A→F.
-
+Le développement actuel se concentre sur la stabilisation pré-Play-Store.
 Le changelog user-facing est dans
 [`backend/app/content/changelog.md`](backend/app/content/changelog.md) ;
 il est exposé dans l'app via `/api/changelog`.

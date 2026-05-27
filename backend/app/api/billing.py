@@ -16,7 +16,7 @@ Deux endpoints :
   log l'event + 200 OK. La vraie implementation parsera le payload Pub/Sub
   et mettra a jour `foyer.is_premium` / `premium_until` en consequence.
 
-Cf. docs/design-onboarding-public.md §7 et roadmap-dev-public-launch §C.
+Cf. docs/design-onboarding-public.md §7 (decision background).
 """
 
 from __future__ import annotations

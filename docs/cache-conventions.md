@@ -127,5 +127,4 @@ juste la feature concernée).
 Filet en place (`backend/app/api/sync.py`) : un `except Exception`
 isole désormais une op inattendue en **conflit par-op** (rollback +
 `SyncConflict`), le reste du batch passe. C'est un backstop, **pas** une
-dispense : garder l'ordre serveur-d'abord. Déploiement serveur :
-`docs/runbook-deploy-scaleway.md`.
+dispense : garder l'ordre serveur-d'abord.
