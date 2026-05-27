@@ -1,114 +1,117 @@
 # Torchons & Serviettes
 
-Une app de tâches ménagères collaboratives pour les foyers (couples,
-colocations, familles). Pensée pour rendre le « qui fait quoi » moins
-relou : on suggère ce qu'il faut faire en priorité, on compte les
-points pour vérifier que la charge est partagée équitablement, et
-on adapte les cadences à mesure que la vie change.
+> 🇫🇷 [Lire en français](README.fr.md)
 
-> **État** : pré-public, en route vers Play Store. Backend self-hosted
-> par le dev solo et son foyer dogfood pendant la phase de stabilisation.
+A collaborative household chores app for homes — couples, flat-shares,
+families. Designed to make the "who does what" question less of a
+recurring fight: the app suggests what should be done first, counts
+points to verify the load is fairly shared, and adapts the cadence as
+life changes.
 
-## Ce que ça fait
+> **Status**: pre-public, on the way to Play Store. Backend self-hosted
+> by the solo dev and his dogfood household during stabilisation.
 
-- **Tâches récurrentes** avec quatre modèles : interval (« tous les 3
-  jours »), weekdays (« lundi/mercredi/vendredi »), monthly (« le 1er
-  du mois »), uncertain (« quand y'a besoin »).
-- **Modèle d'urgence déterministe** basé sur la due date — couleurs
-  vert/orange/rouge et tri intra-tier de tolérance (Strict > Normal
-  > Souple) sur la home.
-- **Gamification** : points par complétion, bonus retard et malus
-  avance proportionnels au cycle, badges, streaks, leaderboard,
-  fair-share entre membres. **Optionnelle** : opt-out par user ou
-  par foyer dans les Réglages.
-- **Fair-share** : un ratio cible configurable (50/50, 60/40…) et
-  un suivi de l'écart réel sur 30 jours glissants.
-- **Mode offline** : Room cache local + change_log côté serveur,
-  écrans utilisables sans réseau, sync en arrière-plan.
-- **Onboarding sans compte** : QR pairing pour rejoindre un foyer,
-  code de récupération pour restaurer l'accès sur un nouvel appareil.
+## What the app does
+
+- **Recurring tasks** with four models: interval ("every 3 days"),
+  weekdays ("Mon/Wed/Fri"), monthly ("on the 1st"), uncertain ("when
+  needed").
+- **Deterministic urgency model** based on due-date — green/orange/red
+  colours and intra-tier ordering (Strict > Normal > Souple) on the
+  home screen.
+- **Gamification**: points per completion, late bonus and early malus
+  proportional to the cycle, badges, streaks, leaderboard, fair-share
+  between members. **Optional**: opt-out per user or per household in
+  Settings.
+- **Fair-share**: a configurable target ratio (50/50, 60/40…) and
+  tracking of the actual gap over a rolling 30-day window.
+- **Offline mode**: local Room cache + server-side `change_log`,
+  screens usable without network, background sync.
+- **No-account onboarding**: QR pairing to join a household, recovery
+  code to restore access on a new device.
 
 ## Architecture
 
-- **Backend** : FastAPI (Python 3.14), PostgreSQL 16, SQLAlchemy 2
-  async, Alembic pour les migrations.
-- **Android** : Kotlin + Jetpack Compose + Room + Retrofit + Hilt.
+- **Backend**: FastAPI (Python 3.14), PostgreSQL 16, SQLAlchemy 2
+  async, Alembic for migrations.
+- **Android**: Kotlin + Jetpack Compose + Room + Retrofit + Hilt.
   Min SDK 26, target SDK 35.
-- **Sync offline** : `change_log` côté serveur + cursor par device
-  côté client.
+- **Offline sync**: server-side `change_log` + per-device cursor
+  client-side.
 
-## Démarrer en local
+## Run locally
 
-Prérequis : Docker, Python 3.14, JDK 21+ (ou le JBR d'Android Studio),
-Android SDK pour builder l'APK.
+Prerequisites: Docker, Python 3.14, JDK 21+ (or the JBR bundled with
+Android Studio), Android SDK to build the APK.
 
 ```bash
 # Backend
-docker compose up -d                            # Postgres sur :5435
+docker compose up -d                            # Postgres on :5435
 cd backend
-python -m venv .venv && .venv/Scripts/activate  # ou source .venv/bin/activate
+python -m venv .venv && .venv/Scripts/activate  # or source .venv/bin/activate
 pip install -r requirements.txt
 PYTHONPATH=. alembic upgrade head
 PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port 8002
 ```
 
-Pour l'Android, ajoute dans `android/local.properties` (gitignored) :
+For Android, add to `android/local.properties` (gitignored):
 
 ```
 ts.api.base.url=http://10.0.2.2:8002/api
 ```
 
-(`10.0.2.2` = host depuis l'émulateur Android. Pour un device physique
-sur le même LAN, mets l'IP de ta machine.)
+(`10.0.2.2` = host as seen from the Android emulator. For a physical
+device on the same LAN, use your machine's IP.)
 
-Puis build :
+Then build:
 
 ```bash
 cd android
 JAVA_HOME=/path/to/jdk ./gradlew assembleDebug
 ```
 
-Pas besoin de seed d'users — l'onboarding wizard de l'app crée tout
-au premier lancement.
+No user seeding needed — the in-app onboarding wizard creates
+everything on first launch.
 
-## Structure du repo
+## Repo layout
 
 ```
 backend/
   app/
-    api/              # routers FastAPI
+    api/              # FastAPI routers
     models/           # SQLAlchemy ORM
-    services/         # logique métier (bonus_malus, sync, recurrence…)
+    services/         # business logic (bonus_malus, sync, recurrence…)
     schemas/          # Pydantic
-    content/          # changelog.md + roadmap.md user-facing
+    content/          # user-facing changelog.md + roadmap.md
   alembic/versions/   # migrations
-  seeds/              # docs + dossier personal/ (gitignored)
+  seeds/              # docs + personal/ folder (gitignored)
 android/
   app/src/main/java/com/torchons/app/
     data/             # Retrofit, Room, repos
     ui/               # Compose screens + ViewModels
     worker/           # WorkManager (daily notif, sync)
 docs/
-  cache-conventions.md  # règles offline-first / sync / refresh
+  cache-conventions.md  # offline-first / sync / refresh rules
 ```
 
-## Statut
+## Status
 
-Le développement actuel se concentre sur la stabilisation pré-Play-Store.
-Le changelog user-facing est dans
-[`backend/app/content/changelog.md`](backend/app/content/changelog.md) ;
-il est exposé dans l'app via `/api/changelog`.
+Current development focuses on pre-Play-Store stabilisation.
+The user-facing changelog lives in
+[`backend/app/content/changelog.md`](backend/app/content/changelog.md);
+it is exposed in-app via `/api/changelog`.
 
-## Contribuer
+## Contributing
 
-Voir [`CONTRIBUTING.md`](CONTRIBUTING.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) and
+[`CODING_CONVENTIONS.md`](CODING_CONVENTIONS.md).
 
-## Sécurité
+## Security
 
-Pour signaler une vulnérabilité, voir [`SECURITY.md`](SECURITY.md).
+To report a vulnerability, see [`SECURITY.md`](SECURITY.md).
 
-## Licence
+## License
 
-AGPL-3.0 — voir [`LICENSE`](LICENSE). Si tu héberges une instance
-modifiée accessible en réseau, tu dois rendre le code source de tes
-modifications disponible aux utilisateurs de cette instance.
+AGPL-3.0 — see [`LICENSE`](LICENSE). If you host a modified instance
+accessible over a network, you must make the source code of your
+modifications available to the users of that instance.

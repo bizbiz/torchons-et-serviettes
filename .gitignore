@@ -62,3 +62,6 @@ backend/seeds/personal/
 
 # Captures Play Store rapatriees du device (assets, hors repo)
 .captures/
+
+# Local AI assistant config — kept on disk for local development sessions
+/CLAUDE.md

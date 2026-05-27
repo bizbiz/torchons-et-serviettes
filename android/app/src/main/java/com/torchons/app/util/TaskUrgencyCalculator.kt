@@ -14,7 +14,7 @@ import kotlin.math.round
  * Calcul d'urgence des taches — modele deterministe base sur la due_date.
  *
  * Remplace l'ancien FreshnessCalculator (decroissance exponentielle) depuis
- * v0.10.0. Voir CLAUDE.md section "Freshness (P2)" pour la specification.
+ * v0.10.0. Voir CODING_CONVENTIONS.md section "Urgence" pour la specification.
  *
  * Modele :
  * - due_date = last_completed + intervalle (ou created_at si jamais faite)

@@ -30,7 +30,7 @@ class Task(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         UUID(as_uuid=True), ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True
     )
 
-    # Recurrence — JSONB flexible (voir CLAUDE.md pour les formats)
+    # Recurrence — JSONB flexible (voir CODING_CONVENTIONS.md pour les formats)
     recurrence_rule: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Intervalle infere en jours pour le type "uncertain" (v0.14). NULL tant

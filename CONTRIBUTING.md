@@ -1,83 +1,87 @@
-# Contribuer à Torchons & Serviettes
+# Contributing to Torchons & Serviettes
 
-Merci de t'intéresser au projet. C'est un projet solo à l'origine, en
-phase de préparation publique — les contributions externes sont
-bienvenues mais le rythme de revue dépend de la dispo du mainteneur.
+> 🇫🇷 [Lire en français](CONTRIBUTING.fr.md)
 
-## Avant d'ouvrir une PR
+Thanks for your interest in the project. It started as a solo project,
+currently in public-launch preparation — external contributions are
+welcome but review pace depends on maintainer availability.
 
-- **Discute d'abord** pour les changements substantiels (nouvelle
-  feature, refonte d'écran, changement de modèle) : ouvre une issue
-  pour décrire ce que tu veux faire, on s'aligne avant que tu codes.
-  Les petits fixes / typos peuvent partir direct en PR sans discussion
-  préalable.
-- **Une PR = un sujet.** Évite de mixer un fix de bug + un refactor +
-  une nouvelle feature dans la même PR.
-- **Cible la branche `main`.** Pas de branche `develop`/`staging` —
-  tout va sur `main` après revue.
+## Before opening a PR
 
-## Style code
+- **Discuss first** for substantial changes (new feature, screen
+  refactor, model change): open an issue describing what you want to
+  do, we align before you code. Small fixes / typos can go straight
+  to PR without prior discussion.
+- **One PR = one topic.** Avoid mixing a bug fix + a refactor + a new
+  feature in the same PR.
+- **Target the `main` branch.** No `develop`/`staging` branch —
+  everything lands on `main` after review.
 
-- **Backend** : type hints partout, async SQLAlchemy 2 (pas de session
-  bloquante). Commentaires et docstrings en français.
-- **Android** : Kotlin idiomatique, Compose pour toute nouvelle UI
-  (pas de View XML sauf cas spécifique). Une fonction `@Composable`
-  par fichier quand elle dépasse 100 lignes. Commentaires et
-  docstrings en français.
-- **Tests** : pytest côté backend, instrumented tests côté Android.
-  Les PR qui ajoutent du métier sans test sont OK pour les très petits
-  cas (UI tweaks, copy), pas pour la logique (recurrence, bonus,
-  fair-share, sync).
-- **Pas de `print()` ni `Log.d` oubliés** en code de prod (le linter
-  les laisse passer, le sens commun les rejette).
-- **Pas d'emojis dans le code.** Les emojis sont OK dans les strings
-  affichées à l'utilisateur quand c'est intentionnel et cohérent
-  avec l'existant.
+## Code style
 
-## Convention de commit
+- **Backend**: type hints everywhere, async SQLAlchemy 2 (no blocking
+  session). **New code: comments, docstrings and identifiers in
+  English.** Existing French code: stays as-is (no churn).
+- **Android**: idiomatic Kotlin, Compose for any new UI (no XML View
+  unless specific case). One `@Composable` per file when it exceeds
+  100 lines. **New code: comments, docstrings and identifiers in
+  English.** Existing French code: stays as-is.
+- **User-facing strings**: i18n via `res/values/strings.xml` (FR) +
+  `res/values-en/strings.xml` (EN) on Android, and
+  `LocalizedHTTPException` on the backend. No untranslated literals
+  visible to users. See [`CODING_CONVENTIONS.md`](CODING_CONVENTIONS.md).
+- **Tests**: pytest on the backend, instrumented tests on Android.
+  PRs adding business logic without tests are OK for very small cases
+  (UI tweaks, copy), not for logic (recurrence, bonus, fair-share,
+  sync).
+- **No leftover `print()` or `Log.d`** in production code (linter lets
+  them pass, common sense rejects them).
+- **No emojis in code.** Emojis are OK in user-facing strings when
+  intentional and consistent with existing UI.
 
-Format libre, mais quelques règles :
+## Commit convention
 
-- Préfixer par la version cible si c'est dans le cadre d'une release
-  (`v0.32.0: …`), sinon par le type (`feat:`, `fix:`, `refactor:`,
-  `docs:`, `chore:`).
-- Le titre tient sur ~70 chars. Le body décrit le pourquoi.
-- Les commits qui touchent au schéma DB doivent référencer la
-  migration Alembic correspondante.
+Free format, with a few rules:
 
-## Migrations Alembic
+- Prefix with the target version if it's part of a release
+  (`v0.32.0: …`), otherwise with the type (`feat:`, `fix:`,
+  `refactor:`, `docs:`, `chore:`).
+- Title fits in ~70 chars. The body describes the why.
+- Commits touching the DB schema must reference the corresponding
+  Alembic migration.
 
-- Une migration = un objectif. Pas de migration "et pendant qu'on y
-  est" qui fait 5 choses non liées.
-- Toujours penser au `downgrade()` — même si on ne le testera pas
-  en prod, c'est utile pour rollback local.
-- Données personnelles : ne mets jamais de seed nominatif dans une
-  migration (ex. `INSERT INTO users (name) VALUES ('Alice')`). Les
-  données réelles vivent dans la DB, pas dans le code.
+## Alembic migrations
 
-## Données personnelles dans le repo
+- One migration = one goal. No "while we're at it" migration doing 5
+  unrelated things.
+- Always think about `downgrade()` — even if we won't test it in prod,
+  it's useful for local rollback.
+- Personal data: never put a nominative seed in a migration (e.g.
+  `INSERT INTO users (name) VALUES ('Alice')`). Real data lives in the
+  DB, not in code.
 
-Ce repo est destiné à être public. Avant chaque commit :
+## Personal data in the repo
 
-- Pas de prénom, email, IP, SSID WiFi, identifiant de device ou
-  domaine personnel en clair dans le code.
-- Pour les exemples dans la doc ou les docstrings, utilise des
-  placeholders (Alice/Bob/X/Y ou « le membre A »).
-- Les fixtures réelles vont dans `backend/seeds/personal/`
-  (gitignored).
+This repo is meant to be public. Before each commit:
 
-## Données utilisateur (RGPD)
+- No first name, email, IP, WiFi SSID, device identifier or personal
+  domain in plain text in the code.
+- For examples in docs or docstrings, use placeholders (Alice/Bob/X/Y
+  or "member A").
+- Real fixtures live in `backend/seeds/personal/` (gitignored).
 
-Si tu touches au modèle User ou aux endpoints d'auth/lifecycle :
+## User data (GDPR)
 
-- Toute donnée perso doit pouvoir être supprimée par l'utilisateur
-  (endpoint `DELETE /api/me`, soft-delete avec purge ≥30j).
-- Aucun log ne doit contenir de PII (pas d'email, pas de
-  display_name, pas de contenu de tâche). Les IDs UUID sont OK.
+If you touch the User model or auth/lifecycle endpoints:
 
-## Process de revue
+- Any personal data must be deletable by the user (endpoint
+  `DELETE /api/me`, soft-delete with purge ≥30 days).
+- No log should contain PII (no email, no display name, no task
+  content). UUID IDs are OK.
 
-1. CI verte (lint backend + Android + tests)
-2. Mainteneur lit, commente, demande des changements ou approuve
-3. Squash-merge sur main avec un message propre
-4. Le mainteneur tag les releases ; pas de tag manuel dans les PR
+## Review process
+
+1. Green CI (backend lint + Android + tests)
+2. Maintainer reads, comments, asks for changes or approves
+3. Squash-merge onto main with a clean message
+4. Maintainer tags releases; no manual tag in PRs

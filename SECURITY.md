@@ -1,67 +1,67 @@
 # Security policy
 
-## Versions supportées
+> 🇫🇷 [Lire en français](SECURITY.fr.md)
 
-| Version | Supportée |
+## Supported versions
+
+| Version | Supported |
 |---------|-----------|
 | `main` (HEAD) | ✓ |
-| Tags `v0.32.x` | ✓ correctifs de sécurité |
-| Tags antérieurs | ✗ pas de support |
+| `v0.32.x` tags | ✓ security fixes |
+| Older tags | ✗ no support |
 
-Le projet est en cycle de dev rapide pré-public — il n'y a pas
-encore de branche de stabilisation. Toutes les corrections de
-sécurité partent sur `main` puis sont taggées dans la release
-suivante.
+The project is in fast pre-public dev cycles — there is no
+stabilisation branch yet. All security fixes land on `main` and are
+tagged in the next release.
 
-## Reporter une vulnérabilité
+## Reporting a vulnerability
 
-**Ne pas ouvrir d'issue publique** pour un problème de sécurité.
-Contacter le mainteneur en privé :
+**Do not open a public issue** for a security problem. Contact the
+maintainer privately:
 
-- GitHub Security Advisory (préféré) : onglet « Security » du repo
-  → « Report a vulnerability ». Le rapport reste privé jusqu'à
-  publication du fix.
-- À défaut : email à `contact@torchonsetserviettes.app`.
+- GitHub Security Advisory (preferred): "Security" tab of the repo
+  → "Report a vulnerability". The report stays private until the fix
+  is published.
+- Fallback: email to `contact@torchonsetserviettes.app`.
 
-Inclure dans le rapport :
+Include in the report:
 
-- Une description du problème
-- Les étapes pour reproduire (idéalement avec une PoC minimaliste)
-- L'impact estimé (lecture/écriture non autorisée, DoS, RCE…)
-- Toute version connue affectée
+- A description of the problem
+- Steps to reproduce (ideally with a minimal PoC)
+- Estimated impact (unauthorised read/write, DoS, RCE…)
+- Any known affected version
 
-## Ce qui est in-scope
+## In-scope
 
-- Bypass d'authentification ou d'autorisation (JWT, scoping foyer,
-  rôles admin)
+- Authentication or authorisation bypass (JWT, household scoping,
+  admin roles)
 - Injection (SQL, command, header, template)
-- Fuite de données entre foyers (un user A qui voit les données
-  d'un foyer B sans y appartenir)
-- Élévation de privilège (passage member → admin sans légitimité)
-- Vulnérabilités côté Android (Intent injection, stockage de
-  secrets, etc.)
-- Vulnérabilités dans les dépendances utilisées en production
+- Cross-household data leak (a user A seeing data from a household B
+  they don't belong to)
+- Privilege escalation (member → admin without legitimacy)
+- Android-side vulnerabilities (intent injection, secret storage,
+  etc.)
+- Vulnerabilities in production dependencies
 
-## Ce qui est out-of-scope
+## Out-of-scope
 
-- Self-DoS volontaire (envoyer 10 000 requêtes avec ton propre token)
-- Bypass de rate limiting non implémenté à ce stade
-- Vulnérabilités dans une instance auto-hébergée tierce (configure
-  Caddy / Tailscale toi-même, ce n'est pas le code applicatif)
-- Suggestions UX/UI déguisées en sécurité
+- Voluntary self-DoS (sending 10 000 requests with your own token)
+- Bypass of rate limiting that isn't implemented at this stage
+- Vulnerabilities in a third-party self-hosted instance (configure
+  Caddy / Tailscale yourself, that's not the application code)
+- UX/UI suggestions disguised as security
 
-## Process de réponse
+## Response process
 
-1. Acknowledgement du rapport sous 7 jours.
-2. Investigation + reproduction sous 14 jours.
-3. Fix développé sur une branche privée, puis tag de release dès que
-   possible (généralement < 30j pour une faille critique).
-4. Coordinated disclosure : tu peux publier ta découverte une fois
-   le fix taggé et déployé, avec crédit dans le changelog si tu le
-   souhaites.
+1. Acknowledgement of the report within 7 days.
+2. Investigation + reproduction within 14 days.
+3. Fix developed on a private branch, then release tagged as soon
+   as possible (typically < 30 days for a critical flaw).
+4. Coordinated disclosure: you can publish your finding once the fix
+   is tagged and deployed, with credit in the changelog if you wish.
 
-## Pas de bug bounty
+## No bug bounty
 
-Le projet n'a pas de programme de bug bounty et n'est pas
-financièrement en mesure d'en proposer un. Le crédit (changelog +
-remerciement public) est la seule contrepartie offerte.
+The project has no bug bounty program and is not in a financial
+position to offer one. Credit (changelog + public thank you) is the
+only consideration offered.
