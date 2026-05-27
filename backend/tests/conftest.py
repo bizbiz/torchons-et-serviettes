@@ -11,7 +11,7 @@ import pytest_asyncio
 from app.auth import create_token
 from app.main import app
 
-TEST_USER_ID = "***REMOVED***"
+TEST_USER_ID = "1519d52e-1293-46da-92c0-e1be3e9f0808"
 DEVICE_A = str(uuid.uuid4())
 DEVICE_B = str(uuid.uuid4())
 
