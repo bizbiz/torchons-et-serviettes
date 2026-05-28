@@ -47,7 +47,7 @@ bienvenues mais le rythme de revue dépend de la dispo du mainteneur.
 Format libre, mais quelques règles :
 
 - Préfixer par la version cible si c'est dans le cadre d'une release
-  (`v0.32.0: …`), sinon par le type (`feat:`, `fix:`, `refactor:`,
+  (`v0.35.0: …`), sinon par le type (`feat:`, `fix:`, `refactor:`,
   `docs:`, `chore:`).
 - Le titre tient sur ~70 chars. Le body décrit le pourquoi.
 - Les commits qui touchent au schéma DB doivent référencer la

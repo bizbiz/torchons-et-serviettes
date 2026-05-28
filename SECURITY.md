@@ -7,7 +7,7 @@
 | Version | Supported |
 |---------|-----------|
 | `main` (HEAD) | ✓ |
-| `v0.32.x` tags | ✓ security fixes |
+| latest `v0.35.x` tag | ✓ security fixes |
 | Older tags | ✗ no support |
 
 The project is in fast pre-public dev cycles — there is no

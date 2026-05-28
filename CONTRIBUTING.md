@@ -44,7 +44,7 @@ welcome but review pace depends on maintainer availability.
 Free format, with a few rules:
 
 - Prefix with the target version if it's part of a release
-  (`v0.32.0: …`), otherwise with the type (`feat:`, `fix:`,
+  (`v0.35.0: …`), otherwise with the type (`feat:`, `fix:`,
   `refactor:`, `docs:`, `chore:`).
 - Title fits in ~70 chars. The body describes the why.
 - Commits touching the DB schema must reference the corresponding
