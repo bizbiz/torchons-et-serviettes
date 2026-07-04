@@ -610,7 +610,7 @@ fun TaskDetailScreen(
                         }
                     }
 
-                    // v0.28 — Bandeau "Tu n'as pas vote" (decisions /grill-me Q8).
+                    // v0.28 — Bandeau "Tu n'as pas vote" (decisions design review Q8).
                     // Visible si user assigne ET au moins un des 3 votes manque.
                     // Click ouvre RatingDialog (skip auto les sliders deja votes).
                     val rule = task.recurrenceRule

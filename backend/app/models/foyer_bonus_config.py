@@ -6,7 +6,7 @@ pour les foyers hypothetiques sans ligne (edge case).
 
 Tous les parametres sont reglables via le panneau 'Options avancees' cote
 Android. Defauts choisis pour un comportement equilibre en NORMAL (cf
-grill-me bonus/malus v1.0).
+design review bonus/malus v1.0).
 """
 
 import uuid

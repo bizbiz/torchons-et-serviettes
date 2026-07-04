@@ -11,9 +11,8 @@ backend/.venv/
 !.env.example
 !.env.prod.example
 
-# Postgres dumps (cutover, dry-run, backups) — peuvent contenir des
-# pseudos d'user et l'historique complet du foyer dogfood. Ne JAMAIS
-# committer.
+# Postgres dumps (cutover, dry-run, backups) — may contain user pseudos
+# and the full history of a real household. NEVER commit.
 *.dump
 ts_dump_*
 
@@ -37,32 +36,32 @@ android/app/build/
 android/local.properties
 *.apk
 *.aab
-# Clés de signature — JAMAIS dans le repo (keystore vit hors repo + ici en filet)
+# Signing keys — NEVER in the repo (keystore lives outside the repo; this is a safety net)
 *.jks
 *.keystore
 
-# Local ops / personal: runbooks Scaleway, Play Console pack, audits
-# point-in-time, design docs internes, snapshots, utilitaires perso.
-# Pas pertinent pour les contributeurs externes — atelier local de Quentin.
+# Local ops / personal: deployment runbooks, store listing pack,
+# point-in-time audits, internal design docs, snapshots, personal
+# utilities. Not relevant to external contributors — maintainer-local.
 local-ops/
 
 # Firebase
 backend/firebase-key.json
 android/app/google-services.json
-# Clés de service Admin SDK téléchargées depuis la console — JAMAIS dans le repo
+# Admin SDK service-account keys downloaded from the console — NEVER in the repo
 *-firebase-adminsdk-*.json
 
 # Docker
 ts_pgdata/
 
-# Seeds personnels : bootstrap dogfood, imports HA, fixtures liees a
-# un foyer reel. Ne jamais commit la data d'un foyer particulier.
+# Personal seeds: dogfood bootstrap, HA imports, fixtures tied to a real
+# household. Never commit data from an actual household.
 backend/seeds/personal/
 
-# Base Room rapatriee du device pour debug (donnees reelles, jamais commitee)
+# Room database pulled from a device for debugging (real data, never committed)
 .devdb/
 
-# Captures Play Store rapatriees du device (assets, hors repo)
+# Play Store screenshots pulled from a device (assets, out of repo)
 .captures/
 
 # Local AI assistant config — kept on disk for local development sessions

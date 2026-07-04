@@ -1,6 +1,6 @@
 """Service lifecycle membre : soft-leave + auto-promotion (v0.30).
 
-Decisions Q9 du grill-me — voir docs/design-onboarding-public.md §9.
+Decisions Q9 du design review — voir docs/design-onboarding-public.md §9.
 
 Soft-leave : `user_foyers.left_at = now()` + role -> 'former_member'.
 Historique (completions, votes) preserve. Si le partant etait le dernier

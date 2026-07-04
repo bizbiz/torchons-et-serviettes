@@ -3,7 +3,7 @@
 Le multiplicateur s'applique sur `base_points` AVANT le split 'fait ensemble'.
 Resultat stocke dans task_completions.multiplier + reason (immuable).
 
-Regles (cf grill-me bonus/malus) :
+Regles (cf design review bonus/malus) :
 
 1. Tache ponctuelle (pas de recurrence_rule) : pas de bonus/malus, mult=1.0.
 2. Premiere completion de la tache : bypass complet, mult=1.0, reason=FIRST_COMPLETION.
@@ -220,7 +220,7 @@ def apply_multiplier_to_points(base_points: int, result: MultiplierResult) -> in
     - Tache perso (base_points == 0) : on reste a 0 (pas de bonus/malus).
     - Sinon : round(base_points * multiplier), avec floor minimum 1 pt.
 
-    Cf grill-me : une completion doit rapporter au moins 1 pt meme avec
+    Cf design review : une completion doit rapporter au moins 1 pt meme avec
     plancher malus applique sur petit weight, sinon l'action parait gratuite.
     """
     if base_points <= 0:

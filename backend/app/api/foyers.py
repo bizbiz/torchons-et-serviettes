@@ -163,7 +163,7 @@ async def update_foyer_gamification(
 ):
     """Toggle gamification du foyer — accessible a tout membre (pas admin-only).
 
-    Cf grill-me Q4 : la decision de couper la gamification est collective au
+    Cf design review Q4 : la decision de couper la gamification est collective au
     sens "tous les membres sont affectes" mais peut etre prise par n'importe
     quel membre. La friction est cote UI (dialog de confirmation mentionnant
     l'impact sur l'autre).
@@ -273,7 +273,7 @@ async def leave_foyer(
 
     Soft-leave : `user_foyers.left_at = now()` + role -> 'former_member'.
     Si l'user etait le dernier admin, auto-promote du plus ancien member
-    restant (cf. Q9 du grill-me, services/lifecycle.py).
+    restant (cf. Q9 du design review, services/lifecycle.py).
 
     Si le foyer quitte etait le foyer actif de l'user, son
     `last_active_foyer_id` bascule sur le 1er foyer encore actif qu'il a,

@@ -206,7 +206,7 @@ class HomeViewModel @Inject constructor(
 
     /** v0.32 : visibilite UI gamif (points/bonus/celebration/stats) — combine
      *  user-level (UserSettings.gamification_enabled) AND foyer-level
-     *  (Foyer.gamification_enabled) cf. design grill-me. La home cache la
+     *  (Foyer.gamification_enabled) cf. design design review. La home cache la
      *  ligne points, la pastille bonus, et "+X pts" sur la celebration. */
     val gamificationVisible: StateFlow<Boolean> = tokenManager.gamificationVisibleFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)

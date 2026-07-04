@@ -25,7 +25,7 @@ import com.torchons.app.R
  * (v0.32). Surface uniquement quand l'user est dans un etat opt-out (lui
  * meme OU au moins un de ses foyers).
  *
- * Quatre cas couverts (cf grill-me Q8) :
+ * Quatre cas couverts (cf design review Q8) :
  *
  * 1. **userOff seul** : l'user a desactive sa gamification dans Reglages →
  *    message direct + bouton "Reactiver maintenant".

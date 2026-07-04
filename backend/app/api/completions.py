@@ -329,7 +329,7 @@ async def complete_task_collective(
     # 5. Bonus/malus : multiplicateur applique SUR base_points AVANT le split.
     # Les N lignes partagent le meme multiplicateur et la meme reason (le
     # multiplicateur est une propriete de l'evenement collectif, pas des
-    # participants individuels — cf grill-me).
+    # participants individuels — cf design review).
     collective_id = uuid_lib.uuid4()
     completed_at = body.completed_at or datetime.now(timezone.utc)
     device_id = _safe_uuid(current.get("device_id"))

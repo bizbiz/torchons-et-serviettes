@@ -30,7 +30,7 @@ from app.utils.recovery_code import generate_code, hash_code
 
 router = APIRouter(prefix="/api/pairing", tags=["pairing"])
 
-# TTL d'un token de pairing (decision Q3 du grill-me).
+# TTL d'un token de pairing (decision Q3 du design review).
 _TOKEN_TTL = timedelta(minutes=15)
 
 

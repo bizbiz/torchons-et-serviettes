@@ -34,7 +34,7 @@ import com.torchons.app.util.DurationFormat
 /**
  * Modal "+ d'info" sur la frequence d'une tache (v0.28).
  *
- * Contenu (decisions /grill-me Q9) :
+ * Contenu (decisions design review Q9) :
  * - F1 : pedago courte sur le mecanisme du vote/consensus.
  * - G3 : ligne par voteur (nom + valeur + date) avec bouton "Modifier mon
  *   vote" (sur ma ligne) ou "Demander revote" (autres). Bouton desactive

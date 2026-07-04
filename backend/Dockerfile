@@ -4,7 +4,7 @@
 #   docker build -t ts-api ./backend
 #
 # Lance via docker-compose.prod.yml (db + api + caddy). L'app reste lancable
-# en local hors Docker via la .venv (cf. CLAUDE.md) — cette image ne sert
+# en local hors Docker via la .venv (cf. CODING_CONVENTIONS.md) — cette image ne sert
 # QUE pour le deploiement Scaleway public.
 #
 # Les deps sont extraites dynamiquement de pyproject.toml (pas de lockfile

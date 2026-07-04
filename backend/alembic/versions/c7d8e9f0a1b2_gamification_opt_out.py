@@ -12,7 +12,7 @@ Ajoute :
 
 Combinaison OR : un user est "sans gamification" si SON toggle est OFF
 OU si le toggle du foyer courant est OFF. Le filtrage est 100% cote
-frontend (cf grill-me design v0.32.0) — le backend continue de calculer
+frontend (cf design review design v0.32.0) — le backend continue de calculer
 points, bonus, badges, streaks, fair-share normalement, et expose juste
 les toggles via GET/PUT settings + GET/PUT foyer.
 

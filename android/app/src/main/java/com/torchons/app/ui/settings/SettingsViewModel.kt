@@ -299,7 +299,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     /** v0.32 : toggle gamification du foyer courant. Tout membre peut
-     *  toggler (cf grill-me Q4) — friction cote UI via dialog de
+     *  toggler (cf design review Q4) — friction cote UI via dialog de
      *  confirmation mentionnant l'impact sur l'autre membre. */
     fun setCurrentFoyerGamificationEnabled(enabled: Boolean) {
         val foyer = _currentFoyer.value ?: return

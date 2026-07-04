@@ -17,7 +17,7 @@ import javax.inject.Inject
  *
  * - `Idle` : affichage initial avant la tentative auto-login (splash).
  * - `Probing` : tentative en cours de l'auto-login Tailscale (fast-path
- *   pour les deux membres sur le reseau maison pendant la phase dogfood).
+ *   pour le foyer dogfood sur le reseau maison pendant la phase dogfood).
  * - `AutoLoginSuccess` : Tailscale a matche -> on bascule directement sur
  *   l'ecran principal sans afficher les 3 boutons.
  * - `NoSession` : ni token, ni Tailscale match -> affiche les 3 boutons

@@ -5,7 +5,7 @@
   l'ancien. Affiche en clair une seule fois.
 - POST /recovery/restore : unauth, prend un code en clair, retourne
   l'identite candidate + un restore_token court-vie pour la verification
-  step (Q5e du grill-me).
+  step (Q5e du design review).
 - POST /recovery/restore/confirm : unauth, consomme le restore_token et
   emet un vrai JWT.
 
@@ -204,7 +204,7 @@ async def restore_confirm(
 ):
     """Etape 2 du flow restore : l'user a confirme son identite cote app, on
     emet le vrai JWT. Met a jour `recovery_code_last_used_at` pour audit.
-    Reactive aussi la membership soft-leaved si applicable (cf. Q9 grill-me).
+    Reactive aussi la membership soft-leaved si applicable (cf. Q9 design review).
     """
     user_id_str = _decode_restore_token(body.restore_token)
     user_id = uuid.UUID(user_id_str)
@@ -217,7 +217,7 @@ async def restore_confirm(
     user.recovery_code_last_used_at = datetime.now(timezone.utc)
 
     # Si l'user avait quitte son dernier foyer, on reactive sa membership
-    # (cf. Q9e du grill-me : recovery code => restauration de l'identite
+    # (cf. Q9e du design review : recovery code => restauration de l'identite
     # complete, y compris la membership).
     foyer_id: uuid.UUID | None = user.last_active_foyer_id
     if foyer_id is not None:

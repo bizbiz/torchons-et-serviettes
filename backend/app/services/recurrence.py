@@ -246,7 +246,7 @@ def compute_due_date(
 
     Regles :
     - Jamais completee : due_date = created_at.date() (du immediatement,
-      rouge des J+1, conformement a la decision /grill-me).
+      rouge des J+1, conformement a la decision design review).
     - Ponctuelle deja faite (rule None, last_completed set) : None
       (plus d'echeance, la tache est "reglee").
     - Recurrente : due_date = next_due(rule, last_completed).date()

@@ -49,7 +49,7 @@ router = APIRouter(prefix="/api", tags=["projection"])
 MINUTES_PER_POINT = 5
 
 # Fenetre de mesure du rythme moyen : 14 jours glissants (decision grille
-# /grill-me v0.8.0 — lissage des week-ends + reactivite correcte).
+# design review v0.8.0 — lissage des week-ends + reactivite correcte).
 PACE_WINDOW_DAYS = 14
 
 

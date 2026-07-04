@@ -9,7 +9,7 @@ Prepare la transition Tailscale -> Play Store + Scaleway public. Voir
 
 Changements :
 - `users.recovery_code_hash`, `recovery_code_last_used_at` : code argon2id
-  pour restaurer un foyer si on perd son tel (Q5 du grill-me).
+  pour restaurer un foyer si on perd son tel (Q5 du design review).
 - `users.deleted_at` : RGPD soft-delete (Q11).
 - `foyers.is_premium`, `premium_until` : entitlement premium par foyer (Q7),
   plomberie pour activation paywall en post-launch.

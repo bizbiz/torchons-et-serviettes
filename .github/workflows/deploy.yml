@@ -1,28 +1,26 @@
-# Deploiement backend prod (Scaleway) — build serveur via SSH.
+# Production backend deployment — build on the server via SSH.
 #
-# Build SUR le serveur (docker compose up -d --build) : pas de registry,
-# pas de job build-and-push. C'est la voie qui a deploye 0.32.0 puis la
-# refonte offline-first ecran detail (mai 2026) ; fiable pour ce backend
-# dogfood 2 personnes. L'ancien chemin registry est retire (bug
-# TS_API_IMAGE vide -> compose tirait le fallback ts-api:latest).
+# The image is built ON the server (docker compose up -d --build): no
+# registry, no build-and-push job. A previous registry-based path was
+# removed (empty TS_API_IMAGE bug -> compose pulled the ts-api:latest
+# fallback).
 #
-# Secrets GitHub requis (Settings > Secrets and variables > Actions) :
-#   DEPLOY_SSH_HOST   IP de l'instance Scaleway (***REMOVED***)
-#   DEPLOY_SSH_USER   user SSH (ubuntu)
-#   DEPLOY_SSH_KEY    cle privee SSH autorisee sur le serveur
-#   DEPLOY_PATH       repo clone cote serveur (/path/to/clone)
-# (SCW_REGISTRY / SCW_SECRET_KEY ne sont PLUS utilises — peuvent rester.)
+# Required GitHub secrets (Settings > Secrets and variables > Actions):
+#   DEPLOY_SSH_HOST   server IP or hostname
+#   DEPLOY_SSH_USER   SSH user authorized on the server
+#   DEPLOY_SSH_KEY    private SSH key authorized on the server
+#   DEPLOY_PATH       repo clone on the server (e.g. /path/to/clone)
 #
-# Pre-requis serveur (faits — cf docs/runbook-deploy-scaleway.md) :
-#   - repo clone dans DEPLOY_PATH, POSSEDE par DEPLOY_SSH_USER
-#   - DEPLOY_SSH_USER dans le groupe docker
-#   - deploy key read-only du user pour git pull + github.com en known_hosts
-#   - .env.prod rempli, backend/firebase-key.json present
+# Server prerequisites (already provisioned):
+#   - repo cloned in DEPLOY_PATH, owned by DEPLOY_SSH_USER
+#   - DEPLOY_SSH_USER in the docker group
+#   - read-only deploy key for git pull + github.com in known_hosts
+#   - .env.prod filled in, backend/firebase-key.json present
 #
-# Declenchement (autonome) :
-#   gh workflow run deploy.yml -f confirm=deploy -R bizbiz/torchons-serviettes
-#   puis : gh run watch
-# (ou UI : Actions > deploy-prod > Run workflow > champ confirm = "deploy")
+# Trigger:
+#   gh workflow run deploy.yml -f confirm=deploy
+#   then: gh run watch
+# (or UI: Actions > deploy-prod > Run workflow > confirm field = "deploy")
 
 name: deploy-prod
 

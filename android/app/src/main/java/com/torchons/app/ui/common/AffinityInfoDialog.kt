@@ -33,7 +33,7 @@ data class AffinityRatingRow(
 /**
  * Modal "+ d'info" sur l'affinite d'une tache (v0.28).
  *
- * Decisions /grill-me Q11 :
+ * Decisions design review Q11 :
  * - Pedago courte qui rappelle que l'affinite est PERSO (n'influence que
  *   les suggestions du user, pas celles des autres). L'autre membre du
  *   foyer comprend pourquoi on ne peut pas demander a quelqu'un de
