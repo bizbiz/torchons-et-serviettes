@@ -1,5 +1,9 @@
 # Torchons & Serviettes
 
+[![Licence : AGPL v3](https://img.shields.io/badge/Licence-AGPL_v3-blue.svg)](LICENSE)
+[![Plateforme : Android](https://img.shields.io/badge/Plateforme-Android-3DDC84.svg?logo=android&logoColor=white)](#architecture)
+[![Backend : FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi&logoColor=white)](#architecture)
+
 > 🇬🇧 [Read in English](README.md)
 
 Une app de tâches ménagères collaboratives pour les foyers (couples,
@@ -91,7 +95,7 @@ android/
     ui/               # Compose screens + ViewModels
     worker/           # WorkManager (daily notif, sync)
 docs/
-  cache-conventions.md  # règles offline-first / sync / refresh
+  cache-conventions.md  # règles offline-first / sync / refresh (EN, FR : .fr.md)
 ```
 
 ## Statut

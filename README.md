@@ -1,5 +1,9 @@
 # Torchons & Serviettes
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Platform: Android](https://img.shields.io/badge/Platform-Android-3DDC84.svg?logo=android&logoColor=white)](#architecture)
+[![Backend: FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi&logoColor=white)](#architecture)
+
 > 🇫🇷 [Lire en français](README.fr.md)
 
 A collaborative household chores app for homes — couples, flat-shares,

@@ -1,130 +1,127 @@
-# Conventions cache / offline-first (T&S)
+# Cache / offline-first conventions (T&S)
 
-> **À lire avant de toucher au cache Room, aux refresh, à la sync ou à tout
-> état dérivé (urgence, échéance, retard, points).** Issu d'un bug réel
-> (suppression de complétion non propagée → `lastCompletedAt` périmé →
-> tâche affichée « dans 6j » alors que très en retard).
+> 🇫🇷 [Version française](cache-conventions.fr.md)
 
-## TL;DR — 3 règles
+> **Read this before touching the Room cache, refreshes, sync, or any
+> derived state (urgency, due date, lateness, points).** Born from a real
+> bug (a completion deletion that never propagated → stale
+> `lastCompletedAt` → a task shown as "due in 6d" while badly overdue).
 
-1. **État dérivé recalculé à chaque mutation.** Toute écriture qui change
-   les données sources d'un calcul (ajout/suppression/édition d'une
-   complétion → échéance/urgence/retard de la tâche) doit mettre le cache
-   local dans un état tel que le recalcul (observe-flow) ressort juste
-   **immédiatement**, sans attendre le réseau.
-2. **Offline = on fait confiance au front. Online = le serveur est
-   autoritaire.** Hors-ligne : écriture locale optimiste + recalcul local.
-   En ligne : on récupère/réconcilie les données serveur et elles
-   priment.
-3. **Un refresh en ligne REMPLACE son scope, jamais un upsert-only.** Un
-   `upsert` ne supprime pas les lignes absentes de la réponse serveur →
-   les suppressions/edits serveur ne se propagent pas → cache fantôme.
-   Refresh plein → `replaceAll`. Refresh scoppé (par tâche) →
-   `replaceForTask`. (`upsert-only` réservé aux scopes sans suppression
-   possible.)
+## TL;DR — 3 rules
 
-## Patterns obligatoires
+1. **Derived state is recomputed on every mutation.** Any write that
+   changes the source data of a computation (adding/deleting/editing a
+   completion → the task's due date/urgency/lateness) must leave the local
+   cache in a state where the recomputation (observe-flow) comes out right
+   **immediately**, without waiting for the network.
+2. **Offline = trust the client. Online = the server is authoritative.**
+   Offline: optimistic local write + local recompute. Online: fetch and
+   reconcile server data, and it wins.
+3. **An online refresh REPLACES its scope, never upsert-only.** An
+   `upsert` does not remove rows absent from the server response →
+   server-side deletions/edits never propagate → ghost cache. Full
+   refresh → `replaceAll`. Scoped refresh (per task) → `replaceForTask`.
+   (`upsert-only` is reserved for scopes where deletion is impossible.)
 
-### Mutation offline-first (créer / supprimer / éditer)
+## Mandatory patterns
 
-Mirror de `TaskRepository.completeTask` / `deleteCompletion` /
-`deleteTask` :
+### Offline-first mutation (create / delete / edit)
+
+Mirror of `TaskRepository.completeTask` / `deleteCompletion` /
+`deleteTask`:
 
 ```
-1. Écriture LOCALE optimiste (DAO upsert/deleteById)  -> UI/recalcul instant
-2. enqueue(clientOpId, table, op, rowId, payload|null) -> file offline
-3. (la sync push l'op ; SyncWorker applique les change_log serveur,
-   y compris les DELETE -> completionDao.deleteById)
+1. Optimistic LOCAL write (DAO upsert/deleteById)   -> instant UI/recompute
+2. enqueue(clientOpId, table, op, rowId, payload|null) -> offline queue
+3. (sync pushes the op; SyncWorker applies server change_log entries,
+   including DELETEs -> completionDao.deleteById)
 ```
 
-❌ **Anti-pattern** : appeler un endpoint REST online-only (ex.
-`apiService.deleteCompletion`) sans delete local optimiste ni enqueue →
-casse l'offline ET laisse une ligne fantôme en cache (upsert ne la retire
-pas).
+❌ **Anti-pattern**: calling an online-only REST endpoint (e.g.
+`apiService.deleteCompletion`) without an optimistic local delete and
+enqueue → breaks offline AND leaves a ghost row in the cache (upsert
+never removes it).
 
-❌ **Ne PAS** déclencher un `refresh<Scope>()` juste après une mutation
-optimiste tant que l'op n'est pas poussée : le refetch serveur
-ré-ajouterait la ligne (le serveur l'a encore). Laisser la sync
-réconcilier.
+❌ **Do NOT** trigger a `refresh<Scope>()` right after an optimistic
+mutation while the op has not been pushed yet: the server refetch would
+re-add the row (the server still has it). Let sync reconcile.
 
-### Refresh / réconciliation (online = autoritaire)
+### Refresh / reconciliation (online = authoritative)
 
-- Plein (`taskId==null && userId==null`) → `replaceAll`.
-- Par tâche (`taskId!=null`) → `replaceForTask(taskId, …)`.
-- Le backend expose les valeurs autoritaires utiles (ex.
-  `TaskResponse.last_completed_at` calculé serveur). **C'est câblé** :
-  `Task` DTO + `TaskEntity.lastCompletedAt` (migration Room 9→10) →
-  `TaskUrgencyCalculator.latestCompletedAt(server, local)` réconcilie par
-  `max()` (online = serveur autoritaire ; offline = complétion optimiste
-  locale plus récente gagne) → `TaskListViewModel`. Cf
+- Full (`taskId==null && userId==null`) → `replaceAll`.
+- Per task (`taskId!=null`) → `replaceForTask(taskId, …)`.
+- The backend exposes the useful authoritative values (e.g.
+  `TaskResponse.last_completed_at` computed server-side). **This is
+  wired**: `Task` DTO + `TaskEntity.lastCompletedAt` (Room migration
+  9→10) → `TaskUrgencyCalculator.latestCompletedAt(server, local)`
+  reconciles via `max()` (online = server authoritative; offline = a more
+  recent local optimistic completion wins) → `TaskListViewModel`. See
   `backend/app/api/tasks.py:_task_to_response`.
 
-  ❌ **Anti-pattern (bug réel « Aspirateur dans 6j »)** : alimenter
-  `computeDueDate` uniquement avec le `max` du cache Room des complétions.
-  Si ce cache est vide pour la tâche (ex. écran liste rafraîchi via
-  `/tasks` sans `/completions`, ou Home dont le refresh n'appelle pas
-  `refreshCompletions`), `computeDueDate` retombe sur `created_at` →
-  échéance = `created_at + N` → « dans Nj » au lieu de Rouge. Toujours
-  passer par `latestCompletedAt(task.lastCompletedAt, cacheMax)`.
+  ❌ **Anti-pattern (real "Vacuum due in 6d" bug)**: feeding
+  `computeDueDate` only with the `max` of the Room completions cache. If
+  that cache is empty for the task (e.g. list screen refreshed via
+  `/tasks` without `/completions`, or Home whose refresh does not call
+  `refreshCompletions`), `computeDueDate` falls back to `created_at` →
+  due date = `created_at + N` → "due in Nd" instead of Red. Always go
+  through `latestCompletedAt(task.lastCompletedAt, cacheMax)`.
 
-### Typage des champs numériques JSONB (recurrence_rule)
+### Typing of numeric JSONB fields (recurrence_rule)
 
-Le client Android (Gson) parse `every_n_days` (et `day_of_month`,
-`every_n_weeks`, `days[]`) comme des **Int stricts**. Un float persisté en
-JSONB (`7.0`) casse le parsing → recurrence ignorée → urgence fausse
-(« dans 6j » au lieu de Rouge). Le chemin REST passe par Pydantic
-(`every_n_days: int`, coercé), **mais `/sync` bypass Pydantic** et stocke
-`op.data` brut.
+The Android client (Gson) parses `every_n_days` (and `day_of_month`,
+`every_n_weeks`, `days[]`) as **strict Ints**. A float persisted in JSONB
+(`7.0`) breaks parsing → recurrence ignored → wrong urgency ("due in 6d"
+instead of Red). The REST path goes through Pydantic
+(`every_n_days: int`, coerced), **but `/sync` bypasses Pydantic** and
+stores raw `op.data`.
 
-➡️ **Règle : toute écriture serveur de `recurrence_rule` issue du client
-passe par `normalize_recurrence_rule()`** (`app/services/recurrence.py`) qui
-force les champs numériques en int. Appliqué dans `sync.py:_handle_task`
-(INSERT + UPDATE). ❌ Ne jamais faire `setattr(row, "recurrence_rule",
-op.data[...])` brut. Tout nouveau chemin d'écriture (import catalogue,
-migration, script) qui pose un `recurrence_rule` doit passer par ce helper
-ou garantir des int.
+➡️ **Rule: every server-side write of a client-provided
+`recurrence_rule` goes through `normalize_recurrence_rule()`**
+(`app/services/recurrence.py`), which forces numeric fields to int.
+Applied in `sync.py:_handle_task` (INSERT + UPDATE). ❌ Never do
+`setattr(row, "recurrence_rule", op.data[...])` raw. Any new server-side
+write path (catalog import, migration, script) that sets a
+`recurrence_rule` must go through this helper or guarantee ints.
 
-### État dérivé
+### Derived state
 
-- `lastCompletedAt` n'est **pas** stocké sur `TaskEntity` : il est dérivé
-  du cache des complétions à chaque émission de flow. Donc toute
-  correction d'urgence passe par la **justesse du cache des complétions**,
-  pas par un champ dénormalisé.
-- Les écrans *live* (Home `/api/suggestions`, `/api/retard`, Stats) sont
-  calculés serveur et ne dépendent pas du cache Room. Les écrans
-  offline-first (liste des tâches, détail) dépendent du cache → ce sont
-  eux qui exigent ces règles.
+- `lastCompletedAt` is **not** stored on `TaskEntity`: it is derived from
+  the completions cache on every flow emission. So any urgency fix goes
+  through the **correctness of the completions cache**, not a
+  denormalized field.
+- *Live* screens (Home `/api/suggestions`, `/api/retard`, Stats) are
+  computed server-side and do not depend on the Room cache. Offline-first
+  screens (task list, detail) depend on the cache → they are the ones
+  these rules exist for.
 
-## Checklist nouvelle feature touchant cache/sync
+## Checklist for any new feature touching cache/sync
 
-- [ ] Mutation : écriture locale optimiste + enqueue (offline OK) ?
-- [ ] Le calcul dérivé impacté ressort juste **sans réseau** après la
-      mutation ?
-- [ ] Refresh online = `replace` du scope (pas upsert-only) ?
-- [ ] DELETE serveur propagé au DAO par `SyncWorker` ?
-- [ ] Pas de `refresh` immédiat qui ré-ajoute une ligne optimistiquement
-      supprimée ?
-- [ ] Testé **en mode avion** ET reconnexion (la sync réconcilie) ?
-- [ ] Nouveau **type d'op `/sync`** (table/opération offline jamais
-      émise avant) ? → handler serveur déployé **AVANT** l'APK qui
-      l'émet (cf ci-dessous).
+- [ ] Mutation: optimistic local write + enqueue (offline OK)?
+- [ ] Does the impacted derived computation come out right **without
+      network** after the mutation?
+- [ ] Online refresh = `replace` of the scope (not upsert-only)?
+- [ ] Server DELETE propagated to the DAO by `SyncWorker`?
+- [ ] No immediate `refresh` that re-adds an optimistically deleted row?
+- [ ] Tested **in airplane mode** AND on reconnection (sync reconciles)?
+- [ ] New **`/sync` op type** (table/operation never emitted before)? →
+      server handler deployed **BEFORE** the APK that emits it (see
+      below).
 
-## Ordre de déploiement client ⇄ serveur (bug réel, mai 2026)
+## Client ⇄ server deployment ordering (real bug, May 2026)
 
-Client et serveur (Scaleway, canal beta) se déploient séparément. Si un
-changement client **émet un nouveau type d'op `/sync`** (ex. passage de
-`task_completions` INSERT/DELETE à un **UPDATE** pour l'édition de
-complétion), le **handler serveur correspondant doit être en prod AVANT**
-que l'APK qui l'émet ne soit utilisé.
+Client and server deploy separately. If a client change **emits a new
+`/sync` op type** (e.g. moving completion edits from `task_completions`
+INSERT/DELETE to an **UPDATE**), the **matching server handler must be in
+production BEFORE** the APK that emits it is used.
 
-Pourquoi c'est grave : la boucle `/sync` ne catchait que
-`StaleUpdateError`/`IntegrityError`. Une op qu'un vieux handler ne
-supporte pas levait une `HTTPException` **non catchée** → le **batch
-`/sync` entier** renvoyait 400, ne committait jamais, et l'op était
-re-tentée à l'infini → **toute la file offline du foyer bloquée** (pas
-juste la feature concernée).
+Why it matters: the `/sync` loop only caught
+`StaleUpdateError`/`IntegrityError`. An op an old handler did not support
+raised an uncaught `HTTPException` → the **entire `/sync` batch**
+returned 400, never committed, and the op was retried forever → **the
+household's whole offline queue blocked** (not just the feature at
+fault).
 
-Filet en place (`backend/app/api/sync.py`) : un `except Exception`
-isole désormais une op inattendue en **conflit par-op** (rollback +
-`SyncConflict`), le reste du batch passe. C'est un backstop, **pas** une
-dispense : garder l'ordre serveur-d'abord.
+Backstop in place (`backend/app/api/sync.py`): an `except Exception` now
+isolates an unexpected op as a **per-op conflict** (rollback +
+`SyncConflict`), and the rest of the batch goes through. It is a
+backstop, **not** a waiver: keep the server-first ordering.

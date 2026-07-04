@@ -6,6 +6,9 @@ Merci de t'intéresser au projet. C'est un projet solo à l'origine, en
 phase de préparation publique — les contributions externes sont
 bienvenues mais le rythme de revue dépend de la dispo du mainteneur.
 
+En participant, tu t'engages à respecter notre
+[code de conduite](CODE_OF_CONDUCT.md).
+
 ## Avant d'ouvrir une PR
 
 - **Discute d'abord** pour les changements substantiels (nouvelle

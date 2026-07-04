@@ -6,6 +6,9 @@ Thanks for your interest in the project. It started as a solo project,
 currently in public-launch preparation — external contributions are
 welcome but review pace depends on maintainer availability.
 
+By participating, you agree to follow our
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Before opening a PR
 
 - **Discuss first** for substantial changes (new feature, screen

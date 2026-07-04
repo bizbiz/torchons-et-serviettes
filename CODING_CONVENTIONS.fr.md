@@ -78,7 +78,7 @@ intra-tier : ratio `retard / intervalle` desc.
 ## Cache / offline-first (OBLIGATOIRE)
 
 Avant de toucher au cache Room, refresh, sync ou état dérivé, lire
-[`docs/cache-conventions.md`](docs/cache-conventions.md) en entier.
+[`docs/cache-conventions.fr.md`](docs/cache-conventions.fr.md) en entier.
 TL;DR :
 
 1. État dérivé recalculé à **chaque mutation** : écriture locale
@@ -89,7 +89,7 @@ TL;DR :
    suppressions non propagées s'accumulent.
 
 Patterns, anti-patterns et checklist complète :
-[`docs/cache-conventions.md`](docs/cache-conventions.md).
+[`docs/cache-conventions.fr.md`](docs/cache-conventions.fr.md).
 
 ## Ordre de sync
 
