@@ -339,12 +339,8 @@ private fun formatDateLocalized(res: Resources, millis: Long): String {
 }
 
 /** Convertit des millis en ISO 8601 a midi UTC (evite les surprises TZ). */
-private fun millisToIsoNoonUtc(millis: Long): String {
-    val date = Instant.ofEpochMilli(millis)
-        .atOffset(ZoneOffset.UTC)
-        .toLocalDate()
-    return "${date}T12:00:00Z"
-}
+private fun millisToIsoNoonUtc(millis: Long): String =
+    com.torchons.app.util.CompletionDateLabels.millisToIsoNoonUtc(millis)
 
 /**
  * Ligne "Tu gagneras X pts" + raison (bonus/malus/neutre/1ere/perso).

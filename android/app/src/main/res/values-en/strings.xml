@@ -1280,4 +1280,29 @@
     <string name="weekday_short_friday">F</string>
     <string name="weekday_short_saturday">S</string>
     <string name="weekday_short_sunday">S</string>
+
+    <!-- Home segmented completion buttons (day navigation) -->
+    <string name="date_label_today">today</string>
+    <string name="date_label_yesterday">yesterday</string>
+    <string name="date_label_two_days_ago">2 days ago</string>
+    <!-- %1$s = localized weekday name, e.g. "last Wednesday" -->
+    <string name="date_label_last_weekday_format">last %1$s</string>
+    <!-- java.time pattern for absolute dates, e.g. "Thu, Jun 26" -->
+    <string name="date_label_absolute_pattern">EEE, MMM d</string>
+    <!-- %1$s = day label from the tiers above -->
+    <string name="home_done_day_format">Done %1$s</string>
+    <string name="home_together_day_format">Together %1$s</string>
+    <!-- %1$s = member display name, %2$s = day label -->
+    <string name="home_done_by_one_day_format">Done by %1$s %2$s</string>
+    <plurals name="home_done_by_people_day">
+        <item quantity="one">Done by %1$d person %2$s</item>
+        <item quantity="other">Done by %1$d people %2$s</item>
+    </plurals>
+    <string name="home_participants_together">Together</string>
+    <!-- %1$s = the other member's display name -->
+    <string name="home_participants_just_other_format">Just %1$s</string>
+    <string name="home_date_prev_day_cd">Previous day</string>
+    <string name="home_date_next_day_cd">Next day</string>
+    <string name="home_date_open_calendar_cd">Pick a date</string>
+    <string name="home_participants_chevron_cd">Choose participants</string>
 </resources>

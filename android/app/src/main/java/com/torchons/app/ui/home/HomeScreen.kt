@@ -18,12 +18,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
@@ -33,15 +34,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -77,12 +82,11 @@ import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.ui.common.CelebrationCardContent
 import com.torchons.app.ui.common.CelebrationOverlay
-import com.torchons.app.ui.common.CompletionDialog
-import com.torchons.app.ui.common.CompletionDialogMode
 import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.common.SoloPointsInfoDialog
 import com.torchons.app.ui.common.RatingRecurrence
 import com.torchons.app.ui.common.randomCelebration
+import com.torchons.app.util.CompletionDateLabels
 import com.torchons.app.util.TaskUrgencyCalculator
 
 @Composable
@@ -338,69 +342,6 @@ fun HomeScreen(
         }
     }
 
-    // Dialog partage "Deja fait" / "Fait ensemble" (v0.11 refonte completion).
-    // Instancie une seule fois au niveau du HomeScreen, partage entre toutes
-    // les SuggestionCards via l'etat dialogState releve ici.
-    var dialogState by remember { mutableStateOf<CompletionDialogState?>(null) }
-    var twoPersonFaitEnsembleTaskId by remember { mutableStateOf<String?>(null) }
-
-    dialogState?.let { ds ->
-        CompletionDialog(
-            taskTitle = ds.taskTitle,
-            mode = ds.mode,
-            allMembers = uiState.fairShare.map { it.userId to it.displayName },
-            assignedMemberIds = ds.assignedIds,
-            currentUserId = userId.orEmpty(),
-            onDismiss = { dialogState = null },
-            onConfirm = { participantIds, isoDate, preview ->
-                if (ds.mode == CompletionDialogMode.Single) {
-                    viewModel.completeTaskAtDate(
-                        taskId = ds.taskId,
-                        isoDate = isoDate,
-                        completedBy = participantIds.firstOrNull(),
-                        previewPoints = preview?.finalPoints,
-                        previewReason = preview?.reason,
-                    )
-                } else {
-                    viewModel.completeTaskCollective(
-                        taskId = ds.taskId,
-                        participantUserIds = participantIds,
-                        isoDate = isoDate,
-                        previewPoints = preview?.finalPoints,
-                        previewReason = preview?.reason,
-                    )
-                }
-                dialogState = null
-            },
-            onSwitchToMulti = if (ds.mode == CompletionDialogMode.Single) {
-                {
-                    dialogState = ds.copy(mode = CompletionDialogMode.Multi)
-                }
-            } else null,
-            previewProvider = { isoDate, numParticipants ->
-                viewModel.fetchCompletionPreview(ds.taskId, isoDate, numParticipants)
-            },
-            gamificationVisible = gamificationVisible,
-        )
-    }
-
-    // DatePicker direct pour le cas foyer 2-pers Multi (pas de picker
-    // participants : split auto entre les 2 membres).
-    twoPersonFaitEnsembleTaskId?.let { tid ->
-        DatePickerDialog(
-            onDateSelected = { isoDate ->
-                val bothIds = uiState.fairShare.map { it.userId }
-                viewModel.completeTaskCollective(
-                    taskId = tid,
-                    participantUserIds = bothIds,
-                    isoDate = isoDate,
-                )
-                twoPersonFaitEnsembleTaskId = null
-            },
-            onDismiss = { twoPersonFaitEnsembleTaskId = null },
-        )
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
@@ -509,6 +450,10 @@ fun HomeScreen(
         val displayedSuggestions = listOfNotNull(displayUrgent, displayAffinity, displayUncertain)
 
         if (displayedSuggestions.isNotEmpty()) {
+            // Household members for the "Together" participant selector.
+            val members = remember(uiState.fairShare) {
+                uiState.fairShare.map { it.userId to it.displayName }.distinctBy { it.first }
+            }
             displayedSuggestions.forEach { suggestion ->
                 val task = tasksById[suggestion.taskId]
                 val room = task?.roomId?.let { roomsById[it] }
@@ -522,31 +467,15 @@ fun HomeScreen(
                     celebrationPoints = if (uiState.celebratingTaskId == suggestion.taskId && gamificationVisible) uiState.celebrationPoints else null,
                     celebrationReason = if (uiState.celebratingTaskId == suggestion.taskId) uiState.celebrationReason else null,
                     gamificationVisible = gamificationVisible,
+                    members = members,
+                    currentUserId = userId.orEmpty(),
                     onClick = { onTaskClick(suggestion.taskId) },
-                    onComplete = { viewModel.completeTask(suggestion.taskId) },
-                    onDejaFait = {
-                        val assignedIds = tasksById[suggestion.taskId]?.assignedToIds.orEmpty().toSet()
-                        dialogState = CompletionDialogState(
-                            mode = CompletionDialogMode.Single,
-                            taskId = suggestion.taskId,
-                            taskTitle = suggestion.title,
-                            assignedIds = assignedIds,
-                        )
+                    onCompleteToday = { viewModel.completeTask(suggestion.taskId) },
+                    onCompleteAtDate = { iso, by ->
+                        viewModel.completeTaskAtDate(suggestion.taskId, iso, completedBy = by)
                     },
-                    onFaitEnsemble = {
-                        val assignedIds = tasksById[suggestion.taskId]?.assignedToIds.orEmpty().toSet()
-                        if (uiState.fairShare.size == 2) {
-                            // Foyer 2-pers : DatePickerDialog direct, split auto entre
-                            // les deux membres (pas de picker de participants).
-                            twoPersonFaitEnsembleTaskId = suggestion.taskId
-                        } else {
-                            dialogState = CompletionDialogState(
-                                mode = CompletionDialogMode.Multi,
-                                taskId = suggestion.taskId,
-                                taskTitle = suggestion.title,
-                                assignedIds = assignedIds,
-                            )
-                        }
+                    onCompleteCollective = { ids, iso ->
+                        viewModel.completeTaskCollective(suggestion.taskId, ids, iso)
                     },
                     onEdit = { onEditTask(suggestion.taskId) },
                     onDismiss = { viewModel.dismissSuggestion(suggestion.taskId, suggestion.reason) },
@@ -707,10 +636,16 @@ private fun SuggestionCard(
      *  le "+X pts" dans la celebration. Le reste (titre, countdown, piece,
      *  bouton "Fait !") reste inchange. */
     gamificationVisible: Boolean = true,
+    /** Household members as (userId, displayName) pairs, deduplicated. */
+    members: List<Pair<String, String>> = emptyList(),
+    currentUserId: String = "",
     onClick: () -> Unit,
-    onComplete: () -> Unit,
-    onDejaFait: () -> Unit,
-    onFaitEnsemble: () -> Unit,
+    /** Immediate completion by the current user, dated now (J-0 path). */
+    onCompleteToday: () -> Unit,
+    /** Backdated single completion; completedBy null = current user. */
+    onCompleteAtDate: (isoDate: String, completedBy: String?) -> Unit,
+    /** Collective completion by the given participants at the given date. */
+    onCompleteCollective: (participantIds: List<String>, isoDate: String) -> Unit,
     onEdit: () -> Unit,
     onDismiss: () -> Unit = {},
 ) {
@@ -848,58 +783,227 @@ private fun SuggestionCard(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Bouton principal "Fait !" pleine largeur
-            Button(
-                onClick = onComplete,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = TaskUrgencyCalculator.VERT),
-            ) {
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(R.string.suggestion_action_done))
+            // Segmented completion buttons with shared day navigation.
+            // One selectedDate per card, shared by both buttons; keyed on
+            // taskId so it resets to "today / everyone" whenever the
+            // suggested task changes or the screen leaves composition.
+            val today = java.time.LocalDate.now()
+            var selectedDate by remember(suggestion.taskId) { mutableStateOf(today) }
+            // Defensive clamp if the app crossed midnight while in memory.
+            if (selectedDate.isAfter(today)) selectedDate = today
+            val memberIds = remember(members) { members.map { it.first } }
+            var selectedParticipantIds by remember(suggestion.taskId, memberIds) {
+                mutableStateOf(memberIds.toSet())
+            }
+            var showDatePicker by remember(suggestion.taskId) { mutableStateOf(false) }
+            var showParticipantsMenu by remember(suggestion.taskId) { mutableStateOf(false) }
+
+            val dayOffset = java.time.temporal.ChronoUnit.DAYS
+                .between(selectedDate, today).toInt()
+            val dayLabel = CompletionDateLabels.relativeDayLabel(urgencyRes, selectedDate, today)
+            // Left slot: -1 day arrow, becomes a calendar shortcut past 15
+            // days back. Right slot: +1 day arrow, calendar shortcut at J-0
+            // (there is never a future date to navigate to).
+            val atCalendarDepth = dayOffset >= MAX_ARROW_NAV_DAYS
+            val leftIcon =
+                if (atCalendarDepth) Icons.Default.CalendarMonth
+                else Icons.AutoMirrored.Filled.KeyboardArrowLeft
+            val leftCd = stringResource(
+                if (atCalendarDepth) R.string.home_date_open_calendar_cd
+                else R.string.home_date_prev_day_cd
+            )
+            val onLeftSlot: () -> Unit = {
+                if (dayOffset >= MAX_ARROW_NAV_DAYS) showDatePicker = true
+                else selectedDate = selectedDate.minusDays(1)
+            }
+            val rightIcon =
+                if (dayOffset == 0) Icons.Default.CalendarMonth
+                else Icons.AutoMirrored.Filled.KeyboardArrowRight
+            val rightCd = stringResource(
+                if (dayOffset == 0) R.string.home_date_open_calendar_cd
+                else R.string.home_date_next_day_cd
+            )
+            val onRightSlot: () -> Unit = {
+                if (dayOffset == 0) showDatePicker = true
+                else selectedDate = selectedDate.plusDays(1)
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            // Button 1 — "Done <day>": immediate completion by me.
+            SegmentedCompletionButton(
+                centerLabel = stringResource(R.string.home_done_day_format, dayLabel),
+                leftIcon = leftIcon,
+                leftContentDescription = leftCd,
+                onLeftClick = onLeftSlot,
+                rightIcon = rightIcon,
+                rightContentDescription = rightCd,
+                onRightClick = onRightSlot,
+                onCenterClick = {
+                    if (dayOffset == 0) onCompleteToday()
+                    else onCompleteAtDate(CompletionDateLabels.toIsoNoonUtc(selectedDate), null)
+                },
+                filled = true,
+            )
 
-            // Boutons secondaires "Deja fait" + "Fait ensemble"
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = onDejaFait,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.suggestion_action_already_done))
+            // Button 2 — "Together <day>" with participant chevron. Hidden
+            // for single-member households (no one to share with).
+            if (members.size >= 2) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val allSelected = selectedParticipantIds.size == memberIds.size
+                val centerLabel = when {
+                    allSelected -> stringResource(R.string.home_together_day_format, dayLabel)
+                    selectedParticipantIds.size == 1 -> stringResource(
+                        R.string.home_done_by_one_day_format,
+                        members.firstOrNull { it.first == selectedParticipantIds.first() }?.second.orEmpty(),
+                        dayLabel,
+                    )
+                    else -> pluralStringResource(
+                        R.plurals.home_done_by_people_day,
+                        selectedParticipantIds.size,
+                        selectedParticipantIds.size,
+                        dayLabel,
+                    )
                 }
-                OutlinedButton(
-                    onClick = onFaitEnsemble,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Default.Groups, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.suggestion_action_together))
-                }
+                SegmentedCompletionButton(
+                    centerLabel = centerLabel,
+                    leftIcon = leftIcon,
+                    leftContentDescription = leftCd,
+                    onLeftClick = onLeftSlot,
+                    rightIcon = rightIcon,
+                    rightContentDescription = rightCd,
+                    onRightClick = onRightSlot,
+                    onCenterClick = {
+                        val iso = CompletionDateLabels.toIsoNoonUtc(selectedDate)
+                        if (selectedParticipantIds.size == 1) {
+                            onCompleteAtDate(iso, selectedParticipantIds.first())
+                        } else {
+                            onCompleteCollective(selectedParticipantIds.toList(), iso)
+                        }
+                    },
+                    filled = false,
+                    chevronContentDescription = stringResource(R.string.home_participants_chevron_cd),
+                    onChevronClick = { showParticipantsMenu = true },
+                    chevronMenu = {
+                        ParticipantsMenu(
+                            expanded = showParticipantsMenu,
+                            members = members,
+                            currentUserId = currentUserId,
+                            selectedIds = selectedParticipantIds,
+                            onSelectionChange = { selectedParticipantIds = it },
+                            onDismiss = { showParticipantsMenu = false },
+                        )
+                    },
+                )
+            }
+
+            if (showDatePicker) {
+                PastOnlyDatePickerDialog(
+                    initialDate = selectedDate,
+                    onDateSelected = {
+                        selectedDate = it.coerceAtMost(today)
+                        showDatePicker = false
+                    },
+                    onDismiss = { showDatePicker = false },
+                )
             }
         }
     }
 }
 
-/** Etat du dialog partage "Deja fait" / "Fait ensemble" sur la home. */
-private data class CompletionDialogState(
-    val mode: CompletionDialogMode,
-    val taskId: String,
-    val taskTitle: String,
-    val assignedIds: Set<String>,
-)
+/** Arrow navigation depth: past this many days back, the left slot turns
+ *  into a calendar shortcut (the picker becomes the only way further). */
+private const val MAX_ARROW_NAV_DAYS = 15
 
+/**
+ * Participant selector anchored to the chevron slot of the "Together"
+ * button. Two-member household: radio choice between "Together" (both)
+ * and "Just <other>". Three or more: one checkbox row per member (at
+ * least one must stay selected), menu stays open while toggling.
+ */
+@Composable
+private fun ParticipantsMenu(
+    expanded: Boolean,
+    members: List<Pair<String, String>>,
+    currentUserId: String,
+    selectedIds: Set<String>,
+    onSelectionChange: (Set<String>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val memberIds = members.map { it.first }
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        if (members.size == 2) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.home_participants_together)) },
+                leadingIcon = {
+                    RadioButton(selected = selectedIds.size == memberIds.size, onClick = null)
+                },
+                onClick = {
+                    onSelectionChange(memberIds.toSet())
+                    onDismiss()
+                },
+            )
+            val other = members.firstOrNull { it.first != currentUserId }
+            if (other != null) {
+                DropdownMenuItem(
+                    text = {
+                        Text(stringResource(R.string.home_participants_just_other_format, other.second))
+                    },
+                    leadingIcon = {
+                        RadioButton(selected = selectedIds == setOf(other.first), onClick = null)
+                    },
+                    onClick = {
+                        onSelectionChange(setOf(other.first))
+                        onDismiss()
+                    },
+                )
+            }
+        } else {
+            members.forEach { (id, name) ->
+                val checked = id in selectedIds
+                DropdownMenuItem(
+                    text = { Text(name) },
+                    leadingIcon = { Checkbox(checked = checked, onCheckedChange = null) },
+                    onClick = {
+                        val next = when {
+                            !checked -> selectedIds + id
+                            selectedIds.size > 1 -> selectedIds - id
+                            else -> selectedIds // never allow an empty selection
+                        }
+                        onSelectionChange(next)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Material3 DatePickerDialog restricted to past dates (today included).
+ * Only sets the shared selected date — completion stays on the center tap.
+ * Millis are interpreted as UTC calendar days, consistent with
+ * [CompletionDateLabels.millisToIsoNoonUtc].
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DatePickerDialog(
-    onDateSelected: (String) -> Unit,
-    onDismiss: () -> Unit
+private fun PastOnlyDatePickerDialog(
+    initialDate: java.time.LocalDate,
+    onDateSelected: (java.time.LocalDate) -> Unit,
+    onDismiss: () -> Unit,
 ) {
+    // Bound by the user's local "today": no future day can be picked.
+    val maxDate = java.time.LocalDate.now()
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis()
+        initialSelectedDateMillis = initialDate
+            .atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(),
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                val date = java.time.Instant.ofEpochMilli(utcTimeMillis)
+                    .atOffset(java.time.ZoneOffset.UTC).toLocalDate()
+                return !date.isAfter(maxDate)
+            }
+
+            override fun isSelectableYear(year: Int): Boolean = year <= maxDate.year
+        },
     )
 
     androidx.compose.material3.DatePickerDialog(
@@ -907,11 +1011,10 @@ private fun DatePickerDialog(
         confirmButton = {
             Button(onClick = {
                 datePickerState.selectedDateMillis?.let { millis ->
-                    val date = java.time.Instant.ofEpochMilli(millis)
-                        .atZone(java.time.ZoneId.systemDefault())
-                        .toLocalDate()
-                    // Envoyer comme ISO datetime a midi
-                    onDateSelected("${date}T12:00:00Z")
+                    onDateSelected(
+                        java.time.Instant.ofEpochMilli(millis)
+                            .atOffset(java.time.ZoneOffset.UTC).toLocalDate()
+                    )
                 }
             }) {
                 Text(stringResource(R.string.common_validate))

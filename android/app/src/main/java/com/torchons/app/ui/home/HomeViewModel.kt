@@ -895,23 +895,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Preview des points pour une completion a venir (bonus/malus). Appelle
-     * l'endpoint /completion-preview. Retourne null si offline ou erreur —
-     * l'UI affiche alors un fallback.
-     */
-    suspend fun fetchCompletionPreview(
-        taskId: String,
-        isoDate: String,
-        numParticipants: Int,
-    ): com.torchons.app.data.model.CompletionPreview? {
-        return try {
-            val resp = apiService.getCompletionPreview(taskId, isoDate, numParticipants)
-            if (resp.isSuccessful) resp.body() else null
-        } catch (_: Exception) {
-            null
-        }
-    }
 }
 
 /** Conteneur interne pour le combine des flows snapshot. */
