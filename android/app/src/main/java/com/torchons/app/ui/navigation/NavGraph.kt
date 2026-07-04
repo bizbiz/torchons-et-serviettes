@@ -19,7 +19,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.torchons.app.ui.components.OfflineBanner
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -487,15 +486,14 @@ fun MainScreen(
             }
         }
     ) { paddingValues ->
-        // Bandeau "hors ligne" global au-dessus de tous les ecrans de la
-        // navigation principale. Visible uniquement quand le BackendHealthMonitor
-        // detecte une panne de connexion. Le NavHost prend la place restante.
+        // L'etat de connexion/sync est desormais expose par l'icone
+        // SyncStatusIcon du header de l'Accueil (l'ancien OfflineBanner
+        // decalait tout le layout vers le bas en apparaissant).
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            OfflineBanner()
             NavHost(
                 navController = innerNavController,
                 startDestination = Routes.HOME,

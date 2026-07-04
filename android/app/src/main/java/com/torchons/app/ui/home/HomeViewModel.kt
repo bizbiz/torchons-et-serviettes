@@ -84,6 +84,12 @@ data class HomeUiState(
     /** Raison du multiplicateur (BONUS_RETARD / MALUS_AVANCE / FIRST_COMPLETION / NEUTRAL / PERSO). */
     val celebrationReason: String? = null,
     /**
+     * Per-participant attribution shown in the celebration: (displayName,
+     * pointsEarned) pairs. Single completion -> one entry; collective ->
+     * one entry per participant (exact server split).
+     */
+    val celebrationEarnedBy: List<Pair<String, Int>>? = null,
+    /**
      * Set des task_ids recemment completes cote client pour lesquels le
      * backend n'a pas encore integre la completion (SyncWorker pas encore
      * passe). Le HomeScreen les filtre pour afficher la suggestion suivante
@@ -532,13 +538,30 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun completeTask(taskId: String) {
-        celebrateThen(taskId, null, null) {
+    fun completeTask(taskId: String, previewPoints: Int? = null, previewReason: String? = null) {
+        celebrateThen(taskId, previewPoints, previewReason, earnedByFor(null, previewPoints)) {
             taskRepository.completeTask(taskId).fold(
                 onSuccess = { refresh() },
                 onFailure = { _uiState.value = _uiState.value.copy(error = it.message) },
             )
         }
+    }
+
+    /**
+     * Builds the celebration attribution list for a single completion:
+     * (displayName, points). completedBy null = current user. Returns null
+     * when points are unknown (offline preview failure) — the celebration
+     * then falls back to its no-points variant.
+     */
+    private fun earnedByFor(completedBy: String?, points: Int?): List<Pair<String, Int>>? {
+        if (points == null) return null
+        val name = if (completedBy == null) {
+            displayName.value ?: return null
+        } else {
+            _uiState.value.fairShare.firstOrNull { it.userId == completedBy }?.displayName
+                ?: return null
+        }
+        return listOf(name to points)
     }
 
     /**
@@ -597,7 +620,7 @@ class HomeViewModel @Inject constructor(
         previewPoints: Int? = null,
         previewReason: String? = null,
     ) {
-        celebrateThen(taskId, previewPoints, previewReason) {
+        celebrateThen(taskId, previewPoints, previewReason, earnedByFor(completedBy, previewPoints)) {
             taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
                 onSuccess = { refresh() },
                 onFailure = { _uiState.value = _uiState.value.copy(error = it.message) },
@@ -620,16 +643,21 @@ class HomeViewModel @Inject constructor(
                 completedAt = isoDate,
             ).fold(
                 onSuccess = { response ->
-                    // Si on n'avait pas de preview (ex: DatePickerDialog 2-pers),
-                    // on rafraichit la celebration avec la valeur reelle du serveur.
-                    if (previewPoints == null) {
+                    // Refresh the celebration with the exact server values:
+                    // per-participant attribution (split) + points/reason.
+                    // Guard on celebratingTaskId — a late response must not
+                    // write stale content after the celebration ended.
+                    if (_uiState.value.celebratingTaskId == taskId) {
                         val first = response.completions.firstOrNull()
-                        if (first != null) {
-                            _uiState.value = _uiState.value.copy(
-                                celebrationPoints = first.pointsEarned,
-                                celebrationReason = first.reason,
-                            )
-                        }
+                        val names = _uiState.value.fairShare.associate { it.userId to it.displayName }
+                        val earnedBy = response.completions.mapNotNull { c ->
+                            names[c.completedBy]?.let { it to c.pointsEarned }
+                        }.ifEmpty { null }
+                        _uiState.value = _uiState.value.copy(
+                            celebrationPoints = _uiState.value.celebrationPoints ?: first?.pointsEarned,
+                            celebrationReason = _uiState.value.celebrationReason ?: first?.reason,
+                            celebrationEarnedBy = earnedBy,
+                        )
                     }
                     refresh()
                 },
@@ -658,6 +686,7 @@ class HomeViewModel @Inject constructor(
         taskId: String,
         points: Int?,
         reason: String?,
+        earnedBy: List<Pair<String, Int>>? = null,
         block: suspend () -> Unit,
     ) {
         viewModelScope.launch {
@@ -666,20 +695,47 @@ class HomeViewModel @Inject constructor(
                 celebrationTrigger = _uiState.value.celebrationTrigger + 1,
                 celebrationPoints = points,
                 celebrationReason = reason,
+                celebrationEarnedBy = earnedBy,
             )
+            // Run the completion CONCURRENTLY with the celebration so server
+            // responses (exact collective split) can refresh the celebration
+            // content while it is still on screen. The celebrating card stays
+            // visible through celebratingTaskId; justCompletedIds takes over
+            // the filtering at reset time.
+            val work = launch { block() }
             kotlinx.coroutines.delay(2000L)
             _uiState.value = _uiState.value.copy(
                 celebratingTaskId = null,
                 celebrationPoints = null,
                 celebrationReason = null,
+                celebrationEarnedBy = null,
                 justCompletedIds = _uiState.value.justCompletedIds + taskId,
             )
-            block()
+            work.join()
         }
     }
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    /**
+     * Server-side points preview for an upcoming completion (bonus/malus
+     * depending on the completion date and participant count). Returns null
+     * when offline or on error — the UI falls back to the /suggestions
+     * predicted values.
+     */
+    suspend fun fetchCompletionPreview(
+        taskId: String,
+        isoDate: String,
+        numParticipants: Int,
+    ): com.torchons.app.data.model.CompletionPreview? {
+        return try {
+            val resp = apiService.getCompletionPreview(taskId, isoDate, numParticipants)
+            if (resp.isSuccessful) resp.body() else null
+        } catch (_: Exception) {
+            null
+        }
     }
 
     // --- Queue unifiee des prompts (BUMP_EFFORT / VOTE_RATING) ---

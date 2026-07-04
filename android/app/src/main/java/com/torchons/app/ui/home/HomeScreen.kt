@@ -409,6 +409,9 @@ fun HomeScreen(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
+            // Sync status icon (replaces the old full-width OfflineBanner
+            // that used to push the whole layout down when appearing).
+            com.torchons.app.ui.components.SyncStatusIcon()
             IconButton(onClick = { viewModel.showManualRating() }) {
                 Icon(
                     imageVector = Icons.Default.QuestionMark,
@@ -467,12 +470,23 @@ fun HomeScreen(
                     celebrationPoints = if (uiState.celebratingTaskId == suggestion.taskId && gamificationVisible) uiState.celebrationPoints else null,
                     celebrationReason = if (uiState.celebratingTaskId == suggestion.taskId) uiState.celebrationReason else null,
                     gamificationVisible = gamificationVisible,
+                    celebrationEarnedBy = if (uiState.celebratingTaskId == suggestion.taskId && gamificationVisible) uiState.celebrationEarnedBy else null,
                     members = members,
                     currentUserId = userId.orEmpty(),
+                    previewProvider = { iso, n ->
+                        viewModel.fetchCompletionPreview(suggestion.taskId, iso, n)
+                    },
                     onClick = { onTaskClick(suggestion.taskId) },
-                    onCompleteToday = { viewModel.completeTask(suggestion.taskId) },
-                    onCompleteAtDate = { iso, by ->
-                        viewModel.completeTaskAtDate(suggestion.taskId, iso, completedBy = by)
+                    onCompleteToday = { pts, reason ->
+                        viewModel.completeTask(suggestion.taskId, pts, reason)
+                    },
+                    onCompleteAtDate = { iso, by, pts, reason ->
+                        viewModel.completeTaskAtDate(
+                            suggestion.taskId, iso,
+                            completedBy = by,
+                            previewPoints = pts,
+                            previewReason = reason,
+                        )
                     },
                     onCompleteCollective = { ids, iso ->
                         viewModel.completeTaskCollective(suggestion.taskId, ids, iso)
@@ -636,14 +650,18 @@ private fun SuggestionCard(
      *  le "+X pts" dans la celebration. Le reste (titre, countdown, piece,
      *  bouton "Fait !") reste inchange. */
     gamificationVisible: Boolean = true,
+    /** Per-participant attribution shown in the celebration (name, points). */
+    celebrationEarnedBy: List<Pair<String, Int>>? = null,
     /** Household members as (userId, displayName) pairs, deduplicated. */
     members: List<Pair<String, String>> = emptyList(),
     currentUserId: String = "",
+    /** Server points preview for (isoDate, numParticipants); null offline. */
+    previewProvider: suspend (isoDate: String, numParticipants: Int) -> com.torchons.app.data.model.CompletionPreview? = { _, _ -> null },
     onClick: () -> Unit,
     /** Immediate completion by the current user, dated now (J-0 path). */
-    onCompleteToday: () -> Unit,
+    onCompleteToday: (previewPoints: Int?, previewReason: String?) -> Unit,
     /** Backdated single completion; completedBy null = current user. */
-    onCompleteAtDate: (isoDate: String, completedBy: String?) -> Unit,
+    onCompleteAtDate: (isoDate: String, completedBy: String?, previewPoints: Int?, previewReason: String?) -> Unit,
     /** Collective completion by the given participants at the given date. */
     onCompleteCollective: (participantIds: List<String>, isoDate: String) -> Unit,
     onEdit: () -> Unit,
@@ -682,6 +700,7 @@ private fun SuggestionCard(
                 text = celebration.second,
                 points = celebrationPoints,
                 reason = celebrationReason,
+                earnedBy = celebrationEarnedBy,
             )
             return@Card
         }
@@ -774,19 +793,11 @@ private fun SuggestionCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Ligne points predits : "💰 N pts" (+ delta bonus si applicable).
-            // Pour les taches solo (predicted = 0) : "💰 0 pt" + icone (i)
-            // cliquable qui ouvre SoloPointsInfoDialog (pedago "pourquoi 0 ?").
-            // Cachee en mode opt-out (v0.32).
-            if (gamificationVisible) {
-                SuggestionPointsLine(suggestion = suggestion)
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            // Segmented completion buttons with shared day navigation.
-            // One selectedDate per card, shared by both buttons; keyed on
-            // taskId so it resets to "today / everyone" whenever the
-            // suggested task changes or the screen leaves composition.
+            // Completion controls state — declared before the points line
+            // because the predicted points follow the selected date. One
+            // selectedDate per card, shared by both buttons; keyed on taskId
+            // so it resets to "today / everyone" whenever the suggested task
+            // changes or the screen leaves composition.
             val today = java.time.LocalDate.now()
             var selectedDate by remember(suggestion.taskId) { mutableStateOf(today) }
             // Defensive clamp if the app crossed midnight while in memory.
@@ -801,6 +812,37 @@ private fun SuggestionCard(
             val dayOffset = java.time.temporal.ChronoUnit.DAYS
                 .between(selectedDate, today).toInt()
             val dayLabel = CompletionDateLabels.relativeDayLabel(urgencyRes, selectedDate, today)
+
+            // Date-aware points preview: backdating changes bonus/malus, so
+            // the points line must follow the selected date (a late bonus
+            // disappears when the completion is dated back before the due
+            // date). J-0 keeps the /suggestions prediction; null on fetch
+            // failure (offline) falls back to it too.
+            var datePreview by remember(suggestion.taskId) {
+                mutableStateOf<com.torchons.app.data.model.CompletionPreview?>(null)
+            }
+            LaunchedEffect(suggestion.taskId, selectedDate) {
+                datePreview = if (dayOffset == 0) null
+                else previewProvider(CompletionDateLabels.toIsoNoonUtc(selectedDate), 1)
+            }
+            // Best-known single-completion points for the current selection,
+            // passed to the celebration so it can attribute exact points.
+            val singlePreviewPoints = datePreview?.finalPoints
+                ?: suggestion.predictedFinalPoints.takeIf { dayOffset == 0 }
+            val singlePreviewReason = datePreview?.reason
+                ?: "BONUS_RETARD".takeIf {
+                    dayOffset == 0 && suggestion.bonusEligible &&
+                        suggestion.predictedFinalPoints > suggestion.predictedBasePoints
+                }
+
+            // Ligne points predits : "💰 N pts" (+ delta bonus si applicable).
+            // Pour les taches solo (predicted = 0) : "💰 0 pt" + icone (i)
+            // cliquable qui ouvre SoloPointsInfoDialog (pedago "pourquoi 0 ?").
+            // Cachee en mode opt-out (v0.32).
+            if (gamificationVisible) {
+                SuggestionPointsLine(suggestion = suggestion, preview = datePreview)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             // Left slot: -1 day arrow, becomes a calendar shortcut past 15
             // days back. Right slot: +1 day arrow, calendar shortcut at J-0
             // (there is never a future date to navigate to).
@@ -838,8 +880,16 @@ private fun SuggestionCard(
                 rightContentDescription = rightCd,
                 onRightClick = onRightSlot,
                 onCenterClick = {
-                    if (dayOffset == 0) onCompleteToday()
-                    else onCompleteAtDate(CompletionDateLabels.toIsoNoonUtc(selectedDate), null)
+                    if (dayOffset == 0) {
+                        onCompleteToday(singlePreviewPoints, singlePreviewReason)
+                    } else {
+                        onCompleteAtDate(
+                            CompletionDateLabels.toIsoNoonUtc(selectedDate),
+                            null,
+                            singlePreviewPoints,
+                            singlePreviewReason,
+                        )
+                    }
                 },
                 filled = true,
             )
@@ -875,8 +925,15 @@ private fun SuggestionCard(
                     onCenterClick = {
                         val iso = CompletionDateLabels.toIsoNoonUtc(selectedDate)
                         if (selectedParticipantIds.size == 1) {
-                            onCompleteAtDate(iso, selectedParticipantIds.first())
+                            onCompleteAtDate(
+                                iso,
+                                selectedParticipantIds.first(),
+                                singlePreviewPoints,
+                                singlePreviewReason,
+                            )
                         } else {
+                            // Collective: the server response corrects the
+                            // celebration with the exact per-participant split.
                             onCompleteCollective(selectedParticipantIds.toList(), iso)
                         }
                     },
@@ -1045,15 +1102,26 @@ private fun PastOnlyDatePickerDialog(
  *  - Cas standard : "💰 N pts" neutre.
  */
 @Composable
-private fun SuggestionPointsLine(suggestion: Suggestion) {
+private fun SuggestionPointsLine(
+    suggestion: Suggestion,
+    /** Date-aware server preview; overrides the /suggestions prediction
+     *  when the user navigated to a past day (late bonus may disappear,
+     *  an early malus may appear). Null = J-0 or offline fallback. */
+    preview: com.torchons.app.data.model.CompletionPreview? = null,
+) {
     var showInfo by remember { mutableStateOf(false) }
-    val finalPts = suggestion.predictedFinalPoints
-    val basePts = suggestion.predictedBasePoints
+    val finalPts = preview?.finalPoints ?: suggestion.predictedFinalPoints
+    val basePts = preview?.basePoints ?: suggestion.predictedBasePoints
     val delta = finalPts - basePts
-    val isSolo = finalPts == 0
+    // Solo detection stays on the suggestion values: a solo task predicts
+    // 0 whatever the date, while a preview could legitimately reach 0.
+    val isSolo = suggestion.predictedFinalPoints == 0 && suggestion.predictedBasePoints == 0
+    val bonusShown = delta > 0 && (preview?.reason == "BONUS_RETARD" || (preview == null && suggestion.bonusEligible))
+    val malusShown = delta < 0
     val color = when {
         isSolo -> MaterialTheme.colorScheme.onSurfaceVariant
-        suggestion.bonusEligible && delta > 0 -> Color(0xFF2E7D32)
+        bonusShown -> Color(0xFF2E7D32)
+        malusShown -> Color(0xFFEF6C00)
         else -> MaterialTheme.colorScheme.onSurface
     }
 
@@ -1068,10 +1136,18 @@ private fun SuggestionPointsLine(suggestion: Suggestion) {
             fontWeight = FontWeight.Bold,
             color = color,
         )
-        if (!isSolo && suggestion.bonusEligible && delta > 0) {
+        if (!isSolo && bonusShown) {
             Spacer(Modifier.width(6.dp))
             Text(
                 text = pluralStringResource(R.plurals.suggestion_bonus_delta_points, delta, delta),
+                style = MaterialTheme.typography.labelSmall,
+                color = color,
+            )
+        }
+        if (!isSolo && malusShown) {
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = pluralStringResource(R.plurals.suggestion_malus_delta_points, -delta, -delta),
                 style = MaterialTheme.typography.labelSmall,
                 color = color,
             )

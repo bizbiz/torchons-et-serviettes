@@ -64,10 +64,27 @@ class BackendHealthMonitor @Inject constructor(
 
     /**
      * Force un check immediat de /api/health. Appele par le bouton "Reessayer"
-     * du bandeau hors ligne.
+     * du dialog de statut de synchronisation.
      */
     fun retryNow() {
         scope.launch { ping() }
+    }
+
+    /**
+     * One-shot health check that reports the result back to the caller
+     * (used by the sync-status diagnosis dialog to tell "server down" apart
+     * from "internet down"). Also flips the state to Online on success.
+     */
+    suspend fun checkNow(): Boolean = try {
+        val resp = apiServiceLazy.get().health()
+        if (resp.isSuccessful) {
+            reportSuccess()
+            true
+        } else {
+            false
+        }
+    } catch (_: Exception) {
+        false
     }
 
     private fun startPolling() {

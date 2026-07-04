@@ -15,9 +15,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.torchons.app.R
 import nl.dionsegijn.konfetti.compose.KonfettiView
 import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
@@ -81,8 +83,16 @@ fun CelebrationCardContent(
     text: String = "Bravo !",
     points: Int? = null,
     reason: String? = null,  // NEUTRAL / BONUS_RETARD / MALUS_AVANCE / FIRST_COMPLETION / PERSO
+    /**
+     * Per-participant attribution: (displayName, pointsEarned). When
+     * provided (and containing at least one positive entry), it replaces
+     * the anonymous "+N pts" line with one "Name +N pts" line per
+     * participant, so it is always clear who earned what.
+     */
+    earnedBy: List<Pair<String, Int>>? = null,
 ) {
     val (pointsColor, reasonEmoji, reasonLabel) = celebrationReasonStyle(reason)
+    val attributions = earnedBy?.filter { it.second > 0 }.orEmpty()
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -103,7 +113,20 @@ fun CelebrationCardContent(
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
         )
-        if (points != null && points > 0) {
+        if (attributions.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            attributions.forEach { (name, pts) ->
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.celebration_earned_by, pts, name, pts,
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = pointsColor ?: MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        } else if (points != null && points > 0) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "+$points pt${if (points > 1) "s" else ""}",
@@ -112,15 +135,15 @@ fun CelebrationCardContent(
                 color = pointsColor ?: MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
             )
-            if (reasonLabel != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${reasonEmoji ?: ""} $reasonLabel".trim(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = pointsColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
+        }
+        if ((attributions.isNotEmpty() || (points != null && points > 0)) && reasonLabel != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${reasonEmoji ?: ""} $reasonLabel".trim(),
+                style = MaterialTheme.typography.labelMedium,
+                color = pointsColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

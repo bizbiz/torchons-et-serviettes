@@ -648,6 +648,15 @@
         <item quantity="one">🔥 +%d pt bonus retard</item>
         <item quantity="other">🔥 +%d pts bonus retard</item>
     </plurals>
+    <plurals name="suggestion_malus_delta_points">
+        <item quantity="one">⏱ −%d pt malus avance</item>
+        <item quantity="other">⏱ −%d pts malus avance</item>
+    </plurals>
+    <!-- Celebration attribution: %1$s = member name, %2$d = points -->
+    <plurals name="celebration_earned_by">
+        <item quantity="one">%1$s +%2$d pt</item>
+        <item quantity="other">%1$s +%2$d pts</item>
+    </plurals>
 
     <!-- HomeScreen — DatePicker generic dialog -->
     <string name="common_validate">Valider</string>
@@ -1315,4 +1324,24 @@
     <string name="home_date_next_day_cd">Jour suivant</string>
     <string name="home_date_open_calendar_cd">Choisir une date</string>
     <string name="home_participants_chevron_cd">Choisir les participants</string>
+
+    <!-- Sync status icon + dialog (replaces the old offline banner) -->
+    <string name="sync_status_cd">État de synchronisation</string>
+    <string name="sync_dialog_title">Synchronisation</string>
+    <string name="sync_state_up_to_date">Tout est synchronisé ✅</string>
+    <string name="sync_state_syncing">Envoi des changements…</string>
+    <string name="sync_state_offline">Serveur injoignable</string>
+    <string name="sync_offline_since_format">Hors ligne depuis %1$s</string>
+    <string name="sync_data_from_format">Données affichées du %1$s</string>
+    <plurals name="sync_pending_ops">
+        <item quantity="one">%d changement en attente d\'envoi</item>
+        <item quantity="other">%d changements en attente d\'envoi</item>
+    </plurals>
+    <string name="sync_auto_resync_hint">Pas d\'inquiétude : tes changements sont enregistrés sur le téléphone et repartiront automatiquement dès que la connexion revient.</string>
+    <string name="sync_diag_running">Diagnostic en cours…</string>
+    <string name="sync_diag_no_internet">📵 Ta connexion internet semble coupée. Vérifie le Wi-Fi ou les données mobiles.</string>
+    <string name="sync_diag_server_down">🌐 Internet fonctionne, mais le serveur ne répond pas — il est peut-être en maintenance. Réessaie un peu plus tard.</string>
+    <string name="sync_diag_all_ok">✅ La connexion est revenue — resynchronisation en cours.</string>
+    <string name="sync_last_error_format">Dernière erreur : %1$s</string>
+    <string name="sync_retry">Réessayer</string>
 </resources>

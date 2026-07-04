@@ -641,6 +641,15 @@
         <item quantity="one">🔥 +%d pt late bonus</item>
         <item quantity="other">🔥 +%d pts late bonus</item>
     </plurals>
+    <plurals name="suggestion_malus_delta_points">
+        <item quantity="one">⏱ −%d pt early malus</item>
+        <item quantity="other">⏱ −%d pts early malus</item>
+    </plurals>
+    <!-- Celebration attribution: %1$s = member name, %2$d = points -->
+    <plurals name="celebration_earned_by">
+        <item quantity="one">%1$s +%2$d pt</item>
+        <item quantity="other">%1$s +%2$d pts</item>
+    </plurals>
 
     <!-- Generic dialog -->
     <string name="common_validate">Confirm</string>
@@ -1305,4 +1314,24 @@
     <string name="home_date_next_day_cd">Next day</string>
     <string name="home_date_open_calendar_cd">Pick a date</string>
     <string name="home_participants_chevron_cd">Choose participants</string>
+
+    <!-- Sync status icon + dialog (replaces the old offline banner) -->
+    <string name="sync_status_cd">Sync status</string>
+    <string name="sync_dialog_title">Sync</string>
+    <string name="sync_state_up_to_date">Everything is synced ✅</string>
+    <string name="sync_state_syncing">Sending changes…</string>
+    <string name="sync_state_offline">Server unreachable</string>
+    <string name="sync_offline_since_format">Offline since %1$s</string>
+    <string name="sync_data_from_format">Showing data from %1$s</string>
+    <plurals name="sync_pending_ops">
+        <item quantity="one">%d change waiting to be sent</item>
+        <item quantity="other">%d changes waiting to be sent</item>
+    </plurals>
+    <string name="sync_auto_resync_hint">Don\'t worry: your changes are saved on this phone and will sync automatically as soon as the connection comes back.</string>
+    <string name="sync_diag_running">Running diagnosis…</string>
+    <string name="sync_diag_no_internet">📵 Your internet connection looks down. Check Wi-Fi or mobile data.</string>
+    <string name="sync_diag_server_down">🌐 Internet works, but the server is not answering — it may be under maintenance. Try again a bit later.</string>
+    <string name="sync_diag_all_ok">✅ Connection is back — resyncing now.</string>
+    <string name="sync_last_error_format">Last error: %1$s</string>
+    <string name="sync_retry">Retry</string>
 </resources>
