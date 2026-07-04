@@ -49,6 +49,8 @@ local-ops/
 # Firebase
 backend/firebase-key.json
 android/app/google-services.json
+# Clés de service Admin SDK téléchargées depuis la console — JAMAIS dans le repo
+*-firebase-adminsdk-*.json
 
 # Docker
 ts_pgdata/
