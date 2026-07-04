@@ -703,7 +703,7 @@ class HomeViewModel @Inject constructor(
             // visible through celebratingTaskId; justCompletedIds takes over
             // the filtering at reset time.
             val work = launch { block() }
-            kotlinx.coroutines.delay(2000L)
+            kotlinx.coroutines.delay(4000L)
             _uiState.value = _uiState.value.copy(
                 celebratingTaskId = null,
                 celebrationPoints = null,
