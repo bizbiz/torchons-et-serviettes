@@ -383,7 +383,7 @@ class TaskListViewModel @Inject constructor(
                 celebratingTaskId = taskId,
                 celebrationTrigger = _uiState.value.celebrationTrigger + 1,
             )
-            kotlinx.coroutines.delay(4000L)
+            kotlinx.coroutines.delay(3000L)
             _uiState.value = _uiState.value.copy(celebratingTaskId = null)
             block()
         }
