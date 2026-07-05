@@ -145,11 +145,21 @@ fun TaskDetailScreen(
             assignedMemberIds = assignedIds,
             currentUserId = currentUserId.orEmpty(),
             onDismiss = { completionDialogMode = null },
-            onConfirm = { participantIds, isoDate, _ ->
+            onConfirm = { participantIds, isoDate, preview ->
                 if (mode == CompletionDialogMode.Single) {
-                    viewModel.completeTaskAtDate(isoDate, participantIds.firstOrNull())
+                    viewModel.completeTaskAtDate(
+                        isoDate = isoDate,
+                        completedBy = participantIds.firstOrNull(),
+                        previewPoints = preview?.finalPoints,
+                        previewReason = preview?.reason,
+                    )
                 } else {
-                    viewModel.completeTaskCollective(participantIds, isoDate)
+                    viewModel.completeTaskCollective(
+                        participantUserIds = participantIds,
+                        isoDate = isoDate,
+                        previewPoints = preview?.finalPoints,
+                        previewReason = preview?.reason,
+                    )
                 }
                 completionDialogMode = null
             },
@@ -944,6 +954,10 @@ fun TaskDetailScreen(
                                 CelebrationCardContent(
                                     emoji = celebration.first,
                                     text = celebration.second,
+                                    // Points + attribution masques si gamif opt-out (v0.32).
+                                    points = if (gamificationVisible) uiState.celebrationPoints else null,
+                                    reason = uiState.celebrationReason,
+                                    earnedBy = if (gamificationVisible) uiState.celebrationEarnedBy else null,
                                 )
                             }
                         } else {

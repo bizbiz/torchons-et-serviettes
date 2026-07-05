@@ -16,6 +16,7 @@ import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.ui.common.RatingRecurrence
+import com.torchons.app.util.CompletionDateLabels
 import com.torchons.app.util.TaskUrgencyCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
@@ -65,6 +66,12 @@ data class TaskDetailUiState(
     val isCelebrating: Boolean = false,
     /** Compteur incremente a chaque celebration pour relancer konfetti. */
     val celebrationTrigger: Int = 0,
+    /** Points affiches dans la celebration (null = inconnu / offline). */
+    val celebrationPoints: Int? = null,
+    /** Raison bonus/malus de la celebration (BONUS_RETARD, MALUS_AVANCE, ...). */
+    val celebrationReason: String? = null,
+    /** Attribution par participant (displayName, points) dans la celebration. */
+    val celebrationEarnedBy: List<Pair<String, Int>>? = null,
     /** Preview bonus/malus pour affichage dans le header urgence de la fiche.
      * null tant que le fetch n'a pas abouti ou si pas de recurrence. */
     val bonusPreview: com.torchons.app.data.model.CompletionPreview? = null,
@@ -261,75 +268,176 @@ class TaskDetailViewModel @Inject constructor(
     }
 
     fun completeTask() {
-        celebrateThen {
-            taskRepository.completeTask(taskId).fold(
-                onSuccess = {
-                    _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
-                },
-                onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(
-                        error = error.message ?: "Erreur lors de la completion"
-                    )
-                }
-            )
-        }
+        celebrate(
+            resolve = {
+                val preview = fetchCompletionPreview(
+                    taskId, CompletionDateLabels.toIsoNoonUtc(LocalDate.now()), 1,
+                )
+                CelebrationContent(
+                    points = preview?.finalPoints,
+                    reason = preview?.reason,
+                    earnedBy = earnedByFor(null, preview?.finalPoints),
+                )
+            },
+            write = {
+                taskRepository.completeTask(taskId).fold(
+                    onSuccess = {
+                        _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
+                    },
+                    onFailure = { error ->
+                        _uiState.value = _uiState.value.copy(
+                            error = error.message ?: "Erreur lors de la completion",
+                        )
+                    },
+                )
+            },
+        )
     }
 
     /** Deja fait : completion solo a une date passee (optionnellement pour un autre user). */
-    fun completeTaskAtDate(isoDate: String, completedBy: String? = null) {
-        celebrateThen {
-            taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
-                onSuccess = {
-                    _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
-                },
-                onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(error = error.message)
-                },
-            )
-        }
+    fun completeTaskAtDate(
+        isoDate: String,
+        completedBy: String? = null,
+        previewPoints: Int? = null,
+        previewReason: String? = null,
+    ) {
+        celebrate(
+            resolve = {
+                CelebrationContent(previewPoints, previewReason, earnedByFor(completedBy, previewPoints))
+            },
+            write = {
+                taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
+                    onSuccess = {
+                        _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
+                    },
+                    onFailure = { error ->
+                        _uiState.value = _uiState.value.copy(error = error.message)
+                    },
+                )
+            },
+        )
     }
 
     /** Fait ensemble : completion collective (N participants, split ceil). */
-    fun completeTaskCollective(participantUserIds: List<String>, isoDate: String? = null) {
-        celebrateThen {
-            taskRepository.completeTaskCollective(
-                taskId = taskId,
-                participantUserIds = participantUserIds,
-                completedAt = isoDate,
-            ).fold(
-                onSuccess = {
-                    _uiState.value = _uiState.value.copy(
-                        completionMessage = "Tache completee a ${participantUserIds.size} !",
+    fun completeTaskCollective(
+        participantUserIds: List<String>,
+        isoDate: String? = null,
+        previewPoints: Int? = null,
+        previewReason: String? = null,
+    ) {
+        celebrate(
+            resolve = {
+                // Points par personne : preview du dialog, ou fetch (chemin
+                // rapide 2-pers). Le preview divise deja par le nb de participants.
+                val preview = if (previewPoints != null) null
+                    else fetchCompletionPreview(
+                        taskId,
+                        isoDate ?: CompletionDateLabels.toIsoNoonUtc(LocalDate.now()),
+                        participantUserIds.size,
                     )
-                },
-                onFailure = { err ->
-                    val msg = when (err) {
-                        is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
-                            409 -> "Impossible : tache deja completee recemment par un participant"
-                            else -> "Erreur ${err.httpCode}"
+                val points = previewPoints ?: preview?.finalPoints
+                CelebrationContent(
+                    points = points,
+                    reason = previewReason ?: preview?.reason,
+                    earnedBy = earnedByForMany(participantUserIds, points),
+                )
+            },
+            write = {
+                taskRepository.completeTaskCollective(
+                    taskId = taskId,
+                    participantUserIds = participantUserIds,
+                    completedAt = isoDate,
+                ).fold(
+                    onSuccess = {
+                        _uiState.value = _uiState.value.copy(
+                            completionMessage = "Tache completee a ${participantUserIds.size} !",
+                        )
+                    },
+                    onFailure = { err ->
+                        val msg = when (err) {
+                            is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
+                                409 -> "Impossible : tache deja completee recemment par un participant"
+                                else -> "Erreur ${err.httpCode}"
+                            }
+                            else -> err.message ?: "Erreur reseau"
                         }
-                        else -> err.message ?: "Erreur reseau"
-                    }
-                    _uiState.value = _uiState.value.copy(error = msg)
-                },
-            )
+                        _uiState.value = _uiState.value.copy(error = msg)
+                    },
+                )
+            },
+        )
+    }
+
+    /** Contenu enrichi d'une celebration : points + raison + attribution. */
+    private data class CelebrationContent(
+        val points: Int?,
+        val reason: String?,
+        val earnedBy: List<Pair<String, Int>>?,
+    )
+
+    /**
+     * Attribution single (displayName, points). [completedBy] null = user
+     * courant. Null si points ou nom inconnus (preview offline) — la
+     * celebration retombe sur sa variante sans points.
+     */
+    private fun earnedByFor(completedBy: String?, points: Int?): List<Pair<String, Int>>? {
+        if (points == null) return null
+        val names = _uiState.value.userNames
+        val name = if (completedBy == null) {
+            names[currentUserId.value] ?: return null
+        } else {
+            names[completedBy] ?: return null
         }
+        return listOf(name to points)
     }
 
     /**
-     * Celebration visuelle (card + confetti) pendant 2s, puis execution
-     * du bloc de completion reel. Partage entre completeTask, completeTaskAtDate
-     * et completeTaskCollective.
+     * Attribution collective : une entree (displayName, pointsParPersonne) par
+     * participant. [points] est deja le split par personne (final_per_user).
      */
-    private fun celebrateThen(block: suspend () -> Unit) {
+    private fun earnedByForMany(participantUserIds: List<String>, points: Int?): List<Pair<String, Int>>? {
+        if (points == null || participantUserIds.isEmpty()) return null
+        val names = _uiState.value.userNames
+        return participantUserIds.mapNotNull { id -> names[id]?.let { it to points } }.ifEmpty { null }
+    }
+
+    /**
+     * Celebration visuelle (card + confetti) pendant ~3s : emoji immediat, puis
+     * points + attribution des que [resolve] les renvoie (preview). L'ecriture
+     * Room reelle ([write]) est faite APRES l'animation (parite Accueil /
+     * onglet Taches).
+     */
+    private fun celebrate(
+        resolve: suspend () -> CelebrationContent,
+        write: suspend () -> Unit,
+    ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isCelebrating = true,
                 celebrationTrigger = _uiState.value.celebrationTrigger + 1,
+                celebrationPoints = null,
+                celebrationReason = null,
+                celebrationEarnedBy = null,
             )
+            val filler = launch {
+                val content = resolve()
+                if (_uiState.value.isCelebrating) {
+                    _uiState.value = _uiState.value.copy(
+                        celebrationPoints = content.points,
+                        celebrationReason = content.reason,
+                        celebrationEarnedBy = content.earnedBy,
+                    )
+                }
+            }
             kotlinx.coroutines.delay(3000L)
-            _uiState.value = _uiState.value.copy(isCelebrating = false)
-            block()
+            filler.cancel()
+            _uiState.value = _uiState.value.copy(
+                isCelebrating = false,
+                celebrationPoints = null,
+                celebrationReason = null,
+                celebrationEarnedBy = null,
+            )
+            write()
         }
     }
 

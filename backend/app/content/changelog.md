@@ -1,5 +1,21 @@
 # Notes de version
 
+## v0.36.0 — 2026-07-05
+
+### Accueil
+- Les boutons de validation en bas des tâches sont remplacés par une
+  navigation par jour : tu choisis le jour concerné avant de valider.
+- Un indicateur d'état de synchronisation apparaît, et les points
+  affichés s'adaptent au jour sélectionné.
+
+### Célébration après validation
+- La célébration qui suit une validation affiche désormais les points
+  gagnés et à qui ils vont — avec la précision quand ce n'est pas pour
+  toi. Avant, ce détail n'apparaissait que depuis l'Accueil ; il est
+  maintenant aussi présent quand tu valides depuis la liste des tâches
+  ou depuis le détail d'une tâche.
+- Sa durée a été ajustée pour rester visible sans traîner.
+
 ## v0.35.18 — 2026-05-22
 
 ### i18n — Stats, historique, badges

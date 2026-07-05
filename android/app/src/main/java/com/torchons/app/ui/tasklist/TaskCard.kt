@@ -60,7 +60,13 @@ fun TaskCard(
     onComplete: (String) -> Unit,
     onHistorical: (String) -> Unit,
     onFaitEnsemble: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Points affiches dans la celebration (null = inconnu / gamif masquee). */
+    celebrationPoints: Int? = null,
+    /** Raison bonus/malus de la celebration. */
+    celebrationReason: String? = null,
+    /** Attribution par participant (displayName, points) — "pour qui" les points. */
+    celebrationEarnedBy: List<Pair<String, Int>>? = null,
 ) {
     val task = taskWithUrgency.task
     val taskId = task.id
@@ -90,9 +96,16 @@ fun TaskCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        // Mode celebration : remplace tout le contenu pendant ~2s.
+        // Mode celebration : remplace tout le contenu pendant ~3s. Affiche les
+        // points + l'attribution "pour qui" (parite avec l'Accueil).
         if (celebration != null) {
-            CelebrationCardContent(emoji = celebration.first, text = celebration.second)
+            CelebrationCardContent(
+                emoji = celebration.first,
+                text = celebration.second,
+                points = celebrationPoints,
+                reason = celebrationReason,
+                earnedBy = celebrationEarnedBy,
+            )
             return@Card
         }
         Row(

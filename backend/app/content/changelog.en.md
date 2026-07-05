@@ -1,5 +1,21 @@
 # Release notes
 
+## v0.36.0 — 2026-07-05
+
+### Home
+- The completion buttons under each task are replaced by a per-day
+  navigation: pick the relevant day before validating.
+- A sync status indicator now shows up, and the displayed points
+  follow the selected day.
+
+### Post-completion celebration
+- The celebration shown after completing a task now displays the
+  points earned and who they go to — making it clear when they are
+  not for you. This detail used to appear only from Home; it is now
+  also there when you validate from the task list or from a task's
+  detail screen.
+- Its duration was tuned to stay visible without dragging.
+
 ## v0.35.18 — 2026-05-22
 
 ### i18n — Stats, history, badges

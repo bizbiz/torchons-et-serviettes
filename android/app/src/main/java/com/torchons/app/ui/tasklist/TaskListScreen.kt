@@ -122,12 +122,16 @@ fun TaskListScreen(
                         taskId = ds.taskId,
                         isoDate = isoDate,
                         completedBy = participantIds.firstOrNull(),
+                        previewPoints = preview?.finalPoints,
+                        previewReason = preview?.reason,
                     )
                 } else {
                     viewModel.completeTaskCollective(
                         taskId = ds.taskId,
                         participantUserIds = participantIds,
                         isoDate = isoDate,
+                        previewPoints = preview?.finalPoints,
+                        previewReason = preview?.reason,
                     )
                 }
                 dialogState = null
@@ -600,13 +604,19 @@ fun TaskListScreen(
                                 key = { it.task.id },
                                 contentType = { "task_card" },
                             ) { taskWithUrgency ->
+                                val celebrating = uiState.celebratingTaskId == taskWithUrgency.task.id
                                 TaskCard(
                                     taskWithUrgency = taskWithUrgency,
-                                    isCelebrating = uiState.celebratingTaskId == taskWithUrgency.task.id,
+                                    isCelebrating = celebrating,
                                     onClick = onCardClick,
                                     onComplete = onCardComplete,
                                     onHistorical = onCardHistorical,
                                     onFaitEnsemble = onCardFaitEnsemble,
+                                    // Points + attribution seulement sur la carte en
+                                    // celebration, et masques si gamif opt-out (v0.32).
+                                    celebrationPoints = if (celebrating && gamificationVisible) uiState.celebrationPoints else null,
+                                    celebrationReason = if (celebrating) uiState.celebrationReason else null,
+                                    celebrationEarnedBy = if (celebrating && gamificationVisible) uiState.celebrationEarnedBy else null,
                                 )
                             }
 
