@@ -1,5 +1,16 @@
 # Notes de version
 
+## v0.36.1 — 2026-07-05
+
+### Retard — cohérence des compteurs
+- Le nombre de tâches « en retard » de l'Accueil correspond désormais à ce
+  que tu vois dans l'onglet Tâches : même définition (jour entier, gel des
+  jours d'absence), et une tâche jamais faite n'est plus comptée en retard
+  dès sa création.
+- La courbe de retard sous ce nombre suit exactement le même calcul (toutes
+  les tâches, y compris perso) et son dernier point colle au compteur, même
+  en cours de journée.
+
 ## v0.36.0 — 2026-07-05
 
 ### Accueil

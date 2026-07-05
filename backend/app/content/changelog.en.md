@@ -1,5 +1,15 @@
 # Release notes
 
+## v0.36.1 — 2026-07-05
+
+### Overdue — consistent counts
+- The "overdue" task count on Home now matches what you see in the Tasks
+  tab: same definition (whole-day, absence freeze), and a never-completed
+  task is no longer counted as overdue the moment it is created.
+- The overdue curve below that number now uses the exact same computation
+  (all tasks, personal ones included) and its last point matches the
+  counter, even mid-day.
+
 ## v0.36.0 — 2026-07-05
 
 ### Home

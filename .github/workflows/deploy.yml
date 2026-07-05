@@ -48,6 +48,22 @@ jobs:
             cd "${{ secrets.DEPLOY_PATH }}"
             git pull --ff-only
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build api
-            # Smoke test : echoue le job si /api/health n'est pas ok.
-            sleep 8
-            curl -fsS https://api.torchonsetserviettes.app/api/health | grep -q '"status":"ok"'
+            # Smoke test : le conteneur enchaine les migrations Alembic PUIS
+            # uvicorn au boot, donc le cold-start peut depasser 10s. On sonde
+            # /api/health en boucle (max ~60s) au lieu d'un sleep fixe qui
+            # produisait de faux echecs (502 transitoire pendant le boot).
+            ok=""
+            for i in $(seq 1 20); do
+              if curl -fsS https://api.torchonsetserviettes.app/api/health \
+                   | grep -q '"status":"ok"'; then
+                ok=1
+                echo "[smoke] health ok after ${i} attempt(s)"
+                break
+              fi
+              echo "[smoke] not ready yet (attempt ${i}/20), retrying in 3s..."
+              sleep 3
+            done
+            if [ -z "$ok" ]; then
+              echo "[smoke] health check failed after ~60s"
+              exit 1
+            fi
