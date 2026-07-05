@@ -1032,7 +1032,7 @@ async def get_retard_timeline(
     """
     from app.models.foyer_retard_snapshot import FoyerRetardSnapshot
     from app.services.retard_history import (
-        backfill_retard, has_snapshots,
+        backfill_retard, has_snapshots, retard_now,
     )
 
     foyer_uuid = current_foyer_uuid(current)
@@ -1054,7 +1054,18 @@ async def get_retard_timeline(
     if period == "month":
         cutoff_date = datetime.now(timezone.utc).date() - timedelta(days=30)
         base_q = base_q.where(FoyerRetardSnapshot.date >= cutoff_date)
-    rows = (await session.execute(base_q)).all()
+    rows = [(d, m, c) for d, m, c in (await session.execute(base_q)).all()]
+
+    # Point du jour EN LIVE (cutoff = now) plutot que le snapshot 00h "etat au
+    # reveil" : garantit que la fin de la courbe == le compteur /api/retard
+    # meme en cours de journee. Les jours passes restent des snapshots.
+    if rows:
+        today = datetime.now(timezone.utc).date()
+        live_min, live_count = await retard_now(session, foyer_uuid)
+        if rows[-1][0] == today:
+            rows[-1] = (today, live_min, live_count)
+        elif rows[-1][0] < today:
+            rows.append((today, live_min, live_count))
 
     # Trim de la phase ascendante bruitee (creation initiale du backlog OU
     # debut de fenetre coincide avec un pic). On applique le meme trim pour

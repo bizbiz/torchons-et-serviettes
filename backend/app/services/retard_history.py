@@ -1,25 +1,33 @@
-"""Historique du retard du foyer (v0.22).
+"""Historique du retard du foyer (v0.37 — aligne sur GET /api/retard).
 
-Reconstruit le retard quotidien d'un foyer a partir des recurrences et de
-l'historique des completions, puis stocke un snapshot par jour. Le backfill
-parcourt depuis la 1ere creation de tache du foyer ; le cron daily ajoute
-le snapshot du jour a 03h UTC (juste apres `daily_archive_job`).
+Reconstruit le retard quotidien d'un foyer et stocke un snapshot par jour.
+Depuis v0.37 le modele est STRICTEMENT celui de GET /api/retard :
 
-Filtre "taches en commun au foyer" : on exclut les taches assignees a un
-seul user (perso). Une tache sans assignation = visible par tous = comptee.
-Une tache assignee a >=2 users = commune = comptee.
+- Perimetre : toutes les taches actives recurrentes non-uncertain du foyer.
+  Plus de filtre "taches en commun" — les taches perso (1 seul assigne) sont
+  incluses, comme dans le compteur.
+- "En retard" = etat RED du modele jour-granulaire (compute_urgency_state,
+  `today > due_date`), et non plus l'ancienne approximation par intervalle
+  moyen avec frontiere datetime.
+- Home freeze v2 applique historiquement : reconstruit depuis presence_days
+  (les jours confirmes absents ne consomment pas l'intervalle des taches
+  requires_home).
 
-Calcul de l'echeance "as of" une date donnee : pure fonction de
-`last_completed` via `interval_hours(rule)`. Approximation : on traite
-chaque regle comme un cycle de duree moyenne (ex. weekdays Mon/Wed/Fri ~=
-2.33j). Suffisant pour une courbe motivante ; pour une vue precise par
-tache, /api/retard reste authoritative.
+Le point du JOUR est calcule en live par l'endpoint (retard_now, cutoff =
+now) pour coller au compteur meme en cours de journee. Les jours passes
+utilisent la frontiere 00h UTC ("etat au reveil"), remplie par le cron
+03h15 (snapshot_today) ou le backfill.
+
+Toutes les fonctions de reconstruction restent des fonctions PURES de
+l'historique (completions + presence_days) : indispensable pour rejouer le
+passe sans dependre de now().
 """
 
 from __future__ import annotations
 
 import bisect
-from datetime import date, datetime, timedelta, timezone
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta, timezone
 from uuid import UUID
 
 import structlog
@@ -28,12 +36,20 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session
+from app.models.category import Category
 from app.models.completion import TaskCompletion
+from app.models.enums import UrgencyState
 from app.models.foyer import Foyer
 from app.models.foyer_retard_snapshot import FoyerRetardSnapshot
+from app.models.presence_day import PresenceDay
 from app.models.task import Task
-from app.models.task_assignment import TaskAssignment
-from app.services.recurrence import interval_hours, is_uncertain
+from app.services.recurrence import (
+    compute_due_date,
+    compute_effective_today,
+    compute_nominal_interval_days,
+    compute_urgency_state,
+    is_uncertain,
+)
 
 logger = structlog.get_logger()
 
@@ -45,96 +61,50 @@ def _task_minutes(task: Task) -> int:
     return max(1, task.weight or 1) * MINUTES_PER_POINT
 
 
-def _due_after(rule: dict, last_completed: datetime | None, created_at: datetime) -> datetime | None:
-    """Echeance d'une tache deduite uniquement de last_completed.
+def _midnight(d: date) -> datetime:
+    """00h UTC du jour `d` (frontiere "etat au reveil")."""
+    return datetime.combine(d, time.min, tzinfo=timezone.utc)
 
-    Pure fonction (pas de dependance a `now()`) : indispensable pour le
-    backfill historique. Utilise `interval_hours(rule)` comme delta moyen,
-    ce qui lisse les regles non-additives (weekdays, monthly_variable) sans
-    perdre l'esprit "cette tache se refait tous les ~N jours".
 
-    Convention :
-    - last_completed None : due = created_at (tache jamais faite => en
-      retard des creation).
-    - rule None ou intervalle infini : pas d'echeance.
+@dataclass
+class _ComputeInputs:
+    """Donnees chargees une fois pour rejouer le retard sur toutes les dates."""
+
+    tasks: list[Task]
+    comps_by_task: dict[UUID, list[datetime]]
+    earliest_date: date | None
+    freeze_enabled: bool
+    requires_home_map: dict[UUID | None, bool]
+    present_dates: list[date]  # dates confirmed_present, triees asc
+
+
+async def _load_compute_inputs(session: AsyncSession, foyer_id: UUID) -> _ComputeInputs:
+    """Charge le perimetre + completions + contexte home freeze du foyer.
+
+    Perimetre identique a /api/retard : toutes les taches actives, non
+    archivees, recurrentes (rule non nulle) et non-uncertain. Aucun filtre
+    d'assignation.
     """
-    if last_completed is None:
-        return created_at
-    if rule is None:
-        return None
-    h = interval_hours(rule)
-    if not (h > 0 and h != float("inf")):
-        return None
-    return last_completed + timedelta(hours=h)
-
-
-async def _shared_task_ids_for_foyer(session: AsyncSession, foyer_id: UUID) -> set[UUID]:
-    """IDs des taches "en commun" du foyer.
-
-    En commun = pas assignee a UN seul user. Donc :
-    - 0 assignation (visible par tous) -> commune
-    - >=2 assignations -> commune
-    - 1 seule assignation -> perso, exclue
-    """
-    # Compte d'assignations par task pour les taches du foyer.
-    counts_q = (
-        select(
-            TaskAssignment.task_id,
-            func.count(TaskAssignment.user_id).label("n"),
-        )
-        .join(Task, Task.id == TaskAssignment.task_id)
-        .where(Task.foyer_id == foyer_id)
-        .group_by(TaskAssignment.task_id)
+    tasks_q = select(Task).where(
+        Task.foyer_id == foyer_id,
+        Task.deleted_at.is_(None),
+        Task.is_active.is_(True),
+        Task.is_archived.is_(False),
+        Task.recurrence_rule.isnot(None),
     )
-    counts = {row[0]: int(row[1]) for row in (await session.execute(counts_q)).all()}
+    tasks = [
+        t
+        for t in (await session.execute(tasks_q)).scalars().all()
+        if not is_uncertain(t.recurrence_rule)
+    ]
+    if not tasks:
+        return _ComputeInputs([], {}, None, False, {}, [])
 
-    # Toutes les tasks du foyer (actives, non archivees, recurrentes, pas
-    # uncertain). On filtre le ponctuel et l'incertain ici une fois pour
-    # toutes (pas de retard par definition).
-    tasks_q = (
-        select(Task.id, Task.recurrence_rule)
-        .where(
-            Task.foyer_id == foyer_id,
-            Task.deleted_at.is_(None),
-            Task.is_active.is_(True),
-            Task.is_archived.is_(False),
-            Task.recurrence_rule.isnot(None),
-        )
-    )
-    rows = (await session.execute(tasks_q)).all()
-
-    shared: set[UUID] = set()
-    for tid, rule in rows:
-        if is_uncertain(rule):
-            continue
-        n = counts.get(tid, 0)
-        if n == 1:
-            continue   # perso, exclue
-        shared.add(tid)
-    return shared
-
-
-async def _load_compute_inputs(
-    session: AsyncSession, foyer_id: UUID
-) -> tuple[list[Task], dict[UUID, list[datetime]], date | None]:
-    """Charge tasks "en commun" + completions triees + date de la 1ere creation.
-
-    Retour :
-      - tasks : list[Task] des taches eligibles (filtrees in-Python)
-      - comps_by_task : task_id -> list[datetime] triee asc (binary-search-ready)
-      - earliest : date de la 1ere creation de tache du foyer (ou None)
-    """
-    shared_ids = await _shared_task_ids_for_foyer(session, foyer_id)
-    if not shared_ids:
-        return [], {}, None
-
-    tasks_q = select(Task).where(Task.id.in_(shared_ids))
-    tasks = list((await session.execute(tasks_q)).scalars().all())
-
+    task_ids = [t.id for t in tasks]
     comps_q = (
         select(TaskCompletion.task_id, TaskCompletion.completed_at)
         .where(
-            TaskCompletion.task_id.in_(shared_ids),
+            TaskCompletion.task_id.in_(task_ids),
             TaskCompletion.deleted_at.is_(None),
         )
         .order_by(TaskCompletion.completed_at.asc())
@@ -145,40 +115,96 @@ async def _load_compute_inputs(
 
     earliest = min((t.created_at for t in tasks if t.created_at), default=None)
     earliest_date = earliest.date() if earliest else None
-    return tasks, comps_by_task, earliest_date
+
+    # Home freeze v2 : foyer + categories requires_home + presence_days.
+    foyer = (
+        await session.execute(select(Foyer).where(Foyer.id == foyer_id))
+    ).scalar_one_or_none()
+    freeze_enabled = foyer.home_freeze_enabled if foyer else False
+    requires_home_map: dict[UUID | None, bool] = {}
+    present_dates: list[date] = []
+    if freeze_enabled:
+        cat_ids = {t.category_id for t in tasks if t.category_id}
+        if cat_ids:
+            cat_rows = (
+                await session.execute(
+                    select(Category.id, Category.requires_home).where(
+                        Category.id.in_(cat_ids)
+                    )
+                )
+            ).all()
+            requires_home_map = {row[0]: row[1] for row in cat_rows}
+        pres_rows = (
+            await session.execute(
+                select(PresenceDay.date).where(
+                    PresenceDay.foyer_id == foyer_id,
+                    PresenceDay.status == "confirmed_present",
+                )
+            )
+        ).all()
+        present_dates = sorted(row[0] for row in pres_rows)
+
+    return _ComputeInputs(
+        tasks, comps_by_task, earliest_date, freeze_enabled, requires_home_map, present_dates
+    )
 
 
-def _retard_at(
-    tasks: list[Task],
-    comps_by_task: dict[UUID, list[datetime]],
-    target_date: date,
-) -> tuple[int, int]:
-    """Retard du foyer a 00h UTC du jour `target_date`.
+def _absent_days(present_dates: list[date], since_date: date, until_date: date) -> int:
+    """Jours absents dans (since_date, until_date), bornes exclues.
 
-    "00h UTC" plutot que "fin de journee" : le snapshot represente l'etat au
-    debut de la journee, ce qui est aussi ce que le cron 03h UTC capture en
-    pratique (peu d'activite avant). Pour `target_date == today`, equivaut
-    a "etat au reveil".
-
-    Retourne (total_minutes, task_count) sur les taches eligibles.
+    Meme convention que presence.get_absent_days_map : les jours sans ligne
+    confirmed_present comptent comme absents. absent = total - presents.
     """
-    boundary = datetime.combine(target_date, datetime.min.time(), tzinfo=timezone.utc)
+    start = since_date + timedelta(days=1)
+    if start >= until_date:
+        return 0
+    total = (until_date - start).days
+    lo = bisect.bisect_left(present_dates, start)
+    hi = bisect.bisect_left(present_dates, until_date)
+    return total - (hi - lo)
 
+
+def _retard_at(inp: _ComputeInputs, target_date: date, boundary: datetime) -> tuple[int, int]:
+    """Retard du foyer a `target_date`, completions coupees a `boundary`.
+
+    - target_date : date de comparaison du modele jour (RED = target > due).
+    - boundary : cutoff datetime des completions prises en compte. Jour passe
+      = 00h UTC de target_date ; point live du jour = now().
+
+    Retourne (total_minutes, task_count) — memes conventions que /api/retard.
+    """
     total_min = 0
     n_overdue = 0
-    for task in tasks:
-        # Tache pas encore creee a cette date : on l'ignore.
+    for task in inp.tasks:
+        # Tache pas encore creee a cette frontiere : ignoree.
         if task.created_at and task.created_at >= boundary:
             continue
-        comps = comps_by_task.get(task.id, [])
-        # Derniere completion < boundary (strict). bisect_left sur datetimes.
+        comps = inp.comps_by_task.get(task.id, [])
         idx = bisect.bisect_left(comps, boundary)
         last_completed = comps[idx - 1] if idx > 0 else None
 
-        due = _due_after(task.recurrence_rule, last_completed, task.created_at)
-        if due is None:
+        due_date = compute_due_date(task.recurrence_rule, last_completed, task.created_at)
+        if due_date is None:
             continue
-        if due <= boundary:
+        nominal = compute_nominal_interval_days(task.recurrence_rule)
+
+        requires_home = inp.requires_home_map.get(task.category_id, False)
+        absent = 0
+        if inp.freeze_enabled and requires_home:
+            since = (
+                last_completed.date()
+                if last_completed
+                else (task.created_at.date() if task.created_at else target_date)
+            )
+            absent = _absent_days(inp.present_dates, since, target_date)
+        eff_today = compute_effective_today(
+            target_date,
+            task_requires_home=requires_home,
+            home_freeze_enabled=inp.freeze_enabled,
+            absent_days=absent,
+        )
+
+        if compute_urgency_state(due_date, eff_today, nominal) == UrgencyState.RED:
             total_min += _task_minutes(task)
             n_overdue += 1
     return total_min, n_overdue
@@ -187,33 +213,31 @@ def _retard_at(
 async def backfill_retard(session: AsyncSession, foyer_id: UUID) -> int:
     """(Re)calcule tous les snapshots de la 1ere tache a aujourd'hui inclus.
 
-    Idempotent : utilise un upsert ON CONFLICT pour overwrite les rows
-    existantes. Retourne le nb de snapshots ecrits. Ne commit pas — c'est
-    a l'appelant.
+    Idempotent (upsert ON CONFLICT). Retourne le nb de snapshots ecrits. Ne
+    commit pas — c'est a l'appelant. Chaque jour passe utilise la frontiere
+    00h UTC ("etat au reveil").
     """
-    tasks, comps, earliest = await _load_compute_inputs(session, foyer_id)
+    inp = await _load_compute_inputs(session, foyer_id)
     today = datetime.now(timezone.utc).date()
 
-    if not tasks or earliest is None:
+    if not inp.tasks or inp.earliest_date is None:
         return 0
 
-    # Borne inferieure : la 1ere creation. On commence au lendemain pour
-    # eviter le 1er jour ou created_at serait egal a boundary (la tache
-    # n'existe pas encore juste avant minuit du jour de creation).
-    cur = earliest
+    cur = inp.earliest_date
     written = 0
     rows: list[dict] = []
     while cur <= today:
-        minutes, count = _retard_at(tasks, comps, cur)
-        rows.append({
-            "foyer_id": foyer_id,
-            "date": cur,
-            "total_minutes": minutes,
-            "task_count": count,
-        })
+        minutes, count = _retard_at(inp, cur, _midnight(cur))
+        rows.append(
+            {
+                "foyer_id": foyer_id,
+                "date": cur,
+                "total_minutes": minutes,
+                "task_count": count,
+            }
+        )
         written += 1
         cur += timedelta(days=1)
-        # Flush par batch de 500 pour ne pas saturer la connexion.
         if len(rows) >= 500:
             await _upsert(session, rows)
             rows.clear()
@@ -237,20 +261,37 @@ async def _upsert(session: AsyncSession, rows: list[dict]) -> None:
 
 
 async def snapshot_today(session: AsyncSession, foyer_id: UUID) -> tuple[int, int]:
-    """Calcule + upsert le snapshot du jour pour un foyer (cron daily).
+    """Calcule + upsert le snapshot du jour (cron daily), frontiere 00h UTC.
 
     Retourne le tuple (minutes, task_count) ecrit. Ne commit pas.
     """
-    tasks, comps, _earliest = await _load_compute_inputs(session, foyer_id)
+    inp = await _load_compute_inputs(session, foyer_id)
     today = datetime.now(timezone.utc).date()
-    minutes, count = _retard_at(tasks, comps, today)
-    await _upsert(session, [{
-        "foyer_id": foyer_id,
-        "date": today,
-        "total_minutes": minutes,
-        "task_count": count,
-    }])
+    minutes, count = _retard_at(inp, today, _midnight(today))
+    await _upsert(
+        session,
+        [
+            {
+                "foyer_id": foyer_id,
+                "date": today,
+                "total_minutes": minutes,
+                "task_count": count,
+            }
+        ],
+    )
     return minutes, count
+
+
+async def retard_now(session: AsyncSession, foyer_id: UUID) -> tuple[int, int]:
+    """Retard LIVE du foyer (cutoff = now) — point du jour de la timeline.
+
+    Strictement identique a GET /api/retard : meme perimetre, meme modele
+    jour-granulaire, meme home freeze. Sert a afficher un dernier point de
+    courbe coherent avec le gros chiffre, meme en cours de journee.
+    """
+    inp = await _load_compute_inputs(session, foyer_id)
+    today = datetime.now(timezone.utc).date()
+    return _retard_at(inp, today, datetime.now(timezone.utc))
 
 
 async def daily_retard_job() -> None:
@@ -290,8 +331,9 @@ async def daily_retard_job() -> None:
 async def has_snapshots(session: AsyncSession, foyer_id: UUID) -> bool:
     """True si le foyer a au moins un snapshot (gate d'auto-backfill)."""
     result = await session.execute(
-        select(func.count(FoyerRetardSnapshot.date))
-        .where(FoyerRetardSnapshot.foyer_id == foyer_id)
+        select(func.count(FoyerRetardSnapshot.date)).where(
+            FoyerRetardSnapshot.foyer_id == foyer_id
+        )
     )
     return (result.scalar() or 0) > 0
 
