@@ -13,18 +13,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.database import get_session
 from app.utils.errors import LocalizedHTTPException
-from app.models.category import Category
 from app.models.completion import TaskCompletion
 from app.models.enums import TaskTolerance, UrgencyState
 from app.models.fair_share import FairShareConfig
-from app.models.foyer import Foyer
 from app.models.task import Task
 from app.models.task_affinity import TaskAffinity
 from app.models.task_assignment import TaskAssignment
 from app.models.task_effort import TaskEffort
 from app.models.task_frequency_vote import TaskFrequencyVote
 from app.services.frequency_vote import upsert_vote_and_sync_consensus
-from app.services.presence import get_absent_days_map
+from app.services.presence import load_freeze_context
 from app.services.recurrence import (
     COLD_START_INTERVAL_DAYS,
     UNCERTAIN_SCORE_CAP,
@@ -986,32 +984,10 @@ async def get_suggestions(
     # Date du jour (utilisee pour le freeze map et le scoring urgence).
     today = datetime.now(timezone.utc).date()
 
-    # --- Home freeze v2 : charger foyer + categories requires_home ---
-    foyer_result = await session.execute(select(Foyer).where(Foyer.id == foyer_uuid))
-    foyer = foyer_result.scalar_one_or_none()
-    freeze_enabled = foyer.home_freeze_enabled if foyer else False
-
-    # Map category_id -> requires_home
-    cat_ids = {t.category_id for t in tasks if t.category_id}
-    requires_home_map: dict[UUID | None, bool] = {}
-    if cat_ids and freeze_enabled:
-        cat_result = await session.execute(
-            select(Category.id, Category.requires_home).where(Category.id.in_(cat_ids))
-        )
-        requires_home_map = {row[0]: row[1] for row in cat_result.all()}
-
-    # Compter les jours absents en batch pour les taches requires_home
-    absent_days_map: dict[UUID, int] = {}
-    if freeze_enabled:
-        # Construire la map {task_id: since_date} pour les taches requires_home
-        since_dates = {}
-        for t in tasks:
-            if requires_home_map.get(t.category_id, False):
-                lc = last_completions.get(t.id)
-                since = lc.date() if lc else (t.created_at.date() if t.created_at else today)
-                since_dates[t.id] = since
-        if since_dates:
-            absent_days_map = await get_absent_days_map(session, foyer_uuid, since_dates, today)
+    # --- Home freeze v2 : contexte partage avec /api/retard (source unique) ---
+    freeze_enabled, requires_home_map, absent_days_map = await load_freeze_context(
+        session, foyer_uuid, tasks, last_completions, today
+    )
 
     # Charger affinites de l'user
     aff_result = await session.execute(

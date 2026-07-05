@@ -37,7 +37,16 @@ from app.models.completion import TaskCompletion
 from app.models.task import Task
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
-from app.services.recurrence import interval_hours, is_overdue, is_uncertain
+from app.models.enums import UrgencyState
+from app.services.presence import load_freeze_context
+from app.services.recurrence import (
+    compute_due_date,
+    compute_effective_today,
+    compute_nominal_interval_days,
+    compute_urgency_state,
+    interval_hours,
+    is_uncertain,
+)
 from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api", tags=["projection"])
@@ -178,15 +187,34 @@ async def get_retard(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Retourne les taches en retard (is_overdue=True) du foyer actif.
+    """Retourne les taches en retard (etat RED) du foyer actif.
 
-    Somme des minutes (task.weight * 5) et liste des task_ids. Les taches
-    ponctuelles (sans recurrence_rule) ne sont jamais en retard et sont
-    exclues. Les taches jamais completees avec une recurrence_rule comptent
-    comme en retard immediatement (comportement backend existant).
+    Utilise le modele d'urgence canonique jour-granulaire
+    (compute_urgency_state == RED) avec home freeze v2, exactement comme la
+    liste Android (TaskUrgencyCalculator) et les suggestions gamification. Une
+    tache est "en retard" ssi `effective_today > due_date` (jour entier), ou
+    effective_today recule des jours d'absence confirmes pour les taches
+    requires_home quand le freeze foyer est actif.
+
+    Les ponctuelles (sans recurrence_rule) et les 'uncertain' n'ont pas
+    d'echeance et sont exclues. Une tache jamais completee a pour echeance sa
+    created_at.date() (via compute_due_date) : elle n'est en retard que le
+    lendemain de sa creation, pas immediatement.
+
+    Somme des minutes (task.weight * 5) et liste des task_ids.
     """
     foyer_uuid = current_foyer_uuid(current)
     tasks_with_last = await _fetch_foyer_tasks_with_last_completion(session, foyer_uuid)
+
+    today = datetime.now(timezone.utc).date()
+    last_completion_map = {task.id: last for task, last in tasks_with_last}
+    freeze_enabled, requires_home_map, absent_days_map = await load_freeze_context(
+        session,
+        foyer_uuid,
+        (task for task, _ in tasks_with_last),
+        last_completion_map,
+        today,
+    )
 
     overdue: list[RetardTask] = []
     total_minutes = 0
@@ -195,7 +223,15 @@ async def get_retard(
             continue  # ponctuelles exclues
         if is_uncertain(task.recurrence_rule):
             continue  # uncertain : jamais en retard (Q2, Q10)
-        if not is_overdue(task.recurrence_rule, last_completed):
+        due_date = compute_due_date(task.recurrence_rule, last_completed, task.created_at)
+        nominal = compute_nominal_interval_days(task.recurrence_rule)
+        eff_today = compute_effective_today(
+            today,
+            task_requires_home=requires_home_map.get(task.category_id, False),
+            home_freeze_enabled=freeze_enabled,
+            absent_days=absent_days_map.get(task.id, 0),
+        )
+        if compute_urgency_state(due_date, eff_today, nominal) != UrgencyState.RED:
             continue
         minutes = _task_minutes(task)
         total_minutes += minutes

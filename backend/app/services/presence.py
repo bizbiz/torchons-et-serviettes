@@ -8,7 +8,7 @@ pour decaler effective_today.
 from __future__ import annotations
 
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Iterable
 
 from sqlalchemy import and_, func, select
@@ -198,6 +198,54 @@ async def compute_absent_days_for_tasks(
             result_map[tid] = n
 
     return result_map
+
+
+async def load_freeze_context(
+    session: AsyncSession,
+    foyer_id: uuid.UUID,
+    tasks: Iterable[Task],
+    last_completion_map: dict[uuid.UUID, datetime | None],
+    today: date,
+) -> tuple[bool, dict[uuid.UUID | None, bool], dict[uuid.UUID, int]]:
+    """Charge le contexte home freeze v2 partage par /suggestions et /retard.
+
+    Retourne (freeze_enabled, requires_home_map, absent_days_map) pour que les
+    deux surfaces appliquent compute_effective_today de facon strictement
+    identique. Centralise la logique auparavant dupliquee dans gamification et
+    projection : c'est la source unique de la definition "en retard" cote foyer.
+
+    `last_completion_map` = {task_id: derniere completion (datetime) ou None}.
+    Le fallback pour une tache jamais faite est created_at.date().
+    """
+    task_list = list(tasks)
+    foyer_result = await session.execute(select(Foyer).where(Foyer.id == foyer_id))
+    foyer = foyer_result.scalar_one_or_none()
+    freeze_enabled = foyer.home_freeze_enabled if foyer else False
+    if not freeze_enabled:
+        return False, {}, {}
+
+    # Map category_id -> requires_home (uniquement les categories des taches).
+    cat_ids = {t.category_id for t in task_list if t.category_id}
+    requires_home_map: dict[uuid.UUID | None, bool] = {}
+    if cat_ids:
+        cat_result = await session.execute(
+            select(Category.id, Category.requires_home).where(Category.id.in_(cat_ids))
+        )
+        requires_home_map = {row[0]: row[1] for row in cat_result.all()}
+
+    # Jours absents en batch, uniquement pour les taches requires_home.
+    since_dates: dict[uuid.UUID, date] = {}
+    for t in task_list:
+        if requires_home_map.get(t.category_id, False):
+            lc = last_completion_map.get(t.id)
+            since = lc.date() if lc else (t.created_at.date() if t.created_at else today)
+            since_dates[t.id] = since
+
+    absent_days_map: dict[uuid.UUID, int] = {}
+    if since_dates:
+        absent_days_map = await get_absent_days_map(session, foyer_id, since_dates, today)
+
+    return freeze_enabled, requires_home_map, absent_days_map
 
 
 async def get_absent_dates(
