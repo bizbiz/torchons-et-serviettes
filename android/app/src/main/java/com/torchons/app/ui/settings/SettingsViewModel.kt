@@ -11,6 +11,8 @@ import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.Foyer
 import com.torchons.app.data.model.FoyerCreateRequest
 import com.torchons.app.data.model.MaintenanceRateResponse
+import com.torchons.app.data.model.ModuleToggleRequest
+import com.torchons.app.data.model.ModuleView
 import com.torchons.app.data.model.ObjectiveUpdate
 import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.PresenceCellState
@@ -93,6 +95,16 @@ class SettingsViewModel @Inject constructor(
     val bonusConfig: StateFlow<BonusConfig?> = _bonusConfig.asStateFlow()
 
     // v0.32 : foyer courant + nom (pour les labels des dialogs gamif).
+    // P2 — registre des modules (GET /api/modules). Liste vide tant que la
+    // reponse n'est pas arrivee : l'ecran affiche alors le bloc en chargement
+    // plutot que 8 lignes fantomes.
+    private val _modules = MutableStateFlow<List<ModuleView>>(emptyList())
+    val modules: StateFlow<List<ModuleView>> = _modules.asStateFlow()
+
+    // Message d'erreur transitoire d'une bascule refusee (409 dependance).
+    private val _moduleError = MutableStateFlow<String?>(null)
+    val moduleError: StateFlow<String?> = _moduleError.asStateFlow()
+
     private val _currentFoyer = MutableStateFlow<Foyer?>(null)
     val currentFoyer: StateFlow<Foyer?> = _currentFoyer.asStateFlow()
 
@@ -160,6 +172,10 @@ class SettingsViewModel @Inject constructor(
                     // Sync tous les reglages vers TokenManager local
                     syncToTokenManager(_settings.value)
                 }
+
+                // Modules — le chargement pousse aussi l'etat dans
+                // TokenManager, qui est ce que lisent les autres ecrans.
+                loadModules()
 
                 // Fair-share
                 val usersResp = apiService.getUsers()
@@ -259,6 +275,62 @@ class SettingsViewModel @Inject constructor(
         updateSetting("notif_daily", v)
         rescheduleDailyNotif()
     }
+    // --- Modules (P2) ---
+
+    /** Charge le registre et publie l'etat dans TokenManager. */
+    private suspend fun loadModules() {
+        try {
+            val resp = apiService.getModules()
+            if (resp.isSuccessful) {
+                val list = resp.body()?.modules.orEmpty()
+                _modules.value = list
+                tokenManager.setModuleStates(list.associate { it.key to it.enabled })
+            }
+        } catch (e: Exception) {
+            Log.w("SettingsViewModel", "loadModules: ${e.message}")
+        }
+    }
+
+    /**
+     * Bascule un module. Ecriture optimiste puis reconciliation sur la
+     * reponse : un 409 (dependance non satisfaite) doit remettre
+     * l'interrupteur ou il etait, sinon l'ecran affiche un etat que le
+     * serveur a refuse.
+     */
+    fun toggleModule(key: String, enabled: Boolean) {
+        val before = _modules.value
+        _modules.value = before.map { if (it.key == key) it.copy(enabled = enabled) else it }
+        viewModelScope.launch {
+            try {
+                val resp = apiService.toggleModule(key, ModuleToggleRequest(enabled))
+                if (resp.isSuccessful) {
+                    // Le serveur peut avoir change d'autres champs
+                    // (unmet_requires des dependants) : on relit tout.
+                    loadModules()
+                } else {
+                    _modules.value = before
+                    // Le corps est du JSON localise par le serveur
+                    // ({"detail": "Activez d'abord : motivation"}) : on en
+                    // extrait `detail`, sinon on afficherait l'accolade brute.
+                    val raw = runCatching { resp.errorBody()?.string() }.getOrNull()
+                    val detail = raw
+                        ?.let { Regex(""""detail"\s*:\s*"([^"]*)""").find(it)?.groupValues?.get(1) }
+                        ?.takeIf { it.isNotBlank() }
+                    _moduleError.value = detail ?: "HTTP ${resp.code()}"
+                    Log.w("SettingsViewModel", "toggleModule $key refuse: ${resp.code()} $raw")
+                }
+            } catch (e: Exception) {
+                _modules.value = before
+                // e.message peut etre null (IOException nue) : un message vide
+                // ferait disparaitre l'erreur au lieu de la signaler.
+                _moduleError.value = e.message ?: e::class.java.simpleName
+                Log.w("SettingsViewModel", "toggleModule $key: ${e.message}")
+            }
+        }
+    }
+
+    fun dismissModuleError() { _moduleError.value = null }
+
     fun setNotifUrgent(v: Boolean) { _settings.value = _settings.value.copy(notifUrgent = v); updateSetting("notif_urgent", v) }
     fun setNotifSolo(v: Boolean) { _settings.value = _settings.value.copy(notifSolo = v); updateSetting("notif_solo", v) }
     fun setNotifCollectiveWithMe(v: Boolean) { _settings.value = _settings.value.copy(notifCollectiveWithMe = v); updateSetting("notif_collective_with_me", v) }

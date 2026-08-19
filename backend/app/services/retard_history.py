@@ -49,6 +49,7 @@ from app.services.recurrence import (
     compute_nominal_interval_days,
     compute_urgency_state,
     is_uncertain,
+    grace_days_of,
 )
 
 logger = structlog.get_logger()
@@ -204,7 +205,7 @@ def _retard_at(inp: _ComputeInputs, target_date: date, boundary: datetime) -> tu
             absent_days=absent,
         )
 
-        if compute_urgency_state(due_date, eff_today, nominal) == UrgencyState.RED:
+        if compute_urgency_state(due_date, eff_today, nominal, grace_days_of(task.recurrence_rule)) == UrgencyState.RED:
             total_min += _task_minutes(task)
             n_overdue += 1
     return total_min, n_overdue

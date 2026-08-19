@@ -326,6 +326,15 @@
     <string name="wizard_rooms_custom_chip_format">%1$s  ✕</string>
 
     <!-- Step Taches -->
+    <!-- Wizard : contextes (remplacent les pieces) -->
+    <string name="wizard_contexts_title">Ton chez-toi, c\'est quoi&#160;?</string>
+    <string name="wizard_contexts_help">Pièces, extérieurs, animaux&#160;: coche ce qui existe chez toi. C\'est ce qui décide des tâches proposées juste après.</string>
+    <string name="wizard_contexts_add_hint">Il manque quelque chose&#160;? Ajoute-le&#160;:</string>
+    <string name="wizard_contexts_custom_label">Autre (pièce, animal, extérieur…)</string>
+    <string name="wizard_tasks_page_format">Étape %1$d sur %2$d</string>
+    <string name="wizard_tasks_section_format">%1$s (%2$d)</string>
+    <string name="wizard_tasks_next_page">Continuer</string>
+
     <string name="wizard_tasks_title">Quelles tâches tu veux suivre&#160;?</string>
     <string name="wizard_tasks_help">Coche celles qui te concernent. Tu pourras toujours en ajouter ou en retirer plus tard.</string>
     <string name="wizard_tasks_empty">Aucune tâche disponible pour les pièces sélectionnées. Tu pourras les ajouter manuellement plus tard.</string>
@@ -427,7 +436,7 @@
 
     <!-- TaskDetail — section infos -->
     <string name="task_detail_section_description">Description</string>
-    <string name="task_detail_section_room">Pièce</string>
+    <string name="task_detail_section_room">Contextes</string>
     <string name="task_detail_section_effort_affinity">Effort &amp; Affinité</string>
     <string name="task_detail_edit_action">Modifier</string>
     <string name="task_detail_no_value_dash">—</string>
@@ -796,7 +805,7 @@
     <string name="settings_placeholder_loading">…</string>
     <string name="settings_foyer_default_name">Mon foyer</string>
     <string name="settings_foyer_card_title_format">🏠 %1$s</string>
-    <string name="settings_foyer_card_subtitle">Pièces, catégories, présence, gamification du foyer…</string>
+    <string name="settings_foyer_card_subtitle">Contextes, présence, gamification du foyer…</string>
     <string name="settings_create_foyer_button">Créer un nouveau foyer</string>
 
     <!-- Gamification user-level -->
@@ -810,6 +819,51 @@
     <string name="settings_changelog_subtitle">Notes de version et roadmap</string>
 
     <!-- Notifications -->
+    <!-- P2 — bloc Fonctionnalites (registre des modules) -->
+    <string name="settings_modules_title">Fonctionnalités</string>
+    <string name="settings_modules_subtitle">Activez ce qui vous sert. L\'app propose le reste au fil de l\'eau.</string>
+    <string name="settings_modules_unavailable">Liste indisponible hors connexion.</string>
+    <string name="settings_modules_includes">Contient :</string>
+    <string name="settings_modules_requires_format">Activez d\'abord : %1$s</string>
+    <string name="settings_modules_toggle_failed_format">Impossible de changer ce réglage : %1$s</string>
+
+    <!-- P4 — proposition contextuelle d'activer un module -->
+    <string name="discover_module_overline">Une idée pour vous</string>
+    <string name="discover_module_reassurance">Vous pourrez le désactiver à tout moment dans Réglages.</string>
+    <string name="discover_module_accept">Activer</string>
+    <string name="discover_module_decline">Non merci</string>
+
+    <!-- Phrase expliquant une recurrence : le COMPORTEMENT, pas la valeur -->
+    <string name="recurrence_sentence_one_shot">Tâche ponctuelle : elle ne reviendra pas une fois faite.</string>
+    <string name="recurrence_sentence_daily">La tâche se répète chaque jour, à partir de la dernière fois où elle a été faite.</string>
+    <string name="recurrence_sentence_interval_format">La tâche se répète tous les %1$d jours après la dernière exécution. Si vous la faites au %2$dᵉ jour, elle vous sera redemandée au %3$dᵉ jour.</string>
+    <string name="recurrence_sentence_monthly_variable_format">Le rythme change selon la saison : de tous les %1$d jours au plus fréquent, à tous les %2$d jours au plus calme. Il repart à chaque fois de la dernière exécution.</string>
+    <string name="recurrence_sentence_calendar_format">La tâche vous sera demandée %1$s, tous les ans, peu importe la date de la dernière exécution.</string>
+    <string name="recurrence_sentence_grace_format">Elle reste acceptable pendant %1$d jours après cette date avant d\'être signalée en retard.</string>
+    <string name="recurrence_sentence_uncertain">Sans échéance fixe : faites-la quand le besoin s\'en fait sentir. L\'app apprend votre rythme au fil du temps.</string>
+    <string name="recurrence_sentence_unknown">Rythme non reconnu.</string>
+    <string name="recurrence_sentence_date_format">le %1$d %2$s</string>
+    <!-- Le 1er du mois s'ecrit avec son ordinal en francais. -->
+    <string name="recurrence_sentence_date_first_format">le 1er %1$s</string>
+    <string name="recurrence_sentence_list_separator">, puis </string>
+    <string-array name="month_names">
+        <item>janvier</item><item>février</item><item>mars</item><item>avril</item>
+        <item>mai</item><item>juin</item><item>juillet</item><item>août</item>
+        <item>septembre</item><item>octobre</item><item>novembre</item><item>décembre</item>
+    </string-array>
+
+    <!-- Type de recurrence a date fixe (calendar) -->
+    <string name="task_edit_recurrence_calendar">À date fixe</string>
+    <string name="task_edit_calendar_months_label">À quels mois ?</string>
+    <string name="task_edit_calendar_day_label">Jour du mois (1 à 28)</string>
+    <string name="task_edit_calendar_grace_label">Tolérance après l\'échéance (jours)</string>
+    <string name="task_edit_calendar_grace_help">La tâche est signalée dès l\'échéance, mais n\'est comptée en retard qu\'après ce délai.</string>
+    <string-array name="month_names_short">
+        <item>Jan</item><item>Fév</item><item>Mar</item><item>Avr</item>
+        <item>Mai</item><item>Juin</item><item>Juil</item><item>Août</item>
+        <item>Sep</item><item>Oct</item><item>Nov</item><item>Déc</item>
+    </string-array>
+
     <string name="settings_notif_section_title">Notifications</string>
     <string name="settings_notif_daily_title">Résumé quotidien</string>
     <string name="settings_notif_daily_subtitle">Recevoir un résumé de tes tâches chaque jour</string>
@@ -1344,4 +1398,21 @@
     <string name="sync_diag_all_ok">✅ La connexion est revenue — resynchronisation en cours.</string>
     <string name="sync_last_error_format">Dernière erreur : %1$s</string>
     <string name="sync_retry">Réessayer</string>
+    <!-- Contextes (remplacent pieces et categories) -->
+    <string name="contexts_title">Contextes</string>
+    <string name="contexts_help">Pièces, animaux, extérieurs, situations&#160;: ce qui explique qu\'une tâche existe chez toi.</string>
+    <string name="contexts_empty">Aucun contexte pour l\'instant. Ajoute-en un pour organiser tes tâches.</string>
+    <string name="contexts_dialog_new_title">Nouveau contexte</string>
+    <string name="contexts_dialog_edit_title">Modifier le contexte</string>
+    <string name="contexts_dialog_delete_message">Les tâches de ce contexte le perdront, mais ne seront pas supprimées.</string>
+    <string name="contexts_name_taken">Ce nom est déjà pris par un autre contexte.</string>
+    <string name="context_requires_presence_label">Il faut être sur place</string>
+    <string name="context_requires_presence_help">Ces tâches se cachent quand tu n\'es pas à la maison.</string>
+    <string name="context_accrues_when_away_label">Ça continue sans nous</string>
+    <string name="context_accrues_when_away_help">La pelouse pousse et le calendrier tourne même pendant les vacances&#160;: ces tâches ne se mettent pas en pause.</string>
+    <string name="foyer_contexts_subtitle">Cuisine, Chat, Jardin, Administratif… + emoji et couleur</string>
+    <string name="task_contexts_label">Contextes</string>
+    <string name="task_contexts_help">Le premier choisi décide de l\'endroit où la tâche s\'affiche.</string>
+    <string name="task_contexts_none">Aucun contexte</string>
+    <string name="task_list_filter_all_contexts">Tous</string>
 </resources>

@@ -1,5 +1,11 @@
 package com.torchons.app.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +59,7 @@ import com.torchons.app.ui.common.FoyerGamifState
 import com.torchons.app.ui.common.WhyNoPointsDialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -83,8 +90,50 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val scope = rememberCoroutineScope()
+
+    // POST_NOTIFICATIONS (Android 13+) est demandee ICI et nulle part ailleurs :
+    // au moment ou l'utilisateur active une notification, donc quand il sait
+    // deja de quoi il s'agit. Elle etait auparavant demandee dans
+    // MainActivity.onCreate a chaque cold start, ce qui plaquait une popup
+    // systeme par-dessus l'ecran de bienvenue d'une installation neuve.
+    //
+    // Le toggle metier reste independant de la permission OS : on enregistre
+    // le choix quoi qu'il arrive. Un refus systeme n'efface pas la preference,
+    // il empeche seulement l'affichage — et l'utilisateur peut la reaccorder
+    // depuis les reglages Android sans avoir a re-basculer quoi que ce soit.
+    val notifPermissionContext = LocalContext.current
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* refus : la preference est conservee, rien ne s'affichera. */ }
+
+    fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(
+            notifPermissionContext, Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    /** Enregistre le choix, et ne demande la permission qu'a l'activation. */
+    fun onNotifToggle(enabled: Boolean, persist: (Boolean) -> Unit) {
+        if (enabled) ensureNotificationPermission()
+        persist(enabled)
+    }
+
     val displayName by viewModel.displayName.collectAsState()
     val s by viewModel.settings.collectAsState()
+    val modules by viewModel.modules.collectAsState()
+    val moduleError by viewModel.moduleError.collectAsState()
+
+    // Vrai si le module est actif. Tant que GET /api/modules n'a pas repondu la
+    // liste est vide et on repond `true` : l'ecran reste alors exactement ce
+    // qu'il etait avant P2, au lieu de faire disparaitre des reglages le temps
+    // d'un aller-retour reseau.
+    fun moduleEnabled(key: String): Boolean =
+        modules.firstOrNull { it.key == key }?.enabled ?: true
+
     val notifDaily = s.notifDaily
     val notifUrgent = s.notifUrgent
     val notifSolo = s.notifSolo
@@ -221,6 +270,31 @@ fun SettingsScreen(
             Text(stringResource(R.string.settings_create_foyer_button))
         }
 
+        // P2 — le registre des modules. Niveau 1 de l'arbre : ce qui suit dans
+        // l'ecran n'est que le niveau 2, revele module par module.
+        ModulesSection(
+            modules = modules,
+            onToggle = viewModel::toggleModule,
+            isLoading = !s.isLoaded,
+        )
+
+        moduleError?.let { message ->
+            Text(
+                text = stringResource(R.string.settings_modules_toggle_failed_format, message),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { viewModel.dismissModuleError() }
+                    .padding(horizontal = 4.dp),
+            )
+        }
+
+        // Sous-options du module `motivation` : visibles seulement si le module
+        // est actif. "Ne pas me les afficher" n'a de sens que si le foyer a active Motivation.
+        // L'interrupteur du module vit dans le bloc Fonctionnalites ci-dessus ;
+        // ici on ne montre que ce qu'il contient. Un reglage, un seul ecrivain.
+        if (moduleEnabled("motivation")) {
         // v0.32 : Gamification user-level + help link conditionnel.
         // DISTINCTE de la gamification du foyer (qui, elle, vit dans
         // l'ecran Foyer). Ici = "pour mon compte, tous foyers confondus".
@@ -284,6 +358,7 @@ fun SettingsScreen(
                 }
             }
         }
+        }
 
         // Nouveautes + Roadmap
         Card(
@@ -320,6 +395,11 @@ fun SettingsScreen(
             }
         }
 
+        // Sous-options du module `reminders` : visibles seulement si le module
+        // est actif. Les 6 notifications sont les sous-options de Rappels.
+        // L'interrupteur du module vit dans le bloc Fonctionnalites ci-dessus ;
+        // ici on ne montre que ce qu'il contient. Un reglage, un seul ecrivain.
+        if (moduleEnabled("reminders")) {
         // Notifications
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -349,7 +429,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_notif_daily_title),
                     subtitle = stringResource(R.string.settings_notif_daily_subtitle),
                     checked = notifDaily,
-                    onCheckedChange = { viewModel.setNotifDaily(it) }
+                    onCheckedChange = { enabled -> onNotifToggle(enabled, viewModel::setNotifDaily) }
                 )
 
                 // Heure du resume
@@ -400,7 +480,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_notif_urgent_title),
                     subtitle = stringResource(R.string.settings_notif_urgent_subtitle),
                     checked = notifUrgent,
-                    onCheckedChange = { viewModel.setNotifUrgent(it) }
+                    onCheckedChange = { enabled -> onNotifToggle(enabled, viewModel::setNotifUrgent) }
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -412,7 +492,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_notif_solo_title),
                     subtitle = stringResource(R.string.settings_notif_solo_subtitle),
                     checked = notifSolo,
-                    onCheckedChange = { viewModel.setNotifSolo(it) }
+                    onCheckedChange = { enabled -> onNotifToggle(enabled, viewModel::setNotifSolo) }
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -421,7 +501,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_notif_collective_with_me_title),
                     subtitle = stringResource(R.string.settings_notif_collective_with_me_subtitle),
                     checked = notifCollectiveWithMe,
-                    onCheckedChange = { viewModel.setNotifCollectiveWithMe(it) }
+                    onCheckedChange = { enabled -> onNotifToggle(enabled, viewModel::setNotifCollectiveWithMe) }
                 )
 
                 if (foyerMemberCount > 2) {
@@ -431,12 +511,18 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_notif_collective_without_me_title),
                         subtitle = stringResource(R.string.settings_notif_collective_without_me_subtitle),
                         checked = notifCollectiveWithoutMe,
-                        onCheckedChange = { viewModel.setNotifCollectiveWithoutMe(it) }
+                        onCheckedChange = { enabled -> onNotifToggle(enabled, viewModel::setNotifCollectiveWithoutMe) }
                     )
                 }
             }
         }
+        }
 
+        // Sous-options du module `repartition` : visibles seulement si le module
+        // est actif. La popup de notation d'affinite est une sous-option de Repartition.
+        // L'interrupteur du module vit dans le bloc Fonctionnalites ci-dessus ;
+        // ici on ne montre que ce qu'il contient. Un reglage, un seul ecrivain.
+        if (moduleEnabled("repartition")) {
         // Affinite
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -466,6 +552,7 @@ fun SettingsScreen(
                     onCheckedChange = { viewModel.setAffinityPopup(it) }
                 )
             }
+        }
         }
 
         // Infos app (relogees ici — etaient dans "Options avancees" qui a

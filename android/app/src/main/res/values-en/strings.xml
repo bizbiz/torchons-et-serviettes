@@ -320,6 +320,15 @@
     <string name="wizard_rooms_custom_chip_format">%1$s  ✕</string>
 
     <!-- Step Tasks -->
+    <!-- Wizard: contexts (replacing rooms) -->
+    <string name="wizard_contexts_title">What does your place look like?</string>
+    <string name="wizard_contexts_help">Rooms, outdoor spaces, pets: tick whatever you have. This is what decides which chores come up next.</string>
+    <string name="wizard_contexts_add_hint">Something missing? Add it:</string>
+    <string name="wizard_contexts_custom_label">Other (room, pet, outdoors…)</string>
+    <string name="wizard_tasks_page_format">Step %1$d of %2$d</string>
+    <string name="wizard_tasks_section_format">%1$s (%2$d)</string>
+    <string name="wizard_tasks_next_page">Continue</string>
+
     <string name="wizard_tasks_title">Which tasks do you want to track?</string>
     <string name="wizard_tasks_help">Check the ones relevant to you. You can always add or remove later.</string>
     <string name="wizard_tasks_empty">No tasks available for the selected rooms. You\'ll be able to add them manually later.</string>
@@ -421,7 +430,7 @@
 
     <!-- TaskDetail — info section -->
     <string name="task_detail_section_description">Description</string>
-    <string name="task_detail_section_room">Room</string>
+    <string name="task_detail_section_room">Contexts</string>
     <string name="task_detail_section_effort_affinity">Effort &amp; Affinity</string>
     <string name="task_detail_edit_action">Edit</string>
     <string name="task_detail_no_value_dash">—</string>
@@ -789,7 +798,7 @@
     <string name="settings_placeholder_loading">…</string>
     <string name="settings_foyer_default_name">My household</string>
     <string name="settings_foyer_card_title_format">🏠 %1$s</string>
-    <string name="settings_foyer_card_subtitle">Rooms, categories, presence, household gamification…</string>
+    <string name="settings_foyer_card_subtitle">Contexts, presence, household gamification…</string>
     <string name="settings_create_foyer_button">Create a new household</string>
 
     <!-- User-level gamification -->
@@ -803,6 +812,50 @@
     <string name="settings_changelog_subtitle">Release notes and roadmap</string>
 
     <!-- Notifications -->
+    <!-- P2 — Features block (module registry) -->
+    <string name="settings_modules_title">Features</string>
+    <string name="settings_modules_subtitle">Turn on what you need. The app offers the rest as you go.</string>
+    <string name="settings_modules_unavailable">List unavailable offline.</string>
+    <string name="settings_modules_includes">Includes:</string>
+    <string name="settings_modules_requires_format">Enable first: %1$s</string>
+    <string name="settings_modules_toggle_failed_format">Could not change this setting: %1$s</string>
+
+    <!-- P4 — contextual proposal to enable a module -->
+    <string name="discover_module_overline">An idea for you</string>
+    <string name="discover_module_reassurance">You can turn it off any time in Settings.</string>
+    <string name="discover_module_accept">Turn it on</string>
+    <string name="discover_module_decline">No thanks</string>
+
+    <!-- Sentence explaining a recurrence: the BEHAVIOUR, not just the value -->
+    <string name="recurrence_sentence_one_shot">One-off task: it will not come back once done.</string>
+    <string name="recurrence_sentence_daily">The task repeats every day, counting from the last time it was done.</string>
+    <string name="recurrence_sentence_interval_format">The task repeats every %1$d days after the last time it was done. Do it on day %2$d and it comes back on day %3$d.</string>
+    <string name="recurrence_sentence_monthly_variable_format">The pace changes with the season: from every %1$d days at its busiest to every %2$d days at its quietest. It restarts from the last time each round.</string>
+    <string name="recurrence_sentence_calendar_format">The task comes up %1$s, every year, whatever the date it was last done.</string>
+    <string name="recurrence_sentence_grace_format">It stays acceptable for %1$d days past that date before being flagged as late.</string>
+    <string name="recurrence_sentence_uncertain">No fixed deadline: do it when the need arises. The app learns your pace over time.</string>
+    <string name="recurrence_sentence_unknown">Unrecognised pace.</string>
+    <string name="recurrence_sentence_date_format">on %2$s %1$d</string>
+    <string name="recurrence_sentence_date_first_format">on %1$s 1</string>
+    <string name="recurrence_sentence_list_separator">, then </string>
+    <string-array name="month_names">
+        <item>January</item><item>February</item><item>March</item><item>April</item>
+        <item>May</item><item>June</item><item>July</item><item>August</item>
+        <item>September</item><item>October</item><item>November</item><item>December</item>
+    </string-array>
+
+    <!-- Fixed-date recurrence type (calendar) -->
+    <string name="task_edit_recurrence_calendar">On a fixed date</string>
+    <string name="task_edit_calendar_months_label">In which months?</string>
+    <string name="task_edit_calendar_day_label">Day of the month (1 to 28)</string>
+    <string name="task_edit_calendar_grace_label">Grace after the due date (days)</string>
+    <string name="task_edit_calendar_grace_help">The task is flagged from its due date, but only counts as late after this delay.</string>
+    <string-array name="month_names_short">
+        <item>Jan</item><item>Feb</item><item>Mar</item><item>Apr</item>
+        <item>May</item><item>Jun</item><item>Jul</item><item>Aug</item>
+        <item>Sep</item><item>Oct</item><item>Nov</item><item>Dec</item>
+    </string-array>
+
     <string name="settings_notif_section_title">Notifications</string>
     <string name="settings_notif_daily_title">Daily summary</string>
     <string name="settings_notif_daily_subtitle">Receive a daily summary of your tasks</string>
@@ -1334,4 +1387,21 @@
     <string name="sync_diag_all_ok">✅ Connection is back — resyncing now.</string>
     <string name="sync_last_error_format">Last error: %1$s</string>
     <string name="sync_retry">Retry</string>
+    <!-- Contexts (replacing rooms and categories) -->
+    <string name="contexts_title">Contexts</string>
+    <string name="contexts_help">Rooms, pets, outdoor areas, situations: whatever explains why a chore exists in your home.</string>
+    <string name="contexts_empty">No context yet. Add one to organise your chores.</string>
+    <string name="contexts_dialog_new_title">New context</string>
+    <string name="contexts_dialog_edit_title">Edit context</string>
+    <string name="contexts_dialog_delete_message">Chores in this context will lose it, but will not be deleted.</string>
+    <string name="contexts_name_taken">That name is already taken by another context.</string>
+    <string name="context_requires_presence_label">You must be there</string>
+    <string name="context_requires_presence_help">These chores hide when you are away from home.</string>
+    <string name="context_accrues_when_away_label">It keeps going without us</string>
+    <string name="context_accrues_when_away_help">Grass grows and the calendar turns even during holidays: these chores are not paused.</string>
+    <string name="foyer_contexts_subtitle">Kitchen, Cat, Garden, Admin… + emoji and colour</string>
+    <string name="task_contexts_label">Contexts</string>
+    <string name="task_contexts_help">The first one picked decides where the chore is shown.</string>
+    <string name="task_contexts_none">No context</string>
+    <string name="task_list_filter_all_contexts">All</string>
 </resources>

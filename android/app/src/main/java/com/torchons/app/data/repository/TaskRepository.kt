@@ -6,6 +6,7 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.dao.CategoryDao
 import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.PendingOperationDao
+import com.torchons.app.data.local.dao.ContextDao
 import com.torchons.app.data.local.dao.RoomDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.TaskHistoryDao
@@ -20,6 +21,8 @@ import com.torchons.app.data.model.CollectiveCompletionResponse
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.CreateTaskRequest
 import com.torchons.app.data.model.FrequencyRequest
+import com.torchons.app.data.model.ContextView
+import com.torchons.app.data.model.TaskContextRef
 import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskHistoryEvent
@@ -51,6 +54,7 @@ class TaskRepository @Inject constructor(
     private val pendingDao: PendingOperationDao,
     private val taskHistoryDao: TaskHistoryDao,
     private val roomDao: RoomDao,
+    private val contextDao: ContextDao,
     private val syncTrigger: SyncTrigger,
     private val tokenManager: TokenManager,
 ) {
@@ -134,6 +138,7 @@ class TaskRepository @Inject constructor(
         // task_history via DAO (clearForTask n'existe que per-task, donc on
         // passe par deleteAll). Les autres caches (users, rooms) sont aussi wipes.
         roomDao.replaceAll(emptyList())
+        contextDao.replaceAll(emptyList())
         userDao.replaceAll(emptyList())
     }
 
@@ -150,6 +155,35 @@ class TaskRepository @Inject constructor(
             if (response.isSuccessful) {
                 val rooms = response.body() ?: emptyList()
                 roomDao.replaceAll(rooms.map { it.toEntity() })
+                true
+            } else {
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Contextes
+    // -------------------------------------------------------------------
+
+    fun observeContexts(): Flow<List<ContextView>> =
+        contextDao.observeAll().map { list -> list.map { it.toDomain() } }
+
+    /**
+     * Recharge les contextes du foyer.
+     *
+     * REPLACE et non upsert : un contexte supprime depuis un autre appareil
+     * doit disparaitre d'ici. Un refresh upsert-only le laisserait en cache
+     * pour toujours, parce que rien ne dit jamais a ce client qu'une ligne a
+     * disparu. Cf `docs/cache-conventions.md`.
+     */
+    suspend fun refreshContexts(): Boolean {
+        return try {
+            val response = apiService.getContexts()
+            if (response.isSuccessful) {
+                contextDao.replaceAll(response.body().orEmpty().map { it.toEntity() })
                 true
             } else {
                 false
@@ -232,6 +266,26 @@ class TaskRepository @Inject constructor(
     // Ecritures offline-first
     // -------------------------------------------------------------------
 
+    /**
+     * Traduit des ids de contexte en references affichables, depuis le CACHE.
+     *
+     * L'etat derive doit etre recalcule a chaque mutation sans reseau : sans
+     * ca, une tache creee hors ligne s'afficherait sans contexte jusqu'a la
+     * prochaine synchronisation. Cf `docs/cache-conventions.md`.
+     */
+    private suspend fun resolveContextRefs(ids: List<String>?): List<TaskContextRef> {
+        if (ids.isNullOrEmpty()) return emptyList()
+        val connus = contextDao.getAll().associateBy { it.id }
+        return ids.mapIndexedNotNull { position, id ->
+            connus[id]?.let {
+                TaskContextRef(
+                    id = it.id, name = it.name, color = it.color,
+                    emoji = it.emoji, position = position,
+                )
+            }
+        }
+    }
+
     suspend fun createTask(request: CreateTaskRequest): Result<Task> {
         val clientOpId = UUID.randomUUID().toString()
         val rowId = UUID.randomUUID().toString()
@@ -251,6 +305,7 @@ class TaskRepository @Inject constructor(
             sortOrder = 0,
             createdAt = now,
             updatedAt = now,
+            contexts = resolveContextRefs(request.contextIds),
         )
 
         taskDao.upsert(optimistic.toEntity())
@@ -264,6 +319,7 @@ class TaskRepository @Inject constructor(
             "recurrence_rule" to request.recurrenceRule,
             "weight" to request.weight,
             "tolerance" to request.tolerance,
+            "context_ids" to request.contextIds,
         )
         enqueue(clientOpId, "tasks", "INSERT", rowId, payload)
 
@@ -285,6 +341,8 @@ class TaskRepository @Inject constructor(
             tolerance = request.tolerance ?: existing.tolerance,
             isActive = request.isActive ?: existing.isActive,
             updatedAt = Instant.now().toString(),
+            contexts = if (request.contextIds != null)
+                resolveContextRefs(request.contextIds) else existing.contexts,
         )
 
         if (updated != null) {
@@ -301,6 +359,10 @@ class TaskRepository @Inject constructor(
         request.weight?.let { payload["weight"] = it }
         request.tolerance?.let { payload["tolerance"] = it }
         request.isActive?.let { payload["is_active"] = it }
+        // `?.let` et non `takeIf { it.isNotEmpty() }` : une liste VIDE est une
+        // instruction — « detache tous les contextes » — et doit partir telle
+        // quelle. Seul `null` signifie « ne touche pas ».
+        request.contextIds?.let { payload["context_ids"] = it }
 
         enqueue(clientOpId, "tasks", "UPDATE", taskId, payload)
 

@@ -392,8 +392,13 @@ fun TaskListScreen(
                     }
                 }
 
-                // Chips de filtrage par categorie — espacement uniforme 6dp
-                if (uiState.categories.isNotEmpty()) {
+                // Filtres par CONTEXTE — une seule barre la ou il y en avait
+                // deux (categories, puis pieces). Elles posaient deux questions
+                // sur le meme objet et se combinaient en ET sans le dire, ce
+                // qui produisait des listes vides inexplicables des qu'on
+                // touchait aux deux.
+                val contextesPresents = uiState.availableContexts
+                if (contextesPresents.isNotEmpty()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -401,75 +406,29 @@ fun TaskListScreen(
                             .padding(horizontal = 16.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Chip "Toutes" - clear le filtre
                         FilterChip(
-                            selected = uiState.selectedCategoryIds.isEmpty(),
-                            onClick = { viewModel.clearCategoryFilter() },
-                            label = { Text(stringResource(R.string.task_list_filter_all_categories)) },
+                            selected = uiState.selectedContextIds.isEmpty(),
+                            onClick = { viewModel.clearContextFilter() },
+                            label = { Text(stringResource(R.string.task_list_filter_all_contexts)) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.primary,
                                 selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                             )
                         )
-
-                        // Chips pour chaque categorie qui contient au moins une tache.
-                        // Memoise pour eviter le O(catégories × taches) a chaque
-                        // recompose (changement de filtre, scroll, etc.).
-                        val categoriesWithTasks = remember(
-                            uiState.categories,
-                            uiState.tasks,
-                            uiState.selectedCategoryIds,
-                        ) {
-                            val taskCategoryIds = uiState.tasks.mapNotNullTo(mutableSetOf()) { it.task.categoryId }
-                            uiState.categories.filter { cat ->
-                                cat.id in taskCategoryIds || cat.id in uiState.selectedCategoryIds
-                            }
-                        }
-                        categoriesWithTasks.forEach { category ->
-                            val catColor = try {
-                                Color(android.graphics.Color.parseColor(category.color))
+                        contextesPresents.forEach { ctx ->
+                            val couleur = try {
+                                Color(android.graphics.Color.parseColor(ctx.color))
                             } catch (e: Exception) {
                                 MaterialTheme.colorScheme.primary
                             }
-
                             FilterChip(
-                                selected = category.id in uiState.selectedCategoryIds,
-                                onClick = { viewModel.toggleCategory(category.id) },
-                                label = { Text(category.name) },
+                                selected = ctx.id in uiState.selectedContextIds,
+                                onClick = { viewModel.toggleContextFilter(ctx.id) },
+                                label = { Text(ctx.label) },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = catColor,
+                                    selectedContainerColor = couleur,
                                     selectedLabelColor = Color.White
                                 )
-                            )
-                        }
-                    }
-                }
-
-                // Chips de filtrage par piece (depuis v0.6.0 : vraies entites Room
-                // avec emoji, plus du parsing string).
-                if (uiState.availableRooms.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilterChip(
-                            selected = uiState.selectedRoomId == null,
-                            onClick = { viewModel.selectRoom(null) },
-                            label = { Text(stringResource(R.string.task_list_filter_all_rooms)) }
-                        )
-                        uiState.availableRooms.forEach { room ->
-                            val label = if (!room.emoji.isNullOrBlank()) {
-                                "${room.emoji} ${room.name}"
-                            } else {
-                                room.name
-                            }
-                            FilterChip(
-                                selected = uiState.selectedRoomId == room.id,
-                                onClick = { viewModel.selectRoom(room.id) },
-                                label = { Text(label) }
                             )
                         }
                     }

@@ -1,7 +1,7 @@
 # Seeds
 
 Le bootstrap d'un nouveau foyer se fait via l'onboarding wizard de l'app
-Android (Create Foyer → Wizard 5 steps → pieces et taches importees via
+Android (Create Foyer → Wizard 4 steps → contextes et taches importes via
 `/api/catalog/*`). Aucun seed script n'est requis pour utiliser l'app.
 
 ## `personal/` (gitignored)

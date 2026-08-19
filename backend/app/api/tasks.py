@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -13,6 +15,8 @@ from app.auth import get_current_user
 from app.database import get_session
 from app.models.completion import TaskCompletion
 from app.models.sync import ChangeLog
+from app.models.context import Context, TaskContext
+from app.models.room import Room
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
 from app.models.task_frequency_vote import TaskFrequencyVote
@@ -39,10 +43,83 @@ async def _get_assigned_ids(session: AsyncSession, task_id: UUID) -> list[UUID]:
     return [row[0] for row in result.all()]
 
 
+
+async def load_contexts_for_tasks(
+    session: AsyncSession, task_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[dict]]:
+    """Ordered contexts per task, loaded in one query.
+
+    Batched on purpose: a per-task query would add one round trip per row to a
+    list endpoint that already pays one for completions.
+    """
+    if not task_ids:
+        return {}
+    rows = (await session.execute(
+        select(TaskContext.task_id, TaskContext.position, Context)
+        .join(Context, Context.id == TaskContext.context_id)
+        .where(TaskContext.task_id.in_(task_ids), Context.deleted_at.is_(None))
+        .order_by(TaskContext.task_id, TaskContext.position)
+    )).all()
+    par_tache: dict[uuid.UUID, list[dict]] = {}
+    for task_id, position, ctx in rows:
+        par_tache.setdefault(task_id, []).append({
+            "id": ctx.id, "name": ctx.name, "color": ctx.color,
+            "emoji": ctx.emoji, "position": position,
+        })
+    return par_tache
+
+
+async def replace_task_contexts(
+    session: AsyncSession,
+    task: Task,
+    context_ids: list[uuid.UUID],
+) -> None:
+    """Replace a task's attachments, preserving the order given.
+
+    Unknown or out-of-household ids are dropped rather than rejected: a client
+    that has just deleted a context offline would otherwise be unable to save
+    anything at all until it refreshes.
+
+    Also refreshes the legacy `room_id` from the primary context's twin room,
+    so a household member still on the shipped APK keeps seeing a location.
+    """
+    valides = (await session.execute(
+        select(Context.id, Context.name).where(
+            Context.id.in_(context_ids),
+            Context.foyer_id == task.foyer_id,
+            Context.deleted_at.is_(None),
+        )
+    )).all() if context_ids else []
+    noms = {cid: nom for cid, nom in valides}
+    ordonnes = [cid for cid in context_ids if cid in noms]
+
+    await session.execute(
+        delete(TaskContext).where(TaskContext.task_id == task.id)
+    )
+    for position, cid in enumerate(ordonnes):
+        session.add(TaskContext(
+            task_id=task.id, context_id=cid, position=position,
+        ))
+
+    # --- Double ecriture vers la piece heritee ---
+    if ordonnes:
+        jumelle = (await session.execute(
+            select(Room.id).where(
+                Room.foyer_id == task.foyer_id,
+                Room.deleted_at.is_(None),
+                Room.name == noms[ordonnes[0]],
+            )
+        )).scalar_one_or_none()
+        task.room_id = jumelle
+    else:
+        task.room_id = None
+
+
 async def _task_to_response(
     session: AsyncSession,
     task: Task,
     absent_days: int = 0,
+    contexts: list[dict] | None = None,
 ) -> dict:
     """Construit la reponse d'une tache avec ses assignments.
 
@@ -62,12 +139,15 @@ async def _task_to_response(
             )
         )
     ).scalar_one_or_none()
+    if contexts is None:
+        contexts = (await load_contexts_for_tasks(session, [task.id])).get(task.id, [])
     return {
         "id": task.id,
         "title": task.title,
         "description": task.description,
         "category_id": task.category_id,
         "room_id": task.room_id,
+        "contexts": contexts,
         "assigned_to_ids": assigned_ids,
         "recurrence_rule": task.recurrence_rule,
         "inferred_interval_days": task.inferred_interval_days,
@@ -124,9 +204,14 @@ async def list_tasks(
     absent_map = await compute_absent_days_for_tasks(
         session, current_foyer_uuid(current), tasks
     )
+    ctx_map = await load_contexts_for_tasks(session, [t.id for t in tasks])
 
     return [
-        await _task_to_response(session, t, absent_days=absent_map.get(t.id, 0))
+        await _task_to_response(
+            session, t,
+            absent_days=absent_map.get(t.id, 0),
+            contexts=ctx_map.get(t.id, []),
+        )
         for t in tasks
     ]
 
@@ -169,6 +254,9 @@ async def create_task(
     )
     session.add(task)
     await session.flush()
+
+    if body.context_ids is not None:
+        await replace_task_contexts(session, task, body.context_ids)
 
     # Creer les assignments
     for uid in body.assigned_to_ids:
@@ -225,6 +313,10 @@ async def update_task(
         raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     updates = body.model_dump(exclude_unset=True)
+    # `context_ids` ne correspond a aucune colonne de Task : il se retire de
+    # `updates` avant la boucle de setattr, sinon elle poserait un attribut
+    # fantome sur le modele et l'historique afficherait un champ inexistant.
+    nouveaux_contextes = updates.pop("context_ids", None)
 
     # Snapshot de l'etat avant mutation (uniquement pour les champs effectivement
     # modifies). Permet a l'historique d'afficher "ancien -> nouveau".
@@ -318,6 +410,8 @@ async def update_task(
         old_data=old_data,
         new_data=body.model_dump(mode="json", exclude_unset=True),
     )
+    if nouveaux_contextes is not None:
+        await replace_task_contexts(session, task, nouveaux_contextes)
     await session.commit()
     await session.refresh(task)
     return await _task_to_response(session, task)

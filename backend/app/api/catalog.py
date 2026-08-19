@@ -34,11 +34,12 @@ from app.auth import get_current_user
 from app.database import get_session
 from app.models.category import Category
 from app.models.enums import TaskTolerance
+from app.models.context import Context, TaskContext
 from app.models.room import Room
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
 from app.models.user_foyer import UserFoyer
-from app.services.catalog import Catalog, get_catalog, pick_locale
+from app.services.catalog import Catalog, get_catalog, pick_locale, CatalogTask
 from app.utils.locale import get_request_locale
 from app.utils.scoping import current_foyer_uuid
 
@@ -238,6 +239,52 @@ def _resolve_category(
 # --- Endpoints ---
 
 
+
+def _implicit_keys(catalog: Catalog) -> set[str]:
+    """Contextes que tout foyer a (menage, linge, entretien) : jamais demandes."""
+    return {c.key for c in catalog.contexts if not c.selectable}
+
+
+def kept_context_keys(
+    task: CatalogTask, chosen: set[str], implicit: set[str]
+) -> list[str]:
+    """Contextes a rattacher a cette tache, dans l'ordre du catalogue.
+
+    Une tache en declare souvent plus que le foyer n'en possede : « Faire les
+    comptes communs » porte [colocation, administratif], et un foyer d'une
+    personne ne doit pas heriter d'un contexte Colocation qu'il n'a jamais
+    coche. On ne garde donc que ce que l'utilisateur a choisi, plus les
+    implicites.
+
+    Le repli sur le premier declare ne sert qu'a ne jamais laisser une tache
+    orpheline : sans contexte, elle sortirait de tous les filtres.
+    """
+    kept = [k for k in task.contexts if k in implicit or k in chosen]
+    return kept or list(task.contexts[:1])
+
+
+def legacy_room_key(catalog: Catalog, kept: list[str]) -> str | None:
+    """Piece heritee correspondante : le premier contexte selectionnable retenu.
+
+    Compatibilite avec l'APK diffuse, qui lit encore `tasks.room_id`. A retirer
+    avec le reste du shim.
+    """
+    for k in kept:
+        ctx = catalog.context_by_key(k)
+        if ctx is not None and ctx.selectable:
+            return k
+    return None
+
+
+def legacy_category_key(catalog: Catalog, kept: list[str]) -> str | None:
+    """Categorie heritee correspondante : le premier contexte implicite retenu."""
+    for k in kept:
+        ctx = catalog.context_by_key(k)
+        if ctx is not None and not ctx.selectable:
+            return k
+    return None
+
+
 @router.get("", response_model=CatalogView)
 async def get_catalog_endpoint(
     locale: str = Depends(get_request_locale),
@@ -252,35 +299,121 @@ async def get_catalog_endpoint(
     l'onboarding public (etape Pieces en chargement infini sur 401) —
     bug remonte par la beta dogfood Scaleway le 2026-05-15. Les endpoints
     /import/* restent authentifies (ils ecrivent dans un foyer)."""
+    # COMPATIBILITE — cette reponse garde la forme rooms/categories que l'APK
+    # diffuse attend. Le catalogue ne connait plus que des contextes : on les
+    # projette, les selectionnables passant pour des pieces et les implicites
+    # pour des categories. Un chat apparait donc comme une « piece » dans
+    # l'ancien client : c'est etrange mais fonctionnel, la ou changer la forme
+    # casserait son wizard (ecran Pieces en chargement infini).
+    #
+    # Le nouveau client lit /api/catalog/contexts. A retirer une fois l'ancien
+    # APK hors circulation.
     catalog = get_catalog()
+    implicites = {c.key for c in catalog.contexts if not c.selectable}
     return CatalogView(
         rooms=[
-            CatalogRoomView(
-                key=r.key,
-                name=pick_locale(r.name, locale),
-                emoji=r.emoji,
-            )
-            for r in catalog.rooms
+            CatalogRoomView(key=c.key, name=pick_locale(c.name, locale), emoji=c.emoji)
+            for c in catalog.contexts if c.selectable
         ],
         categories=[
             CatalogCategoryView(
                 key=c.key,
                 name=pick_locale(c.name, locale),
                 color=c.color,
-                requires_home=c.requires_home,
+                requires_home=c.requires_presence,
             )
-            for c in catalog.categories
+            for c in catalog.contexts if not c.selectable
         ],
         tasks=[
             CatalogTaskView(
                 key=t.key,
                 title=pick_locale(t.title, locale),
                 description=pick_locale(t.description, locale) if t.description else None,
+                # Le premier contexte implicite fait office de categorie, le
+                # premier selectionnable de piece — l'ancien client n'en
+                # accepte qu'un de chaque.
                 default_category_key=t.default_category_key,
                 default_room_key=t.default_room_key,
                 default_weight=t.default_weight,
                 default_recurrence=t.default_recurrence,
                 default_tolerance=t.default_tolerance,
+            )
+            for t in catalog.tasks
+        ],
+    )
+
+
+class CatalogContextView(BaseModel):
+    key: str
+    name: str
+    color: str
+    emoji: str | None = None
+    #: False = contexte implicite (menage, linge...). Jamais propose a
+    #: l'etape 3 : « faites-vous du menage ? » n'a pas de sens.
+    selectable: bool
+    default_selected: bool
+    requires_presence: bool
+    accrues_when_away: bool
+
+
+class CatalogTaskContextView(BaseModel):
+    key: str
+    title: str
+    description: str | None = None
+    #: Ordre significatif : le premier declare est le principal.
+    contexts: list[str]
+    default_weight: int
+    default_recurrence: dict | None = None
+    default_tolerance: str
+    default_selected: bool
+
+
+class CatalogContextsView(BaseModel):
+    contexts: list[CatalogContextView]
+    tasks: list[CatalogTaskContextView]
+
+
+@router.get("/contexts", response_model=CatalogContextsView)
+async def get_catalog_contexts(
+    locale: str = Depends(get_request_locale),
+):
+    """Catalogue sous sa forme contextes — ce que lit le wizard refondu.
+
+    **Public (pas d'auth)**, pour la meme raison que `GET /api/catalog` : le
+    wizard « Creer un foyer » lit le catalogue AVANT la creation du foyer,
+    donc avant l'emission du JWT. Exiger l'auth ici remettrait l'etape en
+    chargement infini sur 401, bug deja paye le 2026-05-15.
+
+    Le client n'a pas a filtrer : il recoit tout, et decide quoi montrer selon
+    les contextes coches. La regle de visibilite (une tache apparait si l'un de
+    ses contextes SELECTIONNABLES est coche) est documentee dans
+    `Catalog.tasks_for` cote serveur et rejouee a l'identique cote client.
+    """
+    catalog = get_catalog()
+    return CatalogContextsView(
+        contexts=[
+            CatalogContextView(
+                key=c.key,
+                name=pick_locale(c.name, locale),
+                color=c.color,
+                emoji=c.emoji,
+                selectable=c.selectable,
+                default_selected=c.default_selected,
+                requires_presence=c.requires_presence,
+                accrues_when_away=c.accrues_when_away,
+            )
+            for c in catalog.contexts
+        ],
+        tasks=[
+            CatalogTaskContextView(
+                key=t.key,
+                title=pick_locale(t.title, locale),
+                description=pick_locale(t.description, locale) if t.description else None,
+                contexts=list(t.contexts),
+                default_weight=t.default_weight,
+                default_recurrence=t.default_recurrence,
+                default_tolerance=t.default_tolerance,
+                default_selected=t.default_selected,
             )
             for t in catalog.tasks
         ],
@@ -307,14 +440,22 @@ async def resolve_import(
     # Collect rooms/categories necessaires : selectionnees + referencees par tasks
     needed_room_keys: set[str] = set(body.room_keys)
     needed_cat_keys: set[str] = set(body.category_keys)
+    chosen = set(body.room_keys) | set(body.category_keys)
+    implicit = _implicit_keys(catalog)
     for tk in body.task_keys:
         task = catalog.task_by_key(tk)
         if task is None:
             continue
-        if task.default_room_key:
-            needed_room_keys.add(task.default_room_key)
-        if task.default_category_key:
-            needed_cat_keys.add(task.default_category_key)
+        # La piece deduite de la tache n'est proposee que si elle fait partie
+        # des contextes coches : sinon le client en ferait une decision
+        # « create » et l'import recreerait un contexte jamais demande.
+        kept = kept_context_keys(task, chosen, implicit)
+        room_key = legacy_room_key(catalog, kept)
+        if room_key:
+            needed_room_keys.add(room_key)
+        cat_key = legacy_category_key(catalog, kept)
+        if cat_key:
+            needed_cat_keys.add(cat_key)
 
     existing_rooms = await _existing_rooms(session, foyer_id)
     existing_cats = await _existing_categories(session, foyer_id)
@@ -442,18 +583,71 @@ async def apply_import(
             # même nom -> viol. uq_categories_name_foyer -> 500.
             existing_cats.append(new_cat)
 
+    # --- Contextes ---
+    # Ecriture en double avec rooms/categories : l'APK diffuse lit encore les
+    # anciennes tables, le nouveau lira celles-ci. On cree un contexte par
+    # template touche par l'import, en reprenant ses deux drapeaux du
+    # catalogue plutot que de les deviner.
+    ctx_key_to_id: dict[str, uuid.UUID] = {}
+    chosen_ctx: set[str] = set(body.room_keys) | set(body.category_keys)
+    chosen_ctx.update(d.template_key for d in body.room_decisions if d.template_key)
+    chosen_ctx.update(d.template_key for d in body.category_decisions if d.template_key)
+    implicit_ctx = _implicit_keys(catalog)
+
+    def kept_contexts(tpl: CatalogTask) -> list[str]:
+        return kept_context_keys(tpl, chosen_ctx, implicit_ctx)
+
+    touched_ctx: set[str] = set(chosen_ctx)
+    for tk in body.task_keys:
+        tpl = catalog.task_by_key(tk)
+        if tpl is not None:
+            touched_ctx.update(kept_contexts(tpl))
+
+    existing_ctx = (await session.execute(
+        select(Context).where(Context.foyer_id == foyer_id)
+    )).scalars().all()
+    by_name = {c.name.strip().lower(): c for c in existing_ctx}
+    by_template = {c.template_key: c for c in existing_ctx if c.template_key}
+
+    for key in sorted(touched_ctx):
+        tpl_ctx = catalog.context_by_key(key)
+        if tpl_ctx is None:
+            continue
+        name = pick_locale(tpl_ctx.name, locale)
+        # Reutiliser un contexte deja present, par template puis par nom : un
+        # second import ne doit pas dupliquer « Cuisine ».
+        found = by_template.get(key) or by_name.get(name.strip().lower())
+        if found is not None:
+            ctx_key_to_id[key] = found.id
+            continue
+        new_ctx = Context(
+            foyer_id=foyer_id,
+            name=name,
+            color=tpl_ctx.color,
+            emoji=tpl_ctx.emoji,
+            requires_presence=tpl_ctx.requires_presence,
+            accrues_when_away=tpl_ctx.accrues_when_away,
+            template_key=key,
+        )
+        session.add(new_ctx)
+        await session.flush()
+        ctx_key_to_id[key] = new_ctx.id
+        by_name[name.strip().lower()] = new_ctx
+        by_template[key] = new_ctx
+
     # Enfin : les tasks
     for tk in body.task_keys:
         template = catalog.task_by_key(tk)
         if template is None:
             skipped += 1
             continue
-        room_id = None
-        if template.default_room_key:
-            room_id = room_key_to_id.get(template.default_room_key)
-        cat_id = None
-        if template.default_category_key:
-            cat_id = cat_key_to_id.get(template.default_category_key)
+        kept = kept_contexts(template)
+        # Piece/categorie heritees : deduites du rattachement RETENU et non du
+        # catalogue brut, sinon elles pointeraient vers un contexte ecarte.
+        room_key = legacy_room_key(catalog, kept)
+        room_id = room_key_to_id.get(room_key) if room_key else None
+        cat_key = legacy_category_key(catalog, kept)
+        cat_id = cat_key_to_id.get(cat_key) if cat_key else None
         try:
             tolerance = TaskTolerance(template.default_tolerance)
         except ValueError:
@@ -472,6 +666,15 @@ async def apply_import(
         )
         session.add(new_task)
         await session.flush()
+
+        # Rattachements : l'ordre du catalogue est conserve dans `position`,
+        # c'est lui qui designe le contexte principal.
+        for position, ctx_key in enumerate(kept):
+            ctx_id = ctx_key_to_id.get(ctx_key)
+            if ctx_id is not None:
+                session.add(TaskContext(
+                    task_id=new_task.id, context_id=ctx_id, position=position,
+                ))
         # Assigne l'user courant par defaut (comportement du CRUD existant)
         session.add(TaskAssignment(task_id=new_task.id, user_id=user_id))
         created_tasks += 1

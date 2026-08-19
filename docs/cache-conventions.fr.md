@@ -79,7 +79,7 @@ JSONB (`7.0`) casse le parsing → recurrence ignorée → urgence fausse
 `op.data` brut.
 
 ➡️ **Règle : toute écriture serveur de `recurrence_rule` issue du client
-passe par `normalize_recurrence_rule()`** (`app/services/recurrence.py`) qui
+passe par `normalize_recurrence_rule()`** (`backend/app/services/recurrence.py`) qui
 force les champs numériques en int. Appliqué dans `sync.py:_handle_task`
 (INSERT + UPDATE). ❌ Ne jamais faire `setattr(row, "recurrence_rule",
 op.data[...])` brut. Tout nouveau chemin d'écriture (import catalogue,

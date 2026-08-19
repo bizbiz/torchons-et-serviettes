@@ -35,6 +35,7 @@ from app.services.bonus_malus import (
     compute_bonus_malus_for_completion,
     resolve_stored_reason_and_mult,
 )
+from app.api.tasks import replace_task_contexts
 from app.services.recurrence import normalize_recurrence_rule
 from app.utils.changelog import record_change
 
@@ -247,6 +248,10 @@ async def _handle_task(
         await session.flush()
         for uid in data.get("assigned_to_ids", []):
             session.add(TaskAssignment(task_id=task.id, user_id=uuid.UUID(uid)))
+        if data.get("context_ids") is not None:
+            await replace_task_contexts(
+                session, task, [uuid.UUID(c) for c in data["context_ids"]]
+            )
         return task.id
 
     if op.operation == "UPDATE":
@@ -274,6 +279,13 @@ async def _handle_task(
                 )
                 for uid in val:
                     session.add(TaskAssignment(task_id=op.row_id, user_id=uuid.UUID(uid)))
+            elif key == "context_ids":
+                # Pas une colonne de Task : sans cette branche, le `hasattr`
+                # plus bas la laisserait tomber en silence et une edition faite
+                # hors ligne perdrait ses rattachements a la reconnexion.
+                await replace_task_contexts(
+                    session, row, [uuid.UUID(c) for c in (val or [])]
+                )
             elif key == "recurrence_rule":
                 setattr(row, key, normalize_recurrence_rule(val))
             elif hasattr(row, key):

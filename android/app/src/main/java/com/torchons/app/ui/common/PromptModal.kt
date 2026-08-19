@@ -43,6 +43,10 @@ import com.torchons.app.data.model.UserPrompt
  *   qui doit fetch /frequency-votes et ouvrir FrequencyVoteDialog avec
  *   le bandeau "X t'a demande de revoter" (requesterName du context).
  * - VOTE_EFFORT (v0.28) : pareil avec EffortVoteDialog.
+ * - DISCOVER_MODULE (P4) : propose d'activer un module. Seul type
+ *   qui ne demande pas une info mais propose d'elargir le perimetre,
+ *   et seul a etre entierement self-contained (aucun callback vers un
+ *   autre ecran : accepter suffit, le backend active).
  */
 @Composable
 fun PromptModal(
@@ -53,6 +57,10 @@ fun PromptModal(
     onOpenPresenceCalendar: () -> Unit = {},
     onOpenFrequencyVote: (taskId: String, requesterName: String) -> Unit = { _, _ -> },
     onOpenEffortVote: (taskId: String, requesterName: String) -> Unit = { _, _ -> },
+    /** P4 — l'user accepte la proposition : le backend active le module. */
+    onAcceptModule: () -> Unit = {},
+    /** P4 — l'user refuse. Le module reste joignable dans Reglages. */
+    onDeclineModule: () -> Unit = {},
 ) {
     when (prompt.type) {
         "BUMP_EFFORT" -> BumpEffortDialog(
@@ -85,6 +93,11 @@ fun PromptModal(
             val requester = prompt.context["requester_name"]?.toString() ?: "?"
             onOpenEffortVote(taskId, requester)
         }
+        "DISCOVER_MODULE" -> DiscoverModuleDialog(
+            prompt = prompt,
+            onAccept = onAcceptModule,
+            onDecline = onDeclineModule,
+        )
         else -> onDismiss()  // type inconnu — fermer
     }
 }
@@ -210,5 +223,86 @@ private fun BumpEffortDialog(
             }
         },
         dismissButton = {},
+    )
+}
+
+/**
+ * P4 — proposition d'activer un module, declenchee par un signal reel.
+ *
+ * Tout le texte vient du `context` du prompt, fige a la creation cote serveur
+ * depuis modules.yaml. Rien n'est recalcule ici : c'est la convention de la
+ * queue, et c'est ce qui garantit que la proposition dit exactement ce que
+ * disait le module au moment ou le signal a eu lieu.
+ *
+ * Deux issues seulement, et pas de "plus tard" : le budget s'en charge deja
+ * (une proposition par semaine, silence de 30 jours apres un refus, abandon au
+ * second). Ajouter un troisieme bouton reporterait une decision que le
+ * mecanisme reporte deja tout seul.
+ */
+@Composable
+private fun DiscoverModuleDialog(
+    prompt: UserPrompt,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit,
+) {
+    val ctx = prompt.context
+    val title = ctx["title"]?.toString().orEmpty()
+    val pitch = ctx["pitch"]?.toString().orEmpty()
+    val details = ctx["details"]?.toString().orEmpty()
+    val example = ctx["example"]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+
+    AlertDialog(
+        onDismissRequest = onDecline,
+        title = {
+            Column {
+                Text(
+                    text = stringResource(R.string.discover_module_overline),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = title, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column {
+                if (pitch.isNotBlank()) {
+                    Text(text = pitch, style = MaterialTheme.typography.bodyMedium)
+                }
+                if (details.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = details,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (example != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = example,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = stringResource(R.string.discover_module_reassurance),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onAccept) {
+                Text(stringResource(R.string.discover_module_accept))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDecline) {
+                Text(stringResource(R.string.discover_module_decline))
+            }
+        },
     )
 }

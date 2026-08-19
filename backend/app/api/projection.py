@@ -46,6 +46,7 @@ from app.services.recurrence import (
     compute_urgency_state,
     interval_hours,
     is_uncertain,
+    grace_days_of,
 )
 from app.utils.scoping import current_foyer_uuid
 
@@ -231,7 +232,7 @@ async def get_retard(
             home_freeze_enabled=freeze_enabled,
             absent_days=absent_days_map.get(task.id, 0),
         )
-        if compute_urgency_state(due_date, eff_today, nominal) != UrgencyState.RED:
+        if compute_urgency_state(due_date, eff_today, nominal, grace_days_of(task.recurrence_rule)) != UrgencyState.RED:
             continue
         minutes = _task_minutes(task)
         total_minutes += minutes

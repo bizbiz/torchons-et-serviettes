@@ -76,6 +76,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
+import com.torchons.app.ui.common.Modules
+import com.torchons.app.ui.common.moduleEnabled
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.Room
@@ -277,6 +279,19 @@ fun HomeScreen(
             onOpenEffortVote = { taskId, requester ->
                 viewModel.openEffortVoteFromPrompt(taskId, requester)
             },
+            // P4 — accepter suffit : c'est le backend qui active le module, sur
+            // le meme appel que la resolution. Deux allers-retours laisseraient
+            // une fenetre ou le prompt est resolu et le module toujours eteint.
+            onAcceptModule = {
+                viewModel.resolveCurrentPrompt("ANSWERED", mapOf("accepted" to true))
+            },
+            onDeclineModule = {
+                // `declined` marque un refus VU par quelqu'un. Sans lui, le
+                // serveur ne le compte pas dans le budget — c'est ce qui
+                // protege les clients qui ne connaissent pas encore ce type
+                // de prompt et le resolvent sans rien afficher.
+                viewModel.resolveCurrentPrompt("DISMISSED", mapOf("declined" to true))
+            },
         )
     }
 
@@ -422,6 +437,8 @@ fun HomeScreen(
         }
 
         // 2 cards projection (v0.8.0 magic buttons)
+        // P3 — retard, rythme et objectif appartiennent au module `objectives`.
+        if (moduleEnabled(Modules.OBJECTIVES)) {
         ProjectionCardsRow(
             pace = uiState.pace,
             retard = uiState.retard,
@@ -430,6 +447,7 @@ fun HomeScreen(
             onMoiClick = { showProjectionDialog = true },
             onFoyerClick = onFoyerClick,
         )
+        }
 
         // Suggestions (titre retire v0.8.0 — evident que c'est des suggestions)
         // Filtrage + tampon : on filtre les suggestions recemment completees

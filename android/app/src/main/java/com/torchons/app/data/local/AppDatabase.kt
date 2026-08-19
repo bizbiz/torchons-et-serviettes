@@ -18,6 +18,8 @@ import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.RoomEntity
 import com.torchons.app.data.local.entities.TaskEntity
 import com.torchons.app.data.local.entities.TaskHistoryEntity
+import com.torchons.app.data.local.dao.ContextDao
+import com.torchons.app.data.local.entities.ContextEntity
 import com.torchons.app.data.local.entities.UserEntity
 import com.torchons.app.data.local.entities.ViewSnapshotEntity
 
@@ -31,8 +33,9 @@ import com.torchons.app.data.local.entities.ViewSnapshotEntity
         PendingOperationEntity::class,
         TaskHistoryEntity::class,
         RoomEntity::class,
+        ContextEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -45,4 +48,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun pendingOperationDao(): PendingOperationDao
     abstract fun taskHistoryDao(): TaskHistoryDao
     abstract fun roomDao(): RoomDao
+    abstract fun contextDao(): ContextDao
 }

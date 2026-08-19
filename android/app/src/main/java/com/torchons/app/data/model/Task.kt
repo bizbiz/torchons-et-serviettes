@@ -19,6 +19,9 @@ data class Task(
     @SerializedName("description") val description: String? = null,
     @SerializedName("category_id") val categoryId: String? = null,
     @SerializedName("room_id") val roomId: String? = null,
+    /** Rattachements ordonnes : l'index 0 est le contexte principal. Vide pour
+     *  une tache creee avant le chantier contextes et jamais rouverte. */
+    @SerializedName("contexts") val contexts: List<TaskContextRef> = emptyList(),
     @SerializedName("assigned_to_ids") val assignedToIds: List<String> = emptyList(),
     @SerializedName("recurrence_rule") val recurrenceRule: RecurrenceRule? = null,
     // v0.14 : cadence inferee pour les recurrences de type "uncertain" (null tant
@@ -57,6 +60,7 @@ data class CreateTaskRequest(
     @SerializedName("description") val description: String? = null,
     @SerializedName("category_id") val categoryId: String? = null,
     @SerializedName("room_id") val roomId: String? = null,
+    @SerializedName("context_ids") val contextIds: List<String>? = null,
     @SerializedName("assigned_to_ids") val assignedToIds: List<String>,
     @SerializedName("recurrence_rule") val recurrenceRule: RecurrenceRule? = null,
     @SerializedName("weight") val weight: Int = 1,
@@ -71,6 +75,8 @@ data class UpdateTaskRequest(
     @SerializedName("description") val description: String? = null,
     @SerializedName("category_id") val categoryId: String? = null,
     @SerializedName("room_id") val roomId: String? = null,
+    /** Remplacement complet quand present ; omis = rattachements inchanges. */
+    @SerializedName("context_ids") val contextIds: List<String>? = null,
     @SerializedName("assigned_to_ids") val assignedToIds: List<String>? = null,
     @SerializedName("recurrence_rule") val recurrenceRule: RecurrenceRule? = null,
     @SerializedName("weight") val weight: Int? = null,
@@ -94,4 +100,14 @@ data class RecurrenceRule(
     @SerializedName("type") val type: String,
     @SerializedName("every_n_days") val everyNDays: Int? = null,
     @SerializedName("days_per_month") val daysPerMonth: Map<String, Int>? = null,
+    /** `calendar` : mois ou la tache devient due (1..12). */
+    @SerializedName("months") val months: List<Int>? = null,
+    /** `calendar` : jour dans le mois, borne a 28. */
+    @SerializedName("day") val day: Int? = null,
+    /**
+     * `calendar` : jours de tolerance APRES l'echeance avant le rouge. C'est
+     * ce qui distingue « mai-aout » (une occurrence toleree tout l'ete) de
+     * « avril & octobre » (deux occurrences).
+     */
+    @SerializedName("grace_days") val graceDays: Int? = null,
 )

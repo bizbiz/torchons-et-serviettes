@@ -25,6 +25,14 @@ from app.models.task import Task
 from app.utils.errors import LocalizedHTTPException
 from app.models.task_effort import TaskEffort
 from app.models.user_prompt import UserPrompt
+from app.models.foyer import Foyer
+from app.models.module_state import ModuleState
+from app.services.modules import (
+    PROMPT_TYPE_MODULE,
+    get_registry,
+    resolve_states,
+    unmet_requirements,
+)
 from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api", tags=["prompts"])
@@ -84,15 +92,44 @@ async def get_next_prompt(
     foyer_uuid = current_foyer_uuid(current)
     now = datetime.now(timezone.utc)
 
+    # Filtre module : un prompt dont le module a ete eteint ne doit plus etre
+    # servi. Les generateurs ont deja leur garde, mais elle ne dit rien de la
+    # file DEJA constituee au moment ou l'on coupe — et c'est justement ce
+    # stock qui produirait la pire experience : couper une fonctionnalite puis
+    # continuer a etre interroge par elle.
+    states = await resolve_states(session, foyer_uuid, user_id)
+    muted = [
+        prompt_type
+        for prompt_type, module_key in PROMPT_TYPE_MODULE.items()
+        if not states.get(module_key, False)
+    ]
+    # DISCOVER_MODULE (P4) suit la regle INVERSE : on ne propose que ce qui est
+    # eteint. Un module active entre la creation du prompt et sa lecture — par
+    # l'autre membre, ou depuis Reglages — rend la proposition caduque, et
+    # proposer d'activer ce qui l'est deja est le ridicule le plus previsible
+    # du mecanisme.
+    already_on = [
+        key for key, enabled in states.items() if enabled
+    ]
+
+    conditions = [
+        UserPrompt.user_id == user_id,
+        UserPrompt.foyer_id == foyer_uuid,
+        UserPrompt.resolved_at.is_(None),
+        # Exclure les expires
+        (UserPrompt.expires_at.is_(None)) | (UserPrompt.expires_at > now),
+    ]
+    if muted:
+        conditions.append(UserPrompt.type.notin_(muted))
+    if already_on:
+        conditions.append(
+            (UserPrompt.type != PromptType.DISCOVER_MODULE)
+            | (UserPrompt.context["module_key"].astext.notin_(already_on))
+        )
+
     result = await session.execute(
         select(UserPrompt)
-        .where(
-            UserPrompt.user_id == user_id,
-            UserPrompt.foyer_id == foyer_uuid,
-            UserPrompt.resolved_at.is_(None),
-            # Exclure les expires
-            (UserPrompt.expires_at.is_(None)) | (UserPrompt.expires_at > now),
-        )
+        .where(*conditions)
         .order_by(UserPrompt.priority.desc(), UserPrompt.created_at.asc())
         .limit(1)
     )
@@ -197,6 +234,63 @@ async def resolve_prompt(
 
     elif prompt.type == PromptType.RESOLVE_PRESENCE and resolution == "ANSWERED":
         await _handle_resolve_presence(session, foyer_uuid, user_id, payload)
+
+    elif prompt.type == PromptType.DISCOVER_MODULE and resolution == "DISMISSED":
+        # Un refus ne compte dans le budget que s'il est EXPLICITE, c'est-a-dire
+        # si le client a affiche la proposition et que quelqu'un a dit non. Un
+        # client qui ignore ce type de prompt le resout en DISMISSED sans rien
+        # montrer : le compter brulerait un des deux refus d'un module que
+        # personne n'a vu proposer.
+        if payload.get("declined"):
+            ctx = dict(prompt.context or {})
+            ctx["declined"] = True
+            prompt.context = ctx
+
+    elif prompt.type == PromptType.DISCOVER_MODULE and resolution == "ANSWERED":
+        # Accepter une proposition ACTIVE le module, ici et non par un second
+        # appel du client : deux allers-retours pour un seul geste, c'est un
+        # etat intermediaire ou le prompt est resolu et le module toujours
+        # eteint, avec un reseau qui peut tomber entre les deux.
+        module_key = prompt.context.get("module_key")
+        module = get_registry().by_key(module_key) if module_key else None
+        if module is not None:
+            states = await resolve_states(session, foyer_uuid, user_id)
+            # Les dependances restent souveraines : une proposition ne doit
+            # pas etre un chemin detourne pour allumer ce que PUT /modules
+            # refuserait.
+            if not unmet_requirements(module, states):
+                row_user_id = None if module.is_collective else user_id
+                existing = await session.execute(
+                    select(ModuleState).where(
+                        ModuleState.foyer_id == foyer_uuid,
+                        ModuleState.module_key == module.key,
+                        ModuleState.user_id.is_(None)
+                        if row_user_id is None
+                        else ModuleState.user_id == row_user_id,
+                    )
+                )
+                state = existing.scalar_one_or_none()
+                now = datetime.now(timezone.utc)
+                if state is None:
+                    session.add(
+                        ModuleState(
+                            foyer_id=foyer_uuid,
+                            user_id=row_user_id,
+                            module_key=module.key,
+                            enabled=True,
+                            enabled_at=now,
+                            updated_by_user_id=user_id,
+                        )
+                    )
+                else:
+                    state.enabled = True
+                    state.enabled_at = now
+                    state.updated_by_user_id = user_id
+                # Miroir legacy, tant que l'APK diffuse lit encore la colonne.
+                if module.key == "motivation":
+                    foyer = await session.get(Foyer, foyer_uuid)
+                    if foyer is not None:
+                        foyer.gamification_enabled = True
 
     await session.commit()
     return {"ok": True}

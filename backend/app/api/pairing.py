@@ -26,6 +26,7 @@ from app.models.pairing_token import PairingToken
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
 from app.utils.errors import LocalizedHTTPException
+from app.services.module_discovery import propose_module
 from app.utils.recovery_code import generate_code, hash_code
 
 router = APIRouter(prefix="/api/pairing", tags=["pairing"])
@@ -303,6 +304,17 @@ async def join_pairing(
     recovery_code = generate_code()
     new_user.recovery_code_hash = hash_code(recovery_code)
     pt.consumed_at = now
+
+    # P4 — signal le plus fiable du dispositif : jusqu'ici le foyer etait solo,
+    # donc la repartition n'avait litteralement rien a repartir. Elle prend un
+    # sens a la seconde ou quelqu'un arrive. Fire-and-forget : une proposition
+    # refusee par le budget ne doit pas faire echouer l'adhesion.
+    try:
+        await propose_module(
+            session, pt.foyer_id, "repartition", reason="second_member_joined"
+        )
+    except Exception:  # noqa: BLE001 - la proposition n'est jamais critique
+        pass
 
     await session.commit()
     await session.refresh(new_user)

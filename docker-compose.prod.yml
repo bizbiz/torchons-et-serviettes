@@ -11,10 +11,11 @@
 #   - backend/firebase-key.json present (scp depuis poste dev) — gitignored
 #   - DNS api.torchonsetserviettes.app -> IP serveur (pour le TLS Caddy)
 #
-# Variante BETA (backend + DB separes, cf. docs/audit-roadmap-vs-code.md) :
-# dupliquer ce fichier en docker-compose.beta.yml avec project name distinct
-# (`-p ts-beta`), volume `ts_pgdata_beta`, .env.beta, et le vhost
-# beta-api.* deja present (commente) dans le Caddyfile.
+# Variante BETA : FAITE le 2026-08-17, voir `docker-compose.beta.yml`. Elle
+# tourne sur <beta-host> et non sur cette VM, donc sans Caddy ni TLS — le tailnet
+# chiffre deja, et un certificat exigerait un DNS public. Le vhost beta-api.*
+# commente dans le Caddyfile ne sert donc que si la beta revient un jour sur
+# Scaleway.
 
 services:
   db:

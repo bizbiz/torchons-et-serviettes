@@ -32,6 +32,7 @@ from app.services.recurrence import (
     compute_nominal_interval_days,
     compute_urgency_state,
     is_uncertain,
+    grace_days_of,
 )
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
@@ -1084,7 +1085,7 @@ async def get_suggestions(
             absent_days=task_absent_days,
         )
 
-        state = compute_urgency_state(due_date, eff_today, nominal)
+        state = compute_urgency_state(due_date, eff_today, nominal, grace_days_of(task.recurrence_rule))
         days_until = compute_days_until_due(due_date, eff_today)
         if days_until is None:
             # Ponctuelle deja faite — n'apparait pas dans les suggestions.

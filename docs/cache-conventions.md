@@ -77,7 +77,7 @@ stores raw `op.data`.
 
 ➡️ **Rule: every server-side write of a client-provided
 `recurrence_rule` goes through `normalize_recurrence_rule()`**
-(`app/services/recurrence.py`), which forces numeric fields to int.
+(`backend/app/services/recurrence.py`), which forces numeric fields to int.
 Applied in `sync.py:_handle_task` (INSERT + UPDATE). ❌ Never do
 `setattr(row, "recurrence_rule", op.data[...])` raw. Any new server-side
 write path (catalog import, migration, script) that sets a

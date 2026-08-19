@@ -32,7 +32,14 @@ from app.models.presence_day import PresenceDay
 from app.models.task import Task
 from app.models.user_foyer import UserFoyer
 from app.models.user_prompt import UserPrompt
+from app.services.module_discovery import propose_module
+from app.services.presence import count_absent_days_since
 from app.utils.scoping import current_foyer_uuid
+
+#: Nombre de jours absents sur les 15 derniers qui declenche la proposition
+#: du module Absences. Trois jours, c'est le seuil ou "on etait partis" cesse
+#: d'etre une exception et commence a peser sur les taches.
+ABSENCE_PROPOSAL_THRESHOLD_DAYS = 3
 
 router = APIRouter(prefix="/api", tags=["presence"])
 
@@ -308,6 +315,27 @@ async def checkin(
     # 3. Generer un prompt RESOLVE_PRESENCE si des jours sont incertains
     if uncertain:
         await _ensure_resolve_prompt(session, foyer_uuid, uncertain, today)
+
+    # 4. P4 — proposer le module Absences si le foyer revient d'une absence.
+    #
+    # Le declenchement se fait AU RETOUR et non pendant : proposer une
+    # fonctionnalite de gestion d'absence a quelqu'un qui est justement absent,
+    # c'est l'interruption en vacances que tout le chantier cherche a eviter.
+    # Le check-in WiFi est precisement le signal "on est rentres".
+    #
+    # Les jours de presence continuent d'etre enregistres module eteint — c'est
+    # une donnee qui s'accumule, pas une interruption (decision 1). C'est ce
+    # qui rend la detection possible ici.
+    try:
+        absent_days = await count_absent_days_since(
+            session, foyer_uuid, today - timedelta(days=15), today
+        )
+        if absent_days >= ABSENCE_PROPOSAL_THRESHOLD_DAYS:
+            await propose_module(
+                session, foyer_uuid, "presence", reason="absence_detected"
+            )
+    except Exception:  # noqa: BLE001 - une proposition ne casse jamais un check-in
+        pass
 
     await session.commit()
     return {"ok": True}

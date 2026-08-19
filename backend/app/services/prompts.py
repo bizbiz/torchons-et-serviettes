@@ -30,6 +30,8 @@ from app.services.bonus_malus import (
     compute_grace_until,
     load_or_create_bonus_config,
 )
+from app.services.module_discovery import propose_module
+from app.services.modules import is_module_enabled
 from app.services.recurrence import interval_hours, is_uncertain
 
 
@@ -44,6 +46,14 @@ async def generate_bump_prompts(
     Appele apres chaque POST /complete (solo ou collective). Fire-and-forget
     — les erreurs sont logguees mais ne cassent pas la completion.
     """
+    # P4 — le module peut etre eteint. On ne sort PAS tout de suite pour
+    # autant : le critere "systematiquement en retard" est exactement le signal
+    # qui justifie de proposer l'ajustement automatique. Le calculer puis le
+    # jeter reviendrait a ne jamais pouvoir proposer la fonctionnalite aux
+    # foyers qui en ont le plus besoin. On calcule, puis on aiguille — prompt
+    # de travail si le module est actif, proposition sinon.
+    module_on = await is_module_enabled(session, foyer_id, "auto_adjust")
+
     if task.recurrence_rule is None:
         return  # ponctuelles exclues
     if is_uncertain(task.recurrence_rule):
@@ -134,6 +144,18 @@ async def generate_bump_prompts(
         "completions": completions_snapshot,
     }
 
+    # Critere atteint. Module eteint : on propose de l'activer plutot que de
+    # generer un prompt de travail que personne n'a demande.
+    if not module_on:
+        await propose_module(
+            session,
+            foyer_id,
+            "auto_adjust",
+            reason="task_chronically_late",
+        )
+        await session.flush()
+        return
+
     # 6. Inserer un prompt par user du foyer (si pas deja pending)
     foyer_users = await session.execute(
         select(UserFoyer.user_id).where(UserFoyer.foyer_id == foyer_id)
@@ -180,6 +202,9 @@ async def generate_vote_prompts_for_task(
     - A la creation d'une tache avec assignments (priority=6).
     - Par le cron nightly pour les votes expires (priority=3).
     """
+    if not await is_module_enabled(session, foyer_id, "repartition"):
+        return
+
     from app.services.recurrence import interval_hours as _ih
 
     # Uncertain : pas de vote de frequence (la cadence est inferee, Q2).
@@ -230,6 +255,9 @@ async def generate_expired_vote_prompts(
 
     Appele par le cron nightly. Retourne le nombre de prompts generes.
     """
+    if not await is_module_enabled(session, foyer_id, "repartition"):
+        return 0
+
     expiry_cutoff = datetime.now(timezone.utc) - timedelta(days=expiry_months * 30)
     generated = 0
 

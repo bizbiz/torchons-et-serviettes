@@ -1,0 +1,549 @@
+# Module registry — progressive disclosure (P1, see docs/module-registry.fr.md).
+#
+# Single source of truth for the two-level feature registry: the core (never
+# disabled, not listed here) plus 8 modules, each with its sub-options.
+# Consumed by the settings screen, the contextual proposals, and — from P5 on —
+# the public site cards.
+#
+# Multi-locale: label fields (title / pitch / details / example) are
+# {locale: string} dicts, resolved by `pick_locale`, same convention as
+# catalog.yaml.
+#
+# Field reference
+#   key            stable slug, used as module_states.module_key. Never rename.
+#   scope          collective | personal. Derived from nature: collective as
+#                  soon as ONE sub-option changes the shared model.
+#   default_new    state for a foyer created after the switchover. Existing
+#                  foyers are grandfathered to true by the backfill migration.
+#   order          display order in the settings screen.
+#   requires       module keys that must be enabled first.
+#   trigger.kind   signal (a real event fires it) | usage (a threshold does)
+#                  | none (no proposal, on from day one).
+#   trigger.key    identifier the proposal generator dispatches on. Thresholds
+#                  for `usage` triggers are deliberately unset — no data exists
+#                  yet to calibrate them, see the doc's closing section.
+#   sub_options[].state_field
+#                  where the sub-option state already lives today. Absent means
+#                  the sub-option has no independent state (it follows its
+#                  module). Prevents P2 from inventing storage that exists.
+#
+# site_cards lives at the end of this file (added in P5).
+
+modules:
+  - key: repartition
+    scope: collective
+    default_new: false
+    order: 1
+    title:
+      fr: "Répartition"
+      en: "Sharing"
+    pitch:
+      fr: "Qui fait quoi, et une charge qui peut être équitable sans être égale."
+      en: "Who does what, and a load that can be fair without being equal."
+    details:
+      fr: >-
+        Attribue les tâches, tient compte de ce que chacun préfère faire, pondère
+        par la pénibilité, et suit la part de chacun sur les 30 derniers jours.
+      en: >-
+        Assigns tasks, accounts for what each person prefers doing, weights by
+        effort, and tracks each member's share over the last 30 days.
+    example:
+      fr: "L'un préfère l'aspirateur, l'autre la vaisselle : l'app en tient compte."
+      en: "One prefers vacuuming, the other the dishes: the app takes note."
+    trigger:
+      kind: signal
+      key: second_member_joined
+    sub_options:
+      - key: assignment
+        scope: collective
+        title: { fr: "Attribution", en: "Assignment" }
+      - key: affinity
+        scope: collective
+        title: { fr: "Préférences", en: "Preferences" }
+      - key: affinity_popup
+        scope: personal
+        state_field: user_settings.affinity_popup_enabled
+        title: { fr: "Me demander de noter", en: "Ask me to rate" }
+      - key: effort
+        scope: collective
+        title: { fr: "Pénibilité", en: "Effort" }
+      - key: fair_share
+        scope: collective
+        title: { fr: "Part équitable", en: "Fair share" }
+
+  - key: motivation
+    scope: collective
+    default_new: false
+    order: 2
+    title:
+      fr: "Motivation"
+      en: "Motivation"
+    pitch:
+      fr: "Des points, des badges et une série à ne pas casser — si ça vous parle."
+      en: "Points, badges and a streak worth keeping — if that speaks to you."
+    details:
+      fr: >-
+        Chaque tâche terminée rapporte des points selon sa pénibilité. Les badges
+        marquent les paliers, la série compte les jours consécutifs, le classement
+        situe chacun dans le foyer.
+      en: >-
+        Each completed task earns points based on its effort. Badges mark
+        milestones, the streak counts consecutive days, the leaderboard places
+        everyone within the foyer.
+    example:
+      fr: "À l'activation, les points déjà gagnés apparaissent : rien n'est perdu."
+      en: "On enabling, points already earned show up: nothing is lost."
+    trigger:
+      kind: usage
+      key: completions_reached
+    sub_options:
+      - key: points
+        scope: collective
+        title: { fr: "Points", en: "Points" }
+      - key: badges
+        scope: collective
+        title: { fr: "Badges", en: "Badges" }
+      - key: streaks
+        scope: collective
+        title: { fr: "Séries", en: "Streaks" }
+      - key: leaderboard
+        scope: collective
+        title: { fr: "Classement", en: "Leaderboard" }
+      # Personal display preference. This is the requalified
+      # user_settings.gamification_enabled: NOT a second gate on a collective
+      # decision (that was the defect), but an explicitly labelled personal
+      # choice under a module the foyer has enabled.
+      - key: hide_for_me
+        scope: personal
+        state_field: user_settings.gamification_enabled
+        title: { fr: "Ne pas me les afficher", en: "Do not show them to me" }
+
+  - key: bonus_malus
+    scope: collective
+    default_new: false
+    order: 3
+    requires: [motivation]
+    title:
+      fr: "Bonus et malus"
+      en: "Bonus and penalty"
+    pitch:
+      fr: "Fait en avance, ça rapporte plus. Très en retard, ça rapporte moins."
+      en: "Done early, worth more. Very late, worth less."
+    details:
+      fr: >-
+        Module les points selon l'écart à l'échéance, avec des seuils distincts
+        par tolérance de tâche et un plancher pour que le retard ne décourage pas.
+      en: >-
+        Adjusts points by the gap to the due date, with separate thresholds per
+        task tolerance and a floor so lateness never becomes discouraging.
+    trigger:
+      kind: usage
+      key: after_motivation
+    sub_options:
+      - key: early_bonus
+        scope: collective
+        title: { fr: "Bonus d'avance", en: "Early bonus" }
+      - key: late_malus
+        scope: collective
+        title: { fr: "Malus de retard", en: "Late penalty" }
+
+  - key: objectives
+    scope: collective
+    default_new: false
+    order: 4
+    title:
+      fr: "Objectifs et rattrapage"
+      en: "Goals and catching up"
+    pitch:
+      fr: "Combien de minutes par jour pour revenir à zéro, et en combien de temps."
+      en: "How many minutes a day to get back to zero, and how long it takes."
+    details:
+      fr: >-
+        Chiffre le retard accumulé, le rythme réel des 14 derniers jours, et le
+        rythme nécessaire pour le tenir. Chacun peut se fixer un objectif, ou en
+        proposer un au foyer.
+      en: >-
+        Quantifies the accumulated backlog, the real pace over the last 14 days,
+        and the pace needed to hold it. Anyone can set a personal goal, or
+        propose one to the foyer.
+    trigger:
+      kind: signal
+      key: backlog_threshold_reached
+    sub_options:
+      - key: catchup_cockpit
+        scope: collective
+        title: { fr: "Cockpit de rattrapage", en: "Catch-up cockpit" }
+      - key: simulation
+        scope: collective
+        title: { fr: "Simulation", en: "Simulation" }
+      - key: member_propositions
+        scope: collective
+        title: { fr: "Propositions au foyer", en: "Proposals to the foyer" }
+      - key: personal_objective
+        scope: personal
+        state_field: user_foyers.daily_objective_minutes
+        title: { fr: "Mon objectif", en: "My goal" }
+
+  - key: presence
+    scope: collective
+    default_new: false
+    order: 5
+    title:
+      fr: "Absences et présence"
+      en: "Absences and presence"
+    pitch:
+      fr: "Personne à la maison ? Les tâches concernées se mettent en pause."
+      en: "Nobody home? The affected tasks pause on their own."
+    details:
+      fr: >-
+        Détecte les jours où le foyer est vide et gèle les tâches des catégories
+        qui exigent d'être sur place. Rien à rattraper au retour des vacances.
+      en: >-
+        Detects the days the foyer is empty and freezes tasks in categories that
+        require being there. Nothing to catch up on when you get back.
+    example:
+      fr: "Quinze jours d'absence : pas besoin de changer les draps en rentrant."
+      en: "Fifteen days away: no need to change the sheets on your return."
+    trigger:
+      kind: signal
+      key: absence_detected
+    sub_options:
+      - key: home_freeze
+        scope: collective
+        state_field: foyers.home_freeze_enabled
+        title: { fr: "Gel pendant les absences", en: "Freeze while away" }
+      - key: category_freeze
+        scope: collective
+        title: { fr: "Catégories concernées", en: "Affected categories" }
+      - key: home_wifi
+        scope: personal
+        state_field: user_settings.hide_home_tasks_off_wifi
+        title: { fr: "Masquer hors du WiFi maison", en: "Hide off home WiFi" }
+
+  - key: auto_adjust
+    scope: collective
+    default_new: false
+    order: 6
+    title:
+      fr: "Ajustement automatique"
+      en: "Automatic adjustment"
+    pitch:
+      fr: "Une tâche toujours en retard ? L'app propose de revoir son réglage."
+      en: "A task always late? The app offers to revisit its settings."
+    details:
+      fr: >-
+        Repère les tâches systématiquement en retard ou en avance et propose
+        d'ajuster leur pénibilité ou leur fréquence. Chaque membre peut demander
+        l'avis des autres.
+      en: >-
+        Spots tasks that are chronically late or early and offers to adjust their
+        effort or frequency. Any member can ask the others to weigh in.
+    trigger:
+      kind: signal
+      key: task_chronically_late
+    sub_options:
+      - key: bump_effort
+        scope: collective
+        title: { fr: "Ajuster la pénibilité", en: "Adjust effort" }
+      - key: frequency_vote
+        scope: collective
+        title: { fr: "Revoter la fréquence", en: "Re-vote frequency" }
+
+  - key: statistics
+    scope: personal
+    default_new: false
+    order: 7
+    title:
+      fr: "Statistiques et historique"
+      en: "Statistics and history"
+    pitch:
+      fr: "Ce que vous avez fait, en courbes, et le détail de chaque tâche."
+      en: "What you have done, as charts, plus the detail of every task."
+    details:
+      fr: >-
+        Courbes d'activité, répartition par catégorie et par pièce, et l'historique
+        enrichi de chaque tâche — modifications, votes, qui a changé quoi et quand.
+      en: >-
+        Activity charts, breakdown by category and by room, and the enriched
+        history of each task — edits, votes, who changed what and when.
+    trigger:
+      kind: usage
+      key: history_volume_reached
+    sub_options:
+      - key: charts
+        scope: personal
+        title: { fr: "Courbes", en: "Charts" }
+      - key: enriched_history
+        scope: personal
+        title: { fr: "Historique détaillé", en: "Detailed history" }
+
+  - key: reminders
+    scope: personal
+    default_new: true
+    order: 8
+    title:
+      fr: "Rappels"
+      en: "Reminders"
+    pitch:
+      fr: "Un rappel quand quelque chose presse — et rien d'autre."
+      en: "A reminder when something is pressing — and nothing else."
+    details:
+      fr: >-
+        Un récapitulatif à l'heure de votre choix, une alerte quand une tâche passe
+        au rouge, et si vous le voulez un signal quand quelqu'un d'autre en termine
+        une.
+      en: >-
+        A digest at the hour of your choosing, an alert when a task turns red, and
+        if you want it a ping when someone else completes one.
+    trigger:
+      kind: none
+    sub_options:
+      - key: daily
+        scope: personal
+        state_field: user_settings.notif_daily
+        title: { fr: "Récapitulatif quotidien", en: "Daily digest" }
+      - key: urgent
+        scope: personal
+        state_field: user_settings.notif_urgent
+        title: { fr: "Tâches urgentes", en: "Urgent tasks" }
+      - key: solo
+        scope: personal
+        state_field: user_settings.notif_solo
+        title: { fr: "Complétions des autres", en: "Others' completions" }
+      - key: collective_with_me
+        scope: personal
+        state_field: user_settings.notif_collective_with_me
+        title: { fr: "Collectives avec moi", en: "Collective, including me" }
+      - key: collective_without_me
+        scope: personal
+        state_field: user_settings.notif_collective_without_me
+        title: { fr: "Collectives sans moi", en: "Collective, without me" }
+      - key: hour
+        scope: personal
+        state_field: user_settings.notif_hour
+        title: { fr: "Heure du récapitulatif", en: "Digest hour" }
+
+# --- Cartes du site public (P5) ---
+#
+# Le site ne montre PAS les modules un a un. Il montre des BENEFICES, et chaque
+# carte declare le ou les modules derriere elle. Aligner 1:1 aurait echange
+# trois cartes concretes ("L'un prefere l'aspirateur, l'autre la vaisselle")
+# contre un nom de categorie, et mis "Bonus / malus" et ses 13 seuils en
+# vitrine — l'inverse de ce qu'on veut montrer en premier.
+#
+# `modules` est informatif : il dit ce que la carte recouvre, il ne pilote pas
+# l'affichage. Une carte avec `[]` decrit une propriete de l'app (le noyau,
+# le hors-ligne, le principe de decouverte), pas une fonctionnalite activable.
+#
+# Plafond assume : 10 cartes. Un 9e module n'obtient pas sa carte
+# automatiquement — c'est un arbitrage editorial a refaire a chaque fois.
+# Modules sans carte aujourd'hui : bonus_malus, auto_adjust, statistics,
+# reminders. Ils restent visibles dans le depliant des cartes qui les portent.
+#
+# `detail` alimente le depliant au clic (<details> natif, aucun JS ajoute).
+# Genere dans site/index.html et site/en/index.html par
+# `scripts/gen_site_content.py`, entre les marqueurs CARDS:START / CARDS:END.
+
+site_cards:
+  - key: recurring
+    modules: []
+    icon: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>'
+    title:
+      fr: "Tâches récurrentes"
+      en: "Recurring tasks"
+    blurb:
+      fr: "Des tâches qui reviennent (tous les X jours, plus souvent l'été, à date fixe…) réparties dans le foyer."
+      en: "Tasks that come back (every X days, more often in summer, on a fixed date…) shared across the household."
+    detail:
+      fr: >-
+        Quatre modèles : tous les X jours ; une fréquence différente selon le
+        mois, pour ce qui suit les saisons ; à date fixe sur le calendrier, sans
+        dérive possible même si vous la faites en retard ; ou « quand il y a
+        besoin » — l'app apprend alors la cadence réelle. Les tâches sans
+        récurrence existent aussi : une fois faites, elles s'archivent seules.
+      en: >-
+        Four patterns: every X days; a different frequency per month, for
+        whatever follows the seasons; on a fixed calendar date, with no drift
+        even if you do it late; or "whenever it is needed" — the app then learns
+        the real cadence. One-shot tasks exist too: once done, they archive
+        themselves.
+
+  - key: urgency
+    modules: []
+    icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+    title:
+      fr: "Urgence en un coup d'œil"
+      en: "Urgency at a glance"
+    blurb:
+      fr: "Vert / orange / rouge : voyez immédiatement ce qui presse et ce qui peut attendre."
+      en: "Green / amber / red: see at once what is pressing and what can wait."
+    detail:
+      fr: >-
+        La couleur vient d'une date d'échéance calculée, pas d'une impression :
+        dernière fois faite + intervalle. L'orange s'allume proportionnellement
+        à la fréquence — trois jours avant pour une tâche mensuelle, la veille
+        pour une tâche hebdomadaire.
+      en: >-
+        The colour comes from a computed due date rather than a feeling: last
+        done plus interval. Amber lights up in proportion to the frequency —
+        three days ahead for a monthly task, the day before for a weekly one.
+
+  - key: fair_share
+    modules: [repartition]
+    icon: '<path d="M12 3v18"/><path d="M3 7h18"/><path d="M7 7l-3 6h6z"/><path d="M17 7l3 6h-6z"/>'
+    title:
+      fr: "Part équitable"
+      en: "Fair share"
+    blurb:
+      fr: "Un ratio configurable par membre : la charge peut être équitable, pas seulement égale."
+      en: "A ratio you set per member: the load can be fair, not merely equal."
+    detail:
+      fr: >-
+        Tout le monde ne peut pas en faire autant, et 50/50 n'est pas toujours
+        juste. Vous fixez le ratio visé, l'app suit l'écart réel sur les 30
+        derniers jours — une fenêtre glissante, donc un mauvais mois ne vous
+        poursuit pas.
+      en: >-
+        Not everyone can do as much, and 50/50 is not always fair. You set the
+        target ratio, the app tracks the real gap over the last 30 days — a
+        rolling window, so a bad month does not follow you around.
+
+  - key: preferences
+    modules: [repartition]
+    icon: '<path d="M20.8 5.6a5 5 0 0 0-7-.2l-.8.8-.8-.8a5 5 0 0 0-7 7l8 8 8-8a5 5 0 0 0-.4-6.6z"/>'
+    title:
+      fr: "Préférences de chacun"
+      en: "Everyone's preferences"
+    blurb:
+      fr: "L'un préfère l'aspirateur, l'autre la vaisselle : l'app en tient compte dans la répartition."
+      en: "One prefers vacuuming, the other the dishes: the app takes that into account."
+    detail:
+      fr: >-
+        Chacun note ce qu'il aime faire et ce qu'il évite. Quand l'app suggère
+        la prochaine tâche, elle propose en priorité à celui que ça dérange le
+        moins — sans jamais dispenser personne.
+      en: >-
+        Each person rates what they like doing and what they avoid. When the app
+        suggests the next task, it offers it first to whoever minds least —
+        without ever letting anyone off the hook.
+
+  - key: effort
+    modules: [repartition]
+    icon: '<path d="M12 14a8 8 0 0 1 8-8"/><path d="M4 14a8 8 0 0 1 4-7"/><path d="M12 14l4-4"/><path d="M3 19h18"/>'
+    title:
+      fr: "Pénibilité"
+      en: "Effort"
+    blurb:
+      fr: "Chaque tâche a un « effort » : 5 min de vaisselle ≠ un grand ménage, et le calcul le sait."
+      en: "Every task carries an effort: 5 minutes of dishes is not a deep clean, and the maths knows it."
+    detail:
+      fr: >-
+        L'effort est voté par les membres, pas décrété par l'app : c'est vous
+        qui savez ce que coûte de nettoyer votre four. Il pondère la part
+        équitable — dix tâches faciles ne valent pas une corvée.
+      en: >-
+        Effort is voted on by the members, not decreed by the app: you are the
+        one who knows what cleaning your oven costs. It weights the fair share —
+        ten easy tasks do not equal one slog.
+
+  - key: absences
+    modules: [presence]
+    icon: '<path d="M2 20h20"/><path d="M5 20l3-9 9-3 2 5-9 3z"/><path d="M14 8l3-3 3 3-3 3"/>'
+    title:
+      fr: "Gestion des absences"
+      en: "Handling absences"
+    blurb:
+      fr: "Tout le monde part 15 jours ? L'app ne vous demande pas de passer l'aspirateur en rentrant."
+      en: "Everyone away for two weeks? The app will not ask you to vacuum on the way back in."
+    detail:
+      fr: >-
+        Les jours où le foyer est vide ne comptent pas pour les tâches qui
+        exigent d'être sur place. La détection est automatique via le WiFi
+        maison, et vous pouvez toujours corriger un jour à la main.
+      en: >-
+        Days when the household is empty do not count against tasks that require
+        being there. Detection is automatic via home WiFi, and you can always
+        correct a day by hand.
+
+  - key: catching_up
+    modules: [objectives]
+    icon: '<path d="M3 17l5-5 4 4 8-8"/><path d="M15 8h5v5"/><path d="M3 21h18"/>'
+    title:
+      fr: "Rattraper le retard"
+      en: "Catching up"
+    blurb:
+      fr: "Combien de minutes par jour pour revenir à zéro, et en combien de temps."
+      en: "How many minutes a day to get back to zero, and how long it will take."
+    detail:
+      fr: >-
+        Le retard accumulé devient un chiffre, pas une angoisse. L'app compare
+        votre rythme réel des deux dernières semaines au rythme nécessaire, et
+        vous laisse simuler : « et si je faisais 20 minutes par jour ? »
+      en: >-
+        The backlog becomes a number rather than a worry. The app compares your
+        real pace over the last fortnight with the pace needed, and lets you
+        simulate: what if I did 20 minutes a day?
+
+  - key: motivation
+    modules: [motivation]
+    icon: '<path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3"/><path d="M7 5H4v2a3 3 0 0 0 3 3"/>'
+    title:
+      fr: "Motivation, si vous voulez"
+      en: "Motivation, if you want it"
+    blurb:
+      fr: "Points, badges et séries — ou rien du tout. C'est un choix, pas une fatalité."
+      en: "Points, badges and streaks — or none of it. A choice, not a fixture."
+    detail:
+      fr: >-
+        Un foyer sur deux n'en veut pas, et c'est très bien : la gamification
+        s'éteint d'un interrupteur, pour le foyer entier ou pour vous seul. Rien
+        n'est perdu si vous l'allumez plus tard — les points comptés en silence
+        apparaissent d'un coup.
+      en: >-
+        Half of households want none of it, and that is fine: gamification turns
+        off with one switch, for the whole household or for you alone. Nothing
+        is lost if you turn it on later — the points counted quietly show up all
+        at once.
+
+  - key: grows_with_you
+    modules: []
+    icon: '<path d="M12 21V9"/><path d="M12 12C12 8 9 5 5 5c0 4 3 7 7 7z"/><path d="M12 14c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/><path d="M5 21h14"/>'
+    title:
+      fr: "L'app grandit avec vous"
+      en: "The app grows with you"
+    blurb:
+      fr: "À l'installation : des tâches et des couleurs. Le reste arrive quand ça vous sert."
+      en: "On install: tasks and colours. The rest turns up when it becomes useful."
+    detail:
+      fr: >-
+        Tout ce qui est décrit ici n'apparaît pas le premier jour. L'app le
+        propose quand un événement le justifie — quelqu'un rejoint le foyer,
+        vous rentrez de quinze jours d'absence, une tâche dérape toujours. Une
+        proposition par semaine au maximum, et jamais deux fois si vous avez dit
+        non.
+      en: >-
+        None of what is described here shows up on day one. The app offers it
+        when something makes it relevant — someone joins the household, you come
+        back from a fortnight away, one task keeps drifting. One proposal a week
+        at most, and never twice if you said no.
+
+  - key: offline
+    modules: []
+    icon: '<path d="M3 3l18 18"/><path d="M6.7 6.7A6 6 0 0 0 6 18h11"/><path d="M16 7a5 5 0 0 1 3 8"/>'
+    title:
+      fr: "Hors-ligne"
+      en: "Offline"
+    blurb:
+      fr: "Fonctionne sans réseau et se synchronise toute seule dès que la connexion revient."
+      en: "Works with no network and syncs on its own as soon as the connection returns."
+    detail:
+      fr: >-
+        Tout est lisible et modifiable sans réseau : la cave, le métro, la
+        maison de campagne. Les changements partent en file d'attente et se
+        réconcilient au retour du réseau, sans écraser ce que l'autre a fait
+        pendant ce temps.
+      en: >-
+        Everything stays readable and editable with no network: the cellar, the
+        underground, the house in the country. Changes queue up and reconcile
+        when the network returns, without overwriting what the other person did
+        meanwhile.

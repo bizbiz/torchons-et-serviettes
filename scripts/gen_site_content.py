@@ -264,6 +264,105 @@ def build(
     return dest
 
 
+# --- Cartes de la page d'accueil (P5) ---------------------------------------
+#
+# Source unique : `backend/app/content/modules.yaml`, section `site_cards`.
+# Le meme fichier alimente l'ecran Fonctionnalites de l'app et le texte des
+# propositions contextuelles. Ecrire les cartes ailleurs, c'est garantir qu'un
+# jour le site promettra autre chose que ce que l'app propose.
+#
+# On ne regenere PAS toute la page : le hero, la FAQ et le pied sont ecrits a
+# la main et n'ont aucune raison de passer par un template. Seul le bloc entre
+# les marqueurs est remplace.
+
+CARDS_START = "<!-- CARDS:START — genere par scripts/gen_site_content.py -->"
+CARDS_END = "<!-- CARDS:END -->"
+
+MORE_LABEL = {"fr": "En savoir plus", "en": "Learn more"}
+CARDS_HEADING = {"fr": "Ce que fait l'application", "en": "What the app does"}
+
+MAX_CARDS = 10
+
+
+def _pick(labels: dict, locale: str) -> str:
+    """Meme fallback que `pick_locale` cote backend, sans importer l'app."""
+    if not labels:
+        return ""
+    return labels.get(locale) or labels.get("fr") or next(iter(labels.values()), "")
+
+
+def load_site_cards() -> list[dict]:
+    """Lit les cartes du registre. Erreur franche si le plafond est depasse.
+
+    Le plafond de 10 est une decision produit, pas une contrainte technique :
+    au-dela, la page d'accueil redevient la liste exhaustive qu'on cherchait
+    justement a ne plus montrer. Un 11e module ne prend donc pas sa carte tout
+    seul — quelqu'un doit trancher.
+    """
+    import yaml
+
+    raw = yaml.safe_load(
+        (ROOT / "backend" / "app" / "content" / "modules.yaml").read_text(
+            encoding="utf-8"
+        )
+    ) or {}
+    cards = raw.get("site_cards") or []
+    if len(cards) > MAX_CARDS:
+        raise SystemExit(
+            f"{len(cards)} cartes dans modules.yaml, plafond {MAX_CARDS}. "
+            "Arbitrez : une carte de plus, une carte de moins."
+        )
+    return cards
+
+
+def render_cards(cards: list[dict], locale: str) -> str:
+    """Le <ul class=\"features\"> complet, pour une locale."""
+    out = [f"    <h2>{html.escape(CARDS_HEADING[locale], quote=False)}</h2>", '    <ul class="features">']
+    for card in cards:
+        title = html.escape(_pick(card.get("title", {}), locale), quote=False)
+        blurb = html.escape(_pick(card.get("blurb", {}), locale), quote=False)
+        detail = html.escape(_pick(card.get("detail", {}), locale), quote=False)
+        icon = card.get("icon", "")
+        out.append("      <li>")
+        out.append(
+            '        <svg class="ico" viewBox="0 0 24 24" fill="none" '
+            'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+            f'stroke-linejoin="round" aria-hidden="true">{icon}</svg>'
+        )
+        out.append(f"        <div><b>{title}</b><span>{blurb}</span>")
+        if detail:
+            # <details> natif : le site n'embarque qu'un script inline (l'annee
+            # du copyright). Une modale JS serait sa premiere dependance, pour
+            # un depliant que le navigateur sait faire seul.
+            out.append(
+                f"          <details><summary>{html.escape(MORE_LABEL[locale], quote=False)}"
+                f"</summary><p>{detail}</p></details>"
+            )
+        out.append("        </div>")
+        out.append("      </li>")
+    out.append("    </ul>")
+    return "\n".join(out)
+
+
+def write_cards(dest: Path, locale: str, cards: list[dict]) -> Path:
+    """Remplace le bloc entre marqueurs dans un index.html deja existant."""
+    page = dest.read_text(encoding="utf-8")
+    if CARDS_START not in page or CARDS_END not in page:
+        raise SystemExit(
+            f"{dest} : marqueurs CARDS:START / CARDS:END absents. "
+            "Ajoutez-les autour du bloc des cartes."
+        )
+    block = f"{CARDS_START}\n{render_cards(cards, locale)}\n    {CARDS_END}"
+    new = re.sub(
+        re.escape(CARDS_START) + r".*?" + re.escape(CARDS_END),
+        lambda _: block,
+        page,
+        flags=re.S,
+    )
+    dest.write_text(new, encoding="utf-8", newline="\n")
+    return dest
+
+
 def main() -> None:
     written: list[Path] = []
 
@@ -286,6 +385,11 @@ def main() -> None:
             PAGE_FR, SITE,
         )
     )
+
+    # --- Cartes de la page d'accueil (les deux locales) ---
+    cards = load_site_cards()
+    written.append(write_cards(SITE / "index.html", "fr", cards))
+    written.append(write_cards(SITE_EN / "index.html", "en", cards))
 
     # --- EN ---
     written.append(

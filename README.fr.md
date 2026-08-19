@@ -1,8 +1,8 @@
 # Torchons & Serviettes
 
-[![Licence : AGPL v3](https://img.shields.io/badge/Licence-AGPL_v3-blue.svg)](LICENSE)
-[![Plateforme : Android](https://img.shields.io/badge/Plateforme-Android-3DDC84.svg?logo=android&logoColor=white)](#architecture)
-[![Backend : FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi&logoColor=white)](#architecture)
+[![Licence : AGPL v3][agpl]](LICENSE)
+[![Plateforme : Android][android]](#architecture)
+[![Backend : FastAPI][fastapi]](#architecture)
 
 > 🇬🇧 [Read in English](README.md)
 
@@ -96,6 +96,7 @@ android/
     worker/           # WorkManager (daily notif, sync)
 docs/
   cache-conventions.md  # règles offline-first / sync / refresh (EN, FR : .fr.md)
+  module-registry.fr.md # registre des modules + découverte progressive
 ```
 
 ## Statut
@@ -119,3 +120,7 @@ Pour signaler une vulnérabilité, voir [`SECURITY.fr.md`](SECURITY.fr.md).
 AGPL-3.0 — voir [`LICENSE`](LICENSE). Si tu héberges une instance
 modifiée accessible en réseau, tu dois rendre le code source de tes
 modifications disponible aux utilisateurs de cette instance.
+
+[agpl]: https://img.shields.io/badge/Licence-AGPL_v3-blue.svg
+[android]: https://img.shields.io/badge/Plateforme-Android-3DDC84.svg?logo=android&logoColor=white
+[fastapi]: https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi&logoColor=white

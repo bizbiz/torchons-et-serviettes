@@ -3,6 +3,7 @@ package com.torchons.app.data.local.converters
 import androidx.room.TypeConverter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.torchons.app.data.model.TaskContextRef
 import com.torchons.app.data.model.RecurrenceRule
 
 /**
@@ -12,6 +13,17 @@ import com.torchons.app.data.model.RecurrenceRule
 class Converters {
 
     private val gson = Gson()
+
+    @TypeConverter
+    fun taskContextsToJson(value: List<TaskContextRef>?): String =
+        gson.toJson(value ?: emptyList<TaskContextRef>())
+
+    @TypeConverter
+    fun jsonToTaskContexts(value: String?): List<TaskContextRef> {
+        if (value.isNullOrBlank()) return emptyList()
+        val type = object : TypeToken<List<TaskContextRef>>() {}.type
+        return gson.fromJson(value, type) ?: emptyList()
+    }
 
     @TypeConverter
     fun stringListToJson(value: List<String>?): String =

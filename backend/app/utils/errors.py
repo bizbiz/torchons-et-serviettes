@@ -124,6 +124,19 @@ ERROR_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "Seul un admin du foyer peut modifier ses reglages",
         "en": "Only a household admin can change these settings",
     },
+    # Modules (progressive disclosure)
+    "MODULE_UNKNOWN": {
+        "fr": "Fonctionnalite inconnue",
+        "en": "Unknown feature",
+    },
+    "MODULE_REQUIRES": {
+        "fr": "Activez d'abord : {requires}",
+        "en": "Enable first: {requires}",
+    },
+    "MODULE_HAS_DEPENDENTS": {
+        "fr": "Desactivez d'abord : {dependents}",
+        "en": "Disable first: {dependents}",
+    },
     # Tasks / Completions
     "TASK_NOT_FOUND": {
         "fr": "Tache introuvable",

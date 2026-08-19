@@ -24,6 +24,8 @@ from app.models.suggestion_dismissal import SuggestionDismissal
 from app.models.foyer_retard_snapshot import FoyerRetardSnapshot
 from app.models.pairing_token import PairingToken
 from app.models.objective import Objective
+from app.models.module_state import ModuleState
+from app.models.context import Context, TaskContext
 
 __all__ = [
     "Base", "User", "Foyer", "UserFoyer", "Category", "Room", "Task",
@@ -37,4 +39,6 @@ __all__ = [
     "FoyerRetardSnapshot",
     "PairingToken",
     "Objective",
+    "ModuleState",
+    "Context", "TaskContext",
 ]

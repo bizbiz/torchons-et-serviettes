@@ -68,7 +68,11 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import com.torchons.app.ui.common.FrequencyVoteDialog
+import com.torchons.app.ui.common.recurrenceSentence
 import com.torchons.app.ui.common.InfoTooltip
 import com.torchons.app.util.DurationFormat
 import com.torchons.app.util.DurationUnit
@@ -325,88 +329,41 @@ fun TaskEditScreen(
                 maxLines = 4
             )
 
-            // Categorie
-            var categoryExpanded by remember { mutableStateOf(false) }
-            val selectedCategory = uiState.categories.find { it.id == uiState.categoryId }
-
-            ExposedDropdownMenuBox(
-                expanded = categoryExpanded,
-                onExpandedChange = { categoryExpanded = it }
-            ) {
-                OutlinedTextField(
-                    value = selectedCategory?.name ?: stringResource(R.string.task_edit_dropdown_none),
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.task_edit_field_category)) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+            // Contextes — remplacent les deux listes deroulantes Categorie et
+            // Piece. Une tache en porte PLUSIEURS : « Nettoyer la litiere »
+            // releve du Salon (ou elle est), du Chat (pourquoi elle existe) et
+            // du Menage (ce que c'est). Il fallait choisir, et n'importe quel
+            // choix perdait deux informations sur trois.
+            if (uiState.contexts.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.task_contexts_label),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                ExposedDropdownMenu(
-                    expanded = categoryExpanded,
-                    onDismissRequest = { categoryExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.task_edit_dropdown_none)) },
-                        onClick = {
-                            viewModel.updateCategoryId(null)
-                            categoryExpanded = false
-                        }
-                    )
-                    uiState.categories.forEach { cat ->
-                        DropdownMenuItem(
-                            text = { Text(cat.name) },
-                            onClick = {
-                                viewModel.updateCategoryId(cat.id)
-                                categoryExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            // Piece (room)
-            var roomExpanded by remember { mutableStateOf(false) }
-            val selectedRoom = uiState.rooms.find { it.id == uiState.roomId }
-
-            ExposedDropdownMenuBox(
-                expanded = roomExpanded,
-                onExpandedChange = { roomExpanded = it }
-            ) {
-                val noneLabel = stringResource(R.string.task_edit_dropdown_none)
-                val roomLabel = selectedRoom?.let {
-                    if (!it.emoji.isNullOrBlank()) "${it.emoji} ${it.name}" else it.name
-                } ?: noneLabel
-                OutlinedTextField(
-                    value = roomLabel,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.task_edit_field_room)) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roomExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                Text(
+                    text = stringResource(R.string.task_contexts_help),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                ExposedDropdownMenu(
-                    expanded = roomExpanded,
-                    onDismissRequest = { roomExpanded = false }
+                Spacer(Modifier.height(4.dp))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    DropdownMenuItem(
-                        text = { Text(noneLabel) },
-                        onClick = {
-                            viewModel.updateRoomId(null)
-                            roomExpanded = false
-                        }
-                    )
-                    uiState.rooms.forEach { r ->
-                        val label = if (!r.emoji.isNullOrBlank()) "${r.emoji} ${r.name}" else r.name
-                        DropdownMenuItem(
-                            text = { Text(label) },
-                            onClick = {
-                                viewModel.updateRoomId(r.id)
-                                roomExpanded = false
-                            }
+                    uiState.contexts.forEach { ctx ->
+                        val rang = uiState.contextIds.indexOf(ctx.id)
+                        FilterChip(
+                            selected = rang >= 0,
+                            onClick = { viewModel.toggleContext(ctx.id) },
+                            label = {
+                                // Le rang n'est affiche que sur le principal :
+                                // numeroter tout ferait croire a un classement
+                                // a maintenir, alors que seul le premier compte.
+                                Text(
+                                    if (rang == 0) "★ " + ctx.label else ctx.label
+                                )
+                            },
                         )
                     }
                 }
@@ -451,6 +408,7 @@ fun TaskEditScreen(
                 "interval" -> stringResource(R.string.task_edit_recurrence_interval)
                 "monthly_variable" -> stringResource(R.string.task_edit_recurrence_monthly)
                 "uncertain" -> stringResource(R.string.task_edit_recurrence_uncertain)
+                "calendar" -> stringResource(R.string.task_edit_recurrence_calendar)
                 "none" -> stringResource(R.string.task_edit_recurrence_none)
                 else -> uiState.recurrenceType
             }
@@ -495,6 +453,13 @@ fun TaskEditScreen(
                         }
                     )
                     DropdownMenuItem(
+                        text = { Text(stringResource(R.string.task_edit_recurrence_calendar)) },
+                        onClick = {
+                            viewModel.updateRecurrenceType("calendar")
+                            recurrenceExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
                         text = { Text(stringResource(R.string.task_edit_recurrence_none)) },
                         onClick = {
                             viewModel.updateRecurrenceType("none")
@@ -502,6 +467,60 @@ fun TaskEditScreen(
                         }
                     )
                 }
+            }
+
+            // Type `calendar` : les mois d'echeance, le jour, la tolerance.
+            // Pas de vote de frequence ici — une date fixe n'est pas une
+            // cadence a estimer, c'est un fait du calendrier.
+            if (uiState.recurrenceType == "calendar") {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.task_edit_calendar_months_label),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                val moisCourts = stringArrayResource(R.array.month_names_short)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    (1..12).forEach { m ->
+                        FilterChip(
+                            selected = m in uiState.recurrenceMonths,
+                            onClick = { viewModel.toggleRecurrenceMonth(m) },
+                            label = { Text(moisCourts.getOrElse(m - 1) { "?" }) },
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = uiState.recurrenceDay.toString(),
+                    onValueChange = { it.toIntOrNull()?.let(viewModel::updateRecurrenceDay) },
+                    label = { Text(stringResource(R.string.task_edit_calendar_day_label)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = uiState.recurrenceGraceDays.toString(),
+                    onValueChange = { it.toIntOrNull()?.let(viewModel::updateRecurrenceGraceDays) },
+                    label = { Text(stringResource(R.string.task_edit_calendar_grace_label)) },
+                    supportingText = {
+                        Text(stringResource(R.string.task_edit_calendar_grace_help))
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            // La phrase : elle explique le COMPORTEMENT (l'echeance glisse-t-elle
+            // ou non ?), ce qu'aucun libelle de menu ne dit.
+            uiState.previewRecurrenceRule()?.let { previsu ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = recurrenceSentence(previsu),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             // Nombre de jours si interval. Si la tache a deja >=1 vote de

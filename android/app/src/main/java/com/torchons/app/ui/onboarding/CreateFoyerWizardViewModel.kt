@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
+import com.torchons.app.data.model.CatalogContextView
+import com.torchons.app.data.model.CatalogTaskContextView
 import com.torchons.app.data.model.CatalogRoomView
 import com.torchons.app.data.model.CatalogTaskView
 import com.torchons.app.data.model.ImportApplyRequest
@@ -50,13 +52,25 @@ data class WizardState(
     val step: Int = 1,  // 1..5 inclus
     val displayName: String = "",
     val foyerName: String = "",
+    /** L'utilisateur a-t-il ecrit lui-meme le nom du foyer ? Tant que non, la
+     *  suggestion derivee du prenom continue de le remplacer a chaque frappe ;
+     *  des qu'il y touche, on ne l'ecrase plus jamais. */
+    val foyerNameTouched: Boolean = false,
     val rooms: List<CatalogRoomView> = emptyList(),
     val selectedRoomKeys: Set<String> = emptySet(),
+    /** Catalogue sous sa forme contextes — ce que l'ecran utilise desormais. */
+    val contexts: List<CatalogContextView> = emptyList(),
+    val selectedContextKeys: Set<String> = emptySet(),
+    val contextTasks: List<CatalogTaskContextView> = emptyList(),
     // Pieces saisies librement par l'user (hors catalogue), creees via l'API
     // rooms a la finalisation du wizard.
     val customRooms: List<String> = emptyList(),
     val tasks: List<CatalogTaskView> = emptyList(),
     val selectedTaskKeys: Set<String> = emptySet(),
+    /** Taches cochees a la main alors qu'elles ne l'etaient pas par defaut. */
+    val taskOptIn: Set<String> = emptySet(),
+    /** Taches decochees a la main alors qu'elles l'etaient par defaut. */
+    val taskOptOut: Set<String> = emptySet(),
     val catalogStatus: CatalogStatus = CatalogStatus.LOADING,
     val recoveryCode: String? = null,
     val isSubmitting: Boolean = false,
@@ -88,15 +102,23 @@ class CreateFoyerWizardViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(catalogStatus = CatalogStatus.LOADING) }
             try {
-                val resp = apiService.getCatalog()
+                val resp = apiService.getCatalogContexts()
                 val body = resp.body()
                 if (resp.isSuccessful && body != null) {
+                    // Le pre-cochage vient du catalogue et non d'une liste en
+                    // dur : c'est le serveur qui sait ce que tout foyer a.
+                    val defauts = body.contexts
+                        .filter { c -> c.selectable && c.defaultSelected }
+                        .map { c -> c.key }
+                        .toSet()
                     _uiState.update {
                         it.copy(
-                            rooms = body.rooms,
-                            tasks = body.tasks,
+                            contexts = body.contexts,
+                            contextTasks = body.tasks,
+                            selectedContextKeys = if (it.selectedContextKeys.isEmpty())
+                                defauts else it.selectedContextKeys,
                             catalogStatus = CatalogStatus.OK,
-                        )
+                        ).let { charge -> recalculerSelection(charge) }
                     }
                 } else {
                     _uiState.update { it.copy(catalogStatus = CatalogStatus.ERROR) }
@@ -116,7 +138,17 @@ class CreateFoyerWizardViewModel @Inject constructor(
     }
 
     fun setFoyerName(value: String) {
-        _uiState.update { it.copy(foyerName = value) }
+        _uiState.update { it.copy(foyerName = value, foyerNameTouched = true) }
+    }
+
+    /**
+     * Propose un nom de foyer derive du prenom, sans jamais ecraser une saisie.
+     *
+     * La chaine arrive de l'ecran et non du ViewModel : « Chez Alice » est du
+     * texte vu par l'utilisateur, donc il vit dans strings.xml et se traduit.
+     */
+    fun suggestFoyerName(value: String) {
+        _uiState.update { if (it.foyerNameTouched) it else it.copy(foyerName = value) }
     }
 
     fun toggleRoom(key: String) {
@@ -145,16 +177,71 @@ class CreateFoyerWizardViewModel @Inject constructor(
 
     fun toggleTask(key: String) {
         _uiState.update {
-            val s = it.selectedTaskKeys.toMutableSet()
-            if (key in s) s.remove(key) else s.add(key)
-            it.copy(selectedTaskKeys = s)
+            val coche = key in it.selectedTaskKeys
+            val optIn = it.taskOptIn.toMutableSet()
+            val optOut = it.taskOptOut.toMutableSet()
+            if (coche) { optIn.remove(key); optOut.add(key) }
+            else { optOut.remove(key); optIn.add(key) }
+            recalculerSelection(it.copy(taskOptIn = optIn, taskOptOut = optOut))
         }
+    }
+
+    /**
+     * Recalcule les taches cochees a partir des contextes et des ecarts.
+     *
+     * La selection est DERIVEE et non stockee : elle doit suivre les contextes.
+     * Le pre-cochage s'appliquait auparavant a tout le catalogue, y compris aux
+     * taches d'un contexte non coche — un foyer sans couloir heritait des
+     * plinthes du couloir, invisibles dans le wizard et pourtant creees.
+     */
+    private fun recalculerSelection(state: WizardState): WizardState {
+        val visibles = visibleContextTasks(state)
+        val cochees = visibles
+            .filter { (it.defaultSelected && it.key !in state.taskOptOut) || it.key in state.taskOptIn }
+            .map { it.key }
+            .toSet()
+        return state.copy(selectedTaskKeys = cochees)
     }
 
     /**
      * Taches a afficher en step 4 : on garde celles dont la `default_room_key`
      * matche une piece selectionnee, ou celles sans piece (ex: "courses").
      */
+    fun toggleContext(key: String) {
+        _uiState.update {
+            val s = it.selectedContextKeys.toMutableSet()
+            if (!s.add(key)) s.remove(key)
+            recalculerSelection(it.copy(selectedContextKeys = s))
+        }
+    }
+
+    /**
+     * Taches visibles : une tache apparait si l'un de ses contextes
+     * SELECTIONNABLES est coche.
+     *
+     * Les implicites (menage, linge, entretien) ne rendent rien visible a eux
+     * seuls — sinon toute tache portant `menage` s'afficherait quoi qu'il
+     * arrive, ce qui reproduirait le defaut corrige par ce chantier : 41 % du
+     * catalogue etait affiche sans condition. Meme regle que `Catalog.tasks_for`
+     * cote serveur.
+     */
+    fun visibleContextTasks(state: WizardState = _uiState.value): List<CatalogTaskContextView> {
+        val implicites = state.contexts.filter { !it.selectable }.map { it.key }.toSet()
+        val choisis = state.selectedContextKeys
+        return state.contextTasks.filter { t ->
+            t.contexts.any { c -> c !in implicites && c in choisis }
+        }
+    }
+
+    /**
+     * Sous quel contexte afficher cette tache : le premier SELECTIONNE, pas le
+     * premier declare. Une tache rattachee a [chat, chien] doit apparaitre
+     * sous Chien chez quelqu'un qui n'a qu'un chien.
+     */
+    fun displayContext(task: CatalogTaskContextView, state: WizardState = _uiState.value): String? =
+        task.contexts.firstOrNull { it in state.selectedContextKeys }
+            ?: task.contexts.firstOrNull()
+
     fun visibleTasks(state: WizardState = _uiState.value): List<CatalogTaskView> {
         val selected = state.selectedRoomKeys
         if (selected.isEmpty()) {
@@ -192,11 +279,13 @@ class CreateFoyerWizardViewModel @Inject constructor(
             val s = it.step
             // Step 1 : default value si vide
             val newDisplay = if (s == 1 && it.displayName.isBlank()) "Moi" else it.displayName
-            val newFoyer = if (s == 2 && it.foyerName.isBlank())
+            val newFoyer = if ((s == 1 || s == 2) && it.foyerName.isBlank())
                 if (newDisplay.isNotBlank()) "Chez $newDisplay" else "Mon foyer"
             else it.foyerName
             it.copy(
-                step = (s + 1).coerceAtMost(5),
+                // L'etape 2 (nom du foyer seul) ne subsiste que pour le mode
+                // « ajouter un foyer », ou le prenom est deja connu.
+                step = (if (s == 1) 3 else s + 1).coerceAtMost(5),
                 displayName = newDisplay,
                 foyerName = newFoyer,
             )
@@ -211,7 +300,8 @@ class CreateFoyerWizardViewModel @Inject constructor(
 
     fun prevStep() {
         _uiState.update {
-            it.copy(step = (it.step - 1).coerceAtLeast(1))
+            val cible = if (it.step == 3 && !it.addFoyerMode) 1 else it.step - 1
+            it.copy(step = cible.coerceAtLeast(1))
         }
     }
 
@@ -260,12 +350,12 @@ class CreateFoyerWizardViewModel @Inject constructor(
         // Import catalogue dans le NOUVEAU foyer (JWT déjà switché). On NE
         // swallow PLUS en silence : si l'import échoue, l'user (et le dev)
         // doit voir POURQUOI — sinon foyer vide = mystère (bug dogfood).
-        if (s.selectedRoomKeys.isNotEmpty() || s.selectedTaskKeys.isNotEmpty()) {
+        if (s.selectedContextKeys.isNotEmpty() || s.selectedTaskKeys.isNotEmpty()) {
             try {
                 val resolveResp = apiService.resolveCatalogImport(
                     ImportResolveRequest(
                         taskKeys = s.selectedTaskKeys.toList(),
-                        roomKeys = s.selectedRoomKeys.toList(),
+                        roomKeys = s.selectedContextKeys.toList(),
                         categoryKeys = emptyList(),
                     )
                 )
@@ -290,7 +380,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
                         taskKeys = s.selectedTaskKeys.toList(),
                         roomDecisions = roomDecisions,
                         categoryDecisions = catDecisions,
-                        roomKeys = s.selectedRoomKeys.toList(),
+                        roomKeys = s.selectedContextKeys.toList(),
                         categoryKeys = emptyList(),
                     )
                 )
@@ -391,12 +481,12 @@ class CreateFoyerWizardViewModel @Inject constructor(
                 }
 
                 // Import catalogue si pieces ou taches selectionnees
-                if (s.selectedRoomKeys.isNotEmpty() || s.selectedTaskKeys.isNotEmpty()) {
+                if (s.selectedContextKeys.isNotEmpty() || s.selectedTaskKeys.isNotEmpty()) {
                     runCatching {
                         val resolveResp = apiService.resolveCatalogImport(
                             ImportResolveRequest(
                                 taskKeys = s.selectedTaskKeys.toList(),
-                                roomKeys = s.selectedRoomKeys.toList(),
+                                roomKeys = s.selectedContextKeys.toList(),
                                 categoryKeys = emptyList(),
                             )
                         )
@@ -413,7 +503,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
                                     taskKeys = s.selectedTaskKeys.toList(),
                                     roomDecisions = roomDecisions,
                                     categoryDecisions = catDecisions,
-                                    roomKeys = s.selectedRoomKeys.toList(),
+                                    roomKeys = s.selectedContextKeys.toList(),
                                     categoryKeys = emptyList(),
                                 )
                             )

@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.torchons.app.data.model.RecurrenceRule
 import com.torchons.app.data.model.Task
+import com.torchons.app.data.model.TaskContextRef
 
 /**
  * Entite Room miroir du DTO Task.
@@ -38,6 +39,8 @@ data class TaskEntity(
     // offline (un refresh /tasks la rafraichit). Reconciliee par max() avec
     // le cache local des completions cf TaskUrgencyCalculator.latestCompletedAt.
     val lastCompletedAt: String? = null,
+    /** Rattachements ordonnes, tels que le serveur les a renvoyes. */
+    val contexts: List<TaskContextRef> = emptyList(),
 )
 
 /** Conversion DTO -> Entite (pour upsert depuis l'API). */
@@ -59,6 +62,7 @@ fun Task.toEntity(): TaskEntity = TaskEntity(
     updatedAt = updatedAt,
     absentDaysSinceLastCompletion = absentDaysSinceLastCompletion,
     lastCompletedAt = lastCompletedAt,
+    contexts = contexts,
 )
 
 /** Conversion Entite -> DTO (pour exposer aux ViewModels). */
@@ -80,4 +84,5 @@ fun TaskEntity.toDomain(): Task = Task(
     updatedAt = updatedAt,
     absentDaysSinceLastCompletion = absentDaysSinceLastCompletion,
     lastCompletedAt = lastCompletedAt,
+    contexts = contexts,
 )

@@ -9,6 +9,7 @@ import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.Room
+import com.torchons.app.data.model.TaskContextRef
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
@@ -84,6 +85,8 @@ data class TaskListUiState(
     val tasks: List<TaskWithUrgency> = emptyList(),
     val categories: List<Category> = emptyList(),
     val selectedCategoryIds: Set<String> = emptySet(),
+    /** Contextes coches dans la barre de filtres. Vide = tout. */
+    val selectedContextIds: Set<String> = emptySet(),
     val isAtHome: Boolean = true,
     val showAllTasks: Boolean = false,
     val homeTasksHidden: Int = 0,
@@ -95,6 +98,9 @@ data class TaskListUiState(
     val filterAssignment: FilterState = FilterState.OFF,
     val selectedRoomId: String? = null,
     val availableRooms: List<Room> = emptyList(),
+    /** Contextes proposes en filtre : ceux presents sur AU MOINS une tache
+     *  du foyer, calcules avant filtrage pour rester stables. */
+    val availableContexts: List<TaskContextRef> = emptyList(),
     val error: String? = null,
     val completionMessage: String? = null,
     val hasCachedData: Boolean = false,
@@ -136,6 +142,7 @@ private data class TaskListFilters(
     val filterAssignment: FilterState = FilterState.OFF,
     val selectedRoomId: String? = null,
     val selectedCategoryIds: Set<String> = emptySet(),
+    val selectedContextIds: Set<String> = emptySet(),
     val showAllTasks: Boolean = false,
     val myAffinities: Map<String, Int> = emptyMap(),
     val searchQuery: String = "",
@@ -164,6 +171,7 @@ private data class ProcessedTaskList(
 private data class FilteredResult(
     val tasks: List<TaskWithUrgency>,
     val rooms: List<Room>,
+    val contexts: List<TaskContextRef>,
     val isAtHome: Boolean,
     val homeTasksHidden: Int,
 )
@@ -251,6 +259,7 @@ class TaskListViewModel @Inject constructor(
                     tasks = processed.filtered.tasks,
                     categories = processed.categories,
                     availableRooms = processed.filtered.rooms,
+                    availableContexts = processed.filtered.contexts,
                     isAtHome = processed.filtered.isAtHome,
                     homeTasksHidden = processed.filtered.homeTasksHidden,
                     selectedCategoryIds = processed.filters.selectedCategoryIds,
@@ -262,6 +271,7 @@ class TaskListViewModel @Inject constructor(
                     filterHome = processed.filters.filterHome,
                     filterAssignment = processed.filters.filterAssignment,
                     selectedRoomId = processed.filters.selectedRoomId,
+                    selectedContextIds = processed.filters.selectedContextIds,
                     hasCachedData = processed.hasCache,
                     isLoading = if (processed.hasCache) false else _uiState.value.isLoading,
                 )
@@ -563,6 +573,24 @@ class TaskListViewModel @Inject constructor(
         filtersFlow.value = filtersFlow.value.copy(selectedRoomId = roomId)
     }
 
+    /**
+     * Coche ou decoche un contexte dans la barre de filtres.
+     *
+     * Selection multiple en OU : cocher Chat et Jardin montre les taches de
+     * l'un OU de l'autre. Les deux anciennes barres se combinaient en ET sans
+     * jamais le dire, ce qui produisait des listes vides inexplicables des
+     * qu'on touchait aux deux.
+     */
+    fun toggleContextFilter(id: String) {
+        val actuels = filtersFlow.value.selectedContextIds.toMutableSet()
+        if (!actuels.add(id)) actuels.remove(id)
+        filtersFlow.value = filtersFlow.value.copy(selectedContextIds = actuels)
+    }
+
+    fun clearContextFilter() {
+        filtersFlow.value = filtersFlow.value.copy(selectedContextIds = emptySet())
+    }
+
     fun toggleCategory(categoryId: String) {
         val current = filtersFlow.value.selectedCategoryIds.toMutableSet()
         if (categoryId in current) current.remove(categoryId) else current.add(categoryId)
@@ -654,6 +682,14 @@ class TaskListViewModel @Inject constructor(
             .filter { it.id in roomIdsWithTasks }
             .sortedBy { it.name }
 
+        // Calcule sur `tasks` (non filtre) et non sur le resultat : sinon la
+        // barre se retrecit a chaque clic et la selection ne peut que se
+        // reduire. LinkedHashMap pour dedupliquer en gardant la premiere
+        // occurrence, puis tri alphabetique comme les pieces.
+        val availableContexts = LinkedHashMap<String, TaskContextRef>().apply {
+            tasks.forEach { t -> t.contexts.forEach { putIfAbsent(it.id, it) } }
+        }.values.sortedBy { it.name }
+
         // Tokens de recherche normalises (NFD + strip diacritiques + lowercase).
         // Multi-mots = AND sur tokens. Quand isSearching, on bypass tous les
         // filtres UI sauf si searchRespectFilters est active.
@@ -666,10 +702,20 @@ class TaskListViewModel @Inject constructor(
         val isSearching = searchTokens.isNotEmpty()
         val applyUiFilters = !isSearching || filters.searchRespectFilters
 
-        var filteredTasks = if (applyUiFilters && filters.selectedCategoryIds.isNotEmpty()) {
-            tasks.filter { it.categoryId in filters.selectedCategoryIds }
+        // Filtre par CONTEXTE, en OU : une tache passe des qu'un seul de ses
+        // rattachements est coche. Le filtre par categorie reste applique
+        // apres, pour les taches d'avant le chantier qui n'ont pas encore de
+        // rattachement — sans ca elles disparaitraient de toute liste filtree.
+        var filteredTasks = if (applyUiFilters && filters.selectedContextIds.isNotEmpty()) {
+            tasks.filter { t -> t.contexts.any { it.id in filters.selectedContextIds } }
         } else {
             tasks
+        }
+        // `filteredTasks` et non `tasks` dans la branche else : repartir de la
+        // liste d'origine annulerait le filtre par contexte applique juste
+        // au-dessus. Defaut mesure : le chip se cochait, la liste ne bougeait pas.
+        if (applyUiFilters && filters.selectedCategoryIds.isNotEmpty()) {
+            filteredTasks = filteredTasks.filter { it.categoryId in filters.selectedCategoryIds }
         }
 
         if (applyUiFilters && filters.selectedRoomId != null) {
@@ -768,10 +814,15 @@ class TaskListViewModel @Inject constructor(
                 state = state,
                 daysUntilDue = daysUntilDue,
                 countdownLabel = countdownLabel,
-                categoryName = category?.name,
-                categoryColor = category?.color,
-                roomName = room?.name,
-                roomEmoji = room?.emoji,
+                // Le contexte PRINCIPAL remplace la piece et la categorie. Le
+                // repli sur les deux anciennes valeurs n'est pas defensif : une
+                // tache creee avant le chantier et jamais rouverte n'a aucun
+                // rattachement, et l'afficher sans lieu serait une regression
+                // visible pour l'utilisateur.
+                categoryName = task.contexts.getOrNull(1)?.name ?: category?.name,
+                categoryColor = task.contexts.getOrNull(1)?.color ?: category?.color,
+                roomName = task.contexts.firstOrNull()?.name ?: room?.name,
+                roomEmoji = task.contexts.firstOrNull()?.emoji ?: room?.emoji,
                 group = group,
                 lastCompletedAt = lastCompletion?.completedAt,
                 isUncertain = isUncertain,
@@ -885,7 +936,9 @@ class TaskListViewModel @Inject constructor(
             .sortedByDescending { it.lastCompletedAt }
         tasksWithUrgency = cadence + sansCadenceNeverDone + sansCadenceDone
 
-        return FilteredResult(tasksWithUrgency, availableRooms, isAtHome, homeTasksHidden)
+        return FilteredResult(
+            tasksWithUrgency, availableRooms, availableContexts, isAtHome, homeTasksHidden,
+        )
     }
 }
 

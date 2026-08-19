@@ -9,6 +9,7 @@ import com.torchons.app.data.local.dao.CategoryDao
 import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.RoomDao
+import com.torchons.app.data.local.dao.ContextDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.TaskHistoryDao
 import com.torchons.app.data.local.dao.UserDao
@@ -138,6 +139,36 @@ private val migration9to10 = object : Migration(9, 10) {
     }
 }
 
+private val migration10to11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Contextes : le concept unique qui remplace pieces et categories.
+        // Les deux anciennes tables restent en place tant que le serveur
+        // ecrit en double — les retirer ici casserait les ecrans qui n'ont
+        // pas encore bascule, et la bascule se fait ecran par ecran.
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS contexts (
+                id TEXT NOT NULL PRIMARY KEY,
+                name TEXT NOT NULL,
+                color TEXT NOT NULL,
+                icon TEXT,
+                emoji TEXT,
+                requiresPresence INTEGER NOT NULL DEFAULT 1,
+                accruesWhenAway INTEGER NOT NULL DEFAULT 0,
+                sortOrder INTEGER NOT NULL DEFAULT 0,
+                templateKey TEXT,
+                version INTEGER NOT NULL DEFAULT 1,
+                createdAt TEXT
+            )
+            """.trimIndent()
+        )
+        // Les rattachements d'une tache voyagent AVEC elle plutot que dans une
+        // table locale : le serveur les renvoie a chaque lecture, une seconde
+        // source locale n'ajouterait qu'un risque de divergence.
+        db.execSQL("ALTER TABLE tasks ADD COLUMN contexts TEXT NOT NULL DEFAULT '[]'")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -150,12 +181,15 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8, migration8to9, migration9to10)
+            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8, migration8to9, migration9to10, migration10to11)
             .build()
     }
 
     @Provides
     fun provideTaskDao(db: AppDatabase): TaskDao = db.taskDao()
+
+    @Provides
+    fun provideContextDao(db: AppDatabase): ContextDao = db.contextDao()
 
     @Provides
     fun provideCategoryDao(db: AppDatabase): CategoryDao = db.categoryDao()

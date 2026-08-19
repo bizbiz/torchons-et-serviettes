@@ -96,3 +96,45 @@ data class ImportApplyResponse(
     @SerializedName("created_tasks") val createdTasks: Int,
     @SerializedName("skipped") val skipped: Int,
 )
+
+// --- Contextes (chantier contextes) ---
+//
+// Remplacent `rooms` + `categories`. Une tache en declare PLUSIEURS, l'ordre
+// etant significatif : le premier est le principal. Les anciens modeles
+// ci-dessus restent le temps que l'APK diffuse disparaisse — le serveur sert
+// encore l'ancienne forme sur GET /api/catalog.
+
+@Immutable
+data class CatalogContextView(
+    @SerializedName("key") val key: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("color") val color: String,
+    @SerializedName("emoji") val emoji: String? = null,
+    /**
+     * False = contexte implicite que tout foyer a (menage, linge, entretien).
+     * Jamais propose a l'etape 3 — « faites-vous du menage ? » n'a pas de
+     * sens — mais porte le filtre « montre-moi tout le menage ».
+     */
+    @SerializedName("selectable") val selectable: Boolean = true,
+    @SerializedName("default_selected") val defaultSelected: Boolean = false,
+    @SerializedName("requires_presence") val requiresPresence: Boolean = false,
+    @SerializedName("accrues_when_away") val accruesWhenAway: Boolean = false,
+)
+
+@Immutable
+data class CatalogTaskContextView(
+    @SerializedName("key") val key: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("contexts") val contexts: List<String> = emptyList(),
+    @SerializedName("default_weight") val defaultWeight: Int = 1,
+    @SerializedName("default_recurrence") val defaultRecurrence: Map<String, Any>? = null,
+    @SerializedName("default_tolerance") val defaultTolerance: String = "NORMAL",
+    @SerializedName("default_selected") val defaultSelected: Boolean = false,
+)
+
+@Immutable
+data class CatalogContextsResponse(
+    @SerializedName("contexts") val contexts: List<CatalogContextView> = emptyList(),
+    @SerializedName("tasks") val tasks: List<CatalogTaskContextView> = emptyList(),
+)

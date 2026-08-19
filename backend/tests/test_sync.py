@@ -238,3 +238,58 @@ async def test_sync_delete_visible_in_pull(client, auth_headers, auth_headers_de
     ops = [c["operation"] for c in changes_for_row]
     assert "INSERT" in ops
     assert "DELETE" in ops
+
+
+@pytest.mark.asyncio
+async def test_offline_task_edit_keeps_its_contexts(client, auth_headers, device_a):
+    """Une edition faite hors ligne ne doit pas perdre ses rattachements.
+
+    `context_ids` n'est pas une colonne de `Task` : sans branche dediee, la
+    boucle `hasattr` du handler l'ecartait en silence — le sync repondait OK et
+    la tache revenait sans contexte. C'est la panne la plus couteuse possible
+    en offline-first : elle ne se voit qu'apres la reconnexion.
+    """
+    import uuid as uuid_lib
+    from datetime import datetime, timezone
+
+    ctx = await client.post(
+        "/api/contexts", headers=auth_headers, json={"name": "Ctx sync"},
+    )
+    ctx_id = ctx.json()["id"] if ctx.status_code == 201 else next(
+        c["id"] for c in (await client.get("/api/contexts", headers=auth_headers)).json()
+        if c["name"] == "Ctx sync"
+    )
+
+    task_id = str(uuid_lib.uuid4())
+    resp = await client.post(
+        "/api/sync",
+        headers=auth_headers,
+        json={
+            "device_id": device_a,
+            "last_server_version": 0,
+            "changes": [{
+                "client_op_id": str(uuid_lib.uuid4()),
+                "table": "tasks",
+                "row_id": task_id,
+                "operation": "INSERT",
+                "client_timestamp": datetime.now(timezone.utc).isoformat(),
+                "data": {
+                    "title": "Tache creee hors ligne",
+                    "assigned_to_ids": [],
+                    "context_ids": [ctx_id],
+                    "recurrence_rule": {"type": "interval", "every_n_days": 3},
+                },
+            }],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    # Un 200 ne dit pas que l'op est passee : le sync rapporte les rejets dans
+    # son corps. Sans cette assertion le test serait vert pour la mauvaise
+    # raison — il verifierait qu'on sait poster, pas qu'on sait rattacher.
+    assert not resp.json().get("conflicts"), resp.text
+    assert resp.json().get("applied"), resp.text
+
+    lecture = await client.get(f"/api/tasks/{task_id}", headers=auth_headers)
+    assert lecture.status_code == 200, lecture.text
+    relu = lecture.json()
+    assert [c["id"] for c in relu["contexts"]] == [ctx_id], relu

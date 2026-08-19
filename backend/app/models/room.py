@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import ForeignKey, String, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,5 +31,8 @@ class Room(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     template_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     __table_args__ = (
-        UniqueConstraint('name', 'foyer_id', name='uq_rooms_name_foyer'),
+        # Unicite PARMI LES VIVANTS : une unique simple interdirait de
+        # recreer un nom qu'on vient de supprimer (soft delete).
+        Index('uq_rooms_name_foyer', 'foyer_id', 'name', unique=True,
+              postgresql_where=text('deleted_at IS NULL')),
     )

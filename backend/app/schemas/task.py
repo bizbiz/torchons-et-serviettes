@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
+from app.schemas.context import TaskContextRef
 from pydantic import BaseModel, Field, model_validator
 
 from app.models.enums import TaskTolerance
@@ -58,6 +59,9 @@ class TaskCreate(BaseModel):
     description: str | None = None
     category_id: UUID | None = None
     room_id: UUID | None = None
+    #: Contexts to attach, in order — index 0 is the primary one. Supersedes
+    #: category_id/room_id, which stay for the shipped APK.
+    context_ids: list[UUID] | None = None
     assigned_to_ids: list[UUID] = Field(min_length=1)
     recurrence_rule: RecurrenceRule | None = None
     weight: int = Field(default=1, ge=1, le=18)
@@ -71,6 +75,9 @@ class TaskUpdate(BaseModel):
     description: str | None = None
     category_id: UUID | None = None
     room_id: UUID | None = None
+    #: Full replacement of the attachment list when present. An empty list
+    #: detaches every context; omitting the field leaves them untouched.
+    context_ids: list[UUID] | None = None
     assigned_to_ids: list[UUID] | None = Field(default=None, min_length=1)
     recurrence_rule: RecurrenceRule | None = None
     weight: int | None = Field(default=None, ge=1, le=18)
@@ -85,6 +92,9 @@ class TaskResponse(BaseModel):
     description: str | None
     category_id: UUID | None
     room_id: UUID | None
+    #: Ordered attachments, primary first. Empty for a task created before the
+    #: contexts chantier and never edited since.
+    contexts: list[TaskContextRef] = []
     assigned_to_ids: list[UUID]
     recurrence_rule: dict | None
     inferred_interval_days: float | None = None

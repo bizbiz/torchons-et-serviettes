@@ -73,6 +73,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.filled.Favorite
 import com.torchons.app.R
+import com.torchons.app.ui.common.Modules
+import com.torchons.app.ui.common.moduleEnabled
 import com.torchons.app.data.model.BadgeInfo
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.LeaderboardEntry
@@ -86,6 +88,12 @@ import com.torchons.app.ui.user.UserProfileRequest
 import com.torchons.app.util.TaskUrgencyCalculator
 import kotlinx.coroutines.launch
 
+// Identites stables des onglets. On dispatche la-dessus et non sur la
+// position, qui change des qu'un module est coupe.
+private const val TAB_SUMMARY = "summary"
+private const val TAB_BADGES = "badges"
+private const val TAB_HISTORY = "history"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsScreen(
@@ -94,11 +102,30 @@ fun StatsScreen(
     viewModel: StatsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val tabs = listOf(
-        stringResource(R.string.stats_tab_summary),
-        stringResource(R.string.stats_tab_badges),
-        stringResource(R.string.stats_tab_history),
-    )
+    // P3 — les onglets ne sont pas tous du meme module. Badges appartient a
+    // `motivation`, Historique a `statistics` ; Resume est mixte et reste
+    // present des lors que l'ecran est atteignable. On construit donc la liste
+    // des onglets VISIBLES et on dispatche sur leur identite, pas sur leur
+    // index : sans ca, cacher un onglet decalerait le contenu de tous les
+    // suivants.
+    val motivationOn = moduleEnabled(Modules.MOTIVATION)
+    val statisticsOn = moduleEnabled(Modules.STATISTICS)
+
+    val visibleTabs = buildList {
+        add(TAB_SUMMARY)
+        if (motivationOn) add(TAB_BADGES)
+        if (statisticsOn) add(TAB_HISTORY)
+    }
+    val tabs = visibleTabs.map {
+        when (it) {
+            TAB_BADGES -> stringResource(R.string.stats_tab_badges)
+            TAB_HISTORY -> stringResource(R.string.stats_tab_history)
+            else -> stringResource(R.string.stats_tab_summary)
+        }
+    }
+    // L'index selectionne peut pointer hors de la liste quand un module vient
+    // d'etre coupe a distance par l'autre membre.
+    val selectedIndex = uiState.selectedTab.coerceIn(0, visibleTabs.lastIndex)
 
     // Etat pour l'ouverture du modal profil utilisateur.
     var userProfileRequest by remember { mutableStateOf<UserProfileRequest?>(null) }
@@ -124,10 +151,10 @@ fun StatsScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            TabRow(selectedTabIndex = uiState.selectedTab) {
+            TabRow(selectedTabIndex = selectedIndex) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
-                        selected = uiState.selectedTab == index,
+                        selected = selectedIndex == index,
                         onClick = { viewModel.selectTab(index) },
                         text = {
                             Text(
@@ -149,8 +176,8 @@ fun StatsScreen(
                 streakCalendarUserId = uid
             }
 
-            when (uiState.selectedTab) {
-                0 -> ResumeTab(
+            when (visibleTabs[selectedIndex]) {
+                TAB_SUMMARY -> ResumeTab(
                     streaks = uiState.streaks,
                     leaderboardWeek = uiState.leaderboardWeek,
                     leaderboardMonth = uiState.leaderboardMonth,
@@ -178,8 +205,8 @@ fun StatsScreen(
                     onUserClick = onUserClick,
                     onOpenStreakCalendar = onOpenStreakCalendar,
                 )
-                1 -> BadgesTab(uiState.badges)
-                2 -> HistoryTab(
+                TAB_BADGES -> BadgesTab(uiState.badges)
+                TAB_HISTORY -> HistoryTab(
                     history = uiState.history,
                     filters = uiState.historyFilters,
                     isHistoryLoading = uiState.isHistoryLoading,
@@ -270,9 +297,15 @@ private fun ResumeTab(
     onUserClick: (UserProfileRequest) -> Unit,
     onOpenStreakCalendar: (String) -> Unit,
 ) {
+    val objectivesOn = moduleEnabled(Modules.OBJECTIVES)
+    val repartitionOn = moduleEnabled(Modules.REPARTITION)
+
     val myFairShare = fairShare.find { it.userId == currentUserId }
     val otherFairShare = fairShare.find { it.userId != currentUserId }
-    val showOverPerformingCard = myFairShare != null && myFairShare.aboveTarget && otherFairShare != null
+    // Le message "tu as fait plus que ta part" est du fair-share, donc du
+    // module Repartition — pas de la gamification.
+    val showOverPerformingCard = repartitionOn &&
+        myFairShare != null && myFairShare.aboveTarget && otherFairShare != null
 
     LazyColumn(
         modifier = Modifier
@@ -288,7 +321,10 @@ private fun ResumeTab(
         item { LongTermCard() }
 
         // v0.31 — Objectifs personnels et partages.
-        item { ObjectivesCard() }
+        // P3 : appartient au module `objectives`.
+        if (objectivesOn) {
+            item { ObjectivesCard() }
+        }
 
         // Message fair-share sur-performance (deplace depuis HomeScreen v0.8.0)
         if (showOverPerformingCard) {

@@ -1,5 +1,44 @@
 # Release notes
 
+## v0.37.0 — 2026-08-19
+
+### Contexts replace rooms and categories
+- One list instead of two: a context is what explains why a chore exists in
+  your home — a room, a pet, an outdoor area, a situation.
+- **A chore can carry several.** "Clean the litter box" belongs to the Living
+  room, the Cat and Cleaning all at once: no more picking one.
+- Two separate settings per context where there used to be one:
+  *you must be there* (hidden off home WiFi) and *it keeps going without us*
+  (not paused while you are away). A garden needs the first without the
+  second — grass grows during holidays too.
+- The Chores tab filter becomes a single bar and accepts several contexts at
+  once.
+
+### Household creation reworked
+- Four steps instead of five: first name and household name on one screen,
+  with the name pre-filled ("Alice's place") and editable.
+- You now pick from 34 contexts — pets, garden, vegetable patch, admin,
+  flatshare… — rather than rooms only.
+- Suggested chores are grouped by context, with a few useful ones pre-ticked,
+  instead of one long flat list.
+
+### Fixed-date chores
+- New *calendar* rhythm: "in May", "on 15 May". The due date is anchored to
+  the calendar and no longer drifts — filing your taxes late one year does not
+  shift the next one.
+- Every frequency is spelled out in a plain sentence as you set it, in French
+  and in English.
+
+### The app grows with you
+- Features are switched on from Settings: sharing, motivation, bonuses and
+  penalties, goals, absences… Nothing is forced at first launch, and the app
+  offers the rest as you go.
+
+### Fixes
+- Missing accents restored on seventeen catalogue chores.
+- Deleting a room then creating another one with the same name failed with no
+  message.
+
 ## v0.36.1 — 2026-07-05
 
 ### Overdue — consistent counts

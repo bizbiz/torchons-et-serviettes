@@ -6,6 +6,7 @@ import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.CreateTaskRequest
 import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.RecurrenceRule
+import com.torchons.app.data.model.ContextView
 import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.UpdateTaskRequest
@@ -39,6 +40,9 @@ data class TaskEditUiState(
     val description: String = "",
     val categoryId: String? = null,
     val roomId: String? = null,
+    /** Contextes choisis, dans l'ORDRE : le premier decide de l'endroit ou la
+     *  tache s'affiche. Une liste et non un Set pour cette raison. */
+    val contextIds: List<String> = emptyList(),
     val assignedToIds: List<String> = emptyList(),
     val recurrenceType: String = "none",
     /**
@@ -50,11 +54,22 @@ data class TaskEditUiState(
     val recurrenceFieldText: String = "7",
     /** Unite de saisie pour le champ de recurrence (Jours / Semaines / Mois). */
     val recurrenceUnit: DurationUnit = DurationUnit.JOURS,
+    /** `calendar` : mois ou la tache devient due. Vide = janvier par defaut. */
+    val recurrenceMonths: Set<Int> = emptySet(),
+    /** `calendar` : jour dans le mois (1..28). */
+    val recurrenceDay: Int = 1,
+    /**
+     * `calendar` : tolerance en jours apres l'echeance avant le rouge. C'est
+     * ce qui exprime « acceptable jusqu'a la fin de l'ete » sans creer une
+     * seconde echeance.
+     */
+    val recurrenceGraceDays: Int = 0,
     val daysPerMonth: Map<String, String> = (1..12).associate { it.toString() to "" },
     val weight: Int = 1,
     val tolerance: String = "NORMAL",
     val categories: List<Category> = emptyList(),
     val rooms: List<Room> = emptyList(),
+    val contexts: List<ContextView> = emptyList(),
     val users: List<User> = emptyList(),
     val error: String? = null,
     val saved: Boolean = false,
@@ -78,6 +93,37 @@ data class TaskEditUiState(
     val clonedFromTitle: String? = null,
 )
 
+/** Duree canonique en jours derivee de [recurrenceFieldText] et [recurrenceUnit]. */
+fun TaskEditUiState.canonicalEveryNDays(): Int {
+    val raw = recurrenceFieldText.toIntOrNull() ?: 7
+    return recurrenceUnit.toDays(raw)
+}
+
+/**
+ * La regle telle qu'elle serait enregistree maintenant, pour l'apercu.
+ *
+ * Construite ici et non dans l'ecran pour qu'il n'existe qu'UN endroit qui
+ * sache traduire l'etat en regle : la phrase affichee decrit alors exactement
+ * ce que la sauvegarde produira, jamais une approximation qui divergerait.
+ */
+fun TaskEditUiState.previewRecurrenceRule(): RecurrenceRule? = when (recurrenceType) {
+    "interval" -> RecurrenceRule(type = "interval", everyNDays = canonicalEveryNDays())
+    "monthly_variable" -> RecurrenceRule(
+        type = "monthly_variable",
+        daysPerMonth = daysPerMonth
+            .filter { (it.value.toIntOrNull() ?: 0) > 0 }
+            .mapValues { it.value.toInt() },
+    )
+    "uncertain" -> RecurrenceRule(type = "uncertain")
+    "calendar" -> RecurrenceRule(
+        type = "calendar",
+        months = recurrenceMonths.sorted().ifEmpty { listOf(1) },
+        day = recurrenceDay,
+        graceDays = recurrenceGraceDays,
+    )
+    else -> null
+}
+
 /**
  * ViewModel pour l'ecran de creation/edition de tache.
  */
@@ -85,6 +131,7 @@ data class TaskEditUiState(
 class TaskEditViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val authRepository: AuthRepository
+
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TaskEditUiState())
@@ -124,6 +171,20 @@ class TaskEditViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /**
+     * Ajoute ou retire un contexte, en conservant l'ordre de selection.
+     *
+     * L'ordre est porteur de sens : le premier coche devient le contexte
+     * principal, celui sous lequel la tache s'affiche. Un Set ferait perdre
+     * cette information, et « Nettoyer la litiere » se retrouverait sous Salon
+     * plutot que sous Chat selon l'ordre alphabetique.
+     */
+    fun toggleContext(id: String) {
+        val liste = _uiState.value.contextIds.toMutableList()
+        if (!liste.remove(id)) liste.add(id)
+        _uiState.value = _uiState.value.copy(contextIds = liste)
+    }
+
     /** Charge les donnees de reference (categories, rooms, users) et la tache si edition. */
     fun loadData(taskId: String?, cloneFromId: String? = null) {
         viewModelScope.launch {
@@ -141,6 +202,14 @@ class TaskEditViewModel @Inject constructor(
             }
 
             val categories = categoriesResult.getOrNull() ?: emptyList()
+            // Meme pattern que les pieces : refresh REPLACE puis lecture du
+            // cache, pour que le selecteur reste peuple hors ligne.
+            taskRepository.refreshContexts()
+            val contexts = try {
+                taskRepository.observeContexts().first()
+            } catch (e: Exception) {
+                emptyList()
+            }
             val users = usersResult.getOrNull() ?: emptyList()
 
             if (taskId != null) {
@@ -166,8 +235,12 @@ class TaskEditViewModel @Inject constructor(
                         description = task.description ?: "",
                         categoryId = task.categoryId,
                         roomId = task.roomId,
+                        contextIds = task.contexts.sortedBy { it.position }.map { it.id },
                         assignedToIds = task.assignedToIds,
                         recurrenceType = task.recurrenceRule?.type ?: "none",
+                        recurrenceMonths = task.recurrenceRule?.months?.toSet() ?: emptySet(),
+                        recurrenceDay = task.recurrenceRule?.day ?: 1,
+                        recurrenceGraceDays = task.recurrenceRule?.graceDays ?: 0,
                         recurrenceFieldText = unit.fromDays(canonicalDays).toString(),
                         recurrenceUnit = unit,
                         daysPerMonth = dpm,
@@ -175,6 +248,7 @@ class TaskEditViewModel @Inject constructor(
                         tolerance = task.tolerance,
                         categories = categories,
                         rooms = rooms,
+                        contexts = contexts,
                         users = users,
                         frequencyVotes = votes,
                         clonedFromTitle = null,
@@ -194,6 +268,7 @@ class TaskEditViewModel @Inject constructor(
                     sourceId = cloneFromId,
                     categories = categories,
                     rooms = rooms,
+                    contexts = contexts,
                     users = users,
                 )
             } else {
@@ -204,6 +279,7 @@ class TaskEditViewModel @Inject constructor(
                     assignedToIds = users.map { it.id },
                     categories = categories,
                     rooms = rooms,
+                    contexts = contexts,
                     users = users,
                     clonedFromTitle = null,
                 )
@@ -224,6 +300,7 @@ class TaskEditViewModel @Inject constructor(
                 sourceId = sourceId,
                 categories = state.categories,
                 rooms = state.rooms,
+                contexts = state.contexts,
                 users = state.users,
             )
         }
@@ -251,6 +328,7 @@ class TaskEditViewModel @Inject constructor(
         sourceId: String,
         categories: List<Category>,
         rooms: List<Room>,
+        contexts: List<ContextView>,
         users: List<User>,
     ) {
         val source = taskRepository.getCachedTaskById(sourceId)
@@ -260,6 +338,7 @@ class TaskEditViewModel @Inject constructor(
                 error = "Tache source introuvable",
                 categories = categories,
                 rooms = rooms,
+                contexts = contexts,
                 users = users,
                 assignedToIds = if (_uiState.value.assignedToIds.isEmpty()) users.map { it.id } else _uiState.value.assignedToIds,
             )
@@ -276,8 +355,12 @@ class TaskEditViewModel @Inject constructor(
             description = source.description ?: "",
             categoryId = source.categoryId,
             roomId = source.roomId,
+            contextIds = source.contexts.sortedBy { it.position }.map { it.id },
             assignedToIds = source.assignedToIds,
             recurrenceType = source.recurrenceRule?.type ?: "none",
+            recurrenceMonths = source.recurrenceRule?.months?.toSet() ?: emptySet(),
+            recurrenceDay = source.recurrenceRule?.day ?: 1,
+            recurrenceGraceDays = source.recurrenceRule?.graceDays ?: 0,
             recurrenceFieldText = unit.fromDays(canonicalDays).toString(),
             recurrenceUnit = unit,
             daysPerMonth = dpm,
@@ -285,6 +368,7 @@ class TaskEditViewModel @Inject constructor(
             tolerance = source.tolerance,
             categories = categories,
             rooms = rooms,
+            contexts = contexts,
             users = users,
             // Pas de votes : le clone n'a pas de TaskFrequencyVote tant qu'aucun
             // user n'a vote — chaque user re-vote au prochain prompt.
@@ -319,6 +403,22 @@ class TaskEditViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(assignedToIds = current)
     }
 
+    /** Coche / decoche un mois d'echeance (type `calendar`). */
+    fun toggleRecurrenceMonth(month: Int) {
+        val cur = _uiState.value.recurrenceMonths.toMutableSet()
+        if (!cur.add(month)) cur.remove(month)
+        _uiState.value = _uiState.value.copy(recurrenceMonths = cur)
+    }
+
+    fun updateRecurrenceDay(day: Int) {
+        // Borne a 28 comme le serveur : le 31 fevrier n'existe pas.
+        _uiState.value = _uiState.value.copy(recurrenceDay = day.coerceIn(1, 28))
+    }
+
+    fun updateRecurrenceGraceDays(days: Int) {
+        _uiState.value = _uiState.value.copy(recurrenceGraceDays = days.coerceAtLeast(0))
+    }
+
     fun updateRecurrenceType(value: String) {
         _uiState.value = _uiState.value.copy(recurrenceType = value)
     }
@@ -344,11 +444,6 @@ class TaskEditViewModel @Inject constructor(
         )
     }
 
-    /** Duree canonique en jours derivee de [recurrenceFieldText] et [recurrenceUnit]. */
-    private fun TaskEditUiState.canonicalEveryNDays(): Int {
-        val raw = recurrenceFieldText.toIntOrNull() ?: 7
-        return recurrenceUnit.toDays(raw)
-    }
 
     fun updateDaysPerMonth(month: String, value: String) {
         val updated = _uiState.value.daysPerMonth.toMutableMap()
@@ -387,6 +482,14 @@ class TaskEditViewModel @Inject constructor(
                     RecurrenceRule(type = "monthly_variable", daysPerMonth = dpm)
                 }
                 "uncertain" -> RecurrenceRule(type = "uncertain")
+                "calendar" -> RecurrenceRule(
+                    type = "calendar",
+                    // Le serveur normalise (tri, dedoublonnage, bornes) ;
+                    // on envoie l'intention telle que l'user l'a exprimee.
+                    months = state.recurrenceMonths.sorted().ifEmpty { listOf(1) },
+                    day = state.recurrenceDay,
+                    graceDays = state.recurrenceGraceDays,
+                )
                 else -> null
             }
 
@@ -398,6 +501,7 @@ class TaskEditViewModel @Inject constructor(
                         description = state.description.ifBlank { null },
                         categoryId = state.categoryId,
                         roomId = state.roomId,
+                        contextIds = state.contextIds,
                         assignedToIds = state.assignedToIds,
                         recurrenceRule = recurrenceRule,
                         weight = state.weight,
@@ -411,6 +515,7 @@ class TaskEditViewModel @Inject constructor(
                         description = state.description.ifBlank { null },
                         categoryId = state.categoryId,
                         roomId = state.roomId,
+                        contextIds = state.contextIds,
                         assignedToIds = state.assignedToIds,
                         recurrenceRule = recurrenceRule,
                         weight = state.weight,

@@ -1,5 +1,44 @@
 # Notes de version
 
+## v0.37.0 — 2026-08-19
+
+### Les contextes remplacent les pièces et les catégories
+- Une seule liste au lieu de deux : un contexte, c'est ce qui explique qu'une
+  tâche existe chez toi — une pièce, un animal, un extérieur, une situation.
+- **Une tâche peut en avoir plusieurs.** « Nettoyer la litière » relève du
+  Salon, du Chat et du Ménage à la fois : plus besoin de choisir.
+- Deux réglages distincts par contexte, là où il n'y en avait qu'un :
+  *il faut être sur place* (masquage hors WiFi maison) et *ça continue sans
+  nous* (pas de pause pendant les absences). Le jardin a besoin du premier
+  sans le second — l'herbe pousse même en vacances.
+- Le filtre de l'onglet Tâches devient unique et accepte plusieurs contextes
+  à la fois.
+
+### Création de foyer repensée
+- Quatre étapes au lieu de cinq : prénom et nom du foyer sur le même écran, le
+  nom étant pré-rempli (« Chez Alice ») et modifiable.
+- Le choix se fait sur 34 contextes — animaux, jardin, potager, administratif,
+  colocation… — et non plus sur les seules pièces.
+- Les tâches proposées sont regroupées par contexte, avec quelques
+  pré-cochages utiles, au lieu d'une longue liste à plat.
+
+### Tâches à date fixe
+- Nouveau rythme *calendaire* : « en mai », « le 15 mai ». L'échéance est
+  ancrée sur le calendrier et ne dérive plus — faire ses impôts en retard une
+  année ne décale pas l'année suivante.
+- Chaque fréquence est traduite en une phrase claire au moment où tu la
+  règles, en français comme en anglais.
+
+### L'app grandit avec toi
+- Les fonctionnalités s'activent depuis les Réglages : répartition,
+  motivation, bonus et malus, objectifs, absences… Rien n'est imposé au
+  premier lancement, et l'app propose le reste au fil de l'usage.
+
+### Corrections
+- Les accents manquants de dix-sept tâches du catalogue sont rétablis
+  (« Aérer la maison », « Nettoyer la litière », « Vérifier les factures »…).
+- Supprimer une pièce puis en recréer une du même nom échouait sans message.
+
 ## v0.36.1 — 2026-07-05
 
 ### Retard — cohérence des compteurs

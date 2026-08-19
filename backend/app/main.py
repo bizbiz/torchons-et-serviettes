@@ -121,6 +121,8 @@ from app.api.me import router as me_router
 from app.api.billing import router as billing_router
 from app.api.objectives import router as objectives_router
 from app.api.export import router as export_router
+from app.api.modules import router as modules_router
+from app.api.contexts import router as contexts_router
 
 app.include_router(auth_router)
 app.include_router(tasks_router)
@@ -147,6 +149,8 @@ app.include_router(me_router)
 app.include_router(billing_router)
 app.include_router(objectives_router)
 app.include_router(export_router)
+app.include_router(modules_router)
+app.include_router(contexts_router)
 
 
 @app.get("/api/health")

@@ -1,5 +1,8 @@
 package com.torchons.app.data.api
 
+import com.torchons.app.data.model.ContextView
+import com.torchons.app.data.model.ContextUpdateRequest
+import com.torchons.app.data.model.ContextCreateRequest
 import com.torchons.app.data.model.AffinityRequest
 import com.torchons.app.data.model.BadgeInfo
 import com.torchons.app.data.model.FrequencyRequest
@@ -163,6 +166,23 @@ interface ApiService {
     /** Supprimer une categorie. */
     @DELETE("categories/{id}")
     suspend fun deleteCategory(@Path("id") catId: String): Response<Map<String, Any>>
+
+    // --- Contextes (remplacent pieces et categories) ---
+
+    @GET("contexts")
+    suspend fun getContexts(): Response<List<ContextView>>
+
+    @POST("contexts")
+    suspend fun createContext(@Body body: ContextCreateRequest): Response<ContextView>
+
+    @PUT("contexts/{id}")
+    suspend fun updateContext(
+        @Path("id") id: String,
+        @Body body: ContextUpdateRequest,
+    ): Response<ContextView>
+
+    @DELETE("contexts/{id}")
+    suspend fun deleteContext(@Path("id") id: String): Response<Unit>
 
     // --- Pieces (rooms) ---
 
@@ -454,6 +474,24 @@ interface ApiService {
     ): Response<Unit>
 
     // --- Settings ---
+
+    /** Catalogue sous sa forme contextes. Public, comme /catalog : le wizard
+     *  le lit AVANT la creation du foyer, donc avant d'avoir un JWT. */
+    @GET("catalog/contexts")
+    suspend fun getCatalogContexts(): Response<com.torchons.app.data.model.CatalogContextsResponse>
+
+    // --- Modules (decouverte progressive) ---
+
+    /** Registre des modules + etat effectif pour le foyer courant. */
+    @GET("modules")
+    suspend fun getModules(): Response<com.torchons.app.data.model.ModulesResponse>
+
+    /** Activer / desactiver un module. 409 si une dependance l'interdit. */
+    @PUT("modules/{key}")
+    suspend fun toggleModule(
+        @Path("key") key: String,
+        @Body body: com.torchons.app.data.model.ModuleToggleRequest,
+    ): Response<com.torchons.app.data.model.ModuleView>
 
     /** Recuperer les reglages utilisateur. */
     @GET("settings")

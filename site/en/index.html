@@ -51,41 +51,71 @@
       <p class="hint">Android app, in the publishing process.</p>
     </section>
 
+<!-- CARDS:START — genere par scripts/gen_site_content.py -->
     <h2>What the app does</h2>
     <ul class="features">
       <li>
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-        <div><b>Recurring tasks</b><span>Tasks that come back (every X days, on Monday, on the 1st of the month…) shared across the household.</span></div>
+        <div><b>Recurring tasks</b><span>Tasks that come back (every X days, more often in summer, on a fixed date…) shared across the household.</span>
+          <details><summary>Learn more</summary><p>Four patterns: every X days; a different frequency per month, for whatever follows the seasons; on a fixed calendar date, with no drift even if you do it late; or "whenever it is needed" — the app then learns the real cadence. One-shot tasks exist too: once done, they archive themselves.</p></details>
+        </div>
       </li>
       <li>
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-        <div><b>Urgency at a glance</b><span>Green / orange / red: see right away what's urgent and what can wait.</span></div>
+        <div><b>Urgency at a glance</b><span>Green / amber / red: see at once what is pressing and what can wait.</span>
+          <details><summary>Learn more</summary><p>The colour comes from a computed due date rather than a feeling: last done plus interval. Amber lights up in proportion to the frequency — three days ahead for a monthly task, the day before for a weekly one.</p></details>
+        </div>
       </li>
       <li>
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M3 7h18"/><path d="M7 7l-3 6h6z"/><path d="M17 7l3 6h-6z"/></svg>
-        <div><b>Fair share</b><span>A configurable ratio per member: the load can be fair, not just equal.</span></div>
+        <div><b>Fair share</b><span>A ratio you set per member: the load can be fair, not merely equal.</span>
+          <details><summary>Learn more</summary><p>Not everyone can do as much, and 50/50 is not always fair. You set the target ratio, the app tracks the real gap over the last 30 days — a rolling window, so a bad month does not follow you around.</p></details>
+        </div>
       </li>
       <li>
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 5.6a5 5 0 0 0-7-.2l-.8.8-.8-.8a5 5 0 0 0-7 7l8 8 8-8a5 5 0 0 0-.4-6.6z"/></svg>
-        <div><b>Personal preferences</b><span>One prefers vacuuming, the other dishes: the app takes that into account when sharing tasks.</span></div>
+        <div><b>Everyone's preferences</b><span>One prefers vacuuming, the other the dishes: the app takes that into account.</span>
+          <details><summary>Learn more</summary><p>Each person rates what they like doing and what they avoid. When the app suggests the next task, it offers it first to whoever minds least — without ever letting anyone off the hook.</p></details>
+        </div>
       </li>
       <li>
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 14a8 8 0 0 1 8-8"/><path d="M4 14a8 8 0 0 1 4-7"/><path d="M12 14l4-4"/><path d="M3 19h18"/></svg>
-        <div><b>Effort</b><span>Each task has an "effort" score: 5 min of dishes ≠ a deep clean, and the math knows it.</span></div>
+        <div><b>Effort</b><span>Every task carries an effort: 5 minutes of dishes is not a deep clean, and the maths knows it.</span>
+          <details><summary>Learn more</summary><p>Effort is voted on by the members, not decreed by the app: you are the one who knows what cleaning your oven costs. It weights the fair share — ten easy tasks do not equal one slog.</p></details>
+        </div>
       </li>
       <li>
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 20h20"/><path d="M5 20l3-9 9-3 2 5-9 3z"/><path d="M14 8l3-3 3 3-3 3"/></svg>
-        <div><b>Away handling</b><span>Everyone's away for 2 weeks? The app won't ask you to vacuum on the way back.</span></div>
+        <div><b>Handling absences</b><span>Everyone away for two weeks? The app will not ask you to vacuum on the way back in.</span>
+          <details><summary>Learn more</summary><p>Days when the household is empty do not count against tasks that require being there. Detection is automatic via home WiFi, and you can always correct a day by hand.</p></details>
+        </div>
+      </li>
+      <li>
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-5 4 4 8-8"/><path d="M15 8h5v5"/><path d="M3 21h18"/></svg>
+        <div><b>Catching up</b><span>How many minutes a day to get back to zero, and how long it will take.</span>
+          <details><summary>Learn more</summary><p>The backlog becomes a number rather than a worry. The app compares your real pace over the last fortnight with the pace needed, and lets you simulate: what if I did 20 minutes a day?</p></details>
+        </div>
+      </li>
+      <li>
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3"/><path d="M7 5H4v2a3 3 0 0 0 3 3"/></svg>
+        <div><b>Motivation, if you want it</b><span>Points, badges and streaks — or none of it. A choice, not a fixture.</span>
+          <details><summary>Learn more</summary><p>Half of households want none of it, and that is fine: gamification turns off with one switch, for the whole household or for you alone. Nothing is lost if you turn it on later — the points counted quietly show up all at once.</p></details>
+        </div>
+      </li>
+      <li>
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9"/><path d="M12 12C12 8 9 5 5 5c0 4 3 7 7 7z"/><path d="M12 14c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/><path d="M5 21h14"/></svg>
+        <div><b>The app grows with you</b><span>On install: tasks and colours. The rest turns up when it becomes useful.</span>
+          <details><summary>Learn more</summary><p>None of what is described here shows up on day one. The app offers it when something makes it relevant — someone joins the household, you come back from a fortnight away, one task keeps drifting. One proposal a week at most, and never twice if you said no.</p></details>
+        </div>
       </li>
       <li>
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M6.7 6.7A6 6 0 0 0 6 18h11"/><path d="M16 7a5 5 0 0 1 3 8"/></svg>
-        <div><b>Offline</b><span>Works without a network and syncs by itself as soon as the connection is back.</span></div>
-      </li>
-      <li>
-        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
-        <div><b>No account, no tracking</b><span>No e-mail, no password. No ads, no trackers, no third-party analytics.</span></div>
+        <div><b>Offline</b><span>Works with no network and syncs on its own as soon as the connection returns.</span>
+          <details><summary>Learn more</summary><p>Everything stays readable and editable with no network: the cellar, the underground, the house in the country. Changes queue up and reconcile when the network returns, without overwriting what the other person did meanwhile.</p></details>
+        </div>
       </li>
     </ul>
+    <!-- CARDS:END -->
 
     <h2>A question before trying?</h2>
     <p>

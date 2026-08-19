@@ -65,16 +65,38 @@ def normalize_recurrence_rule(rule: dict | None) -> dict | None:
     rtype = out.get("type")
     if rtype == "interval" and "every_n_days" in out:
         out["every_n_days"] = _to_int(out["every_n_days"], 1)
-    elif rtype == "weekdays" and isinstance(out.get("days"), list):
-        out["days"] = [_to_int(d) for d in out["days"] if _to_int(d) is not None]
-    elif rtype == "monthly" and "day_of_month" in out:
-        out["day_of_month"] = _to_int(out["day_of_month"], 1)
-    elif rtype == "custom":
-        if "every_n_weeks" in out:
-            out["every_n_weeks"] = _to_int(out["every_n_weeks"], 1)
-        if "day" in out:
-            out["day"] = _to_int(out["day"], 0)
+    elif rtype == "calendar":
+        # `months` : mois ou la tache devient due (1..12), au moins un.
+        # `day`    : jour dans le mois, 1 par defaut.
+        # `grace_days` : delai apres l'echeance avant le rouge. C'est ce qui
+        #   exprime "mai-aout" — une SEULE occurrence, toleree tout l'ete —
+        #   par opposition a "avril & octobre" qui en fait deux.
+        months = out.get("months")
+        if isinstance(months, list):
+            clean = sorted({m for m in (_to_int(x) for x in months) if m and 1 <= m <= 12})
+            out["months"] = clean or [1]
+        else:
+            out["months"] = [1]
+        out["day"] = min(28, max(1, _to_int(out.get("day"), 1) or 1))
+        out["grace_days"] = max(0, _to_int(out.get("grace_days"), 0) or 0)
+    # weekdays / monthly / custom : types morts depuis v0.27, plus aucun calcul
+    # d'echeance ne les traite. On les laissait passer la validation, ce qui
+    # produisait une tache silencieusement inerte — ni rouge ni orange. On les
+    # convertit desormais en `interval` plutot que de les accepter tels quels.
+    elif rtype in ("weekdays", "monthly", "custom"):
+        out = {"type": "interval", "every_n_days": _legacy_interval(rtype, out)}
     return out
+
+
+def _legacy_interval(rtype: str, rule: dict) -> int:
+    """Intervalle equivalent d'un type mort, pour ne rien perdre en migrant."""
+    if rtype == "weekdays":
+        days = [d for d in (_to_int(x) for x in rule.get("days") or []) if d is not None]
+        return max(1, round(7 / len(days))) if days else 7
+    if rtype == "monthly":
+        return 30
+    every_n_weeks = _to_int(rule.get("every_n_weeks"), 1) or 1
+    return max(1, every_n_weeks * 7)
 
 
 def next_due(rule: dict | None, last_completed: datetime | None) -> datetime | None:
@@ -111,6 +133,29 @@ def next_due(rule: dict | None, last_completed: datetime | None) -> datetime | N
         if last_completed is None:
             return now
         return last_completed + timedelta(days=n_days)
+
+    elif rtype == "calendar":
+        # Ancrage CALENDAIRE : l'echeance ne depend pas de la derniere
+        # completion, c'est toute sa raison d'etre. Faire ses impots en juin
+        # ne deplace pas l'echeance de l'an prochain.
+        months = rule.get("months") or [1]
+        day = rule.get("day", 1)
+        candidates = [
+            datetime(y, m, day, tzinfo=timezone.utc)
+            for y in (now.year - 1, now.year, now.year + 1)
+            for m in months
+        ]
+        # La derniere echeance PASSEE fait foi tant qu'elle n'est pas honoree ;
+        # une fois honoree, on vise la suivante. Sans ca, une tache faite le
+        # jour meme repasserait due immediatement.
+        past = [d for d in candidates if d <= now]
+        future = [d for d in candidates if d > now]
+        if not past:
+            return min(future) if future else None
+        latest_past = max(past)
+        if last_completed is not None and last_completed >= latest_past:
+            return min(future) if future else None
+        return latest_past
 
     # uncertain : pas d'echeance visible. weekdays/monthly/custom ont ete
     # supprimes en v0.27 (ils n'existaient plus en base mais le code mort
@@ -197,6 +242,13 @@ def interval_hours(
             return float(n) * 24.0
         return 30.44 * 24.0
 
+    elif rtype == "calendar":
+        # Intervalle nominal = l'annee divisee par le nombre d'echeances. Sert
+        # a la fenetre orange et au taux de maintenance ; l'echeance reelle,
+        # elle, ne s'en deduit pas (c'est le calendrier qui la fixe).
+        months = rule.get("months") or [1]
+        return (365.0 / max(1, len(months))) * 24.0
+
     elif rtype == "uncertain":
         days = inferred_interval_days if inferred_interval_days is not None else float(COLD_START_INTERVAL_DAYS)
         return days * 24.0
@@ -274,10 +326,22 @@ def compute_due_date(
     return nd.date() if isinstance(nd, datetime) else nd
 
 
+def grace_days_of(rule: dict | None) -> int:
+    """Tolerance apres echeance declaree par la regle. 0 pour tout sauf
+    `calendar`, ou elle exprime une fenetre ("acceptable jusqu'en aout")."""
+    if not isinstance(rule, dict):
+        return 0
+    try:
+        return max(0, int(rule.get("grace_days", 0) or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 def compute_urgency_state(
     due_date: date | None,
     today: date,
     nominal_interval_days: int,
+    grace_days: int = 0,
 ) -> UrgencyState:
     """Classifie une tache en GREEN / ORANGE / RED selon today <-> due_date.
 
@@ -292,7 +356,10 @@ def compute_urgency_state(
     """
     if due_date is None:
         return UrgencyState.GREEN
-    if today > due_date:
+    # `grace_days` ne repousse que le ROUGE : la tache est signalee a son
+    # echeance (orange), mais n'est reprochee qu'apres la tolerance. C'est ce
+    # qui exprime "chaudiere : due en mai, acceptable jusqu'a fin aout".
+    if today > due_date + timedelta(days=max(0, grace_days)):
         return UrgencyState.RED
     window = max(0, int(math.floor(nominal_interval_days * 0.10)))
     if today >= due_date - timedelta(days=window):

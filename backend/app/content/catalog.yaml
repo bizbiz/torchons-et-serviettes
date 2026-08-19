@@ -1,637 +1,2868 @@
-# Catalogue de templates pour Torchons & Serviettes (v0.9.0 Feature 4).
+# Catalogue de templates — CONTEXTES (chantier contextes).
 #
-# Ce fichier est la source de verite curatee pour les suggestions de
-# pieces / categories / taches. Les users peuvent importer des items de
-# ce catalogue en 1 clic via l'ecran CatalogScreen pour peupler leur foyer
-# plus vite qu'en creant tout a la main.
+# Remplace les anciennes sections `rooms` et `categories`. Un contexte est ce
+# qui EXPLIQUE qu'une tache existe : une piece, un animal, un exterieur, une
+# situation de vie, ou un genre de travail. Une tache en declare PLUSIEURS —
+# « Nettoyer la litière » releve du chat, du salon et du logement — la ou elle
+# portait avant exactement une piece et exactement une categorie.
 #
-# Identifiants stables : chaque item a un `key` slug unique, independant
-# du display name (permet la traduction future + le tracking de popularite
-# via tasks.template_key / rooms.template_key / categories.template_key).
+# ORDRE SIGNIFICATIF : le premier contexte est le principal. Il decide sous
+# quelle section la tache s'affiche dans le wizard, ce qui evite qu'une tache a
+# trois contextes apparaisse trois fois. A l'affichage, on retient le premier
+# que l'utilisateur a SELECTIONNE : une tache listant [chat, chien] doit
+# s'afficher sous Chien chez qui n'a qu'un chien.
 #
-# Multi-locale : les champs title/name/description sont des dicts
-# {locale: string}. Pour v0.9.0 on ne remplit que 'fr'. Le backend
-# choisira la locale de l'user plus tard (aujourd'hui fallback fr).
+# RESOLUTION DES DRAPEAUX : OU logique sur tous les contextes de la tache, la
+# direction prudente dans les deux cas.
+#   requires_presence  un seul l'exige -> la tache l'exige. Mieux vaut masquer
+#                      a tort une tache faisable a distance que d'en proposer
+#                      une qu'on ne peut pas faire d'ici.
+#   accrues_when_away  un seul l'accumule -> elle s'accumule. Geler a tort rend
+#                      la dette invisible ; ne pas geler a tort coute une tache
+#                      rouge qu'on solde en trente secondes.
+#
+# selectable=false : contexte implicite que tout foyer a (menage, linge,
+# entretien, courses). Jamais propose a l'etape 3 — « faites-vous du menage ? »
+# n'a pas de sens — mais porte le filtre « montre-moi tout le menage », qui
+# etait le role de l'ancienne categorie.
+#
+# GENERE depuis le document de relecture v3 par scripts/v3_to_catalog.py. Le
+# markdown reste la source editoriale : corriger la-bas, puis regenerer.
+#
+# TODO i18n : les libelles `en` sont pour l'instant identiques aux `fr` — le
+# document source est francais. A traduire avant toute diffusion anglophone.
 
-rooms:
-  - key: cuisine
-    name:
-      fr: "Cuisine"
-      en: "Kitchen"
-    emoji: "🍳"
-
-  - key: salon
-    name:
-      fr: "Salon"
-      en: "Living room"
-    emoji: "🛋"
-
-  - key: chambre
-    name:
-      fr: "Chambre"
-      en: "Bedroom"
-    emoji: "🛏"
-
-  - key: salle_de_bain
-    name:
-      fr: "Salle de bain"
-      en: "Bathroom"
-    emoji: "🚿"
-
-  - key: toilettes
-    name:
-      fr: "Toilettes"
-      en: "Toilet"
-    emoji: "🚽"
-
-  - key: entree
-    name:
-      fr: "Entree"
-      en: "Entrance"
-    emoji: "🚪"
-
-  - key: couloir
-    name:
-      fr: "Couloir"
-      en: "Hallway"
-    emoji: "🏠"
-
-  - key: balcon
-    name:
-      fr: "Balcon"
-      en: "Balcony"
-    emoji: "🌿"
-
-  - key: buanderie
-    name:
-      fr: "Buanderie"
-      en: "Laundry room"
-    emoji: "🧺"
-
-  - key: bureau
-    name:
-      fr: "Bureau"
-      en: "Office"
-    emoji: "💼"
-
-categories:
-  - key: menage
-    name:
-      fr: "Menage"
-      en: "Cleaning"
-    color: "#10B981"
-    requires_home: true
-
-  - key: cuisine_cat
-    name:
-      fr: "Cuisine"
-      en: "Kitchen"
-    color: "#F59E0B"
-    requires_home: true
-
-  - key: linge
-    name:
-      fr: "Linge"
-      en: "Laundry"
-    color: "#6366F1"
-    requires_home: true
-
-  - key: administratif
-    name:
-      fr: "Administratif"
-      en: "Admin"
-    color: "#8B5CF6"
-    requires_home: false
-
-  - key: jardinage
-    name:
-      fr: "Jardinage"
-      en: "Gardening"
-    color: "#22C55E"
-    requires_home: true
-
-  - key: entretien
-    name:
-      fr: "Entretien"
-      en: "Maintenance"
-    color: "#F97316"
-    requires_home: true
-
-  - key: soin_personnel
-    name:
-      fr: "Soin personnel"
-      en: "Personal care"
-    color: "#14B8A6"
-    requires_home: false
-
-  - key: animal
-    name:
-      fr: "Animal"
-      en: "Pet"
-    color: "#A16207"
-    requires_home: false
-
+contexts:
+- key: logement
+  name:
+    fr: Logement
+    en: Logement
+  emoji: 🏠
+  default_selected: true
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: cuisine
+  name:
+    fr: Cuisine
+    en: Cuisine
+  emoji: 🍳
+  default_selected: true
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: salle_de_bain
+  name:
+    fr: Salle de bain
+    en: Salle de bain
+  emoji: 🚿
+  default_selected: true
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: toilettes
+  name:
+    fr: Toilettes
+    en: Toilettes
+  emoji: 🚽
+  default_selected: true
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: chambre
+  name:
+    fr: Chambre
+    en: Chambre
+  emoji: 🛏
+  default_selected: true
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: salon
+  name:
+    fr: Salon
+    en: Salon
+  emoji: 🛋
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: entree
+  name:
+    fr: Entrée
+    en: Entrée
+  emoji: 🚪
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: couloir
+  name:
+    fr: Couloir
+    en: Couloir
+  emoji: 🧭
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: buanderie
+  name:
+    fr: Buanderie
+    en: Buanderie
+  emoji: 🧺
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: bureau
+  name:
+    fr: Bureau
+    en: Bureau
+  emoji: 💼
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: garage
+  name:
+    fr: Garage
+    en: Garage
+  emoji: 🚗
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: cave
+  name:
+    fr: Cave
+    en: Cave
+  emoji: 🍷
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: grenier
+  name:
+    fr: Grenier
+    en: Grenier
+  emoji: 📦
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: cheminee_poele
+  name:
+    fr: Cheminée / poêle
+    en: Cheminée / poêle
+  emoji: 🔥
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: balcon
+  name:
+    fr: Balcon
+    en: Balcon
+  emoji: 🌿
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: terrasse
+  name:
+    fr: Terrasse
+    en: Terrasse
+  emoji: 🪑
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: jardin
+  name:
+    fr: Jardin
+    en: Jardin
+  emoji: 🌳
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: potager
+  name:
+    fr: Potager
+    en: Potager
+  emoji: 🥕
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: piscine
+  name:
+    fr: Piscine
+    en: Piscine
+  emoji: 🏊
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: compost
+  name:
+    fr: Compost
+    en: Compost
+  emoji: ♻️
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: chat
+  name:
+    fr: Chat
+    en: Chat
+  emoji: 🐱
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: chien
+  name:
+    fr: Chien
+    en: Chien
+  emoji: 🐕
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: rongeur
+  name:
+    fr: Rongeur
+    en: Rongeur
+  emoji: 🐹
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: oiseau
+  name:
+    fr: Oiseau
+    en: Oiseau
+  emoji: 🐦
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: poissons
+  name:
+    fr: Poissons
+    en: Poissons
+  emoji: 🐠
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: poules
+  name:
+    fr: Poules
+    en: Poules
+  emoji: 🐔
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: plantes_d_interieur
+  name:
+    fr: Plantes d'intérieur
+    en: Plantes d'intérieur
+  emoji: 🪴
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: administratif
+  name:
+    fr: Administratif
+    en: Administratif
+  emoji: 📄
+  default_selected: true
+  selectable: true
+  requires_presence: false
+  accrues_when_away: true
+- key: sante_et_soins
+  name:
+    fr: Santé et soins
+    en: Santé et soins
+  emoji: 💆
+  default_selected: false
+  selectable: true
+  requires_presence: false
+  accrues_when_away: true
+- key: voiture
+  name:
+    fr: Voiture
+    en: Voiture
+  emoji: 🚙
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: velo
+  name:
+    fr: Vélo
+    en: Vélo
+  emoji: 🚲
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: false
+- key: bebe
+  name:
+    fr: Bébé
+    en: Bébé
+  emoji: 🍼
+  default_selected: false
+  selectable: true
+  requires_presence: true
+  accrues_when_away: true
+- key: colocation
+  name:
+    fr: Colocation
+    en: Colocation
+  emoji: 🤝
+  default_selected: false
+  selectable: true
+  requires_presence: false
+  accrues_when_away: true
+- key: menage
+  name:
+    fr: Ménage
+    en: Ménage
+  emoji: 🧹
+  default_selected: false
+  selectable: false
+  requires_presence: true
+  accrues_when_away: false
+- key: linge
+  name:
+    fr: Linge
+    en: Linge
+  emoji: 👕
+  default_selected: false
+  selectable: false
+  requires_presence: true
+  accrues_when_away: false
+- key: entretien
+  name:
+    fr: Entretien
+    en: Entretien
+  emoji: 🔧
+  default_selected: false
+  selectable: false
+  requires_presence: true
+  accrues_when_away: false
+- key: courses
+  name:
+    fr: Courses
+    en: Courses
+  emoji: 🛒
+  # Selectionnable et pre-coche, contrairement a menage / linge / entretien :
+  # `courses` porte des taches PROPRES (faire les courses, verifier les
+  # stocks), donc ce n'est pas un simple classement mais une activite. Le
+  # laisser implicite rendait ces taches invisibles a vie — aucun contexte
+  # selectionnable ne pouvait les faire apparaitre.
+  default_selected: true
+  selectable: true
+  requires_presence: false
+  accrues_when_away: true
 tasks:
-  # --- Cuisine ---
-
-  - key: vaisselle
-    title:
-      fr: "Faire la vaisselle"
-      en: "Do the dishes"
-    description:
-      fr: "Remplir et vider le lave-vaisselle"
-      en: "Load and unload the dishwasher"
-    default_category_key: cuisine_cat
-    default_room_key: cuisine
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 1
-    default_tolerance: NORMAL
-
-  - key: nettoyer_plan_de_travail
-    title:
-      fr: "Nettoyer le plan de travail"
-      en: "Clean the counter"
-    default_category_key: cuisine_cat
-    default_room_key: cuisine
-    default_weight: 1
-    default_recurrence:
-      type: interval
-      every_n_days: 1
-    default_tolerance: NORMAL
-
-  - key: sortir_poubelles
-    title:
-      fr: "Sortir les poubelles"
-      en: "Take out the trash"
-    default_category_key: menage
-    default_room_key: cuisine
-    default_weight: 1
-    default_recurrence:
-      type: interval
-      every_n_days: 3
-    default_tolerance: STRICT
-
-  - key: nettoyer_frigo
-    title:
-      fr: "Nettoyer le frigo"
-      en: "Clean the fridge"
-    description:
-      fr: "Vider, jeter les perimes, passer un coup d'eponge"
-      en: "Empty, throw out expired items, wipe down"
-    default_category_key: cuisine_cat
-    default_room_key: cuisine
-    default_weight: 4
-    default_recurrence:
-      type: interval
-      every_n_days: 21
-    default_tolerance: SOUPLE
-
-  - key: detartrer_bouilloire
-    title:
-      fr: "Detartrer la bouilloire"
-      en: "Descale the kettle"
-    default_category_key: cuisine_cat
-    default_room_key: cuisine
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 60
-    default_tolerance: SOUPLE
-
-  # --- Salle de bain / Toilettes ---
-
-  - key: nettoyer_sdb
-    title:
-      fr: "Nettoyer la salle de bain"
-      en: "Clean the bathroom"
-    description:
-      fr: "Lavabo, douche, sol, miroir"
-      en: "Sink, shower, floor, mirror"
-    default_category_key: menage
-    default_room_key: salle_de_bain
-    default_weight: 4
-    default_recurrence:
-      type: interval
-      every_n_days: 7
-    default_tolerance: NORMAL
-
-  - key: changer_serviettes
-    title:
-      fr: "Changer les serviettes de bain"
-      en: "Change the bath towels"
-    default_category_key: linge
-    default_room_key: salle_de_bain
-    default_weight: 1
-    default_recurrence:
-      type: interval
-      every_n_days: 7
-    default_tolerance: NORMAL
-
-  - key: nettoyer_toilettes
-    title:
-      fr: "Nettoyer les toilettes"
-      en: "Clean the toilet"
-    default_category_key: menage
-    default_room_key: toilettes
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 7
-    default_tolerance: STRICT
-
-  # --- Linge ---
-
-  - key: lancer_machine_linge
-    title:
-      fr: "Lancer une machine a laver"
-      en: "Start a laundry load"
-    default_category_key: linge
-    default_room_key: buanderie
-    default_weight: 1
-    default_recurrence:
-      type: interval
-      every_n_days: 4
-    default_tolerance: NORMAL
-
-  - key: etendre_linge
-    title:
-      fr: "Etendre le linge"
-      en: "Hang the laundry"
-    default_category_key: linge
-    default_room_key: buanderie
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 4
-    default_tolerance: STRICT
-
-  - key: plier_linge
-    title:
-      fr: "Plier et ranger le linge"
-      en: "Fold and put away laundry"
-    default_category_key: linge
-    default_room_key: chambre
-    default_weight: 3
-    default_recurrence:
-      type: interval
-      every_n_days: 7
-    default_tolerance: NORMAL
-
-  - key: changer_draps
-    title:
-      fr: "Changer les draps du lit"
-      en: "Change the bed sheets"
-    default_category_key: linge
-    default_room_key: chambre
-    default_weight: 3
-    default_recurrence:
-      type: interval
-      every_n_days: 14
-    default_tolerance: NORMAL
-
-  # --- Menage general ---
-
-  - key: aspirateur
-    title:
-      fr: "Passer l'aspirateur"
-      en: "Vacuum"
-    default_category_key: menage
-    default_room_key: salon
-    default_weight: 4
-    default_recurrence:
-      type: interval
-      every_n_days: 7
-    default_tolerance: NORMAL
-
-  - key: serpillere
-    title:
-      fr: "Passer la serpillere"
-      en: "Mop the floor"
-    default_category_key: menage
-    default_room_key: cuisine
-    default_weight: 4
-    default_recurrence:
-      type: interval
-      every_n_days: 14
-    default_tolerance: NORMAL
-
-  - key: depoussiere
-    title:
-      fr: "Depoussierer les meubles"
-      en: "Dust the furniture"
-    default_category_key: menage
-    default_room_key: salon
-    default_weight: 3
-    default_recurrence:
-      type: interval
-      every_n_days: 14
-    default_tolerance: SOUPLE
-
-  - key: nettoyer_vitres
-    title:
-      fr: "Nettoyer les vitres"
-      en: "Clean the windows"
-    default_category_key: menage
-    default_room_key: salon
-    default_weight: 4
-    default_recurrence:
-      type: interval
-      every_n_days: 60
-    default_tolerance: SOUPLE
-
-  - key: aerer_maison
-    title:
-      fr: "Aerer la maison"
-      en: "Air out the home"
-    default_category_key: menage
-    default_weight: 1
-    default_recurrence:
-      type: interval
-      every_n_days: 1
-    default_tolerance: NORMAL
-
-  # --- Administratif ---
-
-  - key: verifier_factures
-    title:
-      fr: "Verifier les factures du mois"
-      en: "Check this month's bills"
-    default_category_key: administratif
-    default_weight: 4
-    default_recurrence:
-      type: monthly
-      day_of_month: 1
-    default_tolerance: SOUPLE
-
-  # --- Jardin / Plantes ---
-
-  - key: arroser_plantes
-    title:
-      fr: "Arroser les plantes"
-      en: "Water the plants"
-    default_category_key: jardinage
-    default_room_key: salon
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 4
-    default_tolerance: STRICT
-
-  - key: tailler_plantes
-    title:
-      fr: "Tailler et nettoyer les plantes"
-      en: "Prune and clean the plants"
-    default_category_key: jardinage
-    default_room_key: salon
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 30
-    default_tolerance: SOUPLE
-
-  - key: rempoter_plantes
-    title:
-      fr: "Rempoter et rafraichir le terreau"
-      en: "Repot and refresh the soil"
-    default_category_key: jardinage
-    default_room_key: salon
-    default_weight: 3
-    default_recurrence:
-      type: interval
-      every_n_days: 180
-    default_tolerance: SOUPLE
-
-  - key: plantes_saison
-    title:
-      fr: "Sortir / rentrer les plantes selon la saison"
-      en: "Move plants in/out for the season"
-    default_category_key: jardinage
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 180
-    default_tolerance: SOUPLE
-
-  # --- Entretien (appareils & maison) ---
-
-  - key: nettoyer_filtre_lave_linge
-    title:
-      fr: "Nettoyer le filtre du lave-linge"
-      en: "Clean the washer filter"
-    default_category_key: entretien
-    default_room_key: buanderie
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 30
-    default_tolerance: SOUPLE
-
-  - key: nettoyer_filtre_lave_vaisselle
-    title:
-      fr: "Nettoyer le filtre du lave-vaisselle"
-      en: "Clean the dishwasher filter"
-    default_category_key: entretien
-    default_room_key: cuisine
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 30
-    default_tolerance: SOUPLE
-
-  - key: detartrer_cafetiere
-    title:
-      fr: "Detartrer la cafetiere"
-      en: "Descale the coffee maker"
-    default_category_key: entretien
-    default_room_key: cuisine
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 30
-    default_tolerance: SOUPLE
-
-  - key: aiguiser_couteaux
-    title:
-      fr: "Aiguiser les couteaux"
-      en: "Sharpen the knives"
-    default_category_key: entretien
-    default_room_key: cuisine
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 60
-    default_tolerance: SOUPLE
-
-  - key: degivrer_congelateur
-    title:
-      fr: "Degivrer le congelateur"
-      en: "Defrost the freezer"
-    default_category_key: entretien
-    default_room_key: cuisine
-    default_weight: 4
-    default_recurrence:
-      type: interval
-      every_n_days: 180
-    default_tolerance: SOUPLE
-
-  - key: nettoyer_aspirateur
-    title:
-      fr: "Nettoyer l'aspirateur (sac / filtre)"
-      en: "Clean the vacuum (bag / filter)"
-    default_category_key: entretien
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 90
-    default_tolerance: SOUPLE
-
-  - key: nettoyer_interrupteurs
-    title:
-      fr: "Nettoyer les interrupteurs et poignees"
-      en: "Clean switches and handles"
-    default_category_key: entretien
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 45
-    default_tolerance: SOUPLE
-
-  # --- Administratif ---
-
-  - key: declarer_heures
-    title:
-      fr: "Declarer mes heures"
-      en: "Submit my work hours"
-    default_category_key: administratif
-    default_weight: 2
-    default_recurrence:
-      type: monthly
-      day_of_month: 1
-    default_tolerance: SOUPLE
-
-  - key: impots
-    title:
-      fr: "Faire / verifier les impots"
-      en: "File / review taxes"
-    default_category_key: administratif
-    default_weight: 6
-    default_recurrence:
-      type: interval
-      every_n_days: 365
-    default_tolerance: SOUPLE
-
-  - key: verifier_abonnements
-    title:
-      fr: "Verifier les abonnements et prelevements"
-      en: "Review subscriptions and direct debits"
-    default_category_key: administratif
-    default_weight: 3
-    default_recurrence:
-      type: interval
-      every_n_days: 90
-    default_tolerance: SOUPLE
-
-  - key: sauvegarder_papiers
-    title:
-      fr: "Sauvegarder les papiers importants"
-      en: "Back up important documents"
-    default_category_key: administratif
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 180
-    default_tolerance: SOUPLE
-
-  # --- Soin personnel ---
-
-  - key: masque_visage
-    title:
-      fr: "Faire un masque visage / soin de la peau"
-      en: "Face mask / skincare routine"
-    default_category_key: soin_personnel
-    default_weight: 1
-    default_recurrence:
-      type: interval
-      every_n_days: 7
-    default_tolerance: SOUPLE
-
-  - key: rdv_coiffeur
-    title:
-      fr: "Prendre RDV coiffeur"
-      en: "Book a hair appointment"
-    default_category_key: soin_personnel
-    default_weight: 1
-    default_recurrence:
-      type: interval
-      every_n_days: 60
-    default_tolerance: SOUPLE
-
-  - key: rdv_dentiste
-    title:
-      fr: "RDV dentiste"
-      en: "Dentist appointment"
-    default_category_key: soin_personnel
-    default_weight: 1
-    default_recurrence:
-      type: interval
-      every_n_days: 180
-    default_tolerance: SOUPLE
-
-  - key: rdv_medecin
-    title:
-      fr: "RDV medecin / controle annuel"
-      en: "Doctor / annual check-up"
-    default_category_key: soin_personnel
-    default_weight: 1
-    default_recurrence:
-      type: interval
-      every_n_days: 365
-    default_tolerance: SOUPLE
-
-  # --- Animal ---
-
-  - key: animal_eau
-    title:
-      fr: "Changer l'eau de l'animal"
-      en: "Change the pet's water"
-    default_category_key: animal
-    default_weight: 1
-    default_recurrence:
-      type: interval
-      every_n_days: 7
-    default_tolerance: NORMAL
-
-  - key: animal_litiere
-    title:
-      fr: "Nettoyer la litiere"
-      en: "Clean the litter box"
-    default_category_key: animal
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 2
-    default_tolerance: NORMAL
-
-  - key: animal_gamelles
-    title:
-      fr: "Recurer les gamelles"
-      en: "Scrub the food bowls"
-    default_category_key: animal
-    default_weight: 1
-    default_recurrence:
-      type: interval
-      every_n_days: 10
-    default_tolerance: SOUPLE
-
-  - key: animal_panier
-    title:
-      fr: "Laver le panier / plaid"
-      en: "Wash the pet bed / blanket"
-    default_category_key: animal
-    default_weight: 2
-    default_recurrence:
-      type: interval
-      every_n_days: 30
-    default_tolerance: SOUPLE
+- key: aerer_la_maison
+  title:
+    fr: Aérer la maison
+    en: Aérer la maison
+  contexts:
+  - logement
+  - menage
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+  default_selected: true
+- key: nettoyer_l_aspirateur_sac_filtre
+  title:
+    fr: Nettoyer l'aspirateur (sac / filtre)
+    en: Nettoyer l'aspirateur (sac / filtre)
+  contexts:
+  - logement
+  - entretien
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: nettoyer_les_interrupteurs_et_poignees
+  title:
+    fr: Nettoyer les interrupteurs et poignées
+    en: Nettoyer les interrupteurs et poignées
+  contexts:
+  - logement
+  - menage
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 45
+- key: tester_les_detecteurs_de_fumee
+  title:
+    fr: Tester les détecteurs de fumée
+    en: Tester les détecteurs de fumée
+  contexts:
+  - logement
+  - entretien
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: changer_les_piles_des_detecteurs
+  title:
+    fr: Changer les piles des détecteurs
+    en: Changer les piles des détecteurs
+  contexts:
+  - logement
+  - entretien
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 1
+    day: 1
+- key: nettoyer_les_bouches_de_vmc_grilles_d_aeration
+  title:
+    fr: Nettoyer les bouches de VMC / grilles d'aération
+    en: Nettoyer les bouches de VMC / grilles d'aération
+  contexts:
+  - logement
+  - entretien
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 180
+- key: faire_entretenir_la_chaudiere_pro_obligation_ann
+  title:
+    fr: Faire entretenir la chaudière (pro, obligation annuelle)
+    en: Faire entretenir la chaudière (pro, obligation annuelle)
+  contexts:
+  - logement
+  - entretien
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 5
+    day: 1
+    grace_days: 123
+- key: purger_les_radiateurs
+  title:
+    fr: Purger les radiateurs
+    en: Purger les radiateurs
+  contexts:
+  - logement
+  - entretien
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 9
+    day: 1
+- key: nettoyer_les_filtres_de_climatisation
+  title:
+    fr: Nettoyer les filtres de climatisation
+    en: Nettoyer les filtres de climatisation
+  contexts:
+  - logement
+  - entretien
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 90
+      '5': 90
+      '6': 90
+      '7': 90
+      '8': 90
+      '9': 90
+      '10': 365
+      '11': 365
+      '12': 365
+- key: nettoyer_les_plinthes
+  title:
+    fr: Nettoyer les plinthes
+    en: Nettoyer les plinthes
+  contexts:
+  - logement
+  - menage
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: depoussierer_luminaires_et_abat_jour
+  title:
+    fr: Dépoussiérer luminaires et abat-jour
+    en: Dépoussiérer luminaires et abat-jour
+  contexts:
+  - logement
+  - menage
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: verifier_fuites_et_joints_sous_eviers_silicone
+  title:
+    fr: Vérifier fuites et joints (sous éviers, silicone)
+    en: Vérifier fuites et joints (sous éviers, silicone)
+  contexts:
+  - logement
+  - entretien
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: detartrer_robinets_et_mousseurs
+  title:
+    fr: Détartrer robinets et mousseurs
+    en: Détartrer robinets et mousseurs
+  contexts:
+  - logement
+  - entretien
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: faire_la_vaisselle
+  title:
+    fr: Faire la vaisselle
+    en: Faire la vaisselle
+  contexts:
+  - cuisine
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+  default_selected: true
+- key: nettoyer_le_plan_de_travail
+  title:
+    fr: Nettoyer le plan de travail
+    en: Nettoyer le plan de travail
+  contexts:
+  - cuisine
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+- key: sortir_les_poubelles
+  title:
+    fr: Sortir les poubelles
+    en: Sortir les poubelles
+  contexts:
+  - cuisine
+  - menage
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+  default_selected: true
+- key: nettoyer_le_frigo
+  title:
+    fr: Nettoyer le frigo
+    en: Nettoyer le frigo
+  contexts:
+  - cuisine
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 21
+- key: detartrer_la_bouilloire
+  title:
+    fr: Détartrer la bouilloire
+    en: Détartrer la bouilloire
+  contexts:
+  - cuisine
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: passer_la_serpillere
+  title:
+    fr: Passer la serpillère
+    en: Passer la serpillère
+  contexts:
+  - cuisine
+  - menage
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 14
+- key: nettoyer_le_filtre_du_lave_vaisselle
+  title:
+    fr: Nettoyer le filtre du lave-vaisselle
+    en: Nettoyer le filtre du lave-vaisselle
+  contexts:
+  - cuisine
+  - entretien
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: detartrer_la_cafetiere
+  title:
+    fr: Détartrer la cafetière
+    en: Détartrer la cafetière
+  contexts:
+  - cuisine
+  - entretien
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: aiguiser_les_couteaux
+  title:
+    fr: Aiguiser les couteaux
+    en: Aiguiser les couteaux
+  contexts:
+  - cuisine
+  - entretien
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: degivrer_le_congelateur
+  title:
+    fr: Dégivrer le congélateur
+    en: Dégivrer le congélateur
+  contexts:
+  - cuisine
+  - entretien
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 180
+- key: sortir_le_verre_point_d_apport
+  title:
+    fr: Sortir le verre (point d'apport)
+    en: Sortir le verre (point d'apport)
+  contexts:
+  - cuisine
+  - menage
+  - courses
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+- key: sortir_le_tri_emballages_cartons
+  title:
+    fr: Sortir le tri (emballages, cartons)
+    en: Sortir le tri (emballages, cartons)
+  contexts:
+  - cuisine
+  - menage
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+- key: nettoyer_le_micro_ondes
+  title:
+    fr: Nettoyer le micro-ondes
+    en: Nettoyer le micro-ondes
+  contexts:
+  - cuisine
+  - menage
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+- key: nettoyer_le_four
+  title:
+    fr: Nettoyer le four
+    en: Nettoyer le four
+  contexts:
+  - cuisine
+  - entretien
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: nettoyer_la_hotte_et_ses_filtres
+  title:
+    fr: Nettoyer la hotte et ses filtres
+    en: Nettoyer la hotte et ses filtres
+  contexts:
+  - cuisine
+  - entretien
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: nettoyer_l_evier_et_le_siphon
+  title:
+    fr: Nettoyer l'évier et le siphon
+    en: Nettoyer l'évier et le siphon
+  contexts:
+  - cuisine
+  - menage
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+- key: laver_la_poubelle
+  title:
+    fr: Laver la poubelle
+    en: Laver la poubelle
+  contexts:
+  - cuisine
+  - menage
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: changer_l_eponge_lavette
+  title:
+    fr: Changer l'éponge / lavette
+    en: Changer l'éponge / lavette
+  contexts:
+  - cuisine
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+- key: laver_les_torchons
+  title:
+    fr: Laver les torchons
+    en: Laver les torchons
+  contexts:
+  - cuisine
+  - linge
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+- key: verifier_les_dates_de_peremption_frigo_placards
+  title:
+    fr: Vérifier les dates de péremption (frigo, placards)
+    en: Vérifier les dates de péremption (frigo, placards)
+  contexts:
+  - cuisine
+  - courses
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: nettoyer_l_interieur_des_placards
+  title:
+    fr: Nettoyer l'intérieur des placards
+    en: Nettoyer l'intérieur des placards
+  contexts:
+  - cuisine
+  - menage
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 180
+- key: nettoyer_la_salle_de_bain
+  title:
+    fr: Nettoyer la salle de bain
+    en: Nettoyer la salle de bain
+  contexts:
+  - salle_de_bain
+  - menage
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+  default_selected: true
+- key: changer_les_serviettes_de_bain
+  title:
+    fr: Changer les serviettes de bain
+    en: Changer les serviettes de bain
+  contexts:
+  - salle_de_bain
+  - linge
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+- key: laver_le_tapis_de_bain
+  title:
+    fr: Laver le tapis de bain
+    en: Laver le tapis de bain
+  contexts:
+  - salle_de_bain
+  - linge
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 14
+- key: laver_le_rideau_de_douche_nettoyer_les_joints
+  title:
+    fr: Laver le rideau de douche / nettoyer les joints
+    en: Laver le rideau de douche / nettoyer les joints
+  contexts:
+  - salle_de_bain
+  - menage
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: detartrer_le_pommeau_de_douche
+  title:
+    fr: Détartrer le pommeau de douche
+    en: Détartrer le pommeau de douche
+  contexts:
+  - salle_de_bain
+  - entretien
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: deboucher_nettoyer_les_siphons_et_bondes
+  title:
+    fr: Déboucher / nettoyer les siphons et bondes
+    en: Déboucher / nettoyer les siphons et bondes
+  contexts:
+  - salle_de_bain
+  - entretien
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: nettoyer_les_toilettes
+  title:
+    fr: Nettoyer les toilettes
+    en: Nettoyer les toilettes
+  contexts:
+  - toilettes
+  - menage
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+  default_selected: true
+- key: detartrer_la_cuvette_en_profondeur
+  title:
+    fr: Détartrer la cuvette en profondeur
+    en: Détartrer la cuvette en profondeur
+  contexts:
+  - toilettes
+  - menage
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: changer_la_brosse_wc
+  title:
+    fr: Changer la brosse WC
+    en: Changer la brosse WC
+  contexts:
+  - toilettes
+  - courses
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 180
+- key: plier_et_ranger_le_linge
+  title:
+    fr: Plier et ranger le linge
+    en: Plier et ranger le linge
+  contexts:
+  - chambre
+  - linge
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+- key: changer_les_draps_du_lit
+  title:
+    fr: Changer les draps du lit
+    en: Changer les draps du lit
+  contexts:
+  - chambre
+  - linge
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 14
+  default_selected: true
+- key: aspirer_et_retourner_le_matelas
+  title:
+    fr: Aspirer et retourner le matelas
+    en: Aspirer et retourner le matelas
+  contexts:
+  - chambre
+  - menage
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 180
+- key: laver_oreillers_et_couette
+  title:
+    fr: Laver oreillers et couette
+    en: Laver oreillers et couette
+  contexts:
+  - chambre
+  - linge
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 180
+- key: trier_la_garde_robe_selon_la_saison
+  title:
+    fr: Trier la garde-robe selon la saison
+    en: Trier la garde-robe selon la saison
+  contexts:
+  - chambre
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 4
+    - 10
+    day: 1
+- key: passer_l_aspirateur
+  title:
+    fr: Passer l'aspirateur
+    en: Passer l'aspirateur
+  contexts:
+  - salon
+  - menage
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+  default_selected: true
+- key: depoussierer_les_meubles
+  title:
+    fr: Dépoussiérer les meubles
+    en: Dépoussiérer les meubles
+  contexts:
+  - salon
+  - menage
+  default_weight: 5
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 14
+  default_selected: true
+- key: nettoyer_les_vitres
+  title:
+    fr: Nettoyer les vitres
+    en: Nettoyer les vitres
+  contexts:
+  - salon
+  - menage
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: aspirer_le_canape_et_sous_les_coussins
+  title:
+    fr: Aspirer le canapé (et sous les coussins)
+    en: Aspirer le canapé (et sous les coussins)
+  contexts:
+  - salon
+  - menage
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: laver_plaids_et_housses_de_coussin
+  title:
+    fr: Laver plaids et housses de coussin
+    en: Laver plaids et housses de coussin
+  contexts:
+  - salon
+  - linge
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: nettoyer_ecrans_et_telecommandes
+  title:
+    fr: Nettoyer écrans et télécommandes
+    en: Nettoyer écrans et télécommandes
+  contexts:
+  - salon
+  - menage
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: secouer_nettoyer_le_paillasson
+  title:
+    fr: Secouer / nettoyer le paillasson
+    en: Secouer / nettoyer le paillasson
+  contexts:
+  - entree
+  - menage
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: ranger_chaussures_et_manteaux
+  title:
+    fr: Ranger chaussures et manteaux
+    en: Ranger chaussures et manteaux
+  contexts:
+  - entree
+  - menage
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+  default_selected: true
+- key: trier_le_courrier_et_les_papiers_qui_trainent
+  title:
+    fr: Trier le courrier et les papiers qui traînent
+    en: Trier le courrier et les papiers qui traînent
+  contexts:
+  - entree
+  - administratif
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+- key: depoussierer_cadres_etageres_et_plinthes_du_coul
+  title:
+    fr: Dépoussiérer cadres, étagères et plinthes du couloir
+    en: Dépoussiérer cadres, étagères et plinthes du couloir
+  contexts:
+  - couloir
+  - menage
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+  default_selected: true
+- key: lancer_une_machine_a_laver
+  title:
+    fr: Lancer une machine à laver
+    en: Lancer une machine à laver
+  contexts:
+  - buanderie
+  - linge
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+  default_selected: true
+- key: etendre_le_linge
+  title:
+    fr: Étendre le linge
+    en: Étendre le linge
+  contexts:
+  - buanderie
+  - linge
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+  default_selected: true
+- key: nettoyer_le_filtre_du_lave_linge
+  title:
+    fr: Nettoyer le filtre du lave-linge
+    en: Nettoyer le filtre du lave-linge
+  contexts:
+  - buanderie
+  - entretien
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: nettoyer_le_lave_linge_joint_bac_a_lessive_cycle
+  title:
+    fr: Nettoyer le lave-linge (joint, bac à lessive, cycle 90°)
+    en: Nettoyer le lave-linge (joint, bac à lessive, cycle 90°)
+  contexts:
+  - buanderie
+  - entretien
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: nettoyer_le_filtre_du_seche_linge
+  title:
+    fr: Nettoyer le filtre du sèche-linge
+    en: Nettoyer le filtre du sèche-linge
+  contexts:
+  - buanderie
+  - entretien
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+- key: detartrer_le_fer_la_centrale_vapeur
+  title:
+    fr: Détartrer le fer / la centrale vapeur
+    en: Détartrer le fer / la centrale vapeur
+  contexts:
+  - buanderie
+  - entretien
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: repasser
+  title:
+    fr: Repasser
+    en: Repasser
+  contexts:
+  - buanderie
+  - linge
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+- key: nettoyer_ecran_clavier_et_souris
+  title:
+    fr: Nettoyer écran, clavier et souris
+    en: Nettoyer écran, clavier et souris
+  contexts:
+  - bureau
+  - menage
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: trier_et_classer_les_papiers
+  title:
+    fr: Trier et classer les papiers
+    en: Trier et classer les papiers
+  contexts:
+  - bureau
+  - administratif
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+  default_selected: true
+- key: sauvegarder_l_ordinateur
+  title:
+    fr: Sauvegarder l'ordinateur
+    en: Sauvegarder l'ordinateur
+  contexts:
+  - bureau
+  - administratif
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: ranger_le_garage
+  title:
+    fr: Ranger le garage
+    en: Ranger le garage
+  contexts:
+  - garage
+  - menage
+  default_weight: 24
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 180
+- key: balayer_le_sol_du_garage
+  title:
+    fr: Balayer le sol du garage
+    en: Balayer le sol du garage
+  contexts:
+  - garage
+  - menage
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+  default_selected: true
+- key: verifier_la_cave_humidite_stock
+  title:
+    fr: Vérifier la cave (humidité, stock)
+    en: Vérifier la cave (humidité, stock)
+  contexts:
+  - cave
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+  default_selected: true
+- key: verifier_le_grenier_fuites_nuisibles_aeration
+  title:
+    fr: Vérifier le grenier (fuites, nuisibles, aération)
+    en: Vérifier le grenier (fuites, nuisibles, aération)
+  contexts:
+  - grenier
+  - entretien
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 180
+  default_selected: true
+- key: vider_les_cendres
+  title:
+    fr: Vider les cendres
+    en: Vider les cendres
+  contexts:
+  - cheminee_poele
+  - menage
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 7
+      '2': 7
+      '3': 7
+      '4': 365
+      '5': 365
+      '6': 365
+      '7': 365
+      '8': 365
+      '9': 365
+      '10': 7
+      '11': 7
+      '12': 7
+  default_selected: true
+- key: rentrer_du_bois
+  title:
+    fr: Rentrer du bois
+    en: Rentrer du bois
+  contexts:
+  - cheminee_poele
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+  default_selected: true
+- key: faire_ramoner_le_conduit_obligation_1_a_2_an
+  title:
+    fr: Faire ramoner le conduit (obligation, 1 à 2×/an)
+    en: Faire ramoner le conduit (obligation, 1 à 2×/an)
+  contexts:
+  - cheminee_poele
+  - entretien
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 9
+    day: 1
+- key: balayer_le_balcon
+  title:
+    fr: Balayer le balcon
+    en: Balayer le balcon
+  contexts:
+  - balcon
+  - menage
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 14
+  default_selected: true
+- key: arroser_les_jardinieres
+  title:
+    fr: Arroser les jardinières
+    en: Arroser les jardinières
+  contexts:
+  - balcon
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 3
+      '5': 3
+      '6': 3
+      '7': 3
+      '8': 3
+      '9': 3
+      '10': 3
+      '11': 365
+      '12': 365
+  default_selected: true
+- key: nettoyer_garde_corps_et_rebords
+  title:
+    fr: Nettoyer garde-corps et rebords
+    en: Nettoyer garde-corps et rebords
+  contexts:
+  - balcon
+  - menage
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: balayer_la_terrasse
+  title:
+    fr: Balayer la terrasse
+    en: Balayer la terrasse
+  contexts:
+  - terrasse
+  - menage
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 14
+  default_selected: true
+- key: nettoyer_le_mobilier_de_jardin
+  title:
+    fr: Nettoyer le mobilier de jardin
+    en: Nettoyer le mobilier de jardin
+  contexts:
+  - terrasse
+  - menage
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 60
+      '5': 60
+      '6': 60
+      '7': 60
+      '8': 60
+      '9': 60
+      '10': 60
+      '11': 365
+      '12': 365
+- key: rentrer_sortir_le_mobilier_de_jardin
+  title:
+    fr: Rentrer / sortir le mobilier de jardin
+    en: Rentrer / sortir le mobilier de jardin
+  contexts:
+  - terrasse
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 4
+    - 10
+    day: 1
+- key: nettoyer_le_barbecue_la_plancha
+  title:
+    fr: Nettoyer le barbecue / la plancha
+    en: Nettoyer le barbecue / la plancha
+  contexts:
+  - terrasse
+  - menage
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 30
+      '5': 30
+      '6': 30
+      '7': 30
+      '8': 30
+      '9': 30
+      '10': 30
+      '11': 365
+      '12': 365
+- key: demousser_la_terrasse_karcher_brosse
+  title:
+    fr: Démousser la terrasse (karcher, brosse)
+    en: Démousser la terrasse (karcher, brosse)
+  contexts:
+  - terrasse
+  - entretien
+  default_weight: 24
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 3
+    day: 1
+    grace_days: 61
+- key: tondre_la_pelouse
+  title:
+    fr: Tondre la pelouse
+    en: Tondre la pelouse
+  contexts:
+  - jardin
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 14
+      '4': 14
+      '5': 14
+      '6': 14
+      '7': 14
+      '8': 14
+      '9': 14
+      '10': 14
+      '11': 14
+      '12': 365
+  default_selected: true
+- key: arroser_les_plantes_exterieures
+  title:
+    fr: Arroser les plantes extérieures
+    en: Arroser les plantes extérieures
+  contexts:
+  - jardin
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 3
+      '5': 3
+      '6': 3
+      '7': 3
+      '8': 3
+      '9': 3
+      '10': 3
+      '11': 365
+      '12': 365
+  default_selected: true
+- key: tailler_les_arbres_et_haies
+  title:
+    fr: Tailler les arbres et haies
+    en: Tailler les arbres et haies
+  contexts:
+  - jardin
+  default_weight: 36
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 180
+- key: desherber
+  title:
+    fr: Désherber
+    en: Désherber
+  contexts:
+  - jardin
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 21
+      '4': 21
+      '5': 21
+      '6': 21
+      '7': 21
+      '8': 21
+      '9': 21
+      '10': 21
+      '11': 365
+      '12': 365
+- key: ramasser_les_feuilles
+  title:
+    fr: Ramasser les feuilles
+    en: Ramasser les feuilles
+  contexts:
+  - jardin
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 365
+      '5': 365
+      '6': 365
+      '7': 365
+      '8': 365
+      '9': 365
+      '10': 14
+      '11': 14
+      '12': 14
+- key: nettoyer_les_gouttieres
+  title:
+    fr: Nettoyer les gouttières
+    en: Nettoyer les gouttières
+  contexts:
+  - jardin
+  - entretien
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 4
+    - 11
+    day: 1
+- key: scarifier_fertiliser_la_pelouse
+  title:
+    fr: Scarifier / fertiliser la pelouse
+    en: Scarifier / fertiliser la pelouse
+  contexts:
+  - jardin
+  default_weight: 18
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 3
+    - 9
+    day: 1
+- key: proteger_les_plantes_du_gel_voilage_rentrer_les_
+  title:
+    fr: Protéger les plantes du gel (voilage, rentrer les pots)
+    en: Protéger les plantes du gel (voilage, rentrer les pots)
+  contexts:
+  - jardin
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 11
+    day: 1
+- key: entretenir_les_outils_tondeuse_taille_haie
+  title:
+    fr: Entretenir les outils (tondeuse, taille-haie)
+    en: Entretenir les outils (tondeuse, taille-haie)
+  contexts:
+  - jardin
+  - entretien
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 2
+    day: 1
+- key: arroser_le_potager
+  title:
+    fr: Arroser le potager
+    en: Arroser le potager
+  contexts:
+  - potager
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 2
+      '5': 2
+      '6': 2
+      '7': 2
+      '8': 2
+      '9': 2
+      '10': 2
+      '11': 365
+      '12': 365
+  default_selected: true
+- key: recolter
+  title:
+    fr: Récolter
+    en: Récolter
+  contexts:
+  - potager
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+- key: desherber_le_potager
+  title:
+    fr: Désherber le potager
+    en: Désherber le potager
+  contexts:
+  - potager
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 14
+      '4': 14
+      '5': 14
+      '6': 14
+      '7': 14
+      '8': 14
+      '9': 14
+      '10': 14
+      '11': 365
+      '12': 365
+- key: semer_planter_selon_la_saison
+  title:
+    fr: Semer / planter selon la saison
+    en: Semer / planter selon la saison
+  contexts:
+  - potager
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 3
+    - 5
+    - 9
+    day: 1
+- key: pailler_et_amender_la_terre
+  title:
+    fr: Pailler et amender la terre
+    en: Pailler et amender la terre
+  contexts:
+  - potager
+  - compost
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 11
+    day: 1
+- key: nettoyer_la_piscine
+  title:
+    fr: Nettoyer la piscine
+    en: Nettoyer la piscine
+  contexts:
+  - piscine
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 365
+      '5': 7
+      '6': 7
+      '7': 7
+      '8': 7
+      '9': 7
+      '10': 365
+      '11': 365
+      '12': 365
+  default_selected: true
+- key: verifier_le_ph_et_le_chlore
+  title:
+    fr: Vérifier le pH et le chlore
+    en: Vérifier le pH et le chlore
+  contexts:
+  - piscine
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 365
+      '5': 3
+      '6': 3
+      '7': 3
+      '8': 3
+      '9': 3
+      '10': 365
+      '11': 365
+      '12': 365
+  default_selected: true
+- key: vider_les_paniers_skimmers_pompe
+  title:
+    fr: Vider les paniers (skimmers, pompe)
+    en: Vider les paniers (skimmers, pompe)
+  contexts:
+  - piscine
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 365
+      '5': 4
+      '6': 4
+      '7': 4
+      '8': 4
+      '9': 4
+      '10': 365
+      '11': 365
+      '12': 365
+- key: verifier_le_niveau_d_eau_et_la_pression_du_filtr
+  title:
+    fr: Vérifier le niveau d'eau et la pression du filtre
+    en: Vérifier le niveau d'eau et la pression du filtre
+  contexts:
+  - piscine
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 365
+      '5': 7
+      '6': 7
+      '7': 7
+      '8': 7
+      '9': 7
+      '10': 365
+      '11': 365
+      '12': 365
+- key: brosser_parois_et_ligne_d_eau
+  title:
+    fr: Brosser parois et ligne d'eau
+    en: Brosser parois et ligne d'eau
+  contexts:
+  - piscine
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 365
+      '5': 7
+      '6': 7
+      '7': 7
+      '8': 7
+      '9': 7
+      '10': 365
+      '11': 365
+      '12': 365
+- key: faire_une_chloration_choc
+  title:
+    fr: Faire une chloration choc
+    en: Faire une chloration choc
+  contexts:
+  - piscine
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 365
+      '5': 14
+      '6': 14
+      '7': 14
+      '8': 14
+      '9': 14
+      '10': 365
+      '11': 365
+      '12': 365
+- key: contre_laver_le_filtre_backwash
+  title:
+    fr: Contre-laver le filtre (backwash)
+    en: Contre-laver le filtre (backwash)
+  contexts:
+  - piscine
+  - entretien
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 365
+      '4': 365
+      '5': 30
+      '6': 30
+      '7': 30
+      '8': 30
+      '9': 30
+      '10': 365
+      '11': 365
+      '12': 365
+- key: nettoyer_le_filtre_en_profondeur
+  title:
+    fr: Nettoyer le filtre en profondeur
+    en: Nettoyer le filtre en profondeur
+  contexts:
+  - piscine
+  - entretien
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 6
+    day: 1
+- key: hiverner_la_piscine
+  title:
+    fr: Hiverner la piscine
+    en: Hiverner la piscine
+  contexts:
+  - piscine
+  - entretien
+  default_weight: 36
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 10
+    day: 1
+- key: remettre_la_piscine_en_service
+  title:
+    fr: Remettre la piscine en service
+    en: Remettre la piscine en service
+  contexts:
+  - piscine
+  - entretien
+  default_weight: 36
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 4
+    day: 1
+- key: remuer_le_compost
+  title:
+    fr: Remuer le compost
+    en: Remuer le compost
+  contexts:
+  - compost
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 21
+  default_selected: true
+- key: vider_le_bac_a_compost_de_la_cuisine
+  title:
+    fr: Vider le bac à compost de la cuisine
+    en: Vider le bac à compost de la cuisine
+  contexts:
+  - compost
+  - cuisine
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+- key: equilibrer_le_compost_apport_de_matiere_seche
+  title:
+    fr: Équilibrer le compost (apport de matière sèche)
+    en: Équilibrer le compost (apport de matière sèche)
+  contexts:
+  - compost
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: nourrir_l_animal
+  title:
+    fr: Nourrir l'animal
+    en: Nourrir l'animal
+  contexts:
+  - chat
+  - chien
+  - rongeur
+  - oiseau
+  - poissons
+  - poules
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 1
+  default_selected: true
+- key: changer_l_eau_de_l_animal
+  title:
+    fr: Changer l'eau de l'animal
+    en: Changer l'eau de l'animal
+  contexts:
+  - chat
+  - chien
+  - rongeur
+  - oiseau
+  - poules
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+- key: nettoyer_la_litiere
+  title:
+    fr: Nettoyer la litière
+    en: Nettoyer la litière
+  contexts:
+  - chat
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 2
+  default_selected: true
+- key: changer_la_litiere_en_totalite
+  title:
+    fr: Changer la litière en totalité
+    en: Changer la litière en totalité
+  contexts:
+  - chat
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: recurer_les_gamelles
+  title:
+    fr: Récurer les gamelles
+    en: Récurer les gamelles
+  contexts:
+  - chat
+  - chien
+  - rongeur
+  - oiseau
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 10
+- key: laver_le_panier_plaid
+  title:
+    fr: Laver le panier / plaid
+    en: Laver le panier / plaid
+  contexts:
+  - chat
+  - chien
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: vermifuge_antipuces
+  title:
+    fr: Vermifuge / antipuces
+    en: Vermifuge / antipuces
+  contexts:
+  - chat
+  - chien
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: nettoyer_la_fontaine_a_eau
+  title:
+    fr: Nettoyer la fontaine à eau
+    en: Nettoyer la fontaine à eau
+  contexts:
+  - chat
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: couper_les_griffes
+  title:
+    fr: Couper les griffes
+    en: Couper les griffes
+  contexts:
+  - chat
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 45
+- key: rappel_vaccins_visite_veterinaire
+  title:
+    fr: Rappel vaccins / visite vétérinaire
+    en: Rappel vaccins / visite vétérinaire
+  contexts:
+  - chat
+  - chien
+  - rongeur
+  - oiseau
+  - poules
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 365
+- key: sortir_le_chien
+  title:
+    fr: Sortir le chien
+    en: Sortir le chien
+  contexts:
+  - chien
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 1
+  default_selected: true
+- key: brosser_l_animal
+  title:
+    fr: Brosser l'animal
+    en: Brosser l'animal
+  contexts:
+  - chien
+  - chat
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+- key: laver_le_chien
+  title:
+    fr: Laver le chien
+    en: Laver le chien
+  contexts:
+  - chien
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: laver_les_jouets_et_accessoires
+  title:
+    fr: Laver les jouets et accessoires
+    en: Laver les jouets et accessoires
+  contexts:
+  - chien
+  - chat
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: nettoyer_la_cage
+  title:
+    fr: Nettoyer la cage
+    en: Nettoyer la cage
+  contexts:
+  - rongeur
+  - oiseau
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+  default_selected: true
+- key: retirer_les_zones_souillees_de_la_litiere
+  title:
+    fr: Retirer les zones souillées de la litière
+    en: Retirer les zones souillées de la litière
+  contexts:
+  - rongeur
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 2
+- key: donner_du_foin_de_la_verdure_fraiche
+  title:
+    fr: Donner du foin / de la verdure fraîche
+    en: Donner du foin / de la verdure fraîche
+  contexts:
+  - rongeur
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 2
+- key: changer_le_fond_de_cage
+  title:
+    fr: Changer le fond de cage
+    en: Changer le fond de cage
+  contexts:
+  - oiseau
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 2
+  default_selected: true
+- key: nettoyer_l_aquarium
+  title:
+    fr: Nettoyer l'aquarium
+    en: Nettoyer l'aquarium
+  contexts:
+  - poissons
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 14
+  default_selected: true
+- key: changer_une_partie_de_l_eau_2030
+  title:
+    fr: Changer une partie de l'eau (20–30 %)
+    en: Changer une partie de l'eau (20–30 %)
+  contexts:
+  - poissons
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 14
+- key: tester_les_parametres_de_l_eau
+  title:
+    fr: Tester les paramètres de l'eau
+    en: Tester les paramètres de l'eau
+  contexts:
+  - poissons
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 14
+- key: rincer_le_filtre_de_l_aquarium
+  title:
+    fr: Rincer le filtre de l'aquarium
+    en: Rincer le filtre de l'aquarium
+  contexts:
+  - poissons
+  - entretien
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: nettoyer_les_vitres_interieures_algues
+  title:
+    fr: Nettoyer les vitres intérieures (algues)
+    en: Nettoyer les vitres intérieures (algues)
+  contexts:
+  - poissons
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+- key: nettoyer_le_poulailler
+  title:
+    fr: Nettoyer le poulailler
+    en: Nettoyer le poulailler
+  contexts:
+  - poules
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 14
+  default_selected: true
+- key: ramasser_les_ufs
+  title:
+    fr: Ramasser les œufs
+    en: Ramasser les œufs
+  contexts:
+  - poules
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 1
+  default_selected: true
+- key: changer_la_paille_des_pondoirs
+  title:
+    fr: Changer la paille des pondoirs
+    en: Changer la paille des pondoirs
+  contexts:
+  - poules
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+- key: traiter_contre_les_poux_rouges_desinfecter
+  title:
+    fr: Traiter contre les poux rouges / désinfecter
+    en: Traiter contre les poux rouges / désinfecter
+  contexts:
+  - poules
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: verifier_cloture_et_protection_anti_predateurs
+  title:
+    fr: Vérifier clôture et protection anti-prédateurs
+    en: Vérifier clôture et protection anti-prédateurs
+  contexts:
+  - poules
+  - entretien
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: arroser_les_plantes
+  title:
+    fr: Arroser les plantes
+    en: Arroser les plantes
+  contexts:
+  - plantes_d_interieur
+  - salon
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 4
+  default_selected: true
+- key: tailler_et_nettoyer_les_plantes
+  title:
+    fr: Tailler et nettoyer les plantes
+    en: Tailler et nettoyer les plantes
+  contexts:
+  - plantes_d_interieur
+  - salon
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: rempoter_et_rafraichir_le_terreau
+  title:
+    fr: Rempoter et rafraîchir le terreau
+    en: Rempoter et rafraîchir le terreau
+  contexts:
+  - plantes_d_interieur
+  - salon
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 3
+    day: 1
+    grace_days: 61
+- key: sortir_rentrer_les_plantes_selon_la_saison
+  title:
+    fr: Sortir / rentrer les plantes selon la saison
+    en: Sortir / rentrer les plantes selon la saison
+  contexts:
+  - plantes_d_interieur
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 5
+    - 10
+    day: 1
+- key: fertiliser_en_saison_de_croissance
+  title:
+    fr: Fertiliser (en saison de croissance)
+    en: Fertiliser (en saison de croissance)
+  contexts:
+  - plantes_d_interieur
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: monthly_variable
+    days_per_month:
+      '1': 365
+      '2': 365
+      '3': 30
+      '4': 30
+      '5': 30
+      '6': 30
+      '7': 30
+      '8': 30
+      '9': 30
+      '10': 365
+      '11': 365
+      '12': 365
+- key: depoussierer_les_feuilles_verifier_les_parasites
+  title:
+    fr: Dépoussiérer les feuilles, vérifier les parasites
+    en: Dépoussiérer les feuilles, vérifier les parasites
+  contexts:
+  - plantes_d_interieur
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: verifier_les_factures_du_mois
+  title:
+    fr: Vérifier les factures du mois
+    en: Vérifier les factures du mois
+  contexts:
+  - administratif
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    day: 1
+  default_selected: true
+- key: declarer_mes_heures
+  title:
+    fr: Déclarer mes heures
+    en: Déclarer mes heures
+  contexts:
+  - administratif
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    day: 1
+- key: faire_verifier_les_impots
+  title:
+    fr: Faire / vérifier les impôts
+    en: Faire / vérifier les impôts
+  contexts:
+  - administratif
+  default_weight: 24
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 5
+    day: 1
+- key: verifier_les_abonnements_et_prelevements
+  title:
+    fr: Vérifier les abonnements et prélèvements
+    en: Vérifier les abonnements et prélèvements
+  contexts:
+  - administratif
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: sauvegarder_les_papiers_importants
+  title:
+    fr: Sauvegarder les papiers importants
+    en: Sauvegarder les papiers importants
+  contexts:
+  - administratif
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 180
+- key: faire_le_point_sur_le_budget_du_foyer
+  title:
+    fr: Faire le point sur le budget du foyer
+    en: Faire le point sur le budget du foyer
+  contexts:
+  - administratif
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    day: 1
+- key: comparer_renouveler_assurances_et_contrats_energ
+  title:
+    fr: Comparer / renouveler assurances et contrats (énergie, box)
+    en: Comparer / renouveler assurances et contrats (énergie, box)
+  contexts:
+  - administratif
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 11
+    day: 1
+- key: anticiper_anniversaires_et_cadeaux_du_mois
+  title:
+    fr: Anticiper anniversaires et cadeaux du mois
+    en: Anticiper anniversaires et cadeaux du mois
+  contexts:
+  - administratif
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    day: 1
+- key: planifier_les_vacances_prochains_conges
+  title:
+    fr: Planifier les vacances / prochains congés
+    en: Planifier les vacances / prochains congés
+  contexts:
+  - administratif
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: faire_un_masque_visage_soin_de_la_peau
+  title:
+    fr: Faire un masque visage / soin de la peau
+    en: Faire un masque visage / soin de la peau
+  contexts:
+  - sante_et_soins
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+- key: prendre_rdv_coiffeur
+  title:
+    fr: Prendre RDV coiffeur
+    en: Prendre RDV coiffeur
+  contexts:
+  - sante_et_soins
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: rdv_dentiste
+  title:
+    fr: RDV dentiste
+    en: RDV dentiste
+  contexts:
+  - sante_et_soins
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 180
+- key: rdv_medecin_controle_annuel
+  title:
+    fr: RDV médecin / contrôle annuel
+    en: RDV médecin / contrôle annuel
+  contexts:
+  - sante_et_soins
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 365
+  default_selected: true
+- key: rdv_ophtalmo_renouveler_lunettes_lentilles
+  title:
+    fr: RDV ophtalmo / renouveler lunettes-lentilles
+    en: RDV ophtalmo / renouveler lunettes-lentilles
+  contexts:
+  - sante_et_soins
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 365
+- key: trier_la_pharmacie_peremption_stocks
+  title:
+    fr: Trier la pharmacie (péremption, stocks)
+    en: Trier la pharmacie (péremption, stocks)
+  contexts:
+  - sante_et_soins
+  - courses
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 180
+- key: renouveler_les_ordonnances_traitements
+  title:
+    fr: Renouveler les ordonnances / traitements
+    en: Renouveler les ordonnances / traitements
+  contexts:
+  - sante_et_soins
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: laver_la_voiture
+  title:
+    fr: Laver la voiture
+    en: Laver la voiture
+  contexts:
+  - voiture
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: verifier_les_pneus
+  title:
+    fr: Vérifier les pneus
+    en: Vérifier les pneus
+  contexts:
+  - voiture
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: aspirer_et_ranger_l_interieur
+  title:
+    fr: Aspirer et ranger l'intérieur
+    en: Aspirer et ranger l'intérieur
+  contexts:
+  - voiture
+  - menage
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+- key: verifier_les_niveaux_huile_lave_glace_refroidiss
+  title:
+    fr: Vérifier les niveaux (huile, lave-glace, refroidissement)
+    en: Vérifier les niveaux (huile, lave-glace, refroidissement)
+  contexts:
+  - voiture
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 60
+  default_selected: true
+- key: faire_la_revision
+  title:
+    fr: Faire la révision
+    en: Faire la révision
+  contexts:
+  - voiture
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 365
+- key: controle_technique
+  title:
+    fr: Contrôle technique
+    en: Contrôle technique
+  contexts:
+  - voiture
+  - administratif
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 730
+- key: changer_les_pneus_ete_hiver
+  title:
+    fr: Changer les pneus été / hiver
+    en: Changer les pneus été / hiver
+  contexts:
+  - voiture
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 4
+    - 10
+    day: 1
+- key: entretenir_le_velo
+  title:
+    fr: Entretenir le vélo
+    en: Entretenir le vélo
+  contexts:
+  - velo
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 120
+- key: gonfler_les_pneus_et_lubrifier_la_chaine
+  title:
+    fr: Gonfler les pneus et lubrifier la chaîne
+    en: Gonfler les pneus et lubrifier la chaîne
+  contexts:
+  - velo
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+  default_selected: true
+- key: steriliser_les_biberons
+  title:
+    fr: Stériliser les biberons
+    en: Stériliser les biberons
+  contexts:
+  - bebe
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 1
+  default_selected: true
+- key: laver_les_doudous
+  title:
+    fr: Laver les doudous
+    en: Laver les doudous
+  contexts:
+  - bebe
+  - linge
+  default_weight: 2
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 21
+- key: nettoyer_les_jouets
+  title:
+    fr: Nettoyer les jouets
+    en: Nettoyer les jouets
+  contexts:
+  - bebe
+  - menage
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30
+- key: verifier_le_stock_de_couches_et_de_lait
+  title:
+    fr: Vérifier le stock de couches et de lait
+    en: Vérifier le stock de couches et de lait
+  contexts:
+  - bebe
+  - courses
+  default_weight: 1
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+- key: trier_les_vetements_devenus_trop_petits
+  title:
+    fr: Trier les vêtements devenus trop petits
+    en: Trier les vêtements devenus trop petits
+  contexts:
+  - bebe
+  default_weight: 9
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 90
+- key: faire_les_comptes_communs_loyer_charges_pot_comm
+  title:
+    fr: Faire les comptes communs (loyer, charges, pot commun)
+    en: Faire les comptes communs (loyer, charges, pot commun)
+  contexts:
+  - colocation
+  - administratif
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    day: 1
+  default_selected: true
+- key: racheter_les_produits_communs_pq_sel_produits_d_
+  title:
+    fr: Racheter les produits communs (PQ, sel, produits d'entretien)
+    en: Racheter les produits communs (PQ, sel, produits d'entretien)
+  contexts:
+  - colocation
+  - courses
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+- key: reunion_coloc_planning_sujets_qui_fachent
+  title:
+    fr: Réunion coloc (planning, sujets qui fâchent)
+    en: Réunion coloc (planning, sujets qui fâchent)
+  contexts:
+  - colocation
+  default_weight: 6
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: calendar
+    months:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    day: 1
+- key: nettoyer_les_parties_communes_tour_de_role
+  title:
+    fr: Nettoyer les parties communes (tour de rôle)
+    en: Nettoyer les parties communes (tour de rôle)
+  contexts:
+  - colocation
+  - menage
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 7
+  default_selected: true
+- key: faire_les_courses
+  title:
+    fr: Faire les courses
+    en: Faire les courses
+  contexts:
+  - courses
+  default_weight: 12
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+  default_selected: true
+- key: faire_la_liste_de_courses_menus_de_la_semaine
+  title:
+    fr: Faire la liste de courses / menus de la semaine
+    en: Faire la liste de courses / menus de la semaine
+  contexts:
+  - courses
+  - cuisine
+  default_weight: 4
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: uncertain
+- key: verifier_les_stocks_produits_d_entretien_hygiene
+  title:
+    fr: Vérifier les stocks (produits d'entretien, hygiène)
+    en: Vérifier les stocks (produits d'entretien, hygiène)
+  contexts:
+  - courses
+  default_weight: 3
+  default_tolerance: NORMAL
+  default_recurrence:
+    type: interval
+    every_n_days: 30

@@ -8,7 +8,7 @@ Refonte du modele freshness vers un modele deterministe base sur due_date.
 Le knob freshness_threshold (qui filtrait les taches "a faire" cote frontend
 et l'endpoint /api/suggestions) n'a plus de sens : le modele est maintenant
 base sur l'etat (GREEN/ORANGE/RED) calcule depuis due_date, sans seuil
-configurable. Voir CODING_CONVENTIONS.md section "Urgence".
+configurable. Voir CLAUDE.md section "Urgence".
 """
 from typing import Sequence, Union
 

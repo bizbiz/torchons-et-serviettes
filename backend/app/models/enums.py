@@ -68,6 +68,10 @@ class PromptType(str, enum.Enum):
         user de revoter sur la frequence d'une tache. Context contient le
         requester_user_id + task_id + current_consensus.
     VOTE_EFFORT (v0.28) : meme principe pour l'effort.
+    DISCOVER_MODULE (P4) : proposer d'activer un module. Seul type qui ne
+        demande pas une info mais propose d'elargir le perimetre, et seul
+        dont la regle de diffusion est inversee — servi si le module vise
+        est ETEINT.
     """
 
     BUMP_EFFORT = "BUMP_EFFORT"
@@ -75,6 +79,7 @@ class PromptType(str, enum.Enum):
     RESOLVE_PRESENCE = "RESOLVE_PRESENCE"
     VOTE_FREQUENCY = "VOTE_FREQUENCY"
     VOTE_EFFORT = "VOTE_EFFORT"
+    DISCOVER_MODULE = "DISCOVER_MODULE"
 
 
 class PromptResolution(str, enum.Enum):

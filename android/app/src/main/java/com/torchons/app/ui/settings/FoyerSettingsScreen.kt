@@ -72,6 +72,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
 import com.torchons.app.ui.common.InfoTooltip
 import com.torchons.app.ui.common.PresenceCalendarGrid
+import com.torchons.app.ui.common.Modules
+import com.torchons.app.ui.common.moduleEnabled
 import com.torchons.app.ui.home.ProjectionSimulationDialog
 import com.torchons.app.ui.stats.StreakCalendarModal
 import com.torchons.app.ui.stats.StreakMember
@@ -98,8 +100,7 @@ import java.time.YearMonth
 @Composable
 fun FoyerSettingsScreen(
     onBack: () -> Unit,
-    onManageRooms: () -> Unit,
-    onManageCategories: () -> Unit,
+    onManageContexts: () -> Unit,
     onInviteSomeone: () -> Unit,
     onAddDevice: () -> Unit,
     onLeftFoyer: () -> Unit,
@@ -239,49 +240,23 @@ fun FoyerSettingsScreen(
                 )
             }
 
-            // (4) Pieces
+            // (4) Contextes — une seule entree la ou il y en avait deux.
+            // Pieces et Categories demandaient de tenir deux listes presque
+            // identiques et de choisir UN foyer par tache ; un contexte est la
+            // reponse unique, et une tache peut en porter plusieurs.
             ActionCard(
-                icon = Icons.Default.MeetingRoom,
-                title = stringResource(R.string.foyer_rooms_title),
-                subtitle = stringResource(R.string.foyer_rooms_subtitle),
-                onClick = onManageRooms,
+                icon = Icons.Default.Category,
+                title = stringResource(R.string.contexts_title),
+                subtitle = stringResource(R.string.foyer_contexts_subtitle),
+                onClick = onManageContexts,
             )
 
-            // (5) Categories (+ (i) gel "a la maison")
-            SettingCard {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onManageCategories() },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Default.Category,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.foyer_categories_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            text = stringResource(R.string.foyer_categories_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    InfoTooltip(
-                        title = stringResource(R.string.foyer_categories_tooltip_title),
-                        description = stringResource(R.string.foyer_categories_tooltip_description),
-                    )
-                }
-            }
-
             // (6) Presence & absences (bloc : home freeze + WiFi maison)
+            // P3 — tout le bloc appartient au module `presence`. Le gel pendant les
+            // absences, le calendrier et le WiFi maison sont ses sous-options : les
+            // laisser visibles alors que le module est coupe promettrait un
+            // comportement qui n'a plus lieu.
+            if (moduleEnabled(Modules.PRESENCE)) {
             SettingCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -426,6 +401,7 @@ fun FoyerSettingsScreen(
                     Text(stringResource(R.string.foyer_presence_open_calendar_button))
                 }
             }
+            }
 
             // (7) Gamification de ce foyer (+ (i))
             SettingCard {
@@ -507,6 +483,11 @@ fun FoyerSettingsScreen(
 
             // (9) Bonus / Malus de points (replie par defaut, complexe)
             val bonusConfig by viewModel.bonusConfig.collectAsState()
+            // P3 — les 13 seuils appartiennent au module `bonus_malus`. Il exige
+            // `motivation`, mais l'inverse n'est pas vrai : un foyer peut vouloir des
+            // points sans moduler leur valeur. Se reposer sur la garde gamif
+            // laisserait donc les seuils visibles dans ce cas.
+            if (moduleEnabled(Modules.BONUS_MALUS)) {
             SettingCard {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -639,6 +620,7 @@ fun FoyerSettingsScreen(
                         stringResource(R.string.foyer_bump_grace_desc),
                     ) { viewModel.updateBonusConfig("bump_grace_ratio", it) }
                 }
+            }
             }
 
             // (10) Quitter le foyer — destructif, rouge, en bas du groupe

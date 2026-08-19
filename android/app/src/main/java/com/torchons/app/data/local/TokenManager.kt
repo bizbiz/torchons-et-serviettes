@@ -69,6 +69,10 @@ class TokenManager @Inject constructor(
         // placeholder "Mon foyer" a l'ouverture de l'ecran Foyer avant que
         // /api/foyers reponde (offline-first, cf docs/cache-conventions.md).
         private val CURRENT_FOYER_NAME_KEY = stringPreferencesKey("current_foyer_name")
+        // P2 : etat des modules du foyer courant, serialise "cle=0|1" separe
+        // par des virgules. Absent tant que GET /api/modules n'a pas repondu
+        // au moins une fois — c'est ce vide qui declenche le repli hérité.
+        private val MODULE_STATES_KEY = stringPreferencesKey("module_states")
     }
 
     /** Flow du token JWT. Emet null si aucun token stocke. */
@@ -132,12 +136,61 @@ class TokenManager @Inject constructor(
     val userGamificationEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[GAMIF_USER_KEY] ?: true }
     val currentFoyerGamificationEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[GAMIF_FOYER_KEY] ?: true }
 
-    /** Vrai si l'UI gamif doit etre visible : user_gamif AND current_foyer_gamif.
-     *  Source de verite branchee sur tous les composants gamif (Home, completion,
-     *  navigation tabs stats/leaderboard/streaks/badges/fair-share, celebration,
-     *  notifs, dialog affinity/effort). */
+    // --- Modules (P2, cf. docs/module-registry.md) ---
+
+    /**
+     * Etat des modules du foyer courant, rafraichi apres chaque GET
+     * /api/modules. Map vide = jamais charge.
+     */
+    val moduleStatesFlow: Flow<Map<String, Boolean>> = context.dataStore.data.map { prefs ->
+        parseModuleStates(prefs[MODULE_STATES_KEY])
+    }
+
+    /**
+     * Vrai si ce module est actif. `fallback` est la reponse tant que les
+     * modules n'ont jamais ete charges — pas un defaut metier : le defaut
+     * metier vit dans modules.yaml cote serveur, ici on ne fait que combler
+     * la fenetre avant la premiere reponse reseau.
+     */
+    fun moduleEnabledFlow(key: String, fallback: Boolean = true): Flow<Boolean> =
+        context.dataStore.data.map { prefs ->
+            parseModuleStates(prefs[MODULE_STATES_KEY])[key] ?: fallback
+        }
+
+    suspend fun setModuleStates(states: Map<String, Boolean>) {
+        val encoded = states.entries.joinToString(",") { "${it.key}=${if (it.value) 1 else 0}" }
+        context.dataStore.edit { it[MODULE_STATES_KEY] = encoded }
+    }
+
+    private fun parseModuleStates(raw: String?): Map<String, Boolean> {
+        if (raw.isNullOrBlank()) return emptyMap()
+        return raw.split(",").mapNotNull { entry ->
+            val parts = entry.split("=")
+            if (parts.size == 2) parts[0] to (parts[1] == "1") else null
+        }.toMap()
+    }
+
+    /** Vrai si l'UI gamif doit etre visible. Source de verite branchee sur tous
+     *  les composants gamif (Home, completion, navigation tabs
+     *  stats/leaderboard/streaks/badges/fair-share, celebration, notifs, dialog
+     *  affinity/effort).
+     *
+     *  P2 : l'etat collectif ne vient plus de `foyers.gamification_enabled` mais
+     *  du module `motivation`. Le flag user, lui, reste — requalifie en
+     *  preference d'AFFICHAGE personnelle (`motivation.hide_for_me`) : le module
+     *  est une decision du foyer, ne pas se les montrer est une decision perso.
+     *  C'est ce qui corrige le defaut de modele du AND d'origine, ou deux
+     *  drapeaux homonymes laissaient un membre masquer une decision collective
+     *  sans que rien ne le dise.
+     *
+     *  Tant que /api/modules n'a jamais repondu, on retombe sur
+     *  `GAMIF_FOYER_KEY` (deja alimente par /api/foyers, que le serveur tient a
+     *  jour en double). Sans ce repli, la premiere ouverture apres mise a jour
+     *  devinerait — et devinerait faux dans un sens ou dans l'autre. */
     val gamificationVisibleFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        (prefs[GAMIF_USER_KEY] ?: true) && (prefs[GAMIF_FOYER_KEY] ?: true)
+        val legacyFoyer = prefs[GAMIF_FOYER_KEY] ?: true
+        val collective = parseModuleStates(prefs[MODULE_STATES_KEY])["motivation"] ?: legacyFoyer
+        (prefs[GAMIF_USER_KEY] ?: true) && collective
     }
 
     suspend fun setUserGamificationEnabled(enabled: Boolean) {

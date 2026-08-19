@@ -236,3 +236,22 @@ footer.site a:hover { color: var(--accent); }
   html { scroll-behavior: auto; }
   .btn, .btn:hover { transition: none; transform: none; }
 }
+
+/* Depliant des cartes (P5) : <details> natif, aucun JS ajoute. Le site
+   n'embarque qu'un script inline (l'annee du copyright) et doit le rester. */
+.features details { margin-top: .55rem; }
+.features summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: .9rem;
+  list-style: none;
+}
+.features summary::-webkit-details-marker { display: none; }
+.features summary::after { content: " ›"; }
+.features details[open] summary::after { content: " ‹"; }
+.features details p {
+  margin: .5rem 0 0;
+  color: var(--muted);
+  font-size: .92rem;
+  line-height: 1.55;
+}

@@ -37,6 +37,7 @@ import com.torchons.app.ui.changelog.ChangelogScreen
 import com.torchons.app.ui.home.HomeScreen
 import com.torchons.app.ui.login.LoginScreen
 import com.torchons.app.ui.settings.CategoriesScreen
+import com.torchons.app.ui.settings.ContextsScreen
 import com.torchons.app.ui.settings.FoyerSettingsScreen
 import com.torchons.app.ui.settings.RoomsScreen
 import com.torchons.app.ui.settings.SettingsScreen
@@ -68,6 +69,7 @@ object Routes {
     const val TASK_CLONE = "task_clone/{cloneFromId}"
     const val CATEGORIES = "categories"
     const val ROOMS = "rooms"
+    const val CONTEXTS = "contexts"
     // P1 refonte : ecran Foyer unique (remplace l'ancien ecran autonome
     // "Mes foyers" — route FOYERS supprimee).
     const val FOYER_SETTINGS = "foyer_settings"
@@ -320,6 +322,22 @@ fun NavGraph(
             )
         }
 
+        // Contextes — remplacent Pieces et Categories. Les deux anciennes
+        // destinations restent joignables tant que le serveur ecrit en double,
+        // mais plus rien n'y mene depuis l'interface.
+        composable(Routes.CONTEXTS) {
+            val apiService = javax.inject.Provider<ApiService> {
+                dagger.hilt.android.EntryPointAccessors.fromApplication(
+                    navController.context.applicationContext,
+                    ApiServiceEntryPoint::class.java
+                ).apiService()
+            }
+            ContextsScreen(
+                apiService = apiService.get(),
+                onBack = { navController.popBackStack() }
+            )
+        }
+
         // P1 refonte — l'ancien ecran autonome "Mes foyers" (Routes.FOYERS /
         // FoyersScreen) a ete supprime : remplace par l'entree "🏠 <nom>" des
         // Reglages + le bouton "Creer un foyer" + la feuille switch DANS
@@ -331,8 +349,7 @@ fun NavGraph(
         composable(Routes.FOYER_SETTINGS) {
             FoyerSettingsScreen(
                 onBack = { navController.popBackStack() },
-                onManageRooms = { navController.navigate(Routes.ROOMS) },
-                onManageCategories = { navController.navigate(Routes.CATEGORIES) },
+                onManageContexts = { navController.navigate(Routes.CONTEXTS) },
                 onInviteSomeone = {
                     navController.navigate(Routes.inviteQr(addDevice = false))
                 },
@@ -446,7 +463,17 @@ fun MainScreen(
     }
     val gamificationVisible by tokenManager.gamificationVisibleFlow
         .collectAsState(initial = true)
-    val visibleNavItems = if (gamificationVisible) {
+    // P3 — l'onglet Stats porte DEUX modules : les courbes et l'historique
+    // (`statistics`) d'un cote, le classement, les badges et les series
+    // (`motivation`) de l'autre. Il reste donc visible si l'un OU l'autre est
+    // actif ; c'est a l'interieur de l'ecran que chaque bloc se garde. Le lier
+    // au seul `motivation`, comme avant, faisait disparaitre les courbes avec
+    // les points alors qu'elles n'en dependent pas.
+    val statsVisible by tokenManager
+        .moduleEnabledFlow("statistics")
+        .collectAsState(initial = true)
+    val statsTabVisible = statsVisible || gamificationVisible
+    val visibleNavItems = if (statsTabVisible) {
         bottomNavItems
     } else {
         bottomNavItems.filter { it.route != Routes.STATS }
@@ -455,8 +482,8 @@ fun MainScreen(
     // Si l'user est sur la tab Stats et que la gamif se desactive (toggle
     // distant par l'autre membre, ou auto-toggle), on rebascule sur Home —
     // sinon il reste coince sur un ecran sans tab visible dans la nav.
-    LaunchedEffect(gamificationVisible, currentRoute) {
-        if (!gamificationVisible && currentRoute == Routes.STATS) {
+    LaunchedEffect(statsTabVisible, currentRoute) {
+        if (!statsTabVisible && currentRoute == Routes.STATS) {
             innerNavController.navigate(Routes.HOME) {
                 popUpTo(Routes.HOME) { saveState = true }
                 launchSingleTop = true
