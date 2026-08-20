@@ -16,7 +16,6 @@ from app.database import get_session
 from app.models.completion import TaskCompletion
 from app.models.sync import ChangeLog
 from app.models.context import Context, TaskContext
-from app.models.room import Room
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
 from app.models.task_frequency_vote import TaskFrequencyVote
@@ -65,6 +64,8 @@ async def load_contexts_for_tasks(
         par_tache.setdefault(task_id, []).append({
             "id": ctx.id, "name": ctx.name, "color": ctx.color,
             "emoji": ctx.emoji, "position": position,
+            "requires_presence": ctx.requires_presence,
+            "accrues_when_away": ctx.accrues_when_away,
         })
     return par_tache
 
@@ -80,8 +81,6 @@ async def replace_task_contexts(
     that has just deleted a context offline would otherwise be unable to save
     anything at all until it refreshes.
 
-    Also refreshes the legacy `room_id` from the primary context's twin room,
-    so a household member still on the shipped APK keeps seeing a location.
     """
     valides = (await session.execute(
         select(Context.id, Context.name).where(
@@ -90,8 +89,8 @@ async def replace_task_contexts(
             Context.deleted_at.is_(None),
         )
     )).all() if context_ids else []
-    noms = {cid: nom for cid, nom in valides}
-    ordonnes = [cid for cid in context_ids if cid in noms]
+    connus = {cid for cid, _ in valides}
+    ordonnes = [cid for cid in context_ids if cid in connus]
 
     await session.execute(
         delete(TaskContext).where(TaskContext.task_id == task.id)
@@ -101,18 +100,6 @@ async def replace_task_contexts(
             task_id=task.id, context_id=cid, position=position,
         ))
 
-    # --- Double ecriture vers la piece heritee ---
-    if ordonnes:
-        jumelle = (await session.execute(
-            select(Room.id).where(
-                Room.foyer_id == task.foyer_id,
-                Room.deleted_at.is_(None),
-                Room.name == noms[ordonnes[0]],
-            )
-        )).scalar_one_or_none()
-        task.room_id = jumelle
-    else:
-        task.room_id = None
 
 
 async def _task_to_response(
@@ -145,8 +132,6 @@ async def _task_to_response(
         "id": task.id,
         "title": task.title,
         "description": task.description,
-        "category_id": task.category_id,
-        "room_id": task.room_id,
         "contexts": contexts,
         "assigned_to_ids": assigned_ids,
         "recurrence_rule": task.recurrence_rule,
@@ -165,7 +150,7 @@ async def _task_to_response(
 
 @router.get("", response_model=list[TaskResponse])
 async def list_tasks(
-    category_id: UUID | None = None,
+    context_id: UUID | None = None,
     active_only: bool = True,
     include_archived: bool = False,
     session: AsyncSession = Depends(get_session),
@@ -192,8 +177,17 @@ async def list_tasks(
         q = q.where(Task.is_active.is_(True))
     if not include_archived:
         q = q.where(Task.is_archived.is_(False))
-    if category_id:
-        q = q.where(Task.category_id == category_id)
+    if context_id:
+        # EXISTS et non jointure : une tache porte plusieurs contextes, et
+        # joindre la dupliquerait dans la liste.
+        q = q.where(
+            select(TaskContext.task_id)
+            .where(
+                TaskContext.task_id == Task.id,
+                TaskContext.context_id == context_id,
+            )
+            .exists()
+        )
     q = q.order_by(Task.sort_order, Task.created_at)
 
     result = await session.execute(q)
@@ -246,8 +240,6 @@ async def create_task(
         foyer_id=current_foyer_uuid(current),
         title=body.title,
         description=body.description,
-        category_id=body.category_id,
-        room_id=body.room_id,
         recurrence_rule=body.recurrence_rule.model_dump() if body.recurrence_rule else None,
         weight=body.weight,
         tolerance=body.tolerance,

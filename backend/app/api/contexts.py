@@ -1,13 +1,6 @@
 """CRUD routes for contexts — the single concept replacing rooms and categories.
 
-Mirrors the `rooms.py` pattern, with two differences that matter.
-
-**Dual write.** Creating a context also creates its twin `Room`, and renaming
-or deleting one carries over. The shipped APK reads `rooms`; without this, a
-context created on the new client would simply not exist for a household
-member still on the old one, and their tasks would show no location at all.
-The twin is matched by name, which is what the fusion migration used too.
-Removal is tracked in `todo.md § Retirer la double écriture`.
+Contexts are the only model: rooms and categories no longer exist.
 
 **Detaching on delete.** A soft-deleted context loses its `task_contexts`
 links. Keeping them would leave tasks pointing at something no filter lists,
@@ -20,32 +13,18 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
 from app.models.context import Context, TaskContext
-from app.models.room import Room
-from app.models.task import Task
 from app.schemas.context import ContextCreate, ContextResponse, ContextUpdate
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
 from app.utils.scoping import current_foyer_uuid, scoped
 
 router = APIRouter(prefix="/api/contexts", tags=["contexts"])
-
-
-async def _twin_room(session: AsyncSession, foyer_id: UUID, name: str) -> Room | None:
-    """The legacy room bearing this name, if any. Compatibility shim."""
-    result = await session.execute(
-        select(Room).where(
-            Room.foyer_id == foyer_id,
-            Room.deleted_at.is_(None),
-            Room.name == name,
-        )
-    )
-    return result.scalar_one_or_none()
 
 
 @router.get("", response_model=list[ContextResponse])
@@ -90,12 +69,6 @@ async def create_context(
     session.add(ctx)
     await session.flush()
 
-    if await _twin_room(session, foyer_id, body.name) is None:
-        session.add(Room(
-            foyer_id=foyer_id, name=body.name, color=body.color,
-            icon=body.icon, emoji=body.emoji,
-        ))
-
     await record_change(
         session, "contexts", ctx.id, "INSERT", current["user_id"],
         foyer_id=current["foyer_id"],
@@ -112,7 +85,6 @@ async def update_context(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    foyer_id = current_foyer_uuid(current)
     result = await session.execute(
         scoped(Context, current).where(
             Context.id == context_id, Context.deleted_at.is_(None)
@@ -141,14 +113,6 @@ async def update_context(
         setattr(ctx, key, val)
     ctx.version += 1
 
-    # Le jumeau herite du renommage, sinon l'ancien client garde l'ancien nom.
-    jumeau = await _twin_room(session, foyer_id, ancien_nom)
-    if jumeau is not None:
-        for key in ("name", "color", "icon", "emoji"):
-            if key in champs:
-                setattr(jumeau, key, champs[key])
-        jumeau.version += 1
-
     await record_change(
         session, "contexts", ctx.id, "UPDATE", current["user_id"],
         foyer_id=current["foyer_id"],
@@ -165,7 +129,6 @@ async def delete_context(
     current: dict = Depends(get_current_user),
 ):
     """Soft delete. Links are dropped, and tasks left with none are reported."""
-    foyer_id = current_foyer_uuid(current)
     result = await session.execute(
         scoped(Context, current).where(
             Context.id == context_id, Context.deleted_at.is_(None)
@@ -193,16 +156,6 @@ async def delete_context(
 
     ctx.deleted_at = datetime.now(timezone.utc)
     ctx.version += 1
-
-    jumeau = await _twin_room(session, foyer_id, ctx.name)
-    if jumeau is not None:
-        await session.execute(
-            update(Task)
-            .where(Task.room_id == jumeau.id, Task.foyer_id == foyer_id)
-            .values(room_id=None)
-        )
-        jumeau.deleted_at = datetime.now(timezone.utc)
-        jumeau.version += 1
 
     await record_change(
         session, "contexts", ctx.id, "DELETE", current["user_id"],

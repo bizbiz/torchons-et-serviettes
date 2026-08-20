@@ -62,11 +62,6 @@ class CatalogContext:
     requires_presence: bool = False
     accrues_when_away: bool = False
 
-    @property
-    def requires_home(self) -> bool:
-        """Alias de compatibilite pour le chemin d'import de l'APK diffuse."""
-        return self.requires_presence
-
 
 @dataclass(frozen=True)
 class CatalogTask:
@@ -80,40 +75,12 @@ class CatalogTask:
     default_tolerance: str = "NORMAL"
     default_selected: bool = False
 
-    # --- Compatibilite APK diffuse ---
-    # L'ancien client ne connait qu'une piece et une categorie par tache. On
-    # projette au chargement : le premier contexte implicite fait la categorie,
-    # le premier selectionnable fait la piece. Champs et non methodes, pour que
-    # le code d'import existant continue de fonctionner sans modification.
-    # A retirer avec le reste du shim, une fois l'ancien APK hors circulation.
-    default_category_key: str | None = None
-    default_room_key: str | None = None
 
 
 @dataclass(frozen=True)
 class Catalog:
     contexts: list[CatalogContext] = field(default_factory=list)
     tasks: list[CatalogTask] = field(default_factory=list)
-
-    # --- Compatibilite APK diffuse : rooms / categories projetes ---
-    # Les contextes selectionnables passent pour des pieces, les implicites
-    # pour des categories. Un chat apparait donc comme une « piece » dans
-    # l'ancien client : etrange mais fonctionnel, la ou retirer ces accesseurs
-    # casserait son import de templates.
-
-    @property
-    def rooms(self) -> list[CatalogContext]:
-        return [c for c in self.contexts if c.selectable]
-
-    @property
-    def categories(self) -> list[CatalogContext]:
-        return [c for c in self.contexts if not c.selectable]
-
-    def room_by_key(self, key: str) -> CatalogContext | None:
-        return next((c for c in self.rooms if c.key == key), None)
-
-    def category_by_key(self, key: str) -> CatalogContext | None:
-        return next((c for c in self.categories if c.key == key), None)
 
     def context_by_key(self, key: str) -> CatalogContext | None:
         return next((c for c in self.contexts if c.key == key), None)
@@ -188,18 +155,8 @@ def _parse_catalog() -> Catalog:
         return Catalog()
     with CATALOG_PATH.open("r", encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
-    import dataclasses
-
     contexts = [_parse_context(c) for c in raw.get("contexts", [])]
-    implicites = {c.key for c in contexts if not c.selectable}
-    tasks = [
-        dataclasses.replace(
-            t,
-            default_category_key=next((c for c in t.contexts if c in implicites), None),
-            default_room_key=next((c for c in t.contexts if c not in implicites), None),
-        )
-        for t in (_parse_task(x) for x in raw.get("tasks", []))
-    ]
+    tasks = [_parse_task(x) for x in raw.get("tasks", [])]
     return Catalog(contexts=contexts, tasks=tasks)
 
 

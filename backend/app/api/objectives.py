@@ -32,6 +32,7 @@ from app.database import get_session
 from app.utils.errors import LocalizedHTTPException
 from app.models.completion import TaskCompletion
 from app.models.objective import Objective
+from app.models.context import TaskContext
 from app.models.task import Task
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
@@ -46,8 +47,7 @@ class ObjectiveCreate(BaseModel):
     kind: str = Field(default="shared", pattern="^(personal|shared)$")
     period: str = Field(default="week", pattern="^(day|week|month)$")
     target_count: int = Field(default=1, ge=1, le=999)
-    scope_room_id: UUID | None = None
-    scope_category_id: UUID | None = None
+    scope_context_id: UUID | None = None
     assigned_to_user_id: UUID | None = None
     is_active: bool = True
 
@@ -57,8 +57,7 @@ class ObjectiveUpdate(BaseModel):
     kind: str | None = Field(default=None, pattern="^(personal|shared)$")
     period: str | None = Field(default=None, pattern="^(day|week|month)$")
     target_count: int | None = Field(default=None, ge=1, le=999)
-    scope_room_id: UUID | None = None
-    scope_category_id: UUID | None = None
+    scope_context_id: UUID | None = None
     assigned_to_user_id: UUID | None = None
     is_active: bool | None = None
 
@@ -69,8 +68,7 @@ class ObjectiveResponse(BaseModel):
     kind: str
     period: str
     target_count: int
-    scope_room_id: UUID | None
-    scope_category_id: UUID | None
+    scope_context_id: UUID | None
     assigned_to_user_id: UUID | None
     is_active: bool
     progress_count: int  # nb de completions matching sur la periode courante
@@ -105,8 +103,7 @@ async def _compute_progress(
       - foyer = foyer_uuid (via Task.foyer_id)
       - completed_at >= window_start
       - completed_by = obj.assigned_to_user_id (si kind=personal)
-      - Task.room_id = obj.scope_room_id (si scope_room_id non null)
-      - Task.category_id = obj.scope_category_id (si scope_category_id non null)
+      - la tache porte le contexte obj.scope_context_id (si non null)
     """
     window_start = _period_window_start(obj.period)
     stmt = (
@@ -120,10 +117,17 @@ async def _compute_progress(
     )
     if obj.kind == "personal" and obj.assigned_to_user_id is not None:
         stmt = stmt.where(TaskCompletion.completed_by == obj.assigned_to_user_id)
-    if obj.scope_room_id is not None:
-        stmt = stmt.where(Task.room_id == obj.scope_room_id)
-    if obj.scope_category_id is not None:
-        stmt = stmt.where(Task.category_id == obj.scope_category_id)
+    if obj.scope_context_id is not None:
+        # `EXISTS` et non une jointure : une tache porte plusieurs contextes,
+        # et joindre multiplierait ses completions par ce nombre.
+        stmt = stmt.where(
+            select(TaskContext.task_id)
+            .where(
+                TaskContext.task_id == Task.id,
+                TaskContext.context_id == obj.scope_context_id,
+            )
+            .exists()
+        )
     result = await session.execute(stmt)
     return int(result.scalar_one() or 0)
 

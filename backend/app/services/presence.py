@@ -14,11 +14,11 @@ from typing import Iterable
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.category import Category
 from app.models.completion import TaskCompletion
 from app.models.foyer import Foyer
 from app.models.presence_day import PresenceDay
 from app.models.task import Task
+from app.services.task_flags import task_ids_freezing_when_away
 
 
 async def count_absent_days_since(
@@ -121,7 +121,7 @@ async def compute_absent_days_for_tasks(
 
     Pour chaque tache :
     - Renvoie 0 si foyer.home_freeze_enabled = False
-    - Renvoie 0 si task.category.requires_home != True
+    - Renvoie 0 si aucun contexte de la tache ne la fait geler
     - Sinon, compte les jours non-presents entre la derniere completion (ou
       created_at si jamais faite) et `until_date` (exclus). Les jours sans
       ligne presence_day comptent comme absents (comportement freeze).
@@ -146,21 +146,10 @@ async def compute_absent_days_for_tasks(
     if not bool(foyer_r.scalar() or False):
         return result_map
 
-    # 2. Categories requires_home : filter
-    cat_ids = {t.category_id for t in task_list if t.category_id is not None}
-    if not cat_ids:
-        return result_map
-    cat_r = await session.execute(
-        select(Category.id, Category.requires_home).where(Category.id.in_(cat_ids))
-    )
-    requires_home_by_cat: dict[uuid.UUID, bool] = {
-        row[0]: bool(row[1]) for row in cat_r.all()
-    }
-    eligible_tasks = [
-        t for t in task_list
-        if t.category_id is not None
-        and requires_home_by_cat.get(t.category_id, False)
-    ]
+    # 2. Quelles taches gelent ? Resolu depuis leurs CONTEXTES : il faut de la
+    # presence, et le besoin ne doit pas monter tout seul. Cf task_flags.
+    gelantes = await task_ids_freezing_when_away(session, [t.id for t in task_list])
+    eligible_tasks = [t for t in task_list if t.id in gelantes]
     if not eligible_tasks:
         return result_map
 
@@ -206,10 +195,10 @@ async def load_freeze_context(
     tasks: Iterable[Task],
     last_completion_map: dict[uuid.UUID, datetime | None],
     today: date,
-) -> tuple[bool, dict[uuid.UUID | None, bool], dict[uuid.UUID, int]]:
+) -> tuple[bool, dict[uuid.UUID, bool], dict[uuid.UUID, int]]:
     """Charge le contexte home freeze v2 partage par /suggestions et /retard.
 
-    Retourne (freeze_enabled, requires_home_map, absent_days_map) pour que les
+    Retourne (freeze_enabled, freezes_by_task, absent_days_map) pour que les
     deux surfaces appliquent compute_effective_today de facon strictement
     identique. Centralise la logique auparavant dupliquee dans gamification et
     projection : c'est la source unique de la definition "en retard" cote foyer.
@@ -224,19 +213,15 @@ async def load_freeze_context(
     if not freeze_enabled:
         return False, {}, {}
 
-    # Map category_id -> requires_home (uniquement les categories des taches).
-    cat_ids = {t.category_id for t in task_list if t.category_id}
-    requires_home_map: dict[uuid.UUID | None, bool] = {}
-    if cat_ids:
-        cat_result = await session.execute(
-            select(Category.id, Category.requires_home).where(Category.id.in_(cat_ids))
-        )
-        requires_home_map = {row[0]: row[1] for row in cat_result.all()}
+    # Quelles taches gelent, par ID. L'ancien map etait indexe par category_id
+    # et chaque appelant devait refaire `map.get(task.category_id)` : une
+    # indirection de plus, et une occasion de plus de se tromper de cle.
+    gelantes = await task_ids_freezing_when_away(session, [t.id for t in task_list])
+    freezes_by_task: dict[uuid.UUID, bool] = {t.id: t.id in gelantes for t in task_list}
 
-    # Jours absents en batch, uniquement pour les taches requires_home.
     since_dates: dict[uuid.UUID, date] = {}
     for t in task_list:
-        if requires_home_map.get(t.category_id, False):
+        if freezes_by_task.get(t.id, False):
             lc = last_completion_map.get(t.id)
             since = lc.date() if lc else (t.created_at.date() if t.created_at else today)
             since_dates[t.id] = since
@@ -245,7 +230,7 @@ async def load_freeze_context(
     if since_dates:
         absent_days_map = await get_absent_days_map(session, foyer_id, since_dates, today)
 
-    return freeze_enabled, requires_home_map, absent_days_map
+    return freeze_enabled, freezes_by_task, absent_days_map
 
 
 async def get_absent_dates(

@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
-from app.models.category import Category
+from app.models.context import Context, TaskContext
 from app.models.enums import PromptResolution, PromptType
 from app.models.presence_day import PresenceDay
 from app.models.task import Task
@@ -484,10 +484,15 @@ async def _recompute_after_presence_change(
     """
     # Charger toutes les taches `requires_home` actives du foyer
     result = await session.execute(
-        select(Task).join(Category, Task.category_id == Category.id).where(
+        select(Task)
+        .join(TaskContext, TaskContext.task_id == Task.id)
+        .join(Context, Context.id == TaskContext.context_id)
+        .where(
             Task.foyer_id == foyer_id,
             Task.deleted_at.is_(None),
-            Category.requires_home.is_(True),
+            Context.requires_presence.is_(True),
+            Context.accrues_when_away.is_(False),
+            Context.deleted_at.is_(None),
         )
     )
     tasks = result.scalars().all()

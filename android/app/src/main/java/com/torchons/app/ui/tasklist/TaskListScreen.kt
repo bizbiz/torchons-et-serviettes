@@ -22,7 +22,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
@@ -39,7 +38,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -86,7 +84,6 @@ import com.torchons.app.ui.common.InfoTooltip
 fun TaskListScreen(
     onTaskClick: (String) -> Unit,
     onCreateTask: () -> Unit,
-    onOpenCatalog: () -> Unit = {},
     onLogout: () -> Unit,
     onNavigateToFoyerSettings: () -> Unit = {},
     viewModel: TaskListViewModel = hiltViewModel()
@@ -200,18 +197,11 @@ fun TaskListScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
+            // Un seul bouton : les propositions du catalogue vivent desormais
+            // DANS l'ecran de creation, filtrees par les contextes du foyer.
+            // Le deuxieme bouton menait a un ecran que rien ne cablait — il
+            // existait a l'ecran sans rien faire.
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // FAB secondaire "Inspirations" : ouvre le catalogue de templates (v0.9.0)
-                SmallFloatingActionButton(
-                    onClick = onOpenCatalog,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = stringResource(R.string.task_list_catalog_cd),
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                }
                 FloatingActionButton(
                     onClick = onCreateTask,
                     containerColor = MaterialTheme.colorScheme.primary

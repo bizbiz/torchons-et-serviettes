@@ -98,8 +98,6 @@ register_localized_error_handler(app)
 # Routers
 from app.api.auth import router as auth_router
 from app.api.tasks import router as tasks_router
-from app.api.categories import router as categories_router
-from app.api.rooms import router as rooms_router
 from app.api.foyers import router as foyers_router
 from app.api.presence import router as presence_router
 from app.api.projection import router as projection_router
@@ -126,8 +124,6 @@ from app.api.contexts import router as contexts_router
 
 app.include_router(auth_router)
 app.include_router(tasks_router)
-app.include_router(categories_router)
-app.include_router(rooms_router)
 app.include_router(foyers_router)
 app.include_router(presence_router)
 app.include_router(projection_router)

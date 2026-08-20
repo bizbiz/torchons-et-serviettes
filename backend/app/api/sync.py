@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.database import get_session
 from app.utils.errors import LocalizedHTTPException
-from app.models.category import Category
 from app.models.completion import TaskCompletion
 from app.models.enums import CompletionReason
 from app.models.sync import ChangeLog, ProcessedOp
@@ -173,7 +172,6 @@ async def _apply_op(
     """Dispatch et execute une operation sync (scope foyer)."""
     handlers = {
         "tasks": _handle_task,
-        "categories": _handle_category,
         "task_completions": _handle_completion,
         "user_settings": _handle_settings,
     }
@@ -238,8 +236,6 @@ async def _handle_task(
             foyer_id=foyer_uuid,
             title=data.get("title", "Sans titre"),
             description=data.get("description"),
-            category_id=uuid.UUID(data["category_id"]) if data.get("category_id") else None,
-            room_id=uuid.UUID(data["room_id"]) if data.get("room_id") else None,
             recurrence_rule=normalize_recurrence_rule(data.get("recurrence_rule")),
             weight=data.get("weight", 1),
             tolerance=data.get("tolerance", "NORMAL"),
@@ -300,71 +296,6 @@ async def _handle_task(
                     Task.id == op.row_id,
                     Task.foyer_id == foyer_uuid,
                     Task.deleted_at.is_(None),
-                )
-            )
-        ).scalar_one_or_none()
-        if row:
-            row.deleted_at = datetime.now(timezone.utc)
-            row.version += 1
-        return op.row_id
-
-    raise LocalizedHTTPException(
-        status_code=400,
-        error_code="SYNC_UNKNOWN_OPERATION_FORMAT",
-        format_args={"operation": op.operation},
-    )
-
-
-async def _handle_category(
-    session: AsyncSession,
-    op: SyncOperation,
-    user_id: str,
-    foyer_id: str,
-) -> uuid.UUID:
-    """Traite INSERT / UPDATE / DELETE sur categories."""
-    data = op.data or {}
-    foyer_uuid = uuid.UUID(foyer_id) if isinstance(foyer_id, str) else foyer_id
-
-    if op.operation == "INSERT":
-        cat = Category(
-            id=op.row_id,
-            foyer_id=foyer_uuid,
-            name=data.get("name", "Sans nom"),
-            color=data.get("color", "#6B7280"),
-            icon=data.get("icon"),
-            requires_home=data.get("requires_home", False),
-        )
-        session.add(cat)
-        await session.flush()
-        return cat.id
-
-    if op.operation == "UPDATE":
-        row = (
-            await session.execute(
-                select(Category).where(
-                    Category.id == op.row_id,
-                    Category.foyer_id == foyer_uuid,
-                    Category.deleted_at.is_(None),
-                )
-            )
-        ).scalar_one_or_none()
-        if not row:
-            raise StaleUpdateError()
-        if _truncate_to_ms(row.updated_at) > _truncate_to_ms(op.client_timestamp):
-            raise StaleUpdateError(_row_to_dict(row))
-        for key, val in data.items():
-            if hasattr(row, key):
-                setattr(row, key, val)
-        row.version += 1
-        return row.id
-
-    if op.operation == "DELETE":
-        row = (
-            await session.execute(
-                select(Category).where(
-                    Category.id == op.row_id,
-                    Category.foyer_id == foyer_uuid,
-                    Category.deleted_at.is_(None),
                 )
             )
         ).scalar_one_or_none()

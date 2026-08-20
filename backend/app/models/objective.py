@@ -42,14 +42,9 @@ class Objective(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     target_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     # Scope optionnel : si null, comptabilise toutes les completions du foyer
     # (filtrees par user pour kind=personal).
-    scope_room_id: Mapped[uuid.UUID | None] = mapped_column(
+    scope_context_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("rooms.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-    scope_category_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("categories.id", ondelete="SET NULL"),
+        ForeignKey("contexts.id", ondelete="SET NULL"),
         nullable=True,
     )
     assigned_to_user_id: Mapped[uuid.UUID | None] = mapped_column(

@@ -78,6 +78,8 @@
          ============================================================ -->
 
     <!-- CatalogScreen -->
+    <string name="catalog_import_done_title">Import terminé</string>
+    <string name="catalog_import_tasks_created_format">%1$d tâche(s) ajoutée(s).</string>
     <string name="catalog_title">Catalogue</string>
     <string name="catalog_tab_tasks">Tâches</string>
     <string name="catalog_tab_rooms">Pièces</string>
@@ -1415,4 +1417,6 @@
     <string name="task_contexts_help">Le premier choisi décide de l\'endroit où la tâche s\'affiche.</string>
     <string name="task_contexts_none">Aucun contexte</string>
     <string name="task_list_filter_all_contexts">Tous</string>
+    <string name="task_edit_catalog_header">Propositions pour ton foyer</string>
+    <string name="task_edit_catalog_applied_format">Rempli depuis « %1$s ». Tout reste modifiable.</string>
 </resources>

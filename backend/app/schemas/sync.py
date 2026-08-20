@@ -12,7 +12,9 @@ from pydantic import BaseModel
 class SyncOperation(BaseModel):
     """Une operation effectuee offline par le client."""
     client_op_id: UUID
-    table: Literal["tasks", "categories", "task_completions", "user_settings"]
+    #: `categories` a disparu avec la bascule contextes : les contextes se
+    #: gerent via leur CRUD REST, pas via la file offline.
+    table: Literal["tasks", "task_completions", "user_settings"]
     operation: Literal["INSERT", "UPDATE", "DELETE"]
     row_id: UUID
     data: dict | None = None

@@ -36,7 +36,6 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session
-from app.models.category import Category
 from app.models.completion import TaskCompletion
 from app.models.enums import UrgencyState
 from app.models.foyer import Foyer
@@ -75,7 +74,9 @@ class _ComputeInputs:
     comps_by_task: dict[UUID, list[datetime]]
     earliest_date: date | None
     freeze_enabled: bool
-    requires_home_map: dict[UUID | None, bool]
+    #: Par TACHE : gele-t-elle pendant une absence ? Resolu depuis ses
+    #: contextes (presence exigee ET besoin qui ne monte pas tout seul).
+    freezes_by_task: dict[UUID, bool]
     present_dates: list[date]  # dates confirmed_present, triees asc
 
 
@@ -117,24 +118,16 @@ async def _load_compute_inputs(session: AsyncSession, foyer_id: UUID) -> _Comput
     earliest = min((t.created_at for t in tasks if t.created_at), default=None)
     earliest_date = earliest.date() if earliest else None
 
-    # Home freeze v2 : foyer + categories requires_home + presence_days.
+    # Home freeze v2 : foyer + contextes gelants + presence_days.
     foyer = (
         await session.execute(select(Foyer).where(Foyer.id == foyer_id))
     ).scalar_one_or_none()
     freeze_enabled = foyer.home_freeze_enabled if foyer else False
-    requires_home_map: dict[UUID | None, bool] = {}
+    freezes_by_task: dict[UUID, bool] = {}
     present_dates: list[date] = []
     if freeze_enabled:
-        cat_ids = {t.category_id for t in tasks if t.category_id}
-        if cat_ids:
-            cat_rows = (
-                await session.execute(
-                    select(Category.id, Category.requires_home).where(
-                        Category.id.in_(cat_ids)
-                    )
-                )
-            ).all()
-            requires_home_map = {row[0]: row[1] for row in cat_rows}
+        gelantes = await task_ids_freezing_when_away(session, [t.id for t in tasks])
+        freezes_by_task = {t.id: t.id in gelantes for t in tasks}
         pres_rows = (
             await session.execute(
                 select(PresenceDay.date).where(
@@ -146,7 +139,7 @@ async def _load_compute_inputs(session: AsyncSession, foyer_id: UUID) -> _Comput
         present_dates = sorted(row[0] for row in pres_rows)
 
     return _ComputeInputs(
-        tasks, comps_by_task, earliest_date, freeze_enabled, requires_home_map, present_dates
+        tasks, comps_by_task, earliest_date, freeze_enabled, freezes_by_task, present_dates
     )
 
 
@@ -189,7 +182,7 @@ def _retard_at(inp: _ComputeInputs, target_date: date, boundary: datetime) -> tu
             continue
         nominal = compute_nominal_interval_days(task.recurrence_rule)
 
-        requires_home = inp.requires_home_map.get(task.category_id, False)
+        requires_home = inp.freezes_by_task.get(task.id, False)
         absent = 0
         if inp.freeze_enabled and requires_home:
             since = (

@@ -12,8 +12,7 @@ data class ObjectiveCreateRequest(
     @SerializedName("kind") val kind: String = "shared",  // 'personal' | 'shared'
     @SerializedName("period") val period: String = "week", // 'day'|'week'|'month'
     @SerializedName("target_count") val targetCount: Int = 1,
-    @SerializedName("scope_room_id") val scopeRoomId: String? = null,
-    @SerializedName("scope_category_id") val scopeCategoryId: String? = null,
+    @SerializedName("scope_context_id") val scopeContextId: String? = null,
     @SerializedName("assigned_to_user_id") val assignedToUserId: String? = null,
 )
 
@@ -23,8 +22,7 @@ data class Objective(
     @SerializedName("kind") val kind: String,
     @SerializedName("period") val period: String,
     @SerializedName("target_count") val targetCount: Int,
-    @SerializedName("scope_room_id") val scopeRoomId: String? = null,
-    @SerializedName("scope_category_id") val scopeCategoryId: String? = null,
+    @SerializedName("scope_context_id") val scopeContextId: String? = null,
     @SerializedName("assigned_to_user_id") val assignedToUserId: String? = null,
     @SerializedName("is_active") val isActive: Boolean = true,
     @SerializedName("progress_count") val progressCount: Int = 0,

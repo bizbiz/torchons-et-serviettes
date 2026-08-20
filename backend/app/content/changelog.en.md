@@ -1,5 +1,27 @@
 # Release notes
 
+## v0.38.0 — 2026-08-20
+
+### Contexts everywhere
+- Rooms and categories are gone: there is a single list now, contexts, and a
+  chore can carry several. Settings, the Chores tab filters, editing and the
+  home screen all speak the same language.
+- Absence freezing finally tells two things apart: *do you need to be there*
+  and *does it keep going without us*. The garden is no longer paused during
+  holidays — the grass certainly isn't.
+
+### Adding a chore, in three seconds
+- The **+** button suggests chores that fit your home: the litter box if you
+  have a cat, watering if you have a vegetable patch. What you already have is
+  no longer offered.
+- Start typing and the list narrows. Picking one fills in the title, contexts,
+  frequency and effort at once — all still editable.
+- The "Inspirations" button is gone: it opened a screen nothing led to.
+
+### Fixes
+- The home screen showed "Data unavailable" in some setups.
+- Three-month statistics could fail to load.
+
 ## v0.37.0 — 2026-08-19
 
 ### Contexts replace rooms and categories

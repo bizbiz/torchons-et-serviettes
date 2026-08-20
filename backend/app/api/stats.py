@@ -898,16 +898,23 @@ async def get_category_frequency(
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
-    """Repartition des completions par categorie, breakdown per-user.
+    """Repartition des completions par CONTEXTE, breakdown per-user.
 
-    Top 8 categories par nombre total de completions, avec un breakdown
-    `counts` parallele a la liste `users`. Les taches sans categorie sont
-    rangees dans une categorie virtuelle "Sans categorie" (category_id=None).
+    Top 8 contextes par nombre total de completions, avec un breakdown
+    `counts` parallele a la liste `users`. Les taches sans rattachement sont
+    rangees dans un seau virtuel (category_id=None).
+
+    Seul le contexte PRINCIPAL compte : une tache en porte plusieurs, et les
+    compter tous ferait qu'une completion pese deux ou trois fois — les parts
+    ne sommeraient plus au nombre de taches faites.
+
+    Les noms de champs restent `category_*` : l'APK diffuse les lit, et les
+    renommer casserait un client deja en circulation (cf. todo.md).
 
     Periode (default `all`) : week, month, three_months, all — meme semantique
     que /stats/weekday-frequency.
     """
-    from app.models.category import Category
+    from app.models.context import Context, TaskContext
     from app.models.user_foyer import UserFoyer
 
     foyer_uuid = current_foyer_uuid(current)
@@ -934,14 +941,21 @@ async def get_category_frequency(
     users = list(users_result.scalars().all())
     user_index = {u.id: i for i, u in enumerate(users)}
 
-    # Counts par (user_id, category_id_or_NULL).
+    # Counts par (user_id, contexte principal ou NULL).
+    # `outerjoin` sur position == 0 : une tache sans rattachement doit rester
+    # comptee, dans le seau « sans contexte », plutot que de disparaitre du
+    # total.
     base_q = (
         select(
             TaskCompletion.completed_by,
-            Task.category_id,
+            TaskContext.context_id,
             func.count(TaskCompletion.id).label("cnt"),
         )
         .join(Task, Task.id == TaskCompletion.task_id)
+        .outerjoin(
+            TaskContext,
+            (TaskContext.task_id == Task.id) & (TaskContext.position == 0),
+        )
         .where(
             TaskCompletion.deleted_at.is_(None),
             Task.foyer_id == foyer_uuid,
@@ -949,7 +963,7 @@ async def get_category_frequency(
     )
     if cutoff is not None:
         base_q = base_q.where(TaskCompletion.completed_at >= cutoff)
-    base_q = base_q.group_by(TaskCompletion.completed_by, Task.category_id)
+    base_q = base_q.group_by(TaskCompletion.completed_by, TaskContext.context_id)
     rows = (await session.execute(base_q)).all()
 
     # Aggreger par categorie : counts[i] = count pour users[i].
@@ -964,12 +978,12 @@ async def get_category_frequency(
         cat_acc[category_id][user_index[completed_by]] += int(cnt)
         cat_total[category_id] += int(cnt)
 
-    # Charger les noms des categories utilisees
+    # Charger les noms des contextes utilises
     cat_ids = [cid for cid in cat_acc.keys() if cid is not None]
     cat_names: dict[UUID, str] = {}
     if cat_ids:
         cat_result = await session.execute(
-            select(Category.id, Category.name).where(Category.id.in_(cat_ids))
+            select(Context.id, Context.name).where(Context.id.in_(cat_ids))
         )
         cat_names = {row[0]: row[1] for row in cat_result.all()}
 
@@ -978,7 +992,7 @@ async def get_category_frequency(
 
     entries: list[CategoryFrequencyEntry] = []
     for cid, counts in ordered:
-        name = cat_names.get(cid, "?") if cid is not None else "Sans categorie"
+        name = cat_names.get(cid, "?") if cid is not None else "Sans contexte"
         entries.append(CategoryFrequencyEntry(
             category_id=cid,
             category_name=name,
@@ -1840,7 +1854,8 @@ class LongTermDay(BaseModel):
 
 
 class LongTermRoom(BaseModel):
-    """Aggregat par piece sur la periode demandee. room_id null = taches
+    """Aggregat par CONTEXTE sur la periode. Les noms de champs restent
+    `room_*` : le client diffuse les lit. room_id null = taches
     sans piece rattachee."""
     room_id: UUID | None
     room_name: str
@@ -1870,7 +1885,7 @@ async def long_term_stats(
     de task_efforts.points * 5min). Tasks sans vote effort comptent 0
     minute (on ne devine pas).
     """
-    from app.models.room import Room
+    from app.models.context import Context, TaskContext
     from app.models.task_effort import TaskEffort
 
     foyer_uuid = current_foyer_uuid(current)
@@ -1924,18 +1939,28 @@ async def long_term_stats(
         for row in days_result.all()
     ]
 
-    # 2. By room (LEFT JOIN pour inclure les taches sans room_id).
+    # 2. Repartition par CONTEXTE principal (position 0). Le `outerjoin` garde
+    # les taches sans rattachement, regroupees dans un seau « sans contexte » :
+    # les perdre ferait un total inferieur au nombre de completions.
+    #
+    # Position 0 seulement : compter tous les contextes ferait peser chaque
+    # completion autant de fois qu'elle a de rattachements, et les parts ne
+    # sommeraient plus au total affiche juste au-dessus.
     rooms_result = await session.execute(
         select(
-            Room.id,
-            Room.name,
+            Context.id,
+            Context.name,
             func.count(TaskCompletion.id),
             func.coalesce(func.sum(TaskCompletion.points_earned), 0),
             func.coalesce(func.sum(effort_subq.c.avg_minutes), 0),
         )
         .select_from(TaskCompletion)
         .join(Task, Task.id == TaskCompletion.task_id)
-        .outerjoin(Room, Room.id == Task.room_id)
+        .outerjoin(
+            TaskContext,
+            (TaskContext.task_id == Task.id) & (TaskContext.position == 0),
+        )
+        .outerjoin(Context, Context.id == TaskContext.context_id)
         .outerjoin(effort_subq, effort_subq.c.task_id == Task.id)
         .where(
             Task.foyer_id == foyer_uuid,
@@ -1943,13 +1968,13 @@ async def long_term_stats(
             TaskCompletion.completed_at >= since,
             *absent_filter,
         )
-        .group_by(Room.id, Room.name)
+        .group_by(Context.id, Context.name)
         .order_by(func.count(TaskCompletion.id).desc())
     )
     by_room = [
         LongTermRoom(
             room_id=row[0],
-            room_name=row[1] or "Sans piece",
+            room_name=row[1] or "Sans contexte",
             completions=int(row[2] or 0),
             points=int(row[3] or 0),
             estimated_minutes=int(row[4] or 0),

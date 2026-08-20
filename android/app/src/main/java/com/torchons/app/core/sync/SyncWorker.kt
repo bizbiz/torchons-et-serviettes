@@ -6,13 +6,11 @@ import androidx.work.WorkerParameters
 import com.google.gson.Gson
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
-import com.torchons.app.data.local.dao.CategoryDao
 import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.toEntity
-import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.ChangeLogEntry
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.FrequencyRequest
@@ -33,7 +31,6 @@ interface SyncWorkerEntryPoint {
     fun apiService(): ApiService
     fun pendingOperationDao(): PendingOperationDao
     fun taskDao(): TaskDao
-    fun categoryDao(): CategoryDao
     fun completionDao(): CompletionDao
     fun tokenManager(): TokenManager
 }
@@ -52,7 +49,6 @@ class SyncWorker(
         val pendingDao = ep.pendingOperationDao()
         val apiService = ep.apiService()
         val taskDao = ep.taskDao()
-        val categoryDao = ep.categoryDao()
         val completionDao = ep.completionDao()
         val tokenManager = ep.tokenManager()
 
@@ -118,7 +114,7 @@ class SyncWorker(
             pendingDao.incrementAttempt(conflict.clientOpId, conflict.reason)
         }
 
-        body.serverChanges.forEach { applyServerChange(it, taskDao, categoryDao, completionDao) }
+        body.serverChanges.forEach { applyServerChange(it, taskDao, completionDao) }
 
         tokenManager.setSyncCursor(body.serverVersion)
 
@@ -146,13 +142,11 @@ class SyncWorker(
     private suspend fun applyServerChange(
         change: ChangeLogEntry,
         taskDao: TaskDao,
-        categoryDao: CategoryDao,
         completionDao: CompletionDao,
     ) {
         try {
             when (change.table) {
                 "tasks" -> applyTaskChange(change, taskDao)
-                "categories" -> applyCategoryChange(change, categoryDao)
                 "task_completions" -> applyCompletionChange(change, completionDao)
             }
         } catch (_: Exception) {}
@@ -181,7 +175,6 @@ class SyncWorker(
             id = change.rowId,
             title = data["title"] as? String ?: "",
             description = data["description"] as? String,
-            categoryId = data["category_id"] as? String,
             assignedToIds = (data["assigned_to_ids"] as? List<String>) ?: emptyList(),
             weight = (data["weight"] as? Double)?.toInt() ?: 1,
             tolerance = data["tolerance"] as? String ?: "NORMAL",
@@ -192,25 +185,6 @@ class SyncWorker(
             updatedAt = data["updated_at"] as? String ?: "",
         )
         taskDao.upsert(task.toEntity())
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private suspend fun applyCategoryChange(change: ChangeLogEntry, categoryDao: CategoryDao) {
-        if (change.operation == "DELETE") {
-            categoryDao.deleteById(change.rowId)
-            return
-        }
-        val data = change.data ?: return
-        val cat = Category(
-            id = change.rowId,
-            name = data["name"] as? String ?: "",
-            color = data["color"] as? String ?: "#6B7280",
-            icon = data["icon"] as? String,
-            sortOrder = (data["sort_order"] as? Double)?.toInt() ?: 0,
-            requiresHome = data["requires_home"] as? Boolean ?: false,
-            createdAt = data["created_at"] as? String ?: "",
-        )
-        categoryDao.upsert(cat.toEntity())
     }
 
     @Suppress("UNCHECKED_CAST")

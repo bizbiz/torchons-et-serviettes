@@ -39,6 +39,9 @@ data class TaskContextRef(
     @SerializedName("color") val color: String = "#6B7280",
     @SerializedName("emoji") val emoji: String? = null,
     @SerializedName("position") val position: Int = 0,
+    /** Faut-il etre sur place ? Pilote le masquage hors WiFi maison. */
+    @SerializedName("requires_presence") val requiresPresence: Boolean = false,
+    @SerializedName("accrues_when_away") val accruesWhenAway: Boolean = false,
 ) {
     val label: String get() = if (emoji != null) "$emoji $name" else name
 }

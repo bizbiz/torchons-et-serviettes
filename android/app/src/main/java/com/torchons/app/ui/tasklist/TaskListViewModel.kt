@@ -6,9 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
-import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.Completion
-import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.TaskContextRef
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.User
@@ -83,8 +81,6 @@ data class TaskListUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val tasks: List<TaskWithUrgency> = emptyList(),
-    val categories: List<Category> = emptyList(),
-    val selectedCategoryIds: Set<String> = emptySet(),
     /** Contextes coches dans la barre de filtres. Vide = tout. */
     val selectedContextIds: Set<String> = emptySet(),
     val isAtHome: Boolean = true,
@@ -96,8 +92,6 @@ data class TaskListUiState(
     val filterRecurrence: FilterState = FilterState.OFF,
     val filterHome: FilterState = FilterState.OFF,
     val filterAssignment: FilterState = FilterState.OFF,
-    val selectedRoomId: String? = null,
-    val availableRooms: List<Room> = emptyList(),
     /** Contextes proposes en filtre : ceux presents sur AU MOINS une tache
      *  du foyer, calcules avant filtrage pour rester stables. */
     val availableContexts: List<TaskContextRef> = emptyList(),
@@ -140,8 +134,6 @@ private data class TaskListFilters(
     val filterRecurrence: FilterState = FilterState.OFF,
     val filterHome: FilterState = FilterState.OFF,
     val filterAssignment: FilterState = FilterState.OFF,
-    val selectedRoomId: String? = null,
-    val selectedCategoryIds: Set<String> = emptySet(),
     val selectedContextIds: Set<String> = emptySet(),
     val showAllTasks: Boolean = false,
     val myAffinities: Map<String, Int> = emptyMap(),
@@ -149,11 +141,9 @@ private data class TaskListFilters(
     val searchRespectFilters: Boolean = false,
 )
 
-/** Conteneur interne pour le combine des 5 flows. */
+/** Conteneur interne pour le combine des flows. */
 private data class CachedTaskList(
     val tasks: List<Task>,
-    val categories: List<Category>,
-    val rooms: List<Room>,
     val completions: List<Completion>,
     val filters: TaskListFilters,
 )
@@ -162,15 +152,12 @@ private data class CachedTaskList(
 private data class ProcessedTaskList(
     val filtered: FilteredResult,
     val hasCache: Boolean,
-    val categories: List<Category>,
-    val rooms: List<Room>,
     val filters: TaskListFilters,
 )
 
 /** Resultat du filtrage pur. */
 private data class FilteredResult(
     val tasks: List<TaskWithUrgency>,
-    val rooms: List<Room>,
     val contexts: List<TaskContextRef>,
     val isAtHome: Boolean,
     val homeTasksHidden: Int,
@@ -228,24 +215,20 @@ class TaskListViewModel @Inject constructor(
             // pendant le scroll.
             combine(
                 taskRepository.observeActiveTasks(),
-                taskRepository.observeCategories(),
-                taskRepository.observeRooms(),
                 taskRepository.observeRecentCompletions(2000),
                 filtersFlow,
-            ) { tasks, categories, rooms, completions, filters ->
+            ) { tasks, completions, filters ->
                 val homeSsids = tokenManager.homeSsidsFlow.first()
                 val isAtHome = WifiHelper.isAtHome(context, homeSsids)
                 val currentUserId = tokenManager.userIdFlow.first()
                 val hideHomeTasksOffWifi = tokenManager.hideHomeTasksOffWifiFlow.first()
                 val filtered = applyFilters(
-                    tasks, categories, rooms, completions, filters,
+                    tasks, completions, filters,
                     isAtHome, currentUserId, hideHomeTasksOffWifi,
                 )
                 ProcessedTaskList(
                     filtered = filtered,
-                    hasCache = tasks.isNotEmpty() || categories.isNotEmpty(),
-                    categories = categories,
-                    rooms = rooms,
+                    hasCache = tasks.isNotEmpty(),
                     filters = filters,
                 )
             }.flowOn(Dispatchers.Default).collect { processed ->
@@ -257,12 +240,9 @@ class TaskListViewModel @Inject constructor(
                 // le curseur "revient en arriere" quand l'utilisateur tape vite.
                 _uiState.value = _uiState.value.copy(
                     tasks = processed.filtered.tasks,
-                    categories = processed.categories,
-                    availableRooms = processed.filtered.rooms,
                     availableContexts = processed.filtered.contexts,
                     isAtHome = processed.filtered.isAtHome,
                     homeTasksHidden = processed.filtered.homeTasksHidden,
-                    selectedCategoryIds = processed.filters.selectedCategoryIds,
                     showAllTasks = processed.filters.showAllTasks,
                     filterTodo = processed.filters.filterTodo,
                     filterAffinity = processed.filters.filterAffinity,
@@ -270,7 +250,6 @@ class TaskListViewModel @Inject constructor(
                     filterRecurrence = processed.filters.filterRecurrence,
                     filterHome = processed.filters.filterHome,
                     filterAssignment = processed.filters.filterAssignment,
-                    selectedRoomId = processed.filters.selectedRoomId,
                     selectedContextIds = processed.filters.selectedContextIds,
                     hasCachedData = processed.hasCache,
                     isLoading = if (processed.hasCache) false else _uiState.value.isLoading,
@@ -290,8 +269,7 @@ class TaskListViewModel @Inject constructor(
 
             val results = listOf(
                 async { taskRepository.refreshTasks() },
-                async { taskRepository.refreshCategories() },
-                async { taskRepository.refreshRooms() },
+                async { taskRepository.refreshContexts() },
                 // limit=2000 : sans ca, le backend defaulte a 50 et le repo
                 // fait replaceAll, ce qui wipe toute completion plus ancienne
                 // que le 50e rang global. Conseequence : tasks recurrentes a
@@ -569,10 +547,6 @@ class TaskListViewModel @Inject constructor(
         filtersFlow.value = filtersFlow.value.copy(filterAssignment = nextFilterState(filtersFlow.value.filterAssignment))
     }
 
-    fun selectRoom(roomId: String?) {
-        filtersFlow.value = filtersFlow.value.copy(selectedRoomId = roomId)
-    }
-
     /**
      * Coche ou decoche un contexte dans la barre de filtres.
      *
@@ -589,16 +563,6 @@ class TaskListViewModel @Inject constructor(
 
     fun clearContextFilter() {
         filtersFlow.value = filtersFlow.value.copy(selectedContextIds = emptySet())
-    }
-
-    fun toggleCategory(categoryId: String) {
-        val current = filtersFlow.value.selectedCategoryIds.toMutableSet()
-        if (categoryId in current) current.remove(categoryId) else current.add(categoryId)
-        filtersFlow.value = filtersFlow.value.copy(selectedCategoryIds = current)
-    }
-
-    fun clearCategoryFilter() {
-        filtersFlow.value = filtersFlow.value.copy(selectedCategoryIds = emptySet())
     }
 
     fun toggleShowAll() {
@@ -664,23 +628,16 @@ class TaskListViewModel @Inject constructor(
      */
     private fun applyFilters(
         tasks: List<Task>,
-        categories: List<Category>,
-        rooms: List<Room>,
         completions: List<Completion>,
         filters: TaskListFilters,
         isAtHome: Boolean,
         currentUserId: String?,
         hideHomeTasksOffWifi: Boolean,
     ): FilteredResult {
-        val homeCategoryIds = categories.filter { it.requiresHome }.map { it.id }.toSet()
-        val roomsById = rooms.associateBy { it.id }
-
-        // availableRooms = pieces qui ont au moins une tache associee, triees
-        // alphabetiquement (mirror de la regle backend ORDER BY name).
-        val roomIdsWithTasks = tasks.mapNotNullTo(mutableSetOf()) { it.roomId }
-        val availableRooms = rooms
-            .filter { it.id in roomIdsWithTasks }
-            .sortedBy { it.name }
+        // « A la maison » se lit desormais sur la tache elle-meme : un de ses
+        // contextes exige-t-il d'etre sur place ? Les drapeaux voyagent avec
+        // elle, il n'y a plus de table a recouper.
+        fun Task.exigePresence(): Boolean = contexts.any { it.requiresPresence }
 
         // Calcule sur `tasks` (non filtre) et non sur le resultat : sinon la
         // barre se retrecit a chaque clic et la selection ne peut que se
@@ -714,18 +671,10 @@ class TaskListViewModel @Inject constructor(
         // `filteredTasks` et non `tasks` dans la branche else : repartir de la
         // liste d'origine annulerait le filtre par contexte applique juste
         // au-dessus. Defaut mesure : le chip se cochait, la liste ne bougeait pas.
-        if (applyUiFilters && filters.selectedCategoryIds.isNotEmpty()) {
-            filteredTasks = filteredTasks.filter { it.categoryId in filters.selectedCategoryIds }
-        }
-
-        if (applyUiFilters && filters.selectedRoomId != null) {
-            filteredTasks = filteredTasks.filter { it.roomId == filters.selectedRoomId }
-        }
-
         if (applyUiFilters) {
             when (filters.filterHome) {
-                FilterState.HIGH -> filteredTasks = filteredTasks.filter { it.categoryId in homeCategoryIds }
-                FilterState.LOW -> filteredTasks = filteredTasks.filter { it.categoryId !in homeCategoryIds }
+                FilterState.HIGH -> filteredTasks = filteredTasks.filter { it.exigePresence() }
+                FilterState.LOW -> filteredTasks = filteredTasks.filter { !it.exigePresence() }
                 FilterState.OFF -> {}
             }
         }
@@ -752,10 +701,10 @@ class TaskListViewModel @Inject constructor(
         // -> banniere non affichee (correct).
         var homeTasksHidden = 0
         if (applyUiFilters && !isAtHome && !filters.showAllTasks &&
-            homeCategoryIds.isNotEmpty() && hideHomeTasksOffWifi
+            hideHomeTasksOffWifi
         ) {
             val before = filteredTasks.size
-            filteredTasks = filteredTasks.filter { it.categoryId !in homeCategoryIds }
+            filteredTasks = filteredTasks.filter { !it.exigePresence() }
             homeTasksHidden = before - filteredTasks.size
         }
 
@@ -771,7 +720,6 @@ class TaskListViewModel @Inject constructor(
                 lastCompletionByTaskId[c.taskId] = c
             }
         }
-        val categoriesById = categories.associateBy { it.id }
         val today = LocalDate.now()
 
         var tasksWithUrgency = filteredTasks.map { task ->
@@ -796,8 +744,6 @@ class TaskListViewModel @Inject constructor(
             val countdownLabel = TaskUrgencyCalculator.countdownLabel(
                 context.resources, dueDate, today, absentDays,
             )
-            val category = task.categoryId?.let { categoriesById[it] }
-            val room = task.roomId?.let { roomsById[it] }
 
             // Classification v0.20. Une 'uncertain' est recurrente de nom mais
             // sans cadence effective : on la range dans SANS_CADENCE pour
@@ -819,10 +765,10 @@ class TaskListViewModel @Inject constructor(
                 // tache creee avant le chantier et jamais rouverte n'a aucun
                 // rattachement, et l'afficher sans lieu serait une regression
                 // visible pour l'utilisateur.
-                categoryName = task.contexts.getOrNull(1)?.name ?: category?.name,
-                categoryColor = task.contexts.getOrNull(1)?.color ?: category?.color,
-                roomName = task.contexts.firstOrNull()?.name ?: room?.name,
-                roomEmoji = task.contexts.firstOrNull()?.emoji ?: room?.emoji,
+                categoryName = task.contexts.getOrNull(1)?.name,
+                categoryColor = task.contexts.getOrNull(1)?.color,
+                roomName = task.contexts.firstOrNull()?.name,
+                roomEmoji = task.contexts.firstOrNull()?.emoji,
                 group = group,
                 lastCompletedAt = lastCompletion?.completedAt,
                 isUncertain = isUncertain,
@@ -937,7 +883,7 @@ class TaskListViewModel @Inject constructor(
         tasksWithUrgency = cadence + sansCadenceNeverDone + sansCadenceDone
 
         return FilteredResult(
-            tasksWithUrgency, availableRooms, availableContexts, isAtHome, homeTasksHidden,
+            tasksWithUrgency, availableContexts, isAtHome, homeTasksHidden,
         )
     }
 }

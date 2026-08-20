@@ -24,6 +24,8 @@ data class LongTermDay(
 )
 
 data class LongTermRoom(
+    // Le serveur renvoie desormais des CONTEXTES sous ces noms : les
+    // renommer casserait le contrat sans rien apporter au modele.
     @SerializedName("room_id") val roomId: String?,
     @SerializedName("room_name") val roomName: String,
     @SerializedName("completions") val completions: Int,

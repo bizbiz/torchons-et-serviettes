@@ -65,3 +65,8 @@ class TaskContextRef(BaseModel):
     color: str
     emoji: str | None
     position: int
+    #: Les deux drapeaux voyagent AVEC la tache : le client en a besoin pour
+    #: masquer hors WiFi, et aller les rechercher dans un cache separe serait
+    #: une seconde source a garder synchrone pour deux booleens.
+    requires_presence: bool = False
+    accrues_when_away: bool = False

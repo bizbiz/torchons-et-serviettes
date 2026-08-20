@@ -1,5 +1,30 @@
 # Notes de version
 
+## v0.38.0 — 2026-08-20
+
+### Les contextes partout
+- Pièces et catégories ont disparu : il n'y a plus qu'une liste, les
+  contextes, et une tâche peut en porter plusieurs. L'écran de réglages, les
+  filtres de l'onglet Tâches, l'édition et l'accueil parlent tous le même
+  langage.
+- Le gel pendant les absences distingue enfin deux choses : *faut-il être sur
+  place* et *est-ce que ça continue sans nous*. Le jardin cesse d'être mis en
+  pause pendant les vacances — l'herbe, elle, ne s'arrête pas.
+
+### Ajouter une tâche, en trois secondes
+- Le bouton **+** propose des tâches adaptées à ton foyer : la litière si tu
+  as un chat, l'arrosage si tu as un potager. Ce que tu as déjà n'est plus
+  proposé.
+- Tape le début d'un nom et la liste se réduit. En choisir une remplit le
+  titre, les contextes, la fréquence et l'effort d'un coup — tout reste
+  modifiable ensuite.
+- Le bouton « Inspirations » disparaît : il ouvrait un écran auquel plus rien
+  ne menait.
+
+### Corrections
+- L'accueil affichait « Données indisponibles » dans certaines configurations.
+- Les statistiques sur trois mois pouvaient ne pas se charger.
+
 ## v0.37.0 — 2026-08-19
 
 ### Les contextes remplacent les pièces et les catégories

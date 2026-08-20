@@ -209,7 +209,7 @@ async def get_retard(
 
     today = datetime.now(timezone.utc).date()
     last_completion_map = {task.id: last for task, last in tasks_with_last}
-    freeze_enabled, requires_home_map, absent_days_map = await load_freeze_context(
+    freeze_enabled, freezes_by_task, absent_days_map = await load_freeze_context(
         session,
         foyer_uuid,
         (task for task, _ in tasks_with_last),
@@ -228,7 +228,7 @@ async def get_retard(
         nominal = compute_nominal_interval_days(task.recurrence_rule)
         eff_today = compute_effective_today(
             today,
-            task_requires_home=requires_home_map.get(task.category_id, False),
+            task_requires_home=freezes_by_task.get(task.id, False),
             home_freeze_enabled=freeze_enabled,
             absent_days=absent_days_map.get(task.id, 0),
         )

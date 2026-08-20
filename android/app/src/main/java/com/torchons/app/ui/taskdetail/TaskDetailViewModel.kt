@@ -9,7 +9,7 @@ import com.torchons.app.data.model.EffortVotesState
 import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.RequestRevoteBody
-import com.torchons.app.data.model.Room
+import com.torchons.app.data.model.TaskContextRef
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.User
@@ -50,8 +50,8 @@ data class TaskDetailUiState(
     val daysUntilDue: Int = 0,
     val countdownLabel: String = "",
     val history: List<TaskHistoryEvent> = emptyList(),
-    /** Piece de la tache (resolue depuis task.roomId via le cache rooms). */
-    val room: Room? = null,
+    /** Contexte principal de la tache, tel qu'il arrive avec elle. */
+    val room: TaskContextRef? = null,
     /** Contexte de notation pour le modal unifie. Non-null = modal ouvert. */
     val ratingContext: PendingAffinity? = null,
     val editingCompletion: Completion? = null,
@@ -140,9 +140,8 @@ class TaskDetailViewModel @Inject constructor(
                 taskRepository.observeCompletionsByTask(taskId),
                 taskRepository.observeUsers(),
                 taskRepository.observeTaskHistory(taskId),
-                taskRepository.observeRooms(),
-            ) { task, completions, users, history, rooms ->
-                CachedDetail(task, completions, users, history, rooms)
+            ) { task, completions, users, history ->
+                CachedDetail(task, completions, users, history)
             }.collect { cached ->
                 val hasCache = cached.task != null
                 val userNames = cached.users.associate { it.id to it.displayName }
@@ -163,10 +162,9 @@ class TaskDetailViewModel @Inject constructor(
                     appContext.resources, dueDate, today, absentDays,
                 )
 
-                // Resolve la piece de la tache (si elle a un roomId).
-                val room = cached.task?.roomId?.let { rid ->
-                    cached.rooms.firstOrNull { it.id == rid }
-                }
+                // Le contexte principal voyage avec la tache : plus rien a
+                // resoudre depuis un cache separe.
+                val room = cached.task?.contexts?.firstOrNull()
 
                 _uiState.value = _uiState.value.copy(
                     task = cached.task,
@@ -207,7 +205,7 @@ class TaskDetailViewModel @Inject constructor(
                 async { taskRepository.refreshCompletions(taskId = taskId) },
                 async { taskRepository.refreshUsers() },
                 async { taskRepository.refreshTaskHistory(taskId) },
-                async { taskRepository.refreshRooms() },
+                async { taskRepository.refreshContexts() },
             ).awaitAll()
 
             // Ratings en direct API (best-effort)
@@ -723,5 +721,4 @@ private data class CachedDetail(
     val completions: List<Completion>,
     val users: List<User>,
     val history: List<TaskHistoryEvent>,
-    val rooms: List<Room>,
 )

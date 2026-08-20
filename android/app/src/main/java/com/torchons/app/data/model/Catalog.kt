@@ -10,40 +10,6 @@ import com.google.gson.annotations.SerializedName
  * fr par le backend (pas de dict locale ici — c'est decide cote serveur).
  */
 
-@Immutable
-data class CatalogRoomView(
-    @SerializedName("key") val key: String,
-    @SerializedName("name") val name: String,
-    @SerializedName("emoji") val emoji: String? = null,
-)
-
-@Immutable
-data class CatalogCategoryView(
-    @SerializedName("key") val key: String,
-    @SerializedName("name") val name: String,
-    @SerializedName("color") val color: String,
-    @SerializedName("requires_home") val requiresHome: Boolean,
-)
-
-@Immutable
-data class CatalogTaskView(
-    @SerializedName("key") val key: String,
-    @SerializedName("title") val title: String,
-    @SerializedName("description") val description: String? = null,
-    @SerializedName("default_category_key") val defaultCategoryKey: String? = null,
-    @SerializedName("default_room_key") val defaultRoomKey: String? = null,
-    @SerializedName("default_weight") val defaultWeight: Int = 1,
-    @SerializedName("default_recurrence") val defaultRecurrence: Map<String, Any>? = null,
-    @SerializedName("default_tolerance") val defaultTolerance: String = "NORMAL",
-)
-
-@Immutable
-data class CatalogResponse(
-    @SerializedName("rooms") val rooms: List<CatalogRoomView> = emptyList(),
-    @SerializedName("categories") val categories: List<CatalogCategoryView> = emptyList(),
-    @SerializedName("tasks") val tasks: List<CatalogTaskView> = emptyList(),
-)
-
 // --- Import flow ---
 
 /** Body POST /api/catalog/import/resolve. */
@@ -83,6 +49,7 @@ data class ImportDecision(
 /** Body POST /api/catalog/import/apply. */
 data class ImportApplyRequest(
     @SerializedName("task_keys") val taskKeys: List<String> = emptyList(),
+    @SerializedName("context_keys") val contextKeys: List<String> = emptyList(),
     @SerializedName("room_decisions") val roomDecisions: List<ImportDecision> = emptyList(),
     @SerializedName("category_decisions") val categoryDecisions: List<ImportDecision> = emptyList(),
     @SerializedName("room_keys") val roomKeys: List<String> = emptyList(),
@@ -91,8 +58,6 @@ data class ImportApplyRequest(
 
 @Immutable
 data class ImportApplyResponse(
-    @SerializedName("created_rooms") val createdRooms: Int,
-    @SerializedName("created_categories") val createdCategories: Int,
     @SerializedName("created_tasks") val createdTasks: Int,
     @SerializedName("skipped") val skipped: Int,
 )
@@ -137,4 +102,34 @@ data class CatalogTaskContextView(
 data class CatalogContextsResponse(
     @SerializedName("contexts") val contexts: List<CatalogContextView> = emptyList(),
     @SerializedName("tasks") val tasks: List<CatalogTaskContextView> = emptyList(),
+)
+
+
+/**
+ * Une tâche du catalogue proposée au foyer parce qu'il en a le contexte.
+ *
+ * Le serveur a déjà résolu `contextIds` vers les contextes DU FOYER : le
+ * client n'a pas à refaire l'appariement, il n'aurait de toute façon pas la
+ * table de correspondance entre clés de catalogue et contextes locaux.
+ */
+data class CatalogSuggestion(
+    @SerializedName("key") val key: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("context_keys") val contextKeys: List<String> = emptyList(),
+    @SerializedName("context_ids") val contextIds: List<String> = emptyList(),
+    @SerializedName("primary_context_name") val primaryContextName: String? = null,
+    @SerializedName("primary_context_emoji") val primaryContextEmoji: String? = null,
+    @SerializedName("default_weight") val defaultWeight: Int = 1,
+    @SerializedName("default_recurrence") val defaultRecurrence: RecurrenceRule? = null,
+    @SerializedName("default_tolerance") val defaultTolerance: String = "NORMAL",
+) {
+    val contextLabel: String?
+        get() = primaryContextName?.let {
+            if (primaryContextEmoji != null) "$primaryContextEmoji $it" else it
+        }
+}
+
+data class CatalogSuggestionsResponse(
+    @SerializedName("suggestions") val suggestions: List<CatalogSuggestion> = emptyList(),
 )

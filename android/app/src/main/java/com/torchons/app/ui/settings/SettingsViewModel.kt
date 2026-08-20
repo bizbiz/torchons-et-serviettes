@@ -491,8 +491,7 @@ class SettingsViewModel @Inject constructor(
         if (result.isSuccess) {
             taskRepository.wipeLocalCache()
             taskRepository.refreshTasks()
-            taskRepository.refreshCategories()
-            taskRepository.refreshRooms()
+            taskRepository.refreshContexts()
             taskRepository.refreshUsers()
             taskRepository.refreshCompletions(limit = 2000)
             loadAll()

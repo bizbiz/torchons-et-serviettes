@@ -2,12 +2,12 @@ package com.torchons.app.ui.taskedit
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.CreateTaskRequest
 import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.RecurrenceRule
+import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.model.CatalogSuggestion
 import com.torchons.app.data.model.ContextView
-import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.UpdateTaskRequest
 import com.torchons.app.data.model.User
@@ -38,8 +38,6 @@ data class TaskEditUiState(
     val isEditMode: Boolean = false,
     val title: String = "",
     val description: String = "",
-    val categoryId: String? = null,
-    val roomId: String? = null,
     /** Contextes choisis, dans l'ORDRE : le premier decide de l'endroit ou la
      *  tache s'affiche. Une liste et non un Set pour cette raison. */
     val contextIds: List<String> = emptyList(),
@@ -67,9 +65,11 @@ data class TaskEditUiState(
     val daysPerMonth: Map<String, String> = (1..12).associate { it.toString() to "" },
     val weight: Int = 1,
     val tolerance: String = "NORMAL",
-    val categories: List<Category> = emptyList(),
-    val rooms: List<Room> = emptyList(),
     val contexts: List<ContextView> = emptyList(),
+    /** Propositions du catalogue pertinentes pour ce foyer. */
+    val suggestions: List<CatalogSuggestion> = emptyList(),
+    /** Titre de la proposition appliquee, pour l'afficher et pouvoir l'annuler. */
+    val appliedSuggestion: String? = null,
     val users: List<User> = emptyList(),
     val error: String? = null,
     val saved: Boolean = false,
@@ -130,7 +130,8 @@ fun TaskEditUiState.previewRecurrenceRule(): RecurrenceRule? = when (recurrenceT
 @HiltViewModel
 class TaskEditViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val apiService: ApiService
 
 ) : ViewModel() {
 
@@ -179,6 +180,69 @@ class TaskEditViewModel @Inject constructor(
      * cette information, et « Nettoyer la litiere » se retrouverait sous Salon
      * plutot que sous Chat selon l'ordre alphabetique.
      */
+    /**
+     * Remplit le formulaire depuis une proposition du catalogue.
+     *
+     * Titre, contextes, frequence, effort et tolerance d'un coup : c'est tout
+     * l'interet d'avoir un catalogue, et laisser l'utilisateur ressaisir une
+     * cadence qu'on connait deja serait lui faire faire le travail deux fois.
+     *
+     * Rien n'est verrouille ensuite — tout reste modifiable, et
+     * `appliedSuggestion` sert seulement a montrer d'ou vient le pre-remplissage.
+     */
+    fun applySuggestion(suggestion: CatalogSuggestion) {
+        val rule = suggestion.defaultRecurrence
+        val dpm = rule?.daysPerMonth?.mapValues { it.value.toString() }
+            ?: (1..12).associate { it.toString() to "" }
+        val canonicalDays = rule?.everyNDays ?: 7
+        val unit = DurationUnit.bestFor(canonicalDays)
+        _uiState.value = _uiState.value.copy(
+            title = suggestion.title,
+            description = suggestion.description ?: _uiState.value.description,
+            contextIds = suggestion.contextIds,
+            recurrenceType = rule?.type ?: "none",
+            recurrenceMonths = rule?.months?.toSet() ?: emptySet(),
+            recurrenceDay = rule?.day ?: 1,
+            recurrenceGraceDays = rule?.graceDays ?: 0,
+            recurrenceFieldText = unit.fromDays(canonicalDays).toString(),
+            recurrenceUnit = unit,
+            daysPerMonth = dpm,
+            weight = suggestion.defaultWeight,
+            tolerance = suggestion.defaultTolerance,
+            appliedSuggestion = suggestion.title,
+        )
+    }
+
+    /** Repart d'un formulaire vierge apres avoir applique une proposition. */
+    fun clearSuggestion() {
+        _uiState.value = _uiState.value.copy(
+            title = "",
+            description = "",
+            contextIds = emptyList(),
+            appliedSuggestion = null,
+        )
+    }
+
+    /**
+     * Propositions filtrees par ce que l'utilisateur tape.
+     *
+     * Recherche tokenisee sur le titre normalise, la meme que l'autocomplete
+     * des taches existantes : taper « litiere » doit trouver « Nettoyer la
+     * litiere » sans exiger le mot exact ni les accents.
+     */
+    fun matchingSuggestions(query: String): List<CatalogSuggestion> {
+        val state = _uiState.value
+        if (state.isEditMode) return emptyList()
+        val toutes = state.suggestions
+        if (query.isBlank()) return toutes
+        val tokens = normalize(query).split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (tokens.isEmpty()) return toutes
+        return toutes.filter { s ->
+            val botte = normalize(s.title)
+            tokens.all { botte.contains(it) }
+        }
+    }
+
     fun toggleContext(id: String) {
         val liste = _uiState.value.contextIds.toMutableList()
         if (!liste.remove(id)) liste.add(id)
@@ -190,21 +254,21 @@ class TaskEditViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            val categoriesResult = taskRepository.getCategories()
             val usersResult = taskRepository.getUsers()
             // Refresh rooms via cache + API (pattern observe non utilise ici car
             // l'ecran d'edition est one-shot, pas reactif).
-            taskRepository.refreshRooms()
-            val rooms = try {
-                taskRepository.observeRooms().first()
-            } catch (_: Exception) {
-                emptyList()
-            }
 
-            val categories = categoriesResult.getOrNull() ?: emptyList()
             // Meme pattern que les pieces : refresh REPLACE puis lecture du
             // cache, pour que le selecteur reste peuple hors ligne.
             taskRepository.refreshContexts()
+            // Uniquement en creation : proposer des taches a qui est en train
+            // d'en modifier une n'aurait aucun sens.
+            val propositions = if (taskId == null) {
+                runCatching { apiService.getCatalogSuggestions().body()?.suggestions }
+                    .getOrNull().orEmpty()
+            } else {
+                emptyList()
+            }
             val contexts = try {
                 taskRepository.observeContexts().first()
             } catch (e: Exception) {
@@ -233,8 +297,6 @@ class TaskEditViewModel @Inject constructor(
                         isEditMode = true,
                         title = task.title,
                         description = task.description ?: "",
-                        categoryId = task.categoryId,
-                        roomId = task.roomId,
                         contextIds = task.contexts.sortedBy { it.position }.map { it.id },
                         assignedToIds = task.assignedToIds,
                         recurrenceType = task.recurrenceRule?.type ?: "none",
@@ -246,9 +308,8 @@ class TaskEditViewModel @Inject constructor(
                         daysPerMonth = dpm,
                         weight = task.weight,
                         tolerance = task.tolerance,
-                        categories = categories,
-                        rooms = rooms,
                         contexts = contexts,
+                        suggestions = propositions,
                         users = users,
                         frequencyVotes = votes,
                         clonedFromTitle = null,
@@ -266,8 +327,6 @@ class TaskEditViewModel @Inject constructor(
                 // sans copier les votes individuels, qui sont propres au task_id.
                 applyCloneSourceInternal(
                     sourceId = cloneFromId,
-                    categories = categories,
-                    rooms = rooms,
                     contexts = contexts,
                     users = users,
                 )
@@ -277,9 +336,8 @@ class TaskEditViewModel @Inject constructor(
                     isLoading = false,
                     isEditMode = false,
                     assignedToIds = users.map { it.id },
-                    categories = categories,
-                    rooms = rooms,
                     contexts = contexts,
+                    suggestions = propositions,
                     users = users,
                     clonedFromTitle = null,
                 )
@@ -298,8 +356,6 @@ class TaskEditViewModel @Inject constructor(
         viewModelScope.launch {
             applyCloneSourceInternal(
                 sourceId = sourceId,
-                categories = state.categories,
-                rooms = state.rooms,
                 contexts = state.contexts,
                 users = state.users,
             )
@@ -317,8 +373,6 @@ class TaskEditViewModel @Inject constructor(
         _uiState.value = TaskEditUiState(
             isEditMode = false,
             assignedToIds = state.users.map { it.id },
-            categories = state.categories,
-            rooms = state.rooms,
             users = state.users,
             clonedFromTitle = null,
         )
@@ -326,8 +380,6 @@ class TaskEditViewModel @Inject constructor(
 
     private suspend fun applyCloneSourceInternal(
         sourceId: String,
-        categories: List<Category>,
-        rooms: List<Room>,
         contexts: List<ContextView>,
         users: List<User>,
     ) {
@@ -336,8 +388,6 @@ class TaskEditViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 error = "Tache source introuvable",
-                categories = categories,
-                rooms = rooms,
                 contexts = contexts,
                 users = users,
                 assignedToIds = if (_uiState.value.assignedToIds.isEmpty()) users.map { it.id } else _uiState.value.assignedToIds,
@@ -353,8 +403,6 @@ class TaskEditViewModel @Inject constructor(
             isEditMode = false,
             title = source.title,
             description = source.description ?: "",
-            categoryId = source.categoryId,
-            roomId = source.roomId,
             contextIds = source.contexts.sortedBy { it.position }.map { it.id },
             assignedToIds = source.assignedToIds,
             recurrenceType = source.recurrenceRule?.type ?: "none",
@@ -366,8 +414,6 @@ class TaskEditViewModel @Inject constructor(
             daysPerMonth = dpm,
             weight = source.weight,
             tolerance = source.tolerance,
-            categories = categories,
-            rooms = rooms,
             contexts = contexts,
             users = users,
             // Pas de votes : le clone n'a pas de TaskFrequencyVote tant qu'aucun
@@ -383,14 +429,6 @@ class TaskEditViewModel @Inject constructor(
 
     fun updateDescription(value: String) {
         _uiState.value = _uiState.value.copy(description = value)
-    }
-
-    fun updateCategoryId(value: String?) {
-        _uiState.value = _uiState.value.copy(categoryId = value)
-    }
-
-    fun updateRoomId(value: String?) {
-        _uiState.value = _uiState.value.copy(roomId = value)
     }
 
     fun toggleUserAssignment(userId: String) {
@@ -499,8 +537,6 @@ class TaskEditViewModel @Inject constructor(
                     UpdateTaskRequest(
                         title = state.title,
                         description = state.description.ifBlank { null },
-                        categoryId = state.categoryId,
-                        roomId = state.roomId,
                         contextIds = state.contextIds,
                         assignedToIds = state.assignedToIds,
                         recurrenceRule = recurrenceRule,
@@ -513,8 +549,6 @@ class TaskEditViewModel @Inject constructor(
                     CreateTaskRequest(
                         title = state.title,
                         description = state.description.ifBlank { null },
-                        categoryId = state.categoryId,
-                        roomId = state.roomId,
                         contextIds = state.contextIds,
                         assignedToIds = state.assignedToIds,
                         recurrenceRule = recurrenceRule,

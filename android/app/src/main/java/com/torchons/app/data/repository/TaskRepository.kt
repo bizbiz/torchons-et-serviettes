@@ -3,11 +3,9 @@ package com.torchons.app.data.repository
 import com.google.gson.Gson
 import com.torchons.app.core.sync.SyncTrigger
 import com.torchons.app.data.api.ApiService
-import com.torchons.app.data.local.dao.CategoryDao
 import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.ContextDao
-import com.torchons.app.data.local.dao.RoomDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.TaskHistoryDao
 import com.torchons.app.data.local.dao.UserDao
@@ -15,7 +13,6 @@ import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.toDomain
 import com.torchons.app.data.local.entities.toEntity
-import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.CollectiveCompleteRequest
 import com.torchons.app.data.model.CollectiveCompletionResponse
 import com.torchons.app.data.model.Completion
@@ -23,7 +20,6 @@ import com.torchons.app.data.model.CreateTaskRequest
 import com.torchons.app.data.model.FrequencyRequest
 import com.torchons.app.data.model.ContextView
 import com.torchons.app.data.model.TaskContextRef
-import com.torchons.app.data.model.Room
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.UpdateTaskRequest
@@ -48,12 +44,10 @@ import javax.inject.Singleton
 class TaskRepository @Inject constructor(
     private val apiService: ApiService,
     private val taskDao: TaskDao,
-    private val categoryDao: CategoryDao,
     private val completionDao: CompletionDao,
     private val userDao: UserDao,
     private val pendingDao: PendingOperationDao,
     private val taskHistoryDao: TaskHistoryDao,
-    private val roomDao: RoomDao,
     private val contextDao: ContextDao,
     private val syncTrigger: SyncTrigger,
     private val tokenManager: TokenManager,
@@ -101,24 +95,6 @@ class TaskRepository @Inject constructor(
     // Categories
     // -------------------------------------------------------------------
 
-    fun observeCategories(): Flow<List<Category>> =
-        categoryDao.observeAll().map { list -> list.map { it.toDomain() } }
-
-    suspend fun refreshCategories(): Boolean {
-        return try {
-            val response = apiService.getCategories()
-            if (response.isSuccessful) {
-                val categories = response.body() ?: emptyList()
-                categoryDao.replaceAll(categories.map { it.toEntity() })
-                true
-            } else {
-                false
-            }
-        } catch (_: Exception) {
-            false
-        }
-    }
-
     // -------------------------------------------------------------------
     // Cache wipe (multi-foyer switch)
     // -------------------------------------------------------------------
@@ -133,11 +109,9 @@ class TaskRepository @Inject constructor(
      */
     suspend fun wipeLocalCache() {
         taskDao.replaceAll(emptyList())
-        categoryDao.replaceAll(emptyList())
         completionDao.replaceAll(emptyList())
         // task_history via DAO (clearForTask n'existe que per-task, donc on
         // passe par deleteAll). Les autres caches (users, rooms) sont aussi wipes.
-        roomDao.replaceAll(emptyList())
         contextDao.replaceAll(emptyList())
         userDao.replaceAll(emptyList())
     }
@@ -145,24 +119,6 @@ class TaskRepository @Inject constructor(
     // -------------------------------------------------------------------
     // Rooms (pieces)
     // -------------------------------------------------------------------
-
-    fun observeRooms(): Flow<List<Room>> =
-        roomDao.observeAll().map { list -> list.map { it.toDomain() } }
-
-    suspend fun refreshRooms(): Boolean {
-        return try {
-            val response = apiService.getRooms()
-            if (response.isSuccessful) {
-                val rooms = response.body() ?: emptyList()
-                roomDao.replaceAll(rooms.map { it.toEntity() })
-                true
-            } else {
-                false
-            }
-        } catch (_: Exception) {
-            false
-        }
-    }
 
     // -------------------------------------------------------------------
     // Contextes
@@ -295,8 +251,6 @@ class TaskRepository @Inject constructor(
             id = rowId,
             title = request.title,
             description = request.description,
-            roomId = request.roomId,
-            categoryId = request.categoryId,
             assignedToIds = request.assignedToIds,
             recurrenceRule = request.recurrenceRule,
             weight = request.weight,
@@ -313,8 +267,6 @@ class TaskRepository @Inject constructor(
         val payload = mapOf(
             "title" to request.title,
             "description" to request.description,
-            "room_id" to request.roomId,
-            "category_id" to request.categoryId,
             "assigned_to_ids" to request.assignedToIds,
             "recurrence_rule" to request.recurrenceRule,
             "weight" to request.weight,
@@ -333,8 +285,6 @@ class TaskRepository @Inject constructor(
         val updated = existing?.copy(
             title = request.title ?: existing.title,
             description = request.description ?: existing.description,
-            roomId = request.roomId ?: existing.roomId,
-            categoryId = request.categoryId ?: existing.categoryId,
             assignedToIds = request.assignedToIds ?: existing.assignedToIds,
             recurrenceRule = request.recurrenceRule ?: existing.recurrenceRule,
             weight = request.weight ?: existing.weight,
@@ -352,8 +302,6 @@ class TaskRepository @Inject constructor(
         val payload = mutableMapOf<String, Any?>()
         request.title?.let { payload["title"] = it }
         request.description?.let { payload["description"] = it }
-        request.roomId?.let { payload["room_id"] = it }
-        request.categoryId?.let { payload["category_id"] = it }
         request.assignedToIds?.let { payload["assigned_to_ids"] = it }
         request.recurrenceRule?.let { payload["recurrence_rule"] = it }
         request.weight?.let { payload["weight"] = it }
@@ -659,32 +607,17 @@ class TaskRepository @Inject constructor(
     // -------------------------------------------------------------------
 
     suspend fun getTasks(
-        categoryId: String? = null,
+        contextId: String? = null,
         activeOnly: Boolean? = true,
     ): Result<List<Task>> {
         return try {
-            val response = apiService.getTasks(categoryId, activeOnly)
+            val response = apiService.getTasks(contextId, activeOnly)
             if (response.isSuccessful) {
                 val tasks = response.body() ?: emptyList()
                 taskDao.replaceAll(tasks.map { it.toEntity() })
                 Result.success(tasks)
             } else {
                 Result.failure(Exception("Erreur lors du chargement des taches: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun getCategories(): Result<List<Category>> {
-        return try {
-            val response = apiService.getCategories()
-            if (response.isSuccessful) {
-                val categories = response.body() ?: emptyList()
-                categoryDao.replaceAll(categories.map { it.toEntity() })
-                Result.success(categories)
-            } else {
-                Result.failure(Exception("Erreur lors du chargement des categories: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

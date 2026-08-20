@@ -73,6 +73,8 @@
          ============================================================ -->
 
     <!-- CatalogScreen -->
+    <string name="catalog_import_done_title">Import complete</string>
+    <string name="catalog_import_tasks_created_format">%1$d task(s) added.</string>
     <string name="catalog_title">Catalog</string>
     <string name="catalog_tab_tasks">Tasks</string>
     <string name="catalog_tab_rooms">Rooms</string>
@@ -1404,4 +1406,6 @@
     <string name="task_contexts_help">The first one picked decides where the chore is shown.</string>
     <string name="task_contexts_none">No context</string>
     <string name="task_list_filter_all_contexts">All</string>
+    <string name="task_edit_catalog_header">Suggestions for your home</string>
+    <string name="task_edit_catalog_applied_format">Filled from "%1$s". Everything stays editable.</string>
 </resources>

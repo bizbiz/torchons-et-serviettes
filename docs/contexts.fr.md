@@ -82,18 +82,29 @@ pièces à créer, `apply` les crée. Corriger `apply` seul ne suffit pas — me
 le contexte écarté revenait par les `room_decisions` que le client construit à
 partir de la réponse de `resolve`, avec l'air d'avoir été demandé.
 
-## Double écriture, et jusqu'à quand
+## Les deux tables héritées ont été supprimées
 
-Le serveur écrit **en parallèle** dans `rooms`, `categories`, `tasks.room_id`,
-`tasks.category_id`, parce que l'APK diffusé les lit encore. Les retirer
-maintenant casserait toutes les installations en cours (règle d'ordre de
-synchronisation, cf. `CLAUDE.md`).
+`rooms` et `categories` ont vécu en double écriture le temps qu'un APK basculé
+sorte. Elles n'existent plus : `e5f6a1b2c3d4_drop_rooms_categories.py` les
+supprime, avec `tasks.room_id`, `tasks.category_id`, et convertit
+`objectives.scope_room_id`/`scope_category_id` en un `scope_context_id` unique.
 
-Les shims de compatibilité sont nommés et regroupés : `Catalog.rooms`,
-`Catalog.categories`, `CatalogContext.requires_home`, `legacy_room_key()`,
-`legacy_category_key()`, et les champs `default_room_key`/`default_category_key`
-projetés sur les tâches au chargement. Condition de retrait et repère de
-décision : `todo.md § Retirer la double écriture`.
+La migration **échoue plutôt que de supprimer à l'aveugle** : si une tâche
+vivante a une pièce ou une catégorie mais aucun contexte, elle s'arrête en
+donnant le compte. C'est le seul cas où la suppression perdrait de
+l'information, et une migration destructrice qui répare en silence ce qu'elle
+ne comprend pas transforme un problème visible en donnée corrompue.
+
+⚠️ **Ordre de déploiement inversé.** La règle de synchronisation impose le
+serveur AVANT le client pour un *ajout* ; pour un *retrait*, c'est l'inverse —
+le client doit avoir cessé d'utiliser ce qui disparaît. Cette migration vient
+donc APRÈS la diffusion d'un APK basculé, jamais avant.
+
+Deux noms de champs survivent volontairement : `room_keys` en entrée d'import
+et `category_id` dans les réponses de statistiques. Ils portent désormais des
+contextes. Les renommer ne changerait rien au modèle et casserait tout client
+en vol pendant le déploiement ; les nouveaux noms (`context_keys`, `contexts`)
+existent à côté.
 
 ## Migration
 
@@ -112,6 +123,37 @@ l'avoir demandé.
 
 Répétée sur un dump de production (18 foyers, 101 tâches) : 28 contextes, 0
 doublon, 136 rattachements, 54 tâches multi-contextes.
+
+## Proposer des tâches : `GET /api/catalog/suggestions`
+
+Le catalogue compte 181 tâches. Les présenter toutes, c'est une liste qu'on
+referme. L'endpoint ne renvoie que celles qui **touchent un contexte que le
+foyer possède déjà** : un foyer avec un chat se voit proposer la litière, un
+foyer sans chat ne la voit jamais.
+
+Trois règles portent le résultat :
+
+- **Même visibilité qu'ailleurs** — un contexte implicite (`menage`, `linge`,
+  `entretien`) ne rend rien visible à lui seul, sinon la moitié du catalogue
+  remonterait pour tout le monde.
+- **Appariement par `template_key` puis par nom** — un contexte créé à la main
+  et nommé « Chat » doit ramener les tâches de chat, sans quoi la fonction ne
+  servirait qu'aux foyers issus du wizard.
+- **Exclusion sur `template_key`** — ce que le foyer a déjà n'est pas
+  reproposé. Une tâche recréée à la main sous le même titre repassera : mieux
+  vaut reproposer que masquer.
+
+Le tri met les tâches les plus légères d'abord. Une suggestion doit donner
+envie, et une corvée de 45 minutes en tête de liste fait fermer l'écran.
+
+`context_ids` est **résolu côté serveur** vers les contextes du foyer : le
+client n'a pas la table de correspondance entre clés de catalogue et contextes
+locaux, et la lui faire deviner serait dupliquer l'appariement.
+
+Côté app, ces propositions vivent **dans l'écran de création de tâche**, sous
+le champ titre, qui les filtre à mesure qu'on tape. En choisir une remplit le
+titre, les contextes, la fréquence, l'effort et la tolérance d'un coup — tout
+restant modifiable. Il n'y a plus d'écran « catalogue » séparé.
 
 ## Récurrence calendaire
 

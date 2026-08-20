@@ -78,9 +78,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
 import com.torchons.app.ui.common.Modules
 import com.torchons.app.ui.common.moduleEnabled
-import com.torchons.app.data.model.Category
 import com.torchons.app.data.model.PendingAffinity
-import com.torchons.app.data.model.Room
+import com.torchons.app.data.model.TaskContextRef
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.ui.common.CelebrationCardContent
 import com.torchons.app.ui.common.CelebrationOverlay
@@ -105,18 +104,15 @@ fun HomeScreen(
     val displayName by viewModel.displayName.collectAsState()
     val userId by viewModel.userId.collectAsState()
     val affinityEnabled by viewModel.affinityPopupEnabled.collectAsState()
-    val rooms by viewModel.rooms.collectAsState()
-    val categories by viewModel.categories.collectAsState()
+
     val activeTasks by viewModel.activeTasks.collectAsState()
     val lastCompletionsByTask by viewModel.lastCompletionsByTask.collectAsState()
     val gamificationVisible by viewModel.gamificationVisible.collectAsState()
     val toastContext = LocalContext.current
 
-    // Maps de lookup memoisees pour pouvoir resolver task -> room/category sans
-    // refaire .find() a chaque card.
+    // Les contextes voyagent AVEC la tache : plus besoin de maps de lookup,
+    // c'est autant d'etat derive en moins a garder synchrone.
     val tasksById = remember(activeTasks) { activeTasks.associateBy { it.id } }
-    val roomsById = remember(rooms) { rooms.associateBy { it.id } }
-    val categoriesById = remember(categories) { categories.associateBy { it.id } }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -155,12 +151,9 @@ fun HomeScreen(
     // Popup affinite + effort (si active dans les reglages)
     if (affinityEnabled && uiState.showAffinityPopup && uiState.pendingAffinity != null) {
         val pending = uiState.pendingAffinity!!
-        // Resoudre le label de la piece via le cache : task -> roomId -> Room
+        // Le contexte PRINCIPAL de la tache tient lieu de lieu affiche.
         val pendingTask = tasksById[pending.taskId]
-        val pendingRoom = pendingTask?.roomId?.let { roomsById[it] }
-        val pendingRoomLabel = pendingRoom?.let { r ->
-            if (!r.emoji.isNullOrBlank()) "${r.emoji} ${r.name}" else r.name
-        }
+        val pendingRoomLabel = pendingTask?.contexts?.firstOrNull()?.label
         RatingDialog(
             pending = pending,
             onSubmit = { affinity, effort, recurrence ->
@@ -477,8 +470,10 @@ fun HomeScreen(
             }
             displayedSuggestions.forEach { suggestion ->
                 val task = tasksById[suggestion.taskId]
-                val room = task?.roomId?.let { roomsById[it] }
-                val category = task?.categoryId?.let { categoriesById[it] }
+                // Principal = le lieu, secondaire = la nature. Deux contextes
+                // suffisent a l'affichage : au-dela, la carte devient illisible.
+                val room = task?.contexts?.getOrNull(0)
+                val category = task?.contexts?.getOrNull(1)
                 SuggestionCard(
                     suggestion = suggestion,
                     room = room,
@@ -658,8 +653,8 @@ fun HomeScreen(
 @Composable
 private fun SuggestionCard(
     suggestion: Suggestion,
-    room: Room?,
-    category: Category?,
+    room: TaskContextRef?,
+    category: TaskContextRef?,
     lastCompletedAt: String? = null,
     isCelebrating: Boolean,
     celebrationPoints: Int? = null,
@@ -1196,7 +1191,7 @@ private fun SuggestionPointsLine(
  * la tache, dans quel "univers" elle vit).
  */
 @Composable
-private fun TaskMetaRow(room: Room?, category: Category?) {
+private fun TaskMetaRow(room: TaskContextRef?, category: TaskContextRef?) {
     if (room == null && category == null) return
     Spacer(modifier = Modifier.height(4.dp))
     Row(

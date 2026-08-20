@@ -9,9 +9,6 @@ import com.torchons.app.data.model.FrequencyRequest
 import com.torchons.app.data.model.FrequencyVoteResponse
 import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.TaskHistoryDto
-import com.torchons.app.data.model.Category
-import com.torchons.app.data.model.CategoryCreateRequest
-import com.torchons.app.data.model.CategoryUpdateRequest
 import com.torchons.app.data.model.CollectiveCompleteRequest
 import com.torchons.app.data.model.CollectiveCompletionResponse
 import com.torchons.app.data.model.CompleteTaskRequest
@@ -74,7 +71,7 @@ interface ApiService {
     /** Liste des taches avec filtres optionnels. */
     @GET("tasks")
     suspend fun getTasks(
-        @Query("category_id") categoryId: String? = null,
+    @Query("context_id") contextId: String? = null,
         @Query("active_only") activeOnly: Boolean? = true
     ): Response<List<Task>>
 
@@ -146,27 +143,6 @@ interface ApiService {
         @Path("collectiveId") collectiveId: String
     ): Response<Map<String, Any>>
 
-    // --- Categories ---
-
-    /** Liste de toutes les categories. */
-    @GET("categories")
-    suspend fun getCategories(): Response<List<Category>>
-
-    /** Creer une categorie. */
-    @POST("categories")
-    suspend fun createCategory(@Body request: CategoryCreateRequest): Response<Category>
-
-    /** Modifier une categorie. */
-    @PUT("categories/{id}")
-    suspend fun updateCategory(
-        @Path("id") catId: String,
-        @Body request: CategoryUpdateRequest
-    ): Response<Category>
-
-    /** Supprimer une categorie. */
-    @DELETE("categories/{id}")
-    suspend fun deleteCategory(@Path("id") catId: String): Response<Map<String, Any>>
-
     // --- Contextes (remplacent pieces et categories) ---
 
     @GET("contexts")
@@ -183,29 +159,6 @@ interface ApiService {
 
     @DELETE("contexts/{id}")
     suspend fun deleteContext(@Path("id") id: String): Response<Unit>
-
-    // --- Pieces (rooms) ---
-
-    /** Liste de toutes les pieces (tri alphabetique). */
-    @GET("rooms")
-    suspend fun getRooms(): Response<List<com.torchons.app.data.model.Room>>
-
-    /** Creer une piece. */
-    @POST("rooms")
-    suspend fun createRoom(
-        @Body request: com.torchons.app.data.model.RoomCreateRequest
-    ): Response<com.torchons.app.data.model.Room>
-
-    /** Modifier une piece. */
-    @PUT("rooms/{id}")
-    suspend fun updateRoom(
-        @Path("id") roomId: String,
-        @Body request: com.torchons.app.data.model.RoomUpdateRequest
-    ): Response<com.torchons.app.data.model.Room>
-
-    /** Supprimer une piece (soft delete, les taches passent en room_id=NULL). */
-    @DELETE("rooms/{id}")
-    suspend fun deleteRoom(@Path("id") roomId: String): Response<Map<String, Any>>
 
     // --- Foyers (multi-tenant) ---
 
@@ -477,6 +430,11 @@ interface ApiService {
 
     /** Catalogue sous sa forme contextes. Public, comme /catalog : le wizard
      *  le lit AVANT la creation du foyer, donc avant d'avoir un JWT. */
+    @GET("catalog/suggestions")
+    suspend fun getCatalogSuggestions(
+        @Query("limit") limit: Int = 30,
+    ): Response<com.torchons.app.data.model.CatalogSuggestionsResponse>
+
     @GET("catalog/contexts")
     suspend fun getCatalogContexts(): Response<com.torchons.app.data.model.CatalogContextsResponse>
 
@@ -603,11 +561,7 @@ interface ApiService {
 
     // --- Catalogue de templates (v0.9.0 Feature 4) ---
 
-    /** Recupere le catalogue complet (rooms + categories + tasks). */
-    @GET("catalog")
-    suspend fun getCatalog(): Response<com.torchons.app.data.model.CatalogResponse>
-
-    /** Resolve l'import : propose mapping rooms/categories aux existants. */
+    /** Resolve l'import : propose les contextes a creer ou a rattacher. */
     @POST("catalog/import/resolve")
     suspend fun resolveCatalogImport(
         @Body body: com.torchons.app.data.model.ImportResolveRequest,

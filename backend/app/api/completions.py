@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
-from app.models.category import Category
 from app.models.completion import TaskCompletion
 from app.models.fair_share import FairShareConfig
 from app.models.foyer import Foyer
@@ -64,7 +63,7 @@ async def _recompute_inferred_interval(
 
     Ne fait rien si la tache n'est pas de type 'uncertain'. Sinon :
     1. Charge toutes les completions de la tache (chronologique).
-    2. Si la tache est requires_home (via sa categorie) ET le foyer a
+    2. Si la tache gele pendant les absences (via ses contextes) ET le foyer a
        home_freeze_enabled : calcule les jours absents pour chaque paire
        consecutive (Q6.2, batch via une seule query presence_days).
     3. Appelle compute_inferred_interval_days et persiste le resultat.
@@ -91,14 +90,10 @@ async def _recompute_inferred_interval(
         return
 
     # Freeze check : soustrait les jours absents uniquement si la tache est
-    # requires_home (via categorie) ET freeze actif au niveau foyer (Q6.2).
+    # Gel resolu depuis les contextes ET freeze actif au niveau foyer (Q6.2).
     absent_per_gap: list[int] | None = None
-    requires_home = False
-    if task.category_id is not None:
-        cat_result = await session.execute(
-            select(Category.requires_home).where(Category.id == task.category_id)
-        )
-        requires_home = bool(cat_result.scalar() or False)
+    flags = (await resolve_flags_for_tasks(session, [task.id])).get(task.id, NO_FLAGS)
+    requires_home = flags.freezes_when_away
 
     freeze_enabled = False
     if requires_home:

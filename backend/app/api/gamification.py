@@ -16,6 +16,7 @@ from app.utils.errors import LocalizedHTTPException
 from app.models.completion import TaskCompletion
 from app.models.enums import TaskTolerance, UrgencyState
 from app.models.fair_share import FairShareConfig
+from app.models.context import TaskContext
 from app.models.task import Task
 from app.models.task_affinity import TaskAffinity
 from app.models.task_assignment import TaskAssignment
@@ -97,6 +98,8 @@ class AffinityResponse(BaseModel):
 class SuggestionResponse(BaseModel):
     task_id: UUID
     title: str
+    #: Nom conserve pour le client deja diffuse ; la valeur est desormais
+    #: l'identifiant du contexte PRINCIPAL de la tache.
     category_id: UUID | None
     weight: int
     state: str  # "GREEN" / "ORANGE" / "RED" — etat d'urgence au sens du modele echeance
@@ -847,7 +850,7 @@ def _build_suggestion(scored: dict, reason: str) -> SuggestionResponse:
     return SuggestionResponse(
         task_id=scored["task"].id,
         title=scored["task"].title,
-        category_id=scored["task"].category_id,
+        category_id=scored.get("primary_context_id"),
         weight=scored["task"].weight,
         state=scored["state"].value,
         days_until_due=scored["days_until_due"],
@@ -870,7 +873,7 @@ def _build_uncertain_suggestion(scored: dict) -> SuggestionResponse:
     return SuggestionResponse(
         task_id=scored["task"].id,
         title=scored["task"].title,
-        category_id=scored["task"].category_id,
+        category_id=scored.get("primary_context_id"),
         weight=scored["task"].weight,
         state=UrgencyState.GREEN.value,
         days_until_due=0,
@@ -986,7 +989,17 @@ async def get_suggestions(
     today = datetime.now(timezone.utc).date()
 
     # --- Home freeze v2 : contexte partage avec /api/retard (source unique) ---
-    freeze_enabled, requires_home_map, absent_days_map = await load_freeze_context(
+    # Contexte principal par tache, charge en une requete : la suggestion
+    # l'expose sous le nom herite `category_id`, que le client affiche.
+    primary_ctx = {
+        row[0]: row[1]
+        for row in (await session.execute(
+            select(TaskContext.task_id, TaskContext.context_id)
+            .where(TaskContext.position == 0)
+        )).all()
+    }
+
+    freeze_enabled, freezes_by_task, absent_days_map = await load_freeze_context(
         session, foyer_uuid, tasks, last_completions, today
     )
 
@@ -1064,6 +1077,7 @@ async def get_suggestions(
             base_pts, final_pts = _predict_points(task, bonus_eligible=False)
             uncertain_scored.append({
                 "task": task,
+                "primary_context_id": primary_ctx.get(task.id),
                 "score": score,
                 "days_since_last": d,
                 "affinity_score": affinities.get(task.id, 5),
@@ -1076,7 +1090,7 @@ async def get_suggestions(
         nominal = compute_nominal_interval_days(task.recurrence_rule)
 
         # Home freeze v2 : decaler effective_today pour les taches requires_home
-        task_requires_home = requires_home_map.get(task.category_id, False)
+        task_requires_home = freezes_by_task.get(task.id, False)
         task_absent_days = absent_days_map.get(task.id, 0)
         eff_today = compute_effective_today(
             today,
@@ -1113,6 +1127,7 @@ async def get_suggestions(
         base_pts, final_pts = _predict_points(task, bonus_eligible=bonus_eligible)
         scored_tasks.append({
             "task": task,
+            "primary_context_id": primary_ctx.get(task.id),
             "due_date": due_date,
             "state": state,
             "days_until_due": days_until,

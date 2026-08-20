@@ -20,14 +20,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import func, literal, select
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.database import get_session
-from app.models.category import Category
 from app.models.completion import TaskCompletion
-from app.models.room import Room
+from app.models.context import Context, TaskContext
 from app.models.task import Task
 from app.models.user import User
 from app.utils.scoping import current_foyer_uuid
@@ -51,6 +51,26 @@ def _csv_response(rows: list[list], filename: str) -> StreamingResponse:
     )
 
 
+def _contexts_label():
+    """Sous-requete : les contextes d'une tache, ordonnes, en une chaine.
+
+    Correlee sur `Task.id` plutot que jointe : une jointure multiplierait les
+    lignes de completion par le nombre de contextes, et le CSV compterait
+    chaque tache faite plusieurs fois.
+    """
+    return (
+        select(func.string_agg(
+            Context.name,
+            aggregate_order_by(literal("; "), TaskContext.position),
+        ))
+        .select_from(TaskContext)
+        .join(Context, Context.id == TaskContext.context_id)
+        .where(TaskContext.task_id == Task.id, Context.deleted_at.is_(None))
+        .correlate(Task)
+        .scalar_subquery()
+    )
+
+
 @router.get("/completions.csv")
 async def export_completions(
     session: AsyncSession = Depends(get_session),
@@ -58,7 +78,7 @@ async def export_completions(
 ):
     """Historique complet des completions du foyer en CSV.
 
-    Colonnes : completed_at (UTC ISO), task_title, room, category,
+    Colonnes : completed_at (UTC ISO), task_title, contexts,
     completed_by_display_name, points_earned, notes.
     """
     foyer_uuid = current_foyer_uuid(current)
@@ -66,15 +86,12 @@ async def export_completions(
         select(
             TaskCompletion.completed_at,
             Task.title,
-            Room.name,
-            Category.name,
+            _contexts_label().label("contexts"),
             User.display_name,
             TaskCompletion.points_earned,
             TaskCompletion.notes,
         )
         .join(Task, Task.id == TaskCompletion.task_id)
-        .outerjoin(Room, Room.id == Task.room_id)
-        .outerjoin(Category, Category.id == Task.category_id)
         .join(User, User.id == TaskCompletion.completed_by)
         .where(
             Task.foyer_id == foyer_uuid,
@@ -83,7 +100,7 @@ async def export_completions(
         .order_by(TaskCompletion.completed_at.desc())
     )
     rows: list[list] = [
-        ["completed_at", "task", "room", "category", "completed_by", "points", "notes"],
+        ["completed_at", "task", "contexts", "completed_by", "points", "notes"],
     ]
     for row in result.all():
         rows.append([
@@ -91,9 +108,8 @@ async def export_completions(
             row[1] or "",
             row[2] or "",
             row[3] or "",
-            row[4] or "",
-            row[5] if row[5] is not None else 0,
-            (row[6] or "").replace("\n", " "),
+            row[4] if row[4] is not None else 0,
+            (row[5] or "").replace("\n", " "),
         ])
     return _csv_response(rows, "torchons-completions.csv")
 
@@ -105,23 +121,20 @@ async def export_tasks(
 ):
     """Liste des taches actives du foyer en CSV.
 
-    Colonnes : title, room, category, weight, tolerance, recurrence_kind,
+    Colonnes : title, contexts, weight, tolerance, recurrence_kind,
     is_active, created_at.
     """
     foyer_uuid = current_foyer_uuid(current)
     result = await session.execute(
         select(
             Task.title,
-            Room.name,
-            Category.name,
+            _contexts_label().label("contexts"),
             Task.weight,
             Task.tolerance,
             Task.recurrence_rule,
             Task.is_active,
             Task.created_at,
         )
-        .outerjoin(Room, Room.id == Task.room_id)
-        .outerjoin(Category, Category.id == Task.category_id)
         .where(
             Task.foyer_id == foyer_uuid,
             Task.deleted_at.is_(None),
@@ -130,21 +143,20 @@ async def export_tasks(
     )
     rows: list[list] = [
         [
-            "title", "room", "category", "weight", "tolerance",
+            "title", "contexts", "weight", "tolerance",
             "recurrence_kind", "is_active", "created_at",
         ],
     ]
     for row in result.all():
-        recurrence = row[5] or {}
+        recurrence = row[4] or {}
         recurrence_kind = recurrence.get("type") if isinstance(recurrence, dict) else ""
         rows.append([
             row[0] or "",
             row[1] or "",
-            row[2] or "",
-            row[3] or 0,
-            row[4].value if row[4] else "",
+            row[2] or 0,
+            row[3].value if row[3] else "",
             recurrence_kind or "",
-            "1" if row[6] else "0",
-            row[7].isoformat() if row[7] else "",
+            "1" if row[5] else "0",
+            row[6].isoformat() if row[6] else "",
         ])
     return _csv_response(rows, "torchons-tasks.csv")

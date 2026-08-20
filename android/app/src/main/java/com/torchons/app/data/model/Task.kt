@@ -17,8 +17,6 @@ data class Task(
     @SerializedName("id") val id: String,
     @SerializedName("title") val title: String,
     @SerializedName("description") val description: String? = null,
-    @SerializedName("category_id") val categoryId: String? = null,
-    @SerializedName("room_id") val roomId: String? = null,
     /** Rattachements ordonnes : l'index 0 est le contexte principal. Vide pour
      *  une tache creee avant le chantier contextes et jamais rouverte. */
     @SerializedName("contexts") val contexts: List<TaskContextRef> = emptyList(),
@@ -58,8 +56,6 @@ data class Task(
 data class CreateTaskRequest(
     @SerializedName("title") val title: String,
     @SerializedName("description") val description: String? = null,
-    @SerializedName("category_id") val categoryId: String? = null,
-    @SerializedName("room_id") val roomId: String? = null,
     @SerializedName("context_ids") val contextIds: List<String>? = null,
     @SerializedName("assigned_to_ids") val assignedToIds: List<String>,
     @SerializedName("recurrence_rule") val recurrenceRule: RecurrenceRule? = null,
@@ -73,8 +69,6 @@ data class CreateTaskRequest(
 data class UpdateTaskRequest(
     @SerializedName("title") val title: String? = null,
     @SerializedName("description") val description: String? = null,
-    @SerializedName("category_id") val categoryId: String? = null,
-    @SerializedName("room_id") val roomId: String? = null,
     /** Remplacement complet quand present ; omis = rattachements inchanges. */
     @SerializedName("context_ids") val contextIds: List<String>? = null,
     @SerializedName("assigned_to_ids") val assignedToIds: List<String>? = null,

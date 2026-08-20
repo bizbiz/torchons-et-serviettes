@@ -46,6 +46,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -314,6 +315,82 @@ fun TaskEditScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
+                        }
+                    }
+                }
+            }
+
+            // Propositions du catalogue — ce que le foyer PEUT avoir vu ses
+            // contextes, et qu'il n'a pas encore. Sans filtre par contexte, ce
+            // serait le catalogue brut : 181 lignes dont l'immense majorite ne
+            // concerne pas ce foyer, et une liste qu'on referme.
+            //
+            // Le champ titre filtre la liste au lieu de la remplacer : taper
+            // « litiere » restreint aux propositions correspondantes, et ce
+            // qu'on choisit remplit la frequence, l'effort et les contextes
+            // d'un coup.
+            val propositions = viewModel.matchingSuggestions(uiState.title)
+            if (!uiState.isEditMode && uiState.appliedSuggestion == null &&
+                propositions.isNotEmpty()
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    tonalElevation = 2.dp,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    Column {
+                        Text(
+                            text = stringResource(R.string.task_edit_catalog_header),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        )
+                        propositions.take(6).forEach { proposition ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.applySuggestion(proposition) }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = proposition.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    proposition.contextLabel?.let { label ->
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Bandeau « rempli depuis une proposition », avec sortie de secours.
+            uiState.appliedSuggestion?.let { titre ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.task_edit_catalog_applied_format, titre),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { viewModel.clearSuggestion() }) {
+                            Text(stringResource(R.string.common_cancel))
                         }
                     }
                 }

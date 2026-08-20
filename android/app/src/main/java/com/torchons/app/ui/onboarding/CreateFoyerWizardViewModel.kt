@@ -6,14 +6,12 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.CatalogContextView
 import com.torchons.app.data.model.CatalogTaskContextView
-import com.torchons.app.data.model.CatalogRoomView
-import com.torchons.app.data.model.CatalogTaskView
 import com.torchons.app.data.model.ImportApplyRequest
 import com.torchons.app.data.model.ImportDecision
 import com.torchons.app.data.model.FoyerCreateRequest
 import com.torchons.app.data.model.ImportResolveRequest
 import com.torchons.app.data.model.OnboardingCreateFoyerRequest
-import com.torchons.app.data.model.RoomCreateRequest
+import com.torchons.app.data.model.ContextCreateRequest
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.service.TokenRegistrar
@@ -56,8 +54,6 @@ data class WizardState(
      *  suggestion derivee du prenom continue de le remplacer a chaque frappe ;
      *  des qu'il y touche, on ne l'ecrase plus jamais. */
     val foyerNameTouched: Boolean = false,
-    val rooms: List<CatalogRoomView> = emptyList(),
-    val selectedRoomKeys: Set<String> = emptySet(),
     /** Catalogue sous sa forme contextes — ce que l'ecran utilise desormais. */
     val contexts: List<CatalogContextView> = emptyList(),
     val selectedContextKeys: Set<String> = emptySet(),
@@ -65,7 +61,6 @@ data class WizardState(
     // Pieces saisies librement par l'user (hors catalogue), creees via l'API
     // rooms a la finalisation du wizard.
     val customRooms: List<String> = emptyList(),
-    val tasks: List<CatalogTaskView> = emptyList(),
     val selectedTaskKeys: Set<String> = emptySet(),
     /** Taches cochees a la main alors qu'elles ne l'etaient pas par defaut. */
     val taskOptIn: Set<String> = emptySet(),
@@ -151,14 +146,6 @@ class CreateFoyerWizardViewModel @Inject constructor(
         _uiState.update { if (it.foyerNameTouched) it else it.copy(foyerName = value) }
     }
 
-    fun toggleRoom(key: String) {
-        _uiState.update {
-            val s = it.selectedRoomKeys.toMutableSet()
-            if (key in s) s.remove(key) else s.add(key)
-            it.copy(selectedRoomKeys = s)
-        }
-    }
-
     /** Ajoute une piece custom (texte libre). Trim + dedup insensible casse. */
     fun addCustomRoom(name: String) {
         val trimmed = name.trim()
@@ -241,19 +228,6 @@ class CreateFoyerWizardViewModel @Inject constructor(
     fun displayContext(task: CatalogTaskContextView, state: WizardState = _uiState.value): String? =
         task.contexts.firstOrNull { it in state.selectedContextKeys }
             ?: task.contexts.firstOrNull()
-
-    fun visibleTasks(state: WizardState = _uiState.value): List<CatalogTaskView> {
-        val selected = state.selectedRoomKeys
-        if (selected.isEmpty()) {
-            // Si aucune piece selectionnee, on affiche les taches sans piece
-            // (taches generiques type "courses"). Le skip step pieces n'a
-            // pas besoin de cacher les taches generales.
-            return state.tasks.filter { it.defaultRoomKey == null }
-        }
-        return state.tasks.filter {
-            it.defaultRoomKey == null || it.defaultRoomKey in selected
-        }
-    }
 
     /** P4a.2 — entrée "ajouter un foyer" (user connecté) : saute l'étape
      *  Toi (prénom déjà connu). Appelé une fois par l'écran. */
@@ -339,11 +313,12 @@ class CreateFoyerWizardViewModel @Inject constructor(
             }
             return
         }
-        // Pièces custom (texte libre) — best-effort (foyer créé de toute façon).
+        // Contextes libres saisis a l'etape 2 — best-effort : le foyer est
+        // cree de toute facon, un contexte manquant se rajoute apres coup.
         if (s.customRooms.isNotEmpty()) {
             runCatching {
                 for (name in s.customRooms) {
-                    apiService.createRoom(RoomCreateRequest(name = name))
+                    apiService.createContext(ContextCreateRequest(name = name))
                 }
             }
         }
@@ -409,8 +384,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
         taskRepository.wipeLocalCache()
         runCatching {
             taskRepository.refreshTasks()
-            taskRepository.refreshCategories()
-            taskRepository.refreshRooms()
+            taskRepository.refreshContexts()
             taskRepository.refreshUsers()
             taskRepository.refreshCompletions(limit = 2000)
         }
@@ -475,7 +449,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
                 if (s.customRooms.isNotEmpty()) {
                     runCatching {
                         for (name in s.customRooms) {
-                            apiService.createRoom(RoomCreateRequest(name = name))
+                            apiService.createContext(ContextCreateRequest(name = name))
                         }
                     }
                 }

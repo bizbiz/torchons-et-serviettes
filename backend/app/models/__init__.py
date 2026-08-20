@@ -2,8 +2,6 @@ from app.models.base import Base
 from app.models.user import User
 from app.models.foyer import Foyer
 from app.models.user_foyer import UserFoyer
-from app.models.category import Category
-from app.models.room import Room
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
 from app.models.task_affinity import TaskAffinity
@@ -28,7 +26,7 @@ from app.models.module_state import ModuleState
 from app.models.context import Context, TaskContext
 
 __all__ = [
-    "Base", "User", "Foyer", "UserFoyer", "Category", "Room", "Task",
+    "Base", "User", "Foyer", "UserFoyer", "Task",
     "TaskAssignment", "TaskAffinity", "TaskEffort", "TaskFrequencyVote",
     "TaskCompletion", "FairShareConfig", "Streak",
     "ChangeLog", "NotificationToken", "Badge", "UserSettings",

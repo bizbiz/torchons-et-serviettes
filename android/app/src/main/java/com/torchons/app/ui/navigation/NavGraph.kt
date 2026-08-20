@@ -32,14 +32,11 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
-import com.torchons.app.ui.catalog.CatalogScreen
 import com.torchons.app.ui.changelog.ChangelogScreen
 import com.torchons.app.ui.home.HomeScreen
 import com.torchons.app.ui.login.LoginScreen
-import com.torchons.app.ui.settings.CategoriesScreen
 import com.torchons.app.ui.settings.ContextsScreen
 import com.torchons.app.ui.settings.FoyerSettingsScreen
-import com.torchons.app.ui.settings.RoomsScreen
 import com.torchons.app.ui.settings.SettingsScreen
 import com.torchons.app.ui.stats.StatsScreen
 import com.torchons.app.ui.taskdetail.TaskDetailScreen
@@ -67,14 +64,11 @@ object Routes {
     const val TASK_CREATE = "task_create"
     const val TASK_EDIT = "task_edit/{taskId}"
     const val TASK_CLONE = "task_clone/{cloneFromId}"
-    const val CATEGORIES = "categories"
-    const val ROOMS = "rooms"
     const val CONTEXTS = "contexts"
     // P1 refonte : ecran Foyer unique (remplace l'ancien ecran autonome
     // "Mes foyers" — route FOYERS supprimee).
     const val FOYER_SETTINGS = "foyer_settings"
     const val CHANGELOG = "changelog"
-    const val CATALOG = "catalog"
 
     // v0.30 — onboarding sans compte
     const val WELCOME = "welcome"
@@ -241,12 +235,6 @@ fun NavGraph(
                 onNavigateToEditTask = { taskId ->
                     navController.navigate(Routes.taskEdit(taskId))
                 },
-                onNavigateToCategories = {
-                    navController.navigate(Routes.CATEGORIES)
-                },
-                onNavigateToRooms = {
-                    navController.navigate(Routes.ROOMS)
-                },
                 onNavigateToFoyerSettings = {
                     navController.navigate(Routes.FOYER_SETTINGS)
                 },
@@ -255,9 +243,6 @@ fun NavGraph(
                 },
                 onNavigateToCreateFoyer = {
                     navController.navigate(Routes.createFoyerWizardAdd())
-                },
-                onNavigateToCatalog = {
-                    navController.navigate(Routes.CATALOG)
                 },
                 onNavigateToInviteSomeone = {
                     navController.navigate(Routes.inviteQr(addDevice = false))
@@ -282,46 +267,7 @@ fun NavGraph(
         }
 
         // Catalogue de templates (v0.9.0 Feature 4)
-        composable(Routes.CATALOG) {
-            val ep = dagger.hilt.android.EntryPointAccessors.fromApplication(
-                navController.context.applicationContext,
-                ApiServiceEntryPoint::class.java,
-            )
-            CatalogScreen(
-                apiService = ep.apiService(),
-                onBack = { navController.popBackStack() },
-            )
-        }
-
         // Gestion des categories
-        composable(Routes.CATEGORIES) {
-            val apiService = javax.inject.Provider<ApiService> {
-                // Workaround: on accede via Hilt entry point
-                dagger.hilt.android.EntryPointAccessors.fromApplication(
-                    navController.context.applicationContext,
-                    ApiServiceEntryPoint::class.java
-                ).apiService()
-            }
-            CategoriesScreen(
-                apiService = apiService.get(),
-                onBack = { navController.popBackStack() }
-            )
-        }
-
-        // Gestion des pieces (rooms) — meme pattern que CategoriesScreen
-        composable(Routes.ROOMS) {
-            val apiService = javax.inject.Provider<ApiService> {
-                dagger.hilt.android.EntryPointAccessors.fromApplication(
-                    navController.context.applicationContext,
-                    ApiServiceEntryPoint::class.java
-                ).apiService()
-            }
-            RoomsScreen(
-                apiService = apiService.get(),
-                onBack = { navController.popBackStack() }
-            )
-        }
-
         // Contextes — remplacent Pieces et Categories. Les deux anciennes
         // destinations restent joignables tant que le serveur ecrit en double,
         // mais plus rien n'y mene depuis l'interface.
@@ -438,12 +384,9 @@ fun MainScreen(
     onNavigateToTaskDetail: (String) -> Unit,
     onNavigateToCreateTask: () -> Unit,
     onNavigateToEditTask: (String) -> Unit,
-    onNavigateToCategories: () -> Unit,
-    onNavigateToRooms: () -> Unit,
     onNavigateToFoyerSettings: () -> Unit,
     onNavigateToChangelog: () -> Unit,
     onNavigateToCreateFoyer: () -> Unit,
-    onNavigateToCatalog: () -> Unit,
     onNavigateToInviteSomeone: () -> Unit,
     onNavigateToAddDevice: () -> Unit,
     onLogout: () -> Unit
@@ -537,7 +480,6 @@ fun MainScreen(
                     TaskListScreen(
                         onTaskClick = onNavigateToTaskDetail,
                         onCreateTask = onNavigateToCreateTask,
-                        onOpenCatalog = onNavigateToCatalog,
                         onLogout = onLogout,
                         onNavigateToFoyerSettings = onNavigateToFoyerSettings,
                     )

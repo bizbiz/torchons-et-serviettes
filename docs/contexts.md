@@ -81,18 +81,29 @@ rooms to create, `apply` creates them. Fixing `apply` alone is not enough —
 measured: the discarded context came back through the `room_decisions` the
 client builds from `resolve`'s answer, looking as if it had been requested.
 
-## Dual write, and until when
+## Both legacy tables are gone
 
-The server writes **in parallel** to `rooms`, `categories`, `tasks.room_id`,
-`tasks.category_id`, because the shipped APK still reads them. Removing them
-now would break every installation in the field (sync-ordering rule, see
-`CLAUDE.md`).
+`rooms` and `categories` lived in dual write until a switched-over APK
+shipped. They no longer exist: `e5f6a1b2c3d4_drop_rooms_categories.py` drops
+them along with `tasks.room_id`, `tasks.category_id`, and folds
+`objectives.scope_room_id`/`scope_category_id` into a single
+`scope_context_id`.
 
-The compatibility shims are named and grouped: `Catalog.rooms`,
-`Catalog.categories`, `CatalogContext.requires_home`, `legacy_room_key()`,
-`legacy_category_key()`, and the `default_room_key`/`default_category_key`
-fields projected onto tasks at load time. Removal condition and decision
-marker: `todo.md § Retirer la double écriture`.
+The migration **fails rather than dropping blindly**: if a live task has a room
+or a category but no context, it stops and reports the count. That is the only
+case where dropping would lose information, and a destructive migration that
+silently repairs what it does not understand turns a visible problem into
+corrupted data.
+
+⚠️ **Deployment order is reversed.** The sync-ordering rule puts the server
+before the client for an *addition*; for a *removal* it is the opposite — the
+client must already have stopped using what disappears. This migration
+therefore ships AFTER a switched-over APK, never before.
+
+Two field names survive on purpose: `room_keys` on import input and
+`category_id` in statistics responses. They now carry contexts. Renaming them
+would change nothing in the model and would break any client in flight during
+the deployment; the new names (`context_keys`, `contexts`) exist alongside.
 
 ## Migration
 
@@ -109,6 +120,36 @@ current behaviour, so nobody sees their app change without asking.
 
 Rehearsed on a production dump (18 households, 101 tasks): 28 contexts, 0
 duplicates, 136 attachments, 54 multi-context tasks.
+
+## Suggesting tasks: `GET /api/catalog/suggestions`
+
+The catalogue holds 181 tasks. Showing them all is a list people close. The
+endpoint returns only those touching a context the household **already has**:
+a home with a cat gets offered the litter box, a home without one never does.
+
+Three rules shape the result:
+
+- **Same visibility rule as everywhere else** — an implicit context
+  (`menage`, `linge`, `entretien`) reveals nothing on its own, otherwise half
+  the catalogue would surface for everyone.
+- **Matching by `template_key`, then by name** — a hand-made context called
+  "Chat" must bring up cat chores, or the feature only serves households that
+  went through the wizard.
+- **Exclusion on `template_key`** — what the household already has is not
+  offered again. A task recreated by hand under the same title will come back:
+  better to re-offer than to hide.
+
+Sorting puts the lightest tasks first. A suggestion has to be inviting, and a
+45-minute chore at the top of the list closes the screen.
+
+`context_ids` is **resolved server-side** to the household's contexts: the
+client has no mapping from catalogue keys to local contexts, and making it
+guess would duplicate the matching.
+
+In the app these live **inside the task creation screen**, under the title
+field, which filters them as you type. Picking one fills the title, contexts,
+frequency, effort and tolerance at once — all still editable. There is no
+separate "catalogue" screen any more.
 
 ## Calendar recurrence
 

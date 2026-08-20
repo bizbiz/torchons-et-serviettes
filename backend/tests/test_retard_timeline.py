@@ -46,7 +46,9 @@ def _inputs(task, comps, *, freeze=False, requires_home=False, present=None):
         comps_by_task={task.id: comps},
         earliest_date=task.created_at.date(),
         freeze_enabled=freeze,
-        requires_home_map={CAT_HOME: requires_home},
+        # Le gel se declare desormais PAR TACHE : la resolution depuis les
+        # contextes se fait en amont, elle n'a pas sa place dans ce calcul.
+        freezes_by_task={task.id: requires_home},
         present_dates=sorted(present or []),
     )
 

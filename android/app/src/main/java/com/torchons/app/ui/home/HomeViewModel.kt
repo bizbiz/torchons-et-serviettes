@@ -18,8 +18,7 @@ import com.torchons.app.data.model.PropositionView
 import com.torchons.app.data.model.UserPrompt
 import com.torchons.app.data.model.RetardResponse
 import com.torchons.app.data.model.Suggestion
-import com.torchons.app.data.model.Category
-import com.torchons.app.data.model.Room
+import com.torchons.app.data.model.ContextView
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.UserPace
 import com.torchons.app.data.repository.AuthRepository
@@ -180,14 +179,12 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     /**
-     * Caches partages avec TaskListViewModel pour resolver les pieces/categories
-     * affichees sur les cartes Home (suggestions + in-progress). Pas de fetch
-     * supplementaire — on consomme directement les flows Room du repo.
+     * Cache partage avec TaskListViewModel pour resoudre les contextes
+     * affiches sur les cartes Home (suggestions + in-progress). Pas de fetch
+     * supplementaire — on consomme directement le flow du repo.
      */
-    val rooms: StateFlow<List<Room>> = taskRepository.observeRooms()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val categories: StateFlow<List<Category>> = taskRepository.observeCategories()
+    /** Contextes du foyer, pour les cartes de l'accueil. */
+    val contexts: StateFlow<List<ContextView>> = taskRepository.observeContexts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val activeTasks: StateFlow<List<Task>> = taskRepository.observeActiveTasks()
@@ -293,8 +290,7 @@ class HomeViewModel @Inject constructor(
             val otherResults = listOf(
                 async { homeRepository.refreshFairShare() },
                 async { homeRepository.refreshPendingAffinity(6) },
-                async { taskRepository.refreshRooms() },
-                async { taskRepository.refreshCategories() },
+                async { taskRepository.refreshContexts() },
                 async { taskRepository.refreshTasks() },
                 // v0.32 : flag gamif du foyer courant (pour que l'UI gamif
                 // disparaisse instantanement si l'autre membre a toggle).

@@ -5,10 +5,8 @@ import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.torchons.app.data.local.AppDatabase
-import com.torchons.app.data.local.dao.CategoryDao
 import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.PendingOperationDao
-import com.torchons.app.data.local.dao.RoomDao
 import com.torchons.app.data.local.dao.ContextDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.TaskHistoryDao
@@ -169,6 +167,54 @@ private val migration10to11 = object : Migration(10, 11) {
     }
 }
 
+private val migration11to12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Les contextes sont desormais la seule source : les deux tables
+        // heritees disparaissent du cache local, comme cote serveur. Leurs
+        // colonnes sur `tasks` partent avec — Room ne sait pas retirer une
+        // colonne, il faut recreer la table.
+        db.execSQL("DROP TABLE IF EXISTS categories")
+        db.execSQL("DROP TABLE IF EXISTS rooms")
+        db.execSQL("ALTER TABLE tasks RENAME TO tasks_old")
+        db.execSQL(
+            """
+            CREATE TABLE tasks (
+                id TEXT NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT,
+                assignedToIds TEXT NOT NULL,
+                recurrenceRule TEXT,
+                inferredIntervalDays REAL,
+                weight INTEGER NOT NULL,
+                tolerance TEXT NOT NULL,
+                isActive INTEGER NOT NULL,
+                isArchived INTEGER NOT NULL DEFAULT 0,
+                sortOrder INTEGER NOT NULL,
+                createdAt TEXT NOT NULL,
+                updatedAt TEXT NOT NULL,
+                absentDaysSinceLastCompletion INTEGER NOT NULL DEFAULT 0,
+                lastCompletedAt TEXT,
+                contexts TEXT NOT NULL DEFAULT '[]'
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO tasks (id, title, description, assignedToIds, recurrenceRule,
+                inferredIntervalDays, weight, tolerance, isActive, isArchived,
+                sortOrder, createdAt, updatedAt, absentDaysSinceLastCompletion,
+                lastCompletedAt, contexts)
+            SELECT id, title, description, assignedToIds, recurrenceRule,
+                inferredIntervalDays, weight, tolerance, isActive, isArchived,
+                sortOrder, createdAt, updatedAt, absentDaysSinceLastCompletion,
+                lastCompletedAt, contexts
+            FROM tasks_old
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE tasks_old")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -181,7 +227,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8, migration8to9, migration9to10, migration10to11)
+            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8, migration8to9, migration9to10, migration10to11, migration11to12)
             .build()
     }
 
@@ -191,8 +237,6 @@ object DatabaseModule {
     @Provides
     fun provideContextDao(db: AppDatabase): ContextDao = db.contextDao()
 
-    @Provides
-    fun provideCategoryDao(db: AppDatabase): CategoryDao = db.categoryDao()
 
     @Provides
     fun provideUserDao(db: AppDatabase): UserDao = db.userDao()
@@ -209,6 +253,4 @@ object DatabaseModule {
     @Provides
     fun provideTaskHistoryDao(db: AppDatabase): TaskHistoryDao = db.taskHistoryDao()
 
-    @Provides
-    fun provideRoomDao(db: AppDatabase): RoomDao = db.roomDao()
 }
