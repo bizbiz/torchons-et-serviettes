@@ -121,6 +121,14 @@ android {
                 storePassword = tsUploadStorePw
                 keyAlias = tsUploadKeyAlias
                 keyPassword = tsUploadKeyPw
+                // Schemas de signature declares explicitement. Les builds
+                // precedents ne portaient que v2 : v3 est le schema attendu
+                // depuis Android 9, et son absence est un signal de moins pour
+                // qui verifie l'origine d'un APK installe hors store.
+                // v1 reste desactive — deprecie, et inutile au-dela d'API 24.
+                enableV1Signing = false
+                enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }
