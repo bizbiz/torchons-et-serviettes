@@ -25,6 +25,7 @@ from app.models.task import Task
 from app.utils.errors import LocalizedHTTPException
 from app.models.task_effort import TaskEffort
 from app.models.user_prompt import UserPrompt
+from app.services.prompt_validity import close_if_stale
 from app.models.foyer import Foyer
 from app.models.module_state import ModuleState
 from app.services.modules import (
@@ -127,13 +128,26 @@ async def get_next_prompt(
             | (UserPrompt.context["module_key"].astext.notin_(already_on))
         )
 
-    result = await session.execute(
+    # On prend plusieurs candidats et non le premier : servir le prompt en tete
+    # sans verifier que sa condition tient encore, c'est exactement le defaut
+    # corrige le 2026-08-23 — une pop-up qui reclamait des jours deja remplis.
+    candidats = (await session.execute(
         select(UserPrompt)
         .where(*conditions)
         .order_by(UserPrompt.priority.desc(), UserPrompt.created_at.asc())
-        .limit(1)
-    )
-    prompt = result.scalar_one_or_none()
+        .limit(10)
+    )).scalars().all()
+
+    prompt = None
+    referme = False
+    for candidat in candidats:
+        if await close_if_stale(session, candidat):
+            referme = True
+            continue
+        prompt = candidat
+        break
+    if referme:
+        await session.commit()
 
     if prompt is None:
         response.status_code = 204

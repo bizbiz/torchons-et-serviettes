@@ -532,3 +532,76 @@ async def test_presence_prompt_closes_when_days_get_filled(client, auth_headers)
     assert not restants, (
         f"{len(restants)} prompt(s) réclament encore des jours déjà renseignés"
     )
+
+
+@pytest.mark.asyncio
+async def test_a_prompt_about_a_deleted_task_is_never_served(client, auth_headers):
+    """La garde générique referme un prompt dont la condition a disparu.
+
+    Elle existe parce que `if condition: creer_prompt(...)` s'écrit
+    naturellement sans `else` : une branche absente ne s'écrit nulle part, donc
+    aucune relecture ne la signale. Le cas de la présence l'a montré en
+    production ; celui-ci prend un AUTRE type pour vérifier que la garde est
+    générique et pas une rustine déguisée.
+
+    Une tâche supprimée est le cas le plus net : répondre au prompt écrirait
+    sur une ligne absente, et l'afficher demande à l'utilisateur de se
+    prononcer sur ce qu'il vient d'effacer.
+    """
+    from app.database import async_session
+    from app.models.enums import PromptType
+    from app.models.task import Task
+    from app.models.user_prompt import UserPrompt
+    from tests.conftest import TEST_FOYER_ID, TEST_USER_ID
+
+    foyer = uuid_lib.UUID(TEST_FOYER_ID)
+    user = uuid_lib.UUID(TEST_USER_ID)
+
+    creation = await client.post(
+        "/api/tasks", headers=auth_headers,
+        json={
+            "title": "Tache vouee a disparaitre",
+            "assigned_to_ids": [TEST_USER_ID],
+            "recurrence_rule": {"type": "interval", "every_n_days": 4},
+        },
+    )
+    assert creation.status_code == 201, creation.text
+    task_id = creation.json()["id"]
+
+    # `BUMP_EFFORT` est porte par le module `auto_adjust` : sans lui, la route
+    # filtre le prompt en amont et le test serait vert sans rien exercer.
+    active = await client.put(
+        "/api/modules/auto_adjust", headers=auth_headers, json={"enabled": True},
+    )
+    assert active.status_code == 200, active.text
+
+    async with async_session() as session:
+        await session.execute(delete(UserPrompt).where(UserPrompt.foyer_id == foyer))
+        session.add(UserPrompt(
+            user_id=user, foyer_id=foyer,
+            type=PromptType.BUMP_EFFORT, priority=5,
+            context={"task_id": task_id, "task_title": "Tache vouee a disparaitre"},
+        ))
+        await session.commit()
+
+    # Tant que la tâche vit, le prompt est servi.
+    servi = await client.get("/api/prompts/next", headers=auth_headers)
+    assert servi.status_code == 200, f"prompt non servi : {servi.status_code}"
+
+    # L'utilisateur supprime la tâche par un autre chemin.
+    suppression = await client.delete(f"/api/tasks/{task_id}", headers=auth_headers)
+    assert suppression.status_code in (200, 204), suppression.text
+
+    # Le prompt ne doit plus être servi, ET avoir été refermé en base.
+    apres = await client.get("/api/prompts/next", headers=auth_headers)
+    assert apres.status_code == 204, (
+        f"un prompt parlant d'une tache supprimee a ete servi : {apres.text[:200]}"
+    )
+
+    async with async_session() as session:
+        restants = (await session.execute(
+            select(UserPrompt).where(
+                UserPrompt.foyer_id == foyer, UserPrompt.resolved_at.is_(None)
+            )
+        )).scalars().all()
+    assert not restants, "le prompt perime n'a pas ete referme en base"

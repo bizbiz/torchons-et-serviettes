@@ -27,6 +27,7 @@ from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session
+from app.services.prompt_validity import report_stale_candidates
 from app.models.foyer import Foyer
 from app.models.pairing_token import PairingToken
 from app.models.user import User
@@ -129,12 +130,14 @@ async def daily_cleanup_job() -> None:
             purged_foyers = await purge_old_foyers(session)
             purged_users = await purge_deleted_users(session)
             await session.commit()
+            stale = await report_stale_candidates(session)
             logger.info(
                 "daily_cleanup_done",
                 pairing_tokens_deleted=tokens,
                 foyers_archived=ghosts,
                 foyers_purged=purged_foyers,
                 users_purged=purged_users,
+                stale_prompt_candidates=stale,
             )
         except Exception as e:
             await session.rollback()
