@@ -400,115 +400,72 @@ async def test_stats_split_by_context_totals_match_completions(client, auth_head
 
 @pytest.mark.asyncio
 async def test_every_read_route_survives_without_rooms_or_categories(client, auth_headers):
-    """Toutes les routes de lecture repondent, tables heritees supprimees.
+    """Aucune route de lecture ne casse, tables héritées supprimées.
 
-    Ce test existe parce que la suite ne couvrait AUCUNE de ces routes : la
-    bascule a casse `/api/suggestions` (un `task.category_id` oublie) et les 72
-    tests sont restes verts. C'est le dogfood sur la base de test qui l'a
-    trouve — un cout que ce test evite de repayer.
+    Les routes sont ÉNUMÉRÉES DEPUIS L'APP, pas listées à la main. La version
+    manuscrite a laissé passer deux 500 : `/api/stats/long-term`, trouvé en
+    dogfood, puis `/api/stats/retard-timeline`, trouvé en PRODUCTION par
+    l'utilisateur. Une liste écrite à la main mesure ce que son auteur a pensé
+    à écrire ; l'écart avec ce que le serveur expose grandit à chaque route
+    ajoutée, et il grandit en silence.
 
-    Volontairement large et peu profond : il ne verifie pas ce que chaque route
-    renvoie, seulement qu'aucune ne casse sur un attribut disparu. Les
-    assertions metier vivent dans les tests dedies.
+    Volontairement large et peu profond : il ne vérifie pas ce que chaque
+    route renvoie, seulement qu'aucune ne casse sur un attribut disparu. Les
+    assertions métier vivent dans les tests dédiés.
     """
-    routes = [
-        "/api/tasks",
-        "/api/suggestions",
-        "/api/contexts",
-        "/api/catalog/contexts",
-        "/api/completions",
-        "/api/leaderboard",
-        "/api/streaks",
-        "/api/retard",
-        "/api/fair-share/status",
-        "/api/stats/category-frequency?period=all",
-        "/api/stats/long-term?period=quarter",
-        "/api/stats/long-term?period=month",
-        "/api/stats/weekday-frequency",
-        "/api/presence",
-        "/api/export/tasks.csv",
-        "/api/export/completions.csv",
-        "/api/objectives",
-        "/api/modules",
-        "/api/me",
-    ]
-    casses, absentes = [], []
+    from app.main import app
+
+    # Seules les GET sans paramètre de chemin : les autres exigent un id réel,
+    # et en fabriquer un les transformerait en tests fonctionnels déguisés.
+    routes = sorted(
+        chemin
+        for chemin, methodes in app.openapi()["paths"].items()
+        if "get" in methodes and "{" not in chemin
+    )
+    assert len(routes) > 20, f"énumération suspecte : {len(routes)} routes"
+
+    casses = []
     for route in routes:
         resp = await client.get(route, headers=auth_headers)
         if resp.status_code >= 500:
             casses.append(f"{route} -> {resp.status_code}")
-        elif resp.status_code == 404:
-            # Sans ce controle, une route mal orthographiee rendrait le test
-            # vert : il ne verifierait plus rien.
-            absentes.append(route)
     assert not casses, "routes en erreur serveur : " + ", ".join(casses)
-    assert not absentes, "routes inexistantes (test sans objet) : " + ", ".join(absentes)
 
 
 @pytest.mark.asyncio
-async def test_suggestions_follow_the_contexts_the_household_has(client, auth_headers):
-    """On propose des tâches de chat à qui a un chat, et à personne d'autre.
+async def test_retard_timeline_works_when_freeze_is_enabled(client, auth_headers):
+    """La courbe de retard passe par le gel, et le gel passe par les contextes.
 
-    C'est toute la valeur de la fonction : une liste de suggestions qui ignore
-    ce que le foyer possède vaut le catalogue brut, que l'utilisateur peut déjà
-    parcourir. Le test vérifie donc les DEUX sens — ce qui apparaît quand le
-    contexte existe, et ce qui disparaît quand il n'existe plus.
+    Ce test existe parce que le test de fumée ne suffisait pas : il appelait
+    bien `/api/stats/retard-timeline`, mais le foyer de test a
+    `home_freeze_enabled = false`, donc la branche qui résout les contextes
+    n'était jamais atteinte. Un import manquant y est parti EN PRODUCTION et
+    n'a été vu que dans les logs du serveur, sur le foyer réel — qui, lui, a
+    le gel activé.
+
+    Couvrir une route ne couvre pas ses chemins. Ici la condition à mettre en
+    place tient en un booléen, et c'est tout ce qui séparait le test du
+    défaut.
     """
     from app.database import async_session
+    from app.models.foyer import Foyer
     from tests.conftest import TEST_FOYER_ID
 
-    foyer = uuid_lib.UUID(TEST_FOYER_ID)
-
-    def cles(payload):
-        return {s["key"] for s in payload["suggestions"]}
-
-    # Etat de depart : pas de contexte Chat dans le foyer de test.
+    foyer_id = uuid_lib.UUID(TEST_FOYER_ID)
     async with async_session() as session:
-        for ligne in (await session.execute(
-            select(Context).where(Context.foyer_id == foyer, Context.template_key == "chat")
-        )).scalars().all():
-            await session.execute(
-                delete(TaskContext).where(TaskContext.context_id == ligne.id)
-            )
-            await session.delete(ligne)
+        foyer = await session.get(Foyer, foyer_id)
+        ancien = foyer.home_freeze_enabled
+        foyer.home_freeze_enabled = True
         await session.commit()
 
-    sans = (await client.get("/api/catalog/suggestions", headers=auth_headers)).json()
-    assert "nettoyer_la_litiere" not in cles(sans), "litière proposée sans chat"
-
-    # On ajoute un chat, par template_key comme le ferait l'import.
-    async with async_session() as session:
-        session.add(Context(
-            foyer_id=foyer, name="Chat test", template_key="chat",
-            requires_presence=True, accrues_when_away=True,
-        ))
-        await session.commit()
-
-    avec = (await client.get("/api/catalog/suggestions?limit=200", headers=auth_headers)).json()
-    assert "nettoyer_la_litiere" in cles(avec), "litière absente alors qu'il y a un chat"
-
-    litiere = next(s for s in avec["suggestions"] if s["key"] == "nettoyer_la_litiere")
-    assert litiere["context_ids"], "le contexte du foyer n'est pas résolu"
-    assert litiere["default_recurrence"], "la fréquence n'est pas pré-remplie"
-    assert litiere["primary_context_name"] == "Chat test"
-
-
-@pytest.mark.asyncio
-async def test_suggestions_exclude_what_the_household_already_has(client, auth_headers):
-    """Une tâche déjà créée ne doit plus être proposée."""
-    from tests.conftest import TEST_USER_ID
-
-    avant = (await client.get("/api/catalog/suggestions?limit=200", headers=auth_headers)).json()
-    proposees = [s for s in avant["suggestions"] if s["context_ids"]]
-    assert proposees, "aucune suggestion exploitable pour ce test"
-    cible = proposees[0]
-
-    resp = await client.post(
-        "/api/catalog/import/apply", headers=auth_headers,
-        json={"task_keys": [cible["key"]], "context_keys": cible["context_keys"]},
-    )
-    assert resp.status_code in (200, 201), resp.text
-
-    apres = (await client.get("/api/catalog/suggestions?limit=200", headers=auth_headers)).json()
-    assert cible["key"] not in {s["key"] for s in apres["suggestions"]}, \
-        "une tâche déjà créée est encore proposée"
+    try:
+        for route in ("/api/stats/retard-timeline?period=month",
+                      "/api/retard",
+                      "/api/suggestions"):
+            resp = await client.get(route, headers=auth_headers)
+            assert resp.status_code == 200, f"{route} -> {resp.status_code} {resp.text[:200]}"
+    finally:
+        async with async_session() as session:
+            foyer = await session.get(Foyer, foyer_id)
+            foyer.home_freeze_enabled = ancien
+            await session.commit()

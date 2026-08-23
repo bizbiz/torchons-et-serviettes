@@ -42,6 +42,7 @@ from app.models.foyer import Foyer
 from app.models.foyer_retard_snapshot import FoyerRetardSnapshot
 from app.models.presence_day import PresenceDay
 from app.models.task import Task
+from app.services.task_flags import task_ids_freezing_when_away
 from app.services.recurrence import (
     compute_due_date,
     compute_effective_today,
