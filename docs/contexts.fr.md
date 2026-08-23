@@ -155,6 +155,18 @@ le champ titre, qui les filtre à mesure qu'on tape. En choisir une remplit le
 titre, les contextes, la fréquence, l'effort et la tolérance d'un coup — tout
 restant modifiable. Il n'y a plus d'écran « catalogue » séparé.
 
+## Migration du cache local
+
+`AppDatabase` passe de la version 10 à la 12 : 10→11 crée la table `contexts`
+et ajoute `tasks.contexts`, 11→12 supprime `categories`, `rooms` et recrée
+`tasks` sans ses deux colonnes héritées (SQLite ne sait pas retirer une
+colonne).
+
+Aucun `fallbackToDestructiveMigration` : les migrations sont déclarées et
+jouées. Éprouvé le 2026-08-23 sur un appareil réel — un Pixel 7 dont la base
+vivait depuis avril, passé de Room 10 à 12 d'un coup, sans crash et sans perte
+(le jeton d'authentification a survécu, l'app a resynchronisé seule).
+
 ## Récurrence calendaire
 
 Le type `calendar` ancre l'échéance sur le **calendrier** et non sur la dernière
