@@ -469,3 +469,66 @@ async def test_retard_timeline_works_when_freeze_is_enabled(client, auth_headers
             foyer = await session.get(Foyer, foyer_id)
             foyer.home_freeze_enabled = ancien
             await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_presence_prompt_closes_when_days_get_filled(client, auth_headers):
+    """Un prompt de présence se referme quand les jours sont remplis AILLEURS.
+
+    Défaut mesuré en production : la pop-up « jours non confirmés » revenait à
+    chaque ouverture pour huit jours pourtant tous renseignés. Le générateur
+    était juste ; il manquait la branche inverse — `if uncertain: creer(...)`
+    sans `else`, et un seul chemin (répondre à la pop-up) refermait le prompt.
+
+    Le test remplit les jours par l'écran de présence, qui est le geste réel de
+    l'utilisateur et celui qui ne refermait rien.
+    """
+    from datetime import date, timedelta
+    from app.database import async_session
+    from app.models.presence_day import PresenceDay
+    from app.models.user_prompt import UserPrompt
+    from tests.conftest import TEST_FOYER_ID
+
+    foyer = uuid_lib.UUID(TEST_FOYER_ID)
+    aujourdhui = date.today()
+    trou = [aujourdhui - timedelta(days=n) for n in (3, 2, 1)]
+    ancre = aujourdhui - timedelta(days=4)
+
+    async with async_session() as session:
+        await session.execute(delete(PresenceDay).where(PresenceDay.foyer_id == foyer))
+        await session.execute(delete(UserPrompt).where(UserPrompt.foyer_id == foyer))
+        # Un jour confirmé sert d'ancre : sans historique, le générateur ne
+        # réclame rien (il ne remonte pas à la nuit des temps).
+        session.add(PresenceDay(
+            foyer_id=foyer, date=ancre, status="confirmed_present", source="manual",
+        ))
+        await session.commit()
+
+    # Le check-in constate le trou et crée le prompt.
+    resp = await client.post("/api/presence/checkin", headers=auth_headers, json={})
+    assert resp.status_code == 200, resp.text
+
+    async with async_session() as session:
+        ouverts = (await session.execute(
+            select(UserPrompt).where(
+                UserPrompt.foyer_id == foyer, UserPrompt.resolved_at.is_(None)
+            )
+        )).scalars().all()
+    assert ouverts, "aucun prompt créé alors que des jours manquent"
+
+    # L'utilisateur remplit son calendrier — sans toucher à la pop-up.
+    remplissage = await client.put(
+        "/api/presence", headers=auth_headers,
+        json=[{"date": j.isoformat(), "status": "absent"} for j in trou],
+    )
+    assert remplissage.status_code == 200, remplissage.text
+
+    async with async_session() as session:
+        restants = (await session.execute(
+            select(UserPrompt).where(
+                UserPrompt.foyer_id == foyer, UserPrompt.resolved_at.is_(None)
+            )
+        )).scalars().all()
+    assert not restants, (
+        f"{len(restants)} prompt(s) réclament encore des jours déjà renseignés"
+    )

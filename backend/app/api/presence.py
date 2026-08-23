@@ -27,7 +27,7 @@ from app.auth import get_current_user
 from app.database import get_session
 from app.utils.errors import LocalizedHTTPException
 from app.models.completion import TaskCompletion
-from app.models.enums import PromptType
+from app.models.enums import PromptType, PromptResolution
 from app.models.presence_day import PresenceDay
 from app.models.task import Task
 from app.models.user_foyer import UserFoyer
@@ -263,6 +263,15 @@ async def put_presence(
         touched.append(row)
 
     await session.flush()
+
+    # L'edition manuelle du calendrier est le chemin par lequel l'utilisateur
+    # remplit REELLEMENT ses jours — et c'est celui qui ne refermait rien. Le
+    # prompt reclamait donc indefiniment des jours deja renseignes.
+    from datetime import datetime as _dt
+    aujourdhui = _dt.now(timezone.utc).date()
+    if not await _find_uncertain_days(session, foyer_uuid, aujourdhui):
+        await _close_stale_presence_prompts(session, foyer_uuid)
+
     await session.commit()
     return [PresenceDayOut.model_validate(r) for r in touched]
 
@@ -312,9 +321,14 @@ async def checkin(
     # 2. Detecter les jours incertains
     uncertain = await _find_uncertain_days(session, foyer_uuid, today)
 
-    # 3. Generer un prompt RESOLVE_PRESENCE si des jours sont incertains
+    # 3. Generer un prompt RESOLVE_PRESENCE si des jours sont incertains —
+    # et le refermer s'il n'y en a plus. La branche `else` est le defaut
+    # corrige le 2026-08-23 : sans elle, un prompt survivait au remplissage
+    # des jours qu'il reclamait.
     if uncertain:
         await _ensure_resolve_prompt(session, foyer_uuid, uncertain, today)
+    else:
+        await _close_stale_presence_prompts(session, foyer_uuid)
 
     # 4. P4 — proposer le module Absences si le foyer revient d'une absence.
     #
@@ -392,6 +406,39 @@ async def _find_uncertain_days(
         cursor += timedelta(days=1)
 
     return uncertain
+
+
+async def _close_stale_presence_prompts(
+    session: AsyncSession,
+    foyer_id: uuid.UUID,
+) -> int:
+    """Referme les prompts de présence qui n'ont plus d'objet.
+
+    Appelé UNIQUEMENT quand `_find_uncertain_days` ne rend plus rien : on ne
+    referme jamais sur une supposition, seulement sur la mesure qui dit que la
+    question ne se pose plus.
+
+    Sans ça, un prompt créé alors que des jours manquaient survit à leur
+    remplissage, et l'app le réaffiche à chaque ouverture — le seul chemin qui
+    le refermait était la réponse à la pop-up, jamais l'édition du calendrier.
+    """
+    en_attente = (await session.execute(
+        select(UserPrompt).where(
+            UserPrompt.foyer_id == foyer_id,
+            UserPrompt.type == PromptType.RESOLVE_PRESENCE,
+            UserPrompt.resolved_at.is_(None),
+        )
+    )).scalars().all()
+
+    maintenant = datetime.now(timezone.utc)
+    for prompt in en_attente:
+        prompt.resolved_at = maintenant
+        # ANSWERED et non DISMISSED : les jours ONT été renseignés, par un
+        # autre chemin. DISMISSED dirait que l'utilisateur a refusé.
+        prompt.resolution = PromptResolution.ANSWERED
+    if en_attente:
+        await session.flush()
+    return len(en_attente)
 
 
 async def _ensure_resolve_prompt(
