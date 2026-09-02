@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto Backup rules for API 26-30. Same intent as `data_extraction_rules.xml`
+  (API 31+): back everything up EXCEPT the device identity, so that a restored
+  handset mints a new one and stays separately revocable.
+
+  This file exists because `minSdk` is 26: declaring only the modern one would
+  leave every pre-Android-12 phone on the default behaviour, and nothing would
+  report it. Edit the two together, always.
+
+  Note the asymmetry, and it is not a mistake: this format has no
+  cloud-backup / device-transfer distinction. Below API 31 the exclusion
+  applies to both at once.
+
+  Rationale: docs/appareils.fr.md
+-->
+<full-backup-content>
+    <exclude domain="file" path="datastore/device_identity.preferences_pb" />
+</full-backup-content>

@@ -69,6 +69,22 @@ class LocalizedHTTPException(HTTPException):
 # = dict locale -> template `str.format`. Garder les templates courts,
 # parlants, sans terminologie technique pour les user-facing.
 ERROR_MESSAGES: dict[str, dict[str, str]] = {
+    # Appareils (revocation granulaire d'une session)
+    # Code DISTINCT d'un 401 ordinaire : c'est lui qui autorise le client a
+    # effacer son cache local. Un 401 de jeton expire ou de panne d'auth ne
+    # doit JAMAIS declencher cet effacement.
+    "DEVICE_REVOKED": {
+        "fr": "L'acces de cet appareil a ete revoque",
+        "en": "This device's access has been revoked",
+    },
+    "DEVICE_NOT_FOUND": {
+        "fr": "Appareil introuvable",
+        "en": "Device not found",
+    },
+    "DEVICE_CANNOT_REVOKE_SELF": {
+        "fr": "Utilise « Me deconnecter » pour cet appareil",
+        "en": "Use \"Sign out\" for this device",
+    },
     # Pairing (QR code d'invitation)
     "PAIRING_TOKEN_INVALID": {
         "fr": "Code d'invitation invalide",
@@ -337,6 +353,11 @@ def register_localized_error_handler(app: FastAPI) -> None:
         message = _format_message(exc.error_code, locale, exc.format_args)
         return JSONResponse(
             status_code=exc.status_code,
-            content={"detail": message},
+            # `code` est ADDITIF : les clients existants continuent de lire
+            # `detail`. Il existe parce qu'un client ne peut pas decider sur
+            # un message localise — l'app Android efface son cache local sur
+            # `DEVICE_REVOKED`, et faire dependre un effacement de donnees
+            # d'une comparaison de chaine FR/EN serait un defaut en attente.
+            content={"detail": message, "code": exc.error_code},
             headers=exc.headers,
         )

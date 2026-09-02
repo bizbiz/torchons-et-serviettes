@@ -9,9 +9,34 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
+    <!--
+      Auto Backup stays ON by decision (2026-09-02), not by default. It copies the whole
+      data directory to the user's Drive: `torchons_prefs` (20 keys, JWT included),
+      `version_gate_prefs` (the update-gate verdict) and the `fcm` SharedPreferences, so
+      restoring on a NEW device carries household access with it. Kept because the
+      convenience is real and the archive is encrypted with the device lock screen since
+      Android 9.
+
+      ONE exception, declared in BOTH rule files because minSdk is 26 and
+      declaring only one would leave half the fleet on the default: the device
+      identity (`datastore/device_identity.preferences_pb`) is NOT backed up.
+      A restored handset therefore mints a fresh identity and becomes its own
+      row server-side, while the old one keeps its own — which is what makes
+      them separately revocable from Settings. Everything else, session token
+      included, keeps being restored: the transfer stays invisible.
+
+      Measured 2026-09-02 on the prod flavour, real Google transport: `bmgr backupnow`
+      sent 812 KB, then a full uninstall/reinstall of the same v95 APK brought the
+      SESSION back — the app reopened straight on the household, no sign-in. So the
+      restored JWT works, and it keeps working: `auth.py` mints it with no `exp` claim
+      and the server holds no revocation list, so a token sitting in a Drive archive
+      stays valid until `jwt_secret` itself is rotated.
+    -->
     <application
         android:name=".TorchonsApp"
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/full_backup_content"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"

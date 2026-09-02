@@ -3,11 +3,13 @@ package com.torchons.app.di
 import android.content.Context
 import com.torchons.app.BuildConfig
 import com.torchons.app.core.network.AppVersionInterceptor
+import com.torchons.app.core.network.DeviceRevocationInterceptor
 import com.torchons.app.core.network.BackendHealthInterceptor
 import com.torchons.app.core.network.LocaleInterceptor
 import com.torchons.app.core.network.RetryGetInterceptor
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.api.AuthInterceptor
+import com.torchons.app.data.local.DeviceIdentityStore
 import com.torchons.app.data.local.TokenManager
 import dagger.Module
 import dagger.Provides
@@ -35,9 +37,23 @@ object AppModule {
     @Provides
     @Singleton
     fun provideTokenManager(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        deviceIdentity: DeviceIdentityStore,
     ): TokenManager {
-        return TokenManager(context)
+        return TokenManager(context, deviceIdentity)
+    }
+
+    /**
+     * Identite de CETTE installation, dans un DataStore exclu d'Auto Backup.
+     * Voir DeviceIdentityStore et docs/appareils.fr.md : c'est cette exclusion
+     * qui rend deux telephones distinguables apres une restauration.
+     */
+    @Provides
+    @Singleton
+    fun provideDeviceIdentityStore(
+        @ApplicationContext context: Context
+    ): DeviceIdentityStore {
+        return DeviceIdentityStore(context)
     }
 
     /**
@@ -68,6 +84,7 @@ object AppModule {
         authInterceptor: AuthInterceptor,
         localeInterceptor: LocaleInterceptor,
         appVersionInterceptor: AppVersionInterceptor,
+        deviceRevocationInterceptor: DeviceRevocationInterceptor,
         retryGetInterceptor: RetryGetInterceptor,
         healthInterceptor: BackendHealthInterceptor,
     ): OkHttpClient {
@@ -75,6 +92,7 @@ object AppModule {
             .addInterceptor(authInterceptor)
             .addInterceptor(localeInterceptor)
             .addInterceptor(appVersionInterceptor)
+            .addInterceptor(deviceRevocationInterceptor)
             .addInterceptor(retryGetInterceptor)
             .addInterceptor(healthInterceptor)
             .connectTimeout(5, TimeUnit.SECONDS)

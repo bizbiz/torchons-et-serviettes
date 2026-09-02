@@ -217,7 +217,7 @@
 
     <!-- (11) My devices -->
     <string name="foyer_devices_title">My devices</string>
-    <string name="foyer_devices_subtitle">Connect a tablet or a 2nd phone to your account</string>
+    <string name="foyer_devices_subtitle">See what is signed in, cut off access, or add a tablet</string>
 
     <!-- (12) Regenerate recovery code -->
     <string name="foyer_recovery_title">Regenerate my recovery code</string>
@@ -1413,4 +1413,24 @@
     <string name="gate_versions_format">Installed version: %1$d — minimum version: %2$d</string>
     <string name="gate_download_label">Where to get the new version:</string>
     <string name="gate_no_url">The server gave no download link. Ask whoever administers the home for the new version.</string>
+
+    <!-- Mes appareils : liste et revocation (docs/appareils.fr.md) -->
+    <string name="mydevices_title">My devices</string>
+    <string name="mydevices_subtitle">See what is signed in to your account, and cut off what you no longer use</string>
+    <string name="mydevices_intro">Devices signed in to your account.</string>
+    <string name="mydevices_this_device">this device</string>
+    <string name="mydevices_added_on">added %1$s</string>
+    <string name="mydevices_last_seen">last seen %1$s</string>
+    <string name="mydevices_revoked_on">access cut on %1$s</string>
+    <string name="mydevices_revoke">Cut off access</string>
+    <string name="mydevices_revoke_confirm_title">Cut off this device?</string>
+    <string name="mydevices_revoke_confirm_body">It will be signed out and its local data erased the next time it connects. A device that never reconnects keeps what it holds: no app can wipe an offline phone.</string>
+    <string name="mydevices_signout_this">Sign out and cut off this device</string>
+    <string name="mydevices_signout_confirm_title">Sign out of this device?</string>
+    <string name="mydevices_signout_confirm_body">Your local data will be erased. You will need your recovery code, or another device already signed in, to come back.</string>
+    <string name="mydevices_add">Add a device</string>
+    <string name="mydevices_error">Could not load the list (%1$s)</string>
+    <string name="mydevices_retry">Retry</string>
+    <string name="mydevices_cancel">Cancel</string>
+    <string name="mydevices_confirm">Confirm</string>
 </resources>

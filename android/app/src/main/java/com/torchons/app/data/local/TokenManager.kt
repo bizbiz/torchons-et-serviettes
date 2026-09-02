@@ -26,7 +26,8 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
  */
 @Singleton
 class TokenManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val deviceIdentity: DeviceIdentityStore,
 ) {
     companion object {
         private val TOKEN_KEY = stringPreferencesKey("jwt_token")
@@ -260,6 +261,17 @@ class TokenManager @Inject constructor(
         }
     }
 
+    /**
+     * Remplace le seul jeton, sans toucher au foyer.
+     *
+     * Sert a la transition silencieuse : apres une restauration sur un nouveau
+     * telephone, le serveur rebascule la session sur l'identite neuve et rend
+     * un jeton propre a CET appareil. Voir docs/appareils.fr.md.
+     */
+    suspend fun updateToken(token: String) {
+        context.dataStore.edit { preferences -> preferences[TOKEN_KEY] = token }
+    }
+
     /** Met a jour le token et le foyer_id apres un switch de foyer. */
     suspend fun updateTokenAndFoyer(token: String, foyerId: String) {
         context.dataStore.edit { preferences ->
@@ -282,13 +294,24 @@ class TokenManager @Inject constructor(
 
     // --- Sync offline ---
 
-    /** UUID stable par installation. Genere une seule fois, persiste ensuite. */
+    /**
+     * UUID stable par installation, mais PAS par sauvegarde.
+     *
+     * L'identite a quitte `torchons_prefs` pour [DeviceIdentityStore], dont le
+     * fichier est exclu d'Auto Backup : c'est ce qui permet a un telephone
+     * restaure d'avoir sa propre identite, donc d'etre revocable sans couper
+     * l'ancien. Le commentaire precedent disait « stable par installation » —
+     * c'etait faux depuis qu'Auto Backup est actif, la sauvegarde recopiait la
+     * valeur d'un appareil a l'autre (mesure le 2026-09-02).
+     *
+     * L'ancienne valeur est passee en `legacyId` : sans elle, chaque telephone
+     * deja installe apparaitrait comme DEUX appareils apres la mise a jour.
+     *
+     * Detail : docs/appareils.fr.md
+     */
     suspend fun getOrCreateDeviceId(): String {
-        val existing = context.dataStore.data.first()[DEVICE_ID_KEY]
-        if (existing != null) return existing
-        val newId = UUID.randomUUID().toString()
-        context.dataStore.edit { it[DEVICE_ID_KEY] = newId }
-        return newId
+        val legacy = context.dataStore.data.first()[DEVICE_ID_KEY]
+        return deviceIdentity.getOrCreate(legacy)
     }
 
     suspend fun getSyncCursor(): Long {

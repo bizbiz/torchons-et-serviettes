@@ -11,6 +11,7 @@ from app.models.completion import TaskCompletion
 from app.models.fair_share import FairShareConfig
 from app.models.streak import Streak
 from app.models.sync import ChangeLog
+from app.models.device import Device
 from app.models.notification import NotificationToken
 from app.models.badge import Badge
 from app.models.user_settings import UserSettings
@@ -29,7 +30,8 @@ __all__ = [
     "Base", "User", "Foyer", "UserFoyer", "Task",
     "TaskAssignment", "TaskAffinity", "TaskEffort", "TaskFrequencyVote",
     "TaskCompletion", "FairShareConfig", "Streak",
-    "ChangeLog", "NotificationToken", "Badge", "UserSettings",
+    "ChangeLog", "Device",
+    "NotificationToken", "Badge", "UserSettings",
     "ObjectiveProposition", "ObjectivePropositionResponse",
     "FoyerBonusConfig",
     "UserPrompt", "PresenceDay",

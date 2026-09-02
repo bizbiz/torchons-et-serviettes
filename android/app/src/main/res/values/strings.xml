@@ -222,7 +222,7 @@
 
     <!-- (11) Mes appareils -->
     <string name="foyer_devices_title">Mes appareils</string>
-    <string name="foyer_devices_subtitle">Connecter une tablette ou un 2e téléphone à ton compte</string>
+    <string name="foyer_devices_subtitle">Voir qui est connecté, couper un accès, ou ajouter une tablette</string>
 
     <!-- (12) Régénérer code récupération -->
     <string name="foyer_recovery_title">Régénérer mon code de récupération</string>
@@ -1424,4 +1424,24 @@
     <string name="gate_versions_format">Version installée : %1$d — version minimale : %2$d</string>
     <string name="gate_download_label">Où récupérer la nouvelle version :</string>
     <string name="gate_no_url">Aucun lien de téléchargement n\'a été fourni par le serveur. Demande la nouvelle version à la personne qui administre le foyer.</string>
+
+    <!-- Mes appareils : liste et revocation (docs/appareils.fr.md) -->
+    <string name="mydevices_title">Mes appareils</string>
+    <string name="mydevices_subtitle">Vois qui est connecté à ton compte, et coupe l\'accès de ce que tu n\'utilises plus</string>
+    <string name="mydevices_intro">Les appareils connectés à ton compte.</string>
+    <string name="mydevices_this_device">cet appareil</string>
+    <string name="mydevices_added_on">ajouté le %1$s</string>
+    <string name="mydevices_last_seen">vu le %1$s</string>
+    <string name="mydevices_revoked_on">accès coupé le %1$s</string>
+    <string name="mydevices_revoke">Couper l\'accès</string>
+    <string name="mydevices_revoke_confirm_title">Couper l\'accès de cet appareil ?</string>
+    <string name="mydevices_revoke_confirm_body">Il sera déconnecté et ses données locales effacées à sa prochaine connexion. Un appareil qui ne se reconnecte jamais garde ce qu\'il a en mémoire : aucune application ne peut effacer un téléphone hors ligne.</string>
+    <string name="mydevices_signout_this">Me déconnecter et couper cet appareil</string>
+    <string name="mydevices_signout_confirm_title">Te déconnecter de cet appareil ?</string>
+    <string name="mydevices_signout_confirm_body">Tes données locales seront effacées. Il te faudra ton code de récupération, ou un autre appareil déjà connecté, pour revenir.</string>
+    <string name="mydevices_add">Ajouter un appareil</string>
+    <string name="mydevices_error">Impossible de lire la liste (%1$s)</string>
+    <string name="mydevices_retry">Réessayer</string>
+    <string name="mydevices_cancel">Annuler</string>
+    <string name="mydevices_confirm">Confirmer</string>
 </resources>

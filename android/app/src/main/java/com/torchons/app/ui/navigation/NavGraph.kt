@@ -32,6 +32,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
+import com.torchons.app.ui.devices.DevicesScreen
 import com.torchons.app.ui.changelog.ChangelogScreen
 import com.torchons.app.ui.home.HomeScreen
 import com.torchons.app.ui.login.LoginScreen
@@ -65,6 +66,8 @@ object Routes {
     const val TASK_EDIT = "task_edit/{taskId}"
     const val TASK_CLONE = "task_clone/{cloneFromId}"
     const val CONTEXTS = "contexts"
+    // v0.39 — liste des appareils connectes + revocation (docs/appareils.fr.md).
+    const val MY_DEVICES = "my_devices"
     // P1 refonte : ecran Foyer unique (remplace l'ancien ecran autonome
     // "Mes foyers" — route FOYERS supprimee).
     const val FOYER_SETTINGS = "foyer_settings"
@@ -185,6 +188,20 @@ fun NavGraph(
         }
 
         // v0.30 — Saisie recovery code + verif step + restauration JWT.
+        composable(Routes.MY_DEVICES) {
+            DevicesScreen(
+                onBack = { navController.popBackStack() },
+                onAddDevice = {
+                    navController.navigate(Routes.inviteQr(addDevice = true))
+                },
+                onSignedOut = {
+                    navController.navigate(Routes.WELCOME) {
+                        popUpTo(Routes.MAIN) { inclusive = true }
+                    }
+                },
+            )
+        }
+
         composable(Routes.RESTORE_FOYER) {
             RestoreFoyerScreen(
                 onSuccess = {
@@ -300,7 +317,10 @@ fun NavGraph(
                     navController.navigate(Routes.inviteQr(addDevice = false))
                 },
                 onAddDevice = {
-                    navController.navigate(Routes.inviteQr(addDevice = true))
+                    // Mene a la LISTE des appareils, qui porte le bouton
+                    // « ajouter » : une seule entree pour voir et pour ajouter,
+                    // plutot que deux cartes voisines sur le meme sujet.
+                    navController.navigate(Routes.MY_DEVICES)
                 },
                 onLeftFoyer = {
                     // Plus aucun foyer : retour a Welcome (efface le backstack).

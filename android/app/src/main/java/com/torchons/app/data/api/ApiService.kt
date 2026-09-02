@@ -618,6 +618,31 @@ interface ApiService {
         @Body body: com.torchons.app.data.model.RecoveryRestoreConfirmRequest,
     ): Response<com.torchons.app.data.model.RecoveryRestoreConfirmResponse>
 
+    // --- Appareils (voir docs/appareils.fr.md) ---
+
+    /** Liste les appareils de CE compte. Chacun ne voit que les siens. */
+    @GET("devices")
+    suspend fun listDevices(): Response<List<com.torchons.app.data.model.DeviceDto>>
+
+    /**
+     * Declare l'identite que cette installation detient reellement.
+     * Appelee au demarrage : si elle differe de celle du jeton (restauration
+     * sur un nouveau telephone), le serveur rebascule la session et rend un
+     * nouveau jeton, sans rien demander a l'utilisateur.
+     */
+    @POST("devices/register")
+    suspend fun registerDevice(
+        @Body body: com.torchons.app.data.model.DeviceRegisterRequest
+    ): Response<com.torchons.app.data.model.DeviceRegisterResponse>
+
+    /** Coupe l'acces d'un AUTRE de ses appareils. */
+    @POST("devices/{device_id}/revoke")
+    suspend fun revokeDevice(@Path("device_id") deviceId: String): Response<Unit>
+
+    /** Se deconnecter ET revoquer l'appareil courant. */
+    @POST("devices/me/signout")
+    suspend fun signOutThisDevice(): Response<Unit>
+
     /** Regenere un nouveau recovery_code (invalide l'ancien). Auth. */
     @POST("recovery/regenerate")
     suspend fun recoveryRegenerate(): Response<com.torchons.app.data.model.RecoveryRegenerateResponse>

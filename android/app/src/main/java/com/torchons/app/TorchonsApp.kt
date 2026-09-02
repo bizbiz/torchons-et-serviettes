@@ -2,13 +2,16 @@ package com.torchons.app
 
 import android.app.Application
 import android.util.Log
+import com.torchons.app.core.network.DeviceRegistrar
 import com.torchons.app.core.sync.SyncTrigger
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.local.dao.ViewSnapshotDao
 import com.torchons.app.worker.DailyNotificationWorker
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
@@ -24,8 +27,18 @@ class TorchonsApp : Application() {
     @Inject
     lateinit var viewSnapshotDao: ViewSnapshotDao
 
+    @Inject
+    lateinit var deviceRegistrar: DeviceRegistrar
+
     override fun onCreate() {
         super.onCreate()
+
+        // Declare l'identite de CETTE installation au serveur. Hors du thread
+        // principal et sans bloquer : c'est ce qui alimente l'ecran Appareils
+        // et ce qui rebascule la session apres une restauration sur un
+        // nouveau telephone, sans rien demander a l'utilisateur.
+        // Voir docs/appareils.fr.md.
+        CoroutineScope(Dispatchers.IO).launch { deviceRegistrar.registerIfSignedIn() }
 
         // Invalidation du cache view_snapshots quand le versionCode a change
         // depuis le dernier lancement (v0.10.2+). Les snapshots JSON sont

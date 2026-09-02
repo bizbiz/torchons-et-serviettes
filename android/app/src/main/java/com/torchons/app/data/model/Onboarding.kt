@@ -100,6 +100,13 @@ data class RecoveryRestoreConfirmResponse(
 
 data class RecoveryRegenerateResponse(
     @SerializedName("recovery_code") val recoveryCode: String,
+    /**
+     * Nombre d'AUTRES appareils coupes par cette regeneration. Un code
+     * regenere signifie « l'ancien a pu fuiter » : fermer la porte du code
+     * sans fermer celles deja ouvertes ne protegerait de rien, puisque le
+     * jeton d'une session existante n'expire pas. Voir docs/appareils.fr.md.
+     */
+    @SerializedName("revoked_devices") val revokedDevices: Int = 0,
 )
 
 // --- Lifecycle ---

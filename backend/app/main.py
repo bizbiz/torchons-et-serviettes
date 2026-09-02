@@ -111,6 +111,7 @@ register_localized_error_handler(app)
 
 # Routers
 from app.api.auth import router as auth_router
+from app.api.devices import router as devices_router
 from app.api.tasks import router as tasks_router
 from app.api.foyers import router as foyers_router
 from app.api.presence import router as presence_router
@@ -137,6 +138,7 @@ from app.api.modules import router as modules_router
 from app.api.contexts import router as contexts_router
 
 app.include_router(auth_router)
+app.include_router(devices_router)
 app.include_router(tasks_router)
 app.include_router(foyers_router)
 app.include_router(presence_router)

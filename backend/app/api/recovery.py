@@ -30,6 +30,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import ALGORITHM, create_token, get_current_user
+from app.api.devices import revoke_other_devices
 from app.config import settings
 from app.database import get_session
 from app.models.completion import TaskCompletion
@@ -49,6 +50,8 @@ _RESTORE_SCOPE = "restore"
 
 class RegenerateResponse(BaseModel):
     recovery_code: str  # clair, affiche au user UNE SEULE FOIS
+    # Nombre d'autres appareils coupes par cette regeneration.
+    revoked_devices: int = 0
 
 
 class RestoreRequest(BaseModel):
@@ -118,9 +121,18 @@ async def regenerate_recovery_code(
     new_code = generate_code()
     user.recovery_code_hash = hash_code(new_code)
     user.recovery_code_last_used_at = None  # reset
+
+    # Un code regenere signifie « l'ancien a pu fuiter ». Fermer la porte du
+    # code sans fermer celles deja ouvertes ne protege de rien : quelqu'un
+    # qui a deja restaure detient un jeton, et ce jeton n'expire pas. On
+    # revoque donc tous les AUTRES appareils dans le meme geste — celui qui
+    # appelle reste connecte, sinon l'utilisateur se met dehors en cliquant.
+    revoked = await revoke_other_devices(
+        session, current["user_id"], current["device_id"]
+    )
     await session.commit()
 
-    return RegenerateResponse(recovery_code=new_code)
+    return RegenerateResponse(recovery_code=new_code, revoked_devices=revoked)
 
 
 @router.post("/restore", response_model=RestoreResponse)
