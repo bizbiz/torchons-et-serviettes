@@ -93,6 +93,7 @@ app.add_middleware(
 # ce code ne change rien tant qu'un seuil n'est pas pose volontairement.
 # Detail et regles de sortie : app/utils/version_gate.py.
 from app.config import settings as _settings
+from app.utils.code_fingerprint import CODE_FINGERPRINT, GIT_SHA
 from app.utils.version_gate import VersionGateMiddleware
 
 app.add_middleware(
@@ -174,9 +175,17 @@ async def health():
     # `min_app_version_code` est expose ici, et /api/health est exempte du gate :
     # un client refuse doit pouvoir apprendre CE QU'ON LUI DEMANDE, sinon un
     # seuil mal pose devient une panne muette qu'on ne peut plus diagnostiquer.
+    #
+    # `version` est une chaine RECOPIEE (premiere ligne du changelog) : elle dit
+    # ce qu'on a voulu livrer. `code_fingerprint` est CALCULEE sur les fichiers
+    # reellement executes : elle dit ce qui tourne. Les deux ensemble rendent
+    # visible l'ecart qui, le 2026-09-01, ne se voyait pas — cf.
+    # app/utils/code_fingerprint.py et scripts/deployed_versions.sh.
     return {
         "status": "ok" if db_status == "ok" else "degraded",
         "database": db_status,
         "version": APP_VERSION,
+        "code_fingerprint": CODE_FINGERPRINT,
+        "git_sha": GIT_SHA,
         "min_app_version_code": _settings.min_app_version_code,
     }

@@ -47,6 +47,10 @@ jobs:
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
             git pull --ff-only
+            # Le commit reellement checkout sur le serveur, pas celui du runner :
+            # c'est ce code-la qui va etre build. Expose ensuite par /api/health.
+            export GIT_SHA="$(git rev-parse HEAD)"
+            echo "[deploy] GIT_SHA=$GIT_SHA"
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build api
             # Smoke test : le conteneur enchaine les migrations Alembic PUIS
             # uvicorn au boot, donc le cold-start peut depasser 10s. On sonde
