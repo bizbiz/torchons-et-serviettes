@@ -66,3 +66,6 @@ backend/seeds/personal/
 
 # Local AI assistant config — kept on disk for local development sessions
 /CLAUDE.md
+
+# Journaux du harnais de controle negatif (skill prove-the-test), locaux
+.cn/
