@@ -88,6 +88,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Version gate — refuse les routes de donnees aux APK trop anciens (426).
+# Inactif tant que MIN_APP_VERSION_CODE vaut 0, ce qui est le defaut : deployer
+# ce code ne change rien tant qu'un seuil n'est pas pose volontairement.
+# Detail et regles de sortie : app/utils/version_gate.py.
+from app.config import settings as _settings
+from app.utils.version_gate import VersionGateMiddleware
+
+app.add_middleware(
+    VersionGateMiddleware,
+    min_version_code=_settings.min_app_version_code,
+    download_url=_settings.min_app_download_url,
+)
+
 # E3.4 — Handler global pour LocalizedHTTPException : lit Accept-Language
 # et renvoie `{"detail": "<localized>"}` (backward-compat avec le
 # format HTTPException standard).
@@ -158,4 +171,12 @@ async def health():
         db_status = "ok"
     except Exception as e:
         db_status = f"error: {e}"
-    return {"status": "ok" if db_status == "ok" else "degraded", "database": db_status, "version": APP_VERSION}
+    # `min_app_version_code` est expose ici, et /api/health est exempte du gate :
+    # un client refuse doit pouvoir apprendre CE QU'ON LUI DEMANDE, sinon un
+    # seuil mal pose devient une panne muette qu'on ne peut plus diagnostiquer.
+    return {
+        "status": "ok" if db_status == "ok" else "degraded",
+        "database": db_status,
+        "version": APP_VERSION,
+        "min_app_version_code": _settings.min_app_version_code,
+    }

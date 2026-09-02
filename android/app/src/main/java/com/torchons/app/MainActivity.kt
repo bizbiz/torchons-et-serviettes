@@ -5,10 +5,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
+import com.torchons.app.core.network.VersionGateMonitor
 import com.torchons.app.data.billing.BillingService
+import com.torchons.app.ui.gate.AppUpdateRequiredScreen
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.service.TokenRegistrar
 import com.torchons.app.ui.navigation.NavGraph
@@ -42,6 +46,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var billingService: BillingService
+
+    @Inject
+    lateinit var versionGateMonitor: VersionGateMonitor
 
     // Note : le PresenceTrigger (worker periodique 6h) a ete supprime car
     // les restrictions Android 12+ (Doze, background limits) empechaient
@@ -95,7 +102,18 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             TorchonsServiettesTheme {
-                TorchonsApp(initialToken = initialToken)
+                // Le version gate court-circuite TOUTE l'app, navigation
+                // comprise : un ecran qu'on peut contourner par un retour
+                // arriere ne bloque rien. Tant que `blocked` est null (cas
+                // normal, et cas hors ligne tant qu'aucun 426 n'a ete recu),
+                // l'app se comporte exactement comme avant.
+                val blocked by versionGateMonitor.blocked.collectAsStateWithLifecycle()
+                val gate = blocked
+                if (gate != null) {
+                    AppUpdateRequiredScreen(blocked = gate)
+                } else {
+                    TorchonsApp(initialToken = initialToken)
+                }
             }
         }
     }

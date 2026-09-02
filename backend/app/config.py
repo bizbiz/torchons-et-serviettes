@@ -42,6 +42,20 @@ class Settings(BaseSettings):
     # par un job quotidien (is_archived=true, filtree des lectures liste).
     archive_after_days: int = 7
 
+    # Version gate (see app/utils/version_gate.py). Below this Android
+    # versionCode, data routes answer 426 and the app blocks itself.
+    #
+    # 0 disables the gate: that is the default, and it is what makes deploying
+    # this code a no-op until a threshold is set on purpose. Raising it locks
+    # out every phone below it at once, and APKs here are sideloaded -- there is
+    # no store to push the fix through -- so MIN_APP_DOWNLOAD_URL must say where
+    # to get the new build BEFORE the threshold is raised.
+    #
+    # Deliberately NOT derived from APP_VERSION: that string is copied by hand
+    # between machines and has already lied in both directions.
+    min_app_version_code: int = 0
+    min_app_download_url: str = ""
+
 
 settings = Settings()
 

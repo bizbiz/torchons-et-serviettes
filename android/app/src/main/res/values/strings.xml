@@ -1419,4 +1419,9 @@
     <string name="task_list_filter_all_contexts">Tous</string>
     <string name="task_edit_catalog_header">Propositions pour ton foyer</string>
     <string name="task_edit_catalog_applied_format">Rempli depuis « %1$s ». Tout reste modifiable.</string>
+    <string name="gate_title">Mise à jour requise</string>
+    <string name="gate_body">Cette version de l\'application n\'est plus acceptée par le serveur. Installe la nouvelle version pour continuer.</string>
+    <string name="gate_versions_format">Version installée : %1$d — version minimale : %2$d</string>
+    <string name="gate_download_label">Où récupérer la nouvelle version :</string>
+    <string name="gate_no_url">Aucun lien de téléchargement n\'a été fourni par le serveur. Demande la nouvelle version à la personne qui administre le foyer.</string>
 </resources>

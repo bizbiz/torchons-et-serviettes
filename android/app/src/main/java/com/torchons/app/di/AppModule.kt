@@ -2,6 +2,7 @@ package com.torchons.app.di
 
 import android.content.Context
 import com.torchons.app.BuildConfig
+import com.torchons.app.core.network.AppVersionInterceptor
 import com.torchons.app.core.network.BackendHealthInterceptor
 import com.torchons.app.core.network.LocaleInterceptor
 import com.torchons.app.core.network.RetryGetInterceptor
@@ -45,11 +46,16 @@ object AppModule {
      * Ordre des intercepteurs (important) :
      * 1. AuthInterceptor : ajoute le header Authorization
      * 2. LocaleInterceptor : ajoute le header Accept-Language (E3.5)
-     * 3. RetryGetInterceptor : retry une fois les GET en cas d'IOException
+     * 3. AppVersionInterceptor : ajoute X-App-Version-Code et lit le 426 du
+     *    version gate. Place AVANT le retry : reessayer un 426 est inutile
+     *    (rien dans la requete ne peut le resoudre) et retarderait l'ecran de
+     *    mise a jour d'autant.
+     * 4. RetryGetInterceptor : retry une fois les GET en cas d'IOException
      *    (avant le BackendHealthInterceptor pour que le retry ne pollue pas
      *    l'etat de connexion sur un blip)
-     * 4. BackendHealthInterceptor : notifie le moniteur de l'etat backend
-     * 5. HttpLoggingInterceptor (debug uniquement) : log des requetes
+     * 5. BackendHealthInterceptor : notifie le moniteur de l'etat backend.
+     *    Un 426 y compte comme "online" — c'est bien le serveur qui repond.
+     * 6. HttpLoggingInterceptor (debug uniquement) : log des requetes
      *
      * Timeouts reduits par rapport au defaut 30s/30s/30s :
      * - connect 5s : un backend qui n'accepte pas la connexion en 5s est down
@@ -61,12 +67,14 @@ object AppModule {
     fun provideOkHttpClient(
         authInterceptor: AuthInterceptor,
         localeInterceptor: LocaleInterceptor,
+        appVersionInterceptor: AppVersionInterceptor,
         retryGetInterceptor: RetryGetInterceptor,
         healthInterceptor: BackendHealthInterceptor,
     ): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(localeInterceptor)
+            .addInterceptor(appVersionInterceptor)
             .addInterceptor(retryGetInterceptor)
             .addInterceptor(healthInterceptor)
             .connectTimeout(5, TimeUnit.SECONDS)
