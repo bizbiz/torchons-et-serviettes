@@ -1,5 +1,7 @@
 # Version gate — retirer une version d'APK de la circulation
 
+Version anglaise : [`version-gate.md`](version-gate.md).
+
 Le serveur peut refuser de servir les routes de données à un APK trop ancien.
 L'app affiche alors un écran terminal « Mise à jour requise » et ne fait plus
 rien d'autre.
@@ -87,6 +89,11 @@ curl -s -o /dev/null -w '%{http_code}\n' \
   -H 'X-App-Version-Code: 1' https://api.torchonsetserviettes.app/api/health
 ```
 
+Mesuré sur la beta le 2026-09-02, seuil à 999 : client v95 sur `/api/tasks`
+→ `426` avec le corps complet ; client v999 → `401` (passe le gate, refusé par
+l'auth) ; sans header → `401` (laissé passer) ; client v95 sur `/api/health`
+→ `200`.
+
 ## Se débloquer
 
 Le seuil est la seule chose à corriger, et elle vit côté serveur : remettre
@@ -96,3 +103,36 @@ prochain appel réussi… **sauf celles qui ont déjà persisté le verdict** �
 mémorisé. C'est voulu (sinon le mode avion contournerait le gate), et c'est
 exactement pourquoi l'étape 1 ci-dessus n'est pas négociable : **on ne lève un
 seuil que sur une version déjà distribuable.**
+
+## Éprouvé de bout en bout — 2026-09-02
+
+Le maillon Android a été joué sur un Pixel 7, APK beta `debug` v95, seuil beta
+posé à 96 puis retiré. Les quatre pièces client ont tourné pour la première fois
+depuis leur livraison : l'en-tête part (`X-App-Version-Code: 95` dans
+`logcat`), le `426` remonte (`<-- 426 Upgrade Required` sur `/api/auth/auto`),
+l'écran s'affiche en nommant les deux versions, et le verdict survit au
+redémarrage sans réseau.
+
+**Une app bloquée n'émet plus AUCUNE requête.** C'est plus fort que « son écran
+ne se lève pas » : elle ne parle plus au serveur du tout, donc rien de ce qu'on
+y change ne peut l'atteindre. Vérifié en remettant le seuil à `0` — le serveur
+répondait de nouveau `401` à un client v95, et l'app est restée sur son écran
+terminal, zéro requête émise. Ce que cette mesure ajoute au paragraphe
+ci-dessus : aucun correctif serveur, quel qu'il soit, ne peut servir de secours.
+
+La levée automatique, elle, fonctionne : APK `versionCode` 96 installé
+par-dessus, l'app repart normalement et annonce `X-App-Version-Code: 96`.
+
+Deux détails pour qui rejouera ce constat :
+
+- `/api/auth/auto` n'est pas exempté — le gate frappe au tout premier appel du
+  démarrage, sans qu'il faille naviguer dans l'app.
+- Le premier rendu d'une app déjà bloquée est l'écran de gate, jamais l'UI
+  normale : le splash système reste affiché ~1,1 s, ce qui couvre largement la
+  relecture du verdict par `VersionGateMonitor.restore()`. Mesuré par rafale de
+  captures, résolution ~420 ms — un affichage plus bref n'est pas exclu.
+
+Ce constat a tourné sur un build `debug`, et `isMinifyEnabled` vaut `false` en
+`release` aussi : R8 ne peut donc pas expliquer d'écart. Le jour où R8 sera
+activé, ce constat est à rejouer — l'obfuscation touche des classes dont
+dépendent la lecture du corps JSON et la persistance.
