@@ -29,6 +29,18 @@ relative path, a NUL, and the sha256 of its content with CR bytes stripped.
   (catalog.yaml, changelog.md) change on their own schedule. `version` already
   covers the changelog.
 - `__pycache__` excluded: build residue, not source.
+
+What it does NOT cover, measured 2026-09-02
+-------------------------------------------
+`backend/alembic/` — `env.py` and 46 migrations — sits outside `app/`, and the
+entrypoint runs `alembic upgrade head` at boot. **A deployment carrying only a
+migration therefore leaves this fingerprint unchanged**, and
+`scripts/deployed_versions.sh` would report ALIGNED while the schema differs.
+
+That is coherent with what this value claims — the code the *service process*
+executes — and it is a real blind spot for the use the comparison script makes of
+it. The schema has its own witness, which is the right one to read for that
+question: `SELECT version_num FROM alembic_version`.
 """
 
 from __future__ import annotations
