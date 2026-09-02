@@ -485,6 +485,7 @@ async def test_presence_prompt_closes_when_days_get_filled(client, auth_headers)
     """
     from datetime import date, timedelta
     from app.database import async_session
+    from app.models.enums import PromptType
     from app.models.presence_day import PresenceDay
     from app.models.user_prompt import UserPrompt
     from tests.conftest import TEST_FOYER_ID
@@ -508,13 +509,24 @@ async def test_presence_prompt_closes_when_days_get_filled(client, auth_headers)
     resp = await client.post("/api/presence/checkin", headers=auth_headers, json={})
     assert resp.status_code == 200, resp.text
 
-    async with async_session() as session:
-        ouverts = (await session.execute(
-            select(UserPrompt).where(
-                UserPrompt.foyer_id == foyer, UserPrompt.resolved_at.is_(None)
-            )
-        )).scalars().all()
-    assert ouverts, "aucun prompt créé alors que des jours manquent"
+    # Le filtre sur le TYPE porte les deux assertions, et il compte autant dans
+    # celle-ci que dans la finale : sans lui, un prompt d'un autre type suffirait
+    # a satisfaire « le prompt de presence a bien ete cree », et le test passerait
+    # au vert alors que le generateur n'a rien produit. Le check-in evalue aussi
+    # les modules et cree des DISCOVER_MODULE — mesure le 2026-09-02, c'est ce
+    # qui faisait echouer l'assertion finale sur un foyer pourtant en regle.
+    async def prompts_presence_ouverts():
+        async with async_session() as session:
+            return (await session.execute(
+                select(UserPrompt).where(
+                    UserPrompt.foyer_id == foyer,
+                    UserPrompt.type == PromptType.RESOLVE_PRESENCE,
+                    UserPrompt.resolved_at.is_(None),
+                )
+            )).scalars().all()
+
+    ouverts = await prompts_presence_ouverts()
+    assert ouverts, "aucun prompt de présence créé alors que des jours manquent"
 
     # L'utilisateur remplit son calendrier — sans toucher à la pop-up.
     remplissage = await client.put(
@@ -523,14 +535,10 @@ async def test_presence_prompt_closes_when_days_get_filled(client, auth_headers)
     )
     assert remplissage.status_code == 200, remplissage.text
 
-    async with async_session() as session:
-        restants = (await session.execute(
-            select(UserPrompt).where(
-                UserPrompt.foyer_id == foyer, UserPrompt.resolved_at.is_(None)
-            )
-        )).scalars().all()
+    restants = await prompts_presence_ouverts()
     assert not restants, (
-        f"{len(restants)} prompt(s) réclament encore des jours déjà renseignés"
+        f"{len(restants)} prompt(s) de présence réclament encore des jours "
+        f"déjà renseignés"
     )
 
 

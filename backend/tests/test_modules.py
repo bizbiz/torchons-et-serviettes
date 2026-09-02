@@ -201,24 +201,66 @@ def test_dependents_of_motivation_includes_bonus_malus():
 
 
 @pytest.mark.asyncio
-async def test_a_young_foyer_gets_no_proposal(client, auth_headers):
+async def test_a_young_foyer_gets_no_proposal():
     """Nothing before day 7, whatever the signal.
 
-    The test foyer is created by the fixture, so it is always younger than the
-    threshold — which makes it the right subject for this assertion and the
-    reason the later tests have to bypass `can_propose`.
+    The test builds BOTH foyers it compares, and that is the whole point.
+
+    The previous version asserted on the shared fixture foyer, on the premise
+    that it "is always younger than the threshold". It is not: the dev database
+    is not purged between runs, so that foyer keeps ageing — measured at 15 days
+    on 2026-09-02, for a 7-day threshold. The test had started failing on the
+    calendar, not on the code.
+
+    Worse, when it did pass, it passed for the wrong reason. `can_propose` has
+    five ways to return False, and a bare `is False` cannot tell them apart:
+    the green came from the `presence` module being left enabled by an earlier
+    run, never from the age rule this test claims to guard.
+
+    Hence the second, older foyer: it is the control that gives the first
+    assertion its meaning. Without it, `False` proves nothing about age.
     """
     import uuid as uuid_lib
+    from datetime import datetime, timedelta, timezone
 
     from app.database import async_session
-    from app.services.module_discovery import can_propose
-    from tests.conftest import TEST_FOYER_ID
+    from app.models.foyer import Foyer
+    from app.services.module_discovery import MIN_FOYER_AGE_DAYS, can_propose
+
+    # Both ages are set RELATIVE to the threshold and far from it, so the hour
+    # the suite happens to run never decides the outcome: 0 day against a 7-day
+    # threshold, and 7+3 days on the other side, leave a margin no timezone
+    # offset (14 h at worst) can eat. Anchoring either one AT the threshold would
+    # make this test pass or fail depending on the time of day.
+    now = datetime.now(timezone.utc)
+    newborn = Foyer(id=uuid_lib.uuid4(), name="cn-newborn", created_at=now)
+    grown = Foyer(
+        id=uuid_lib.uuid4(),
+        name="cn-grown",
+        created_at=now - timedelta(days=MIN_FOYER_AGE_DAYS + 3),
+    )
 
     async with async_session() as session:
-        allowed = await can_propose(
-            session, uuid_lib.UUID(TEST_FOYER_ID), "presence"
+        session.add_all([newborn, grown])
+        await session.commit()
+    try:
+        async with async_session() as session:
+            young = await can_propose(session, newborn.id, "presence")
+            old = await can_propose(session, grown.id, "presence")
+        assert young is False, "a foyer born today must get no proposal"
+        assert old is True, (
+            "the older foyer is refused too — then the first assertion does not "
+            "measure the age rule, and this test guards nothing"
         )
-    assert allowed is False
+    finally:
+        # Leaving them behind would grow the very residue this test exists to
+        # stop depending on.
+        async with async_session() as session:
+            for f in (newborn, grown):
+                obj = await session.get(Foyer, f.id)
+                if obj is not None:
+                    await session.delete(obj)
+            await session.commit()
 
 
 @pytest.mark.asyncio
