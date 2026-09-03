@@ -39,6 +39,7 @@ Backup, et faux depuis, sans que rien ne le signale.
 | `backend/app/api/devices.py` | lister, enregistrer, révoquer, se déconnecter |
 | `backend/app/api/recovery.py` | régénérer le code coupe aussi les autres appareils |
 | `backend/app/utils/errors.py` | `code` machine dans le corps d'erreur, en plus de `detail` |
+| `backend/app/api/notifications.py` | lie le jeton FCM à l'appareil, depuis le JWT |
 
 ### Côté application
 
@@ -52,7 +53,7 @@ Backup, et faux depuis, sans que rien ne le signale.
 | `core/network/DeviceRevocationMonitor.kt` | efface Room, les préférences et l'identité |
 | `ui/devices/DevicesScreen.kt` | l'écran, atteint depuis Foyer → Mes appareils |
 
-## Les six décisions, et ce qui les a tranchées
+## Les sept décisions, et ce qui les a tranchées
 
 **1. On révoque un APPAREIL, et son identité sort de la sauvegarde.** C'est la seule
 exclusion : jeton, préférences, WiFi maison et base Room continuent d'être restaurés. Sans
@@ -86,6 +87,14 @@ faux : il détient le jeton restauré, qui est valide et prouve l'identité à l
 serveur enregistre donc la nouvelle identité et rebascule la session dessus, sans rien
 demander. Distinguer les appareils ne coûte **aucune manipulation**.
 
+**7. Révoquer coupe aussi les notifications** *(ajouté le 2026-09-03)*. Sans cela, un
+téléphone dont l'accès était coupé continuait d'annoncer les tâches du foyer — l'API était
+fermée, ce canal restait ouvert. `notification_tokens` porte désormais un `device_id`, rempli
+**depuis le JWT** et non depuis le corps de la requête : le client ne peut pas mentir dessus,
+et surtout les APK déjà installés sont couverts sans attendre une mise à jour de l'app. Les
+lignes créées avant cette colonne ont un `device_id` nul et se rattachent d'elles-mêmes au
+prochain enregistrement FCM.
+
 ## Comment ça se passe, concrètement
 
 **Changement de téléphone.** Le nouveau restaure tout, sauf l'identité. Au démarrage,
@@ -105,17 +114,12 @@ et tous les autres appareils sont coupés dans le même geste.
 effacer un téléphone hors ligne. L'écran le dit à l'utilisateur au moment de confirmer,
 plutôt que de laisser croire à un effacement à distance.
 
-**Les notifications push survivent à la révocation.** `notification_tokens` ne porte pas de
-`device_id` — rien ne relie un jeton FCM à un appareil. Un téléphone révoqué continue donc de
-recevoir les notifications du foyer. Fermer ce chemin demande une colonne sur
-`notification_tokens` et une suppression à la révocation ; c'est au `todo.md`.
-
 **Les jetons antérieurs à la v0.7.0 ne sont pas révocables.** Ils ne portent pas de claim
 `device_id`, donc aucune ligne ne leur correspond. Les brancher créerait une ligne par
 requête, l'ancien code fabriquant un UUID neuf à chaque appel. Le remède, si le cas se
 présente, reste la rotation de `jwt_secret`.
 
-Ces trois chemins sont énumérés dans l'en-tête de `backend/tests/test_devices.py`, avec ceux
+Ces deux chemins sont énumérés dans l'en-tête de `backend/tests/test_devices.py`, avec ceux
 qui sont couverts — l'inventaire vit à côté des tests, pas seulement ici.
 
 ## Pièges pour qui touchera à ça

@@ -24,12 +24,13 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import create_token, get_current_user
 from app.database import get_session
 from app.models.device import Device
+from app.models.notification import NotificationToken
 from app.utils.devices import resolve_device
 from app.utils.errors import LocalizedHTTPException
 
@@ -138,6 +139,7 @@ async def revoke_device(
         raise LocalizedHTTPException(status_code=404, error_code="DEVICE_NOT_FOUND")
     if row.revoked_at is None:
         row.revoked_at = datetime.now(timezone.utc)
+    await _drop_push_tokens(session, current["user_id"], [device_id])
     await session.commit()
 
 
@@ -161,7 +163,34 @@ async def signout_this_device(
         )
         .values(revoked_at=datetime.now(timezone.utc))
     )
+    await _drop_push_tokens(session, current["user_id"], [current["device_id"]])
     await session.commit()
+
+
+async def _drop_push_tokens(
+    session: AsyncSession, user_id: str, device_ids: list[str]
+) -> int:
+    """Supprime les jetons FCM des appareils coupes.
+
+    Sans cela, revoquer un appareil coupait son API et lui laissait les
+    notifications du foyer — titres de taches, qui a fait quoi. Le chemin
+    avait ete enumere avant d'ecrire les tests (`test_devices.py`, chemin 5)
+    et laisse ouvert faute de lien entre un jeton FCM et un appareil ; la
+    colonne `notification_tokens.device_id` le fournit.
+
+    Les lignes anterieures a cette colonne ont `device_id` a NULL : elles ne
+    sont rattachees a personne et se rattachent d'elles-memes au prochain
+    enregistrement FCM, qui lit le JWT.
+    """
+    if not device_ids:
+        return 0
+    result = await session.execute(
+        delete(NotificationToken).where(
+            NotificationToken.user_id == uuid.UUID(user_id),
+            NotificationToken.device_id.in_(device_ids),
+        )
+    )
+    return result.rowcount or 0
 
 
 async def revoke_other_devices(
@@ -182,4 +211,17 @@ async def revoke_other_devices(
         )
         .values(revoked_at=datetime.now(timezone.utc))
     )
+    # Les notifications suivent la meme coupure, PAR LE MEME chemin que les
+    # revocations unitaires : une seconde implementation du meme delete avait
+    # deja diverge — le controle negatif du 03/09 laissait ce cas vert alors
+    # qu'il debranchait la regle.
+    coupes = (
+        await session.execute(
+            select(Device.device_id).where(
+                Device.user_id == uuid.UUID(user_id),
+                Device.device_id != keep_device_id,
+            )
+        )
+    ).scalars().all()
+    await _drop_push_tokens(session, user_id, list(coupes))
     return result.rowcount or 0

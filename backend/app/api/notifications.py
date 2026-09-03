@@ -40,14 +40,24 @@ async def register_token(
     )
     existing = result.scalar_one_or_none()
 
+    # `device_id` vient du JWT, jamais du corps : le client ne peut pas mentir
+    # dessus sans mentir sur son jeton, et surtout cela couvre les APK DEJA
+    # installes sans attendre une mise a jour de l'app. C'est ce qui permet de
+    # couper les notifications quand l'appareil est revoque.
+    device_id = current.get("device_id")
+
     if existing:
         existing.device_name = body.device_name or existing.device_name
         existing.platform = body.platform
+        # Rattache les lignes creees avant cette colonne, au premier passage.
+        if device_id:
+            existing.device_id = device_id
     else:
         session.add(NotificationToken(
             user_id=user_id,
             fcm_token=body.fcm_token,
             device_name=body.device_name,
+            device_id=device_id,
             platform=body.platform,
         ))
 

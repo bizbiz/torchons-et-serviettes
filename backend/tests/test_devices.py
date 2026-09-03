@@ -29,13 +29,13 @@ traverse pas cette dependance echappe au controle.
       ligne `devices` PAR REQUETE. Ces jetons datent d'avant v0.7.0 ; le
       remede, si le cas se presente, est une rotation de `jwt_secret`.
 
-  (5) Notifications push apres revocation ............ NON COUVERT, connu
-      `notification_tokens` ne porte pas de `device_id` (verifie : zero
-      occurrence), donc rien ne relie un jeton FCM a un appareil. Un
-      telephone revoque continue de recevoir les notifications du foyer —
-      titres de taches, qui a fait quoi. Fermer ce chemin demande une
-      colonne `device_id` sur `notification_tokens` et une suppression a la
-      revocation. Porte au todo plutot que baclé ici.
+  (5) Notifications push apres revocation ............ COUVERT (03/09)
+      `notification_tokens` porte desormais un `device_id`, rempli depuis le
+      JWT — donc sans attendre une mise a jour de l'app, et sans qu'un client
+      puisse mentir dessus. Les trois chemins de revocation suppriment les
+      jetons FCM de l'appareil coupe. Restent hors portee les lignes creees
+      AVANT cette colonne (`device_id` NULL, rattachees a personne) : elles
+      se rattachent d'elles-memes au prochain enregistrement FCM.
 
   (6) Cache local deja sur l'appareil ................ HORS PORTEE SERVEUR
       Les 7 tables Room survivent a la revocation jusqu'au premier contact
@@ -211,3 +211,79 @@ async def test_regenerate_recovery_code_cuts_the_other_devices(client):
     # Celui qui clique reste dedans : sinon on se met dehors avec le bouton
     # cense proteger.
     assert (await client.get("/api/devices", headers=_headers(keeper))).status_code == 200
+
+
+# --- Notifications push : elles suivent la revocation (chemin 5) ---
+
+
+async def _register_push(client, device: str, fcm: str):
+    return await client.post(
+        "/api/notifications/register",
+        headers=_headers(device),
+        json={"fcm_token": fcm, "device_name": "Pixel 7", "platform": "android"},
+    )
+
+
+async def _push_tokens_of(device: str) -> int:
+    """Compte les jetons FCM rattaches a cet appareil, en base."""
+    from sqlalchemy import func, select
+
+    from app.database import async_session
+    from app.models.notification import NotificationToken
+
+    async with async_session() as session:
+        return (
+            await session.execute(
+                select(func.count())
+                .select_from(NotificationToken)
+                .where(NotificationToken.device_id == device)
+            )
+        ).scalar_one()
+
+
+@pytest.mark.asyncio
+async def test_push_token_is_bound_to_the_calling_device(client):
+    """Le lien vient du JWT : aucun changement d'app n'est requis pour l'obtenir."""
+    device = str(uuid.uuid4())
+    r = await _register_push(client, device, f"fcm-{device}")
+    assert r.status_code == 200, r.text
+    assert await _push_tokens_of(device) == 1
+
+
+@pytest.mark.asyncio
+async def test_revoking_a_device_drops_its_push_tokens(client):
+    """Chemin (5) : couper l'API sans couper les notifications ne coupait rien."""
+    victim = str(uuid.uuid4())
+    keeper = str(uuid.uuid4())
+    await _register_push(client, victim, f"fcm-{victim}")
+    await _register_push(client, keeper, f"fcm-{keeper}")
+    assert await _push_tokens_of(victim) == 1
+
+    r = await client.post(f"/api/devices/{victim}/revoke", headers=_headers(keeper))
+    assert r.status_code == 204, r.text
+
+    assert await _push_tokens_of(victim) == 0, "le telephone coupe recevrait encore"
+    assert await _push_tokens_of(keeper) == 1, "celui qui reste ne doit pas etre touche"
+
+
+@pytest.mark.asyncio
+async def test_signout_drops_its_own_push_tokens(client):
+    device = str(uuid.uuid4())
+    await _register_push(client, device, f"fcm-{device}")
+    r = await client.post("/api/devices/me/signout", headers=_headers(device))
+    assert r.status_code == 204, r.text
+    assert await _push_tokens_of(device) == 0
+
+
+@pytest.mark.asyncio
+async def test_regenerate_drops_the_other_devices_push_tokens(client):
+    keeper = str(uuid.uuid4())
+    other = str(uuid.uuid4())
+    await _register_push(client, keeper, f"fcm-{keeper}")
+    await _register_push(client, other, f"fcm-{other}")
+
+    r = await client.post("/api/recovery/regenerate", headers=_headers(keeper))
+    assert r.status_code == 200, r.text
+
+    assert await _push_tokens_of(other) == 0
+    assert await _push_tokens_of(keeper) == 1, "celui qui a clique reste joignable"

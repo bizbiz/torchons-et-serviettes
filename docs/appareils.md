@@ -37,6 +37,7 @@ with nothing to report it.
 | `backend/app/api/devices.py` | list, register, revoke, sign out |
 | `backend/app/api/recovery.py` | regenerating the code also cuts the other devices |
 | `backend/app/utils/errors.py` | machine `code` in the error body, next to `detail` |
+| `backend/app/api/notifications.py` | binds the FCM token to the device, from the JWT |
 
 ### App side
 
@@ -50,7 +51,7 @@ with nothing to report it.
 | `core/network/DeviceRevocationMonitor.kt` | wipes Room, preferences and identity |
 | `ui/devices/DevicesScreen.kt` | the screen, reached from Household → My devices |
 
-## The six decisions, and what settled them
+## The seven decisions, and what settled them
 
 **1. We revoke a DEVICE, and its identity leaves the backup.** That is the only exclusion:
 token, preferences, home WiFi and the Room database keep being restored. Without it, two
@@ -83,6 +84,13 @@ holds the restored token, which is valid and proves identity on its own. The ser
 records the new identity and rebinds the session to it, asking nothing. Telling devices apart
 costs **no user action at all**.
 
+**7. Revoking also cuts push notifications** *(added 2026-09-03)*. Without it, a phone whose
+access had been cut kept announcing household tasks — the API was closed, that channel stayed
+open. `notification_tokens` now carries a `device_id`, filled **from the JWT** rather than
+from the request body: a client cannot lie about it, and above all already-installed APKs are
+covered without waiting for an app update. Rows created before that column have a null
+`device_id` and re-attach themselves on the next FCM registration.
+
 ## How it plays out
 
 **Changing phone.** The new one restores everything except the identity. At startup,
@@ -101,16 +109,11 @@ cut in the same gesture.
 **A device that never reconnects keeps its cache.** No app can wipe an offline phone. The
 screen says so at confirmation time rather than implying a remote wipe.
 
-**Push notifications survive revocation.** `notification_tokens` carries no `device_id` —
-nothing links an FCM token to a device. A revoked phone therefore keeps receiving household
-notifications. Closing that path needs a column on `notification_tokens` and a delete on
-revocation; it is in `todo.md`.
-
 **Tokens older than v0.7.0 are not revocable.** They carry no `device_id` claim, so no row
 matches them. Wiring them would create one row per request, since the old code minted a fresh
 UUID on every call. The remedy, should it ever matter, remains rotating `jwt_secret`.
 
-These three paths are enumerated in the header of `backend/tests/test_devices.py`, together
+These two paths are enumerated in the header of `backend/tests/test_devices.py`, together
 with the covered ones — the inventory lives next to the tests, not only here.
 
 ## Traps for whoever touches this next
