@@ -18,6 +18,7 @@ import pytest
 
 from app.models.enums import UrgencyState
 from app.services.recurrence import (
+    compute_nominal_interval_days,
     compute_urgency_state,
     grace_days_of,
     interval_hours,
@@ -185,3 +186,66 @@ def test_nominal_interval_splits_the_year():
     assert interval_hours(once) / 24 == pytest.approx(365, abs=1)
     assert interval_hours(twice) / 24 == pytest.approx(182.5, abs=1)
     assert interval_hours(monthly) / 24 == pytest.approx(30.4, abs=1)
+
+
+# --- Fenetre orange du calendaire ---
+#
+# CHEMINS PAR LESQUELS L'INVARIANT « une tache calendaire previent AVANT
+# l'echeance » peut etre viole, enumeres avant d'ecrire les cas :
+#   (1) `compute_nominal_interval_days` ignore le type ......... COUVERT
+#       C'etait le defaut : la fonction date de v0.10.0, `calendar` de
+#       v0.37.0, elle tombait sur son `return 0` final.
+#   (2) `months` vide ou absent ............................... COUVERT
+#       Doit rendre 0 et non planter : la regle est incomplete, on ne
+#       fabrique pas une fenetre a partir de rien.
+#   (3) `compute_urgency_state` ignore le nominal qu'on lui passe  COUVERT
+#       Teste de bout en bout : un ORANGE doit apparaitre AVANT le jour J.
+#   (4) `uncertain` gagnerait une fenetre par effet de bord ..... COUVERT
+#       Son 0 est deliberé et documente ; il doit le rester.
+
+
+@pytest.mark.parametrize(
+    "months, attendu",
+    [
+        ([5], 365),                      # annuel   -> fenetre 36 j
+        ([3, 9], 182),                   # semestriel -> 18 j
+        ([1, 4, 7, 10], 91),             # trimestriel -> 9 j
+        (list(range(1, 13)), 30),        # mensuel  -> 3 j
+    ],
+)
+def test_calendar_nominal_is_the_gap_between_occurrences(months, attendu):
+    """Chemin (1) : le nominal d'une regle calendaire, c'est 365 / nb de mois."""
+    regle = {"type": "calendar", "months": months, "day": 15, "grace_days": 0}
+    assert compute_nominal_interval_days(regle) == attendu
+
+
+def test_calendar_without_months_has_no_window_rather_than_crashing():
+    """Chemin (2) : une regle incomplete ne fabrique pas de fenetre."""
+    assert compute_nominal_interval_days({"type": "calendar", "months": []}) == 0
+    assert compute_nominal_interval_days({"type": "calendar"}) == 0
+
+
+def test_uncertain_keeps_its_deliberate_zero():
+    """Chemin (4) : le 0 d'`uncertain` est un choix, il ne doit pas bouger."""
+    assert compute_nominal_interval_days({"type": "uncertain"}) == 0
+
+
+def test_a_yearly_task_warns_before_the_due_date():
+    """Chemin (3), et c'est le defaut d'origine : un vaccin annuel passait de
+    GREEN a ORANGE le JOUR de l'echeance, sans aucun « bientot du »."""
+    regle = {"type": "calendar", "months": [5], "day": 15, "grace_days": 0}
+    nominal = compute_nominal_interval_days(regle)
+    echeance = date(2026, 5, 15)
+
+    # 36 jours = floor(365 * 0.10). Un mois avant, on doit deja etre prevenu.
+    assert compute_urgency_state(echeance, echeance - timedelta(days=30), nominal) == (
+        UrgencyState.ORANGE
+    ), "une tache annuelle doit prevenir un mois avant"
+    # Bien avant, rien ne presse.
+    assert compute_urgency_state(echeance, echeance - timedelta(days=60), nominal) == (
+        UrgencyState.GREEN
+    )
+    # Apres, elle est en retard.
+    assert compute_urgency_state(echeance, echeance + timedelta(days=1), nominal) == (
+        UrgencyState.RED
+    )

@@ -267,6 +267,14 @@ def compute_nominal_interval_days(rule: dict | None) -> int:
 
     - interval : every_n_days
     - monthly_variable : moyenne des valeurs de days_per_month, fallback 30
+    - calendar : 365 / nombre de mois occurrents (annuel -> 365, semestriel ->
+      182, mensuel -> 30). Ajoute le 2026-09-03 : cette fonction date de
+      v0.10.0, le type `calendar` de v0.37.0, et elle n'avait jamais ete
+      etendue — il tombait sur le `return 0` final. Consequence mesuree : une
+      tache annuelle passait de GREEN a ORANGE le JOUR de l'echeance et RED le
+      lendemain, sans aucun "bientot du". C'etait un oubli, pas un choix : le
+      `0` de `uncertain` est deliberé et documente, celui du calendaire ne
+      l'etait nulle part.
     - uncertain : 0 -> pas de fenetre orange (etat reste GREEN par compute_urgency_state)
     - None (ponctuelle) : 0 -> window = 0, pas de zone orange
     """
@@ -284,6 +292,17 @@ def compute_nominal_interval_days(rule: dict | None) -> int:
         if vals:
             return max(1, round(sum(vals) / len(vals)))
         return 30
+
+    if rtype == "calendar":
+        # L'ecart entre deux occurrences : une regle a N mois revient N fois
+        # par an. Un mois -> 365 j (fenetre 36), deux -> 182 (18), douze -> 30
+        # (3). C'est la meme grandeur que `every_n_days` pour un interval,
+        # donc la formule de fenetre s'y applique sans changement.
+        months = rule.get("months") or []
+        n = len([m for m in months if isinstance(m, int)])
+        if n <= 0:
+            return 0
+        return max(1, round(365 / n))
 
     # uncertain : pas de fenetre orange — l'etat reste toujours GREEN.
     return 0
