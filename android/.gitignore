@@ -12,3 +12,6 @@ local.properties
 /app/release
 *.apk
 *.aab
+
+# Mappings R8 archives hors de build/ (cf. archiveR8Mapping) : ~72 Mo piece
+/mapping-archive
