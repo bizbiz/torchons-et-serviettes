@@ -130,7 +130,12 @@ Two details for whoever replays this:
   `VersionGateMonitor.restore()` re-reading the verdict. Measured with a burst
   of screenshots, ~420 ms resolution — a briefer flash is not ruled out.
 
-This was run on a `debug` build, and `isMinifyEnabled` is `false` in `release`
-too, so R8 cannot account for any difference. Once R8 is enabled, replay this
-check — obfuscation touches the classes behind JSON body parsing and
-persistence.
+⚠️ **This check must be replayed: the conditions it ran under are gone.** It ran
+on 2026-09-02 on a `debug` build, at a time when `isMinifyEnabled` was `false` in
+`release` too, so R8 could not account for any difference. **R8 was enabled on
+2026-09-03** (`android/app/build.gradle.kts`, `release` buildType): a release APK
+is now minified and obfuscated, and this check has never run in that
+configuration. What is at stake is not hypothetical — the gate goes through
+`org.json` body parsing and then DataStore persistence of the verdict, two paths
+R8 can break. And the failure is silent: a dead gate raises no error, the app
+simply keeps working when it should have been blocked.

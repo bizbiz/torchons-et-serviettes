@@ -132,7 +132,13 @@ Deux détails pour qui rejouera ce constat :
   relecture du verdict par `VersionGateMonitor.restore()`. Mesuré par rafale de
   captures, résolution ~420 ms — un affichage plus bref n'est pas exclu.
 
-Ce constat a tourné sur un build `debug`, et `isMinifyEnabled` vaut `false` en
-`release` aussi : R8 ne peut donc pas expliquer d'écart. Le jour où R8 sera
-activé, ce constat est à rejouer — l'obfuscation touche des classes dont
-dépendent la lecture du corps JSON et la persistance.
+⚠️ **Ce constat est à rejouer : ses conditions n'existent plus.** Il a tourné le
+2026-09-02 sur un build `debug`, à une époque où `isMinifyEnabled` valait `false`
+en `release` aussi — R8 ne pouvait donc expliquer aucun écart. **R8 a été activé
+le 2026-09-03** (`android/app/build.gradle.kts`, buildType `release`) : un APK de
+release est désormais minifié et obfusqué, et ce constat n'a jamais tourné dans
+cette configuration. Ce qui est en jeu n'est pas hypothétique — le gate traverse
+la lecture d'un corps JSON par `org.json` puis la persistance DataStore du
+verdict, deux chemins que R8 peut casser. Et la panne est muette : un gate
+inopérant ne produit aucune erreur, l'app continue simplement de fonctionner
+alors qu'elle aurait dû être bloquée.
