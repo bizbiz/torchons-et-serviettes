@@ -48,6 +48,9 @@ services:
     image: ${TS_API_IMAGE:-ts-api:latest}
     container_name: ts_api_prod
     restart: unless-stopped
+    # uvicorn is PID 1 and never reaps children it did not spawn (a killed
+    # healthcheck leaves one). A minimal init as PID 1 reaps them all.
+    init: true
     env_file:
       - .env.prod
     environment:

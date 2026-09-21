@@ -33,8 +33,13 @@ RUN chmod +x /app/docker-entrypoint.sh
 EXPOSE 8002
 
 # Healthcheck aligne sur l'endpoint /api/health (status ok|degraded).
+# The probe must give up on its own, BEFORE Docker's 5 s timeout: when Docker
+# kills the probe it kills the `sh` wrapper, the python child is reparented to
+# PID 1 (uvicorn) and never reaped -- 33 zombies on the beta between 18/09 and
+# 21/09. 3 s leaves room for interpreter startup on a host under swap pressure.
+# `init: true` in the compose files reaps whatever still slips through.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD python -c "import urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8002/api/health'); sys.exit(0 if r.status==200 else 1)"
+  CMD python -c "import urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8002/api/health', timeout=3); sys.exit(0 if r.status==200 else 1)"
 
 # L'entrypoint applique les migrations Alembic puis lance uvicorn.
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
