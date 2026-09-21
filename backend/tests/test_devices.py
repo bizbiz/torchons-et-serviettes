@@ -158,6 +158,10 @@ async def test_revoked_device_is_refused_with_its_own_code(client):
     assert refused.status_code == 401
     detail = refused.json()["detail"]
     assert "voqu" in detail or "revok" in detail, f"code indistinct d'un 401 nu : {detail}"
+    # The wipe keys on `code`, never on the localized `detail` above
+    # (DeviceRevocationInterceptor.kt). Android's optString("code", "") returns
+    # the string "null" for a JSON null, so the key must hold the literal value.
+    assert refused.json().get("code") == "DEVICE_REVOKED", refused.text
 
 
 @pytest.mark.asyncio
