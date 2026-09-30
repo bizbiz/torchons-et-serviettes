@@ -156,7 +156,11 @@ class TaskDetailViewModel @Inject constructor(
                     createdAt = cached.task?.createdAt,
                 )
                 val absentDays = cached.task?.absentDaysSinceLastCompletion ?: 0
-                val state = TaskUrgencyCalculator.computeState(dueDate, today, nominal, absentDays)
+                val state = TaskUrgencyCalculator.computeState(
+                    dueDate, today, nominal, absentDays,
+                    graceDays = TaskUrgencyCalculator.graceDaysOf(cached.task?.recurrenceRule),
+                    windowCapDays = TaskUrgencyCalculator.orangeWindowCapOf(cached.task?.recurrenceRule),
+                )
                 val daysUntilDue = TaskUrgencyCalculator.daysUntilDue(dueDate, today, absentDays)
                 val countdownLabel = TaskUrgencyCalculator.countdownLabel(
                     appContext.resources, dueDate, today, absentDays,

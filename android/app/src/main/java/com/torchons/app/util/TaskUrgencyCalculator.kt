@@ -52,10 +52,26 @@ object TaskUrgencyCalculator {
                 val vals = rule.daysPerMonth?.values?.filter { it > 0 } ?: emptyList()
                 if (vals.isNotEmpty()) maxOf(1, vals.sum() / vals.size) else 30
             }
+            // Mirror of recurrence.py: gap between two occurrences. `rint`
+            // rounds half to even like Python's `round` (365 / 2 -> 182).
+            "calendar" -> {
+                val n = rule.months?.count { it in 1..12 } ?: 0
+                if (n > 0) maxOf(1, Math.rint(365.0 / n).toInt()) else 0
+            }
             "uncertain" -> 0
             else -> 0
         }
     }
+
+    /** A calendar rule warns at most this many days ahead (decided 2026-09-30). */
+    const val CALENDAR_ORANGE_WINDOW_CAP_DAYS = 7
+
+    /** Upper bound on the orange window, null if unbounded. Mirror of recurrence.py. */
+    fun orangeWindowCapOf(rule: RecurrenceRule?): Int? =
+        if (rule?.type == "calendar") CALENDAR_ORANGE_WINDOW_CAP_DAYS else null
+
+    /** Days after the due date before RED. Only `calendar` declares any. */
+    fun graceDaysOf(rule: RecurrenceRule?): Int = (rule?.graceDays ?: 0).coerceAtLeast(0)
 
     /** True si la regle est de type 'uncertain' (cadence libre, v0.14). */
     fun isUncertain(rule: RecurrenceRule?): Boolean = rule?.type == "uncertain"
@@ -72,6 +88,7 @@ object TaskUrgencyCalculator {
         rule: RecurrenceRule?,
         createdAt: String?,
         zone: ZoneId = ZoneId.systemDefault(),
+        today: LocalDate = LocalDate.now(zone),
     ): LocalDate? {
         // uncertain : aucune echeance visible (v0.14, Q2). L'etat reste GREEN.
         if (isUncertain(rule)) return null
@@ -96,8 +113,27 @@ object TaskUrgencyCalculator {
                 if (n > 0) lastDate.plusDays(n.toLong()) else null
             }
 
+            "calendar" -> nextCalendarDue(rule, lastDate, today)
+
             else -> null
         }
+    }
+
+    /**
+     * Calendar anchoring, mirror of `next_due` in recurrence.py: the latest
+     * PAST occurrence stays due until honoured, then the next one is aimed at.
+     * The due date never depends on when the task was done — no drift.
+     */
+    private fun nextCalendarDue(rule: RecurrenceRule, lastDate: LocalDate, today: LocalDate): LocalDate? {
+        val months = rule.months?.filter { it in 1..12 }?.takeIf { it.isNotEmpty() } ?: listOf(1)
+        val day = (rule.day ?: 1).coerceIn(1, 28)
+        val candidates = (today.year - 1..today.year + 1).flatMap { y ->
+            months.map { m -> LocalDate.of(y, m, day) }
+        }
+        val latestPast = candidates.filter { !it.isAfter(today) }.maxOrNull()
+        val nextFuture = candidates.filter { it.isAfter(today) }.minOrNull()
+        if (latestPast == null) return nextFuture
+        return if (!lastDate.isBefore(latestPast)) nextFuture else latestPast
     }
 
     /**
@@ -130,11 +166,15 @@ object TaskUrgencyCalculator {
         today: LocalDate,
         nominalInterval: Int,
         absentDays: Int = 0,
+        graceDays: Int = 0,
+        windowCapDays: Int? = null,
     ): State {
         if (dueDate == null) return State.GREEN
         val effToday = effectiveToday(today, absentDays)
-        if (effToday.isAfter(dueDate)) return State.RED
-        val window = floor(nominalInterval * 0.10).toInt().coerceAtLeast(0)
+        // `graceDays` only delays RED: the task is flagged at its due date.
+        if (effToday.isAfter(dueDate.plusDays(graceDays.coerceAtLeast(0).toLong()))) return State.RED
+        var window = floor(nominalInterval * 0.10).toInt().coerceAtLeast(0)
+        if (windowCapDays != null) window = minOf(window, windowCapDays.coerceAtLeast(0))
         val orangeStart = dueDate.minusDays(window.toLong())
         return if (!effToday.isBefore(orangeStart)) State.ORANGE else State.GREEN
     }

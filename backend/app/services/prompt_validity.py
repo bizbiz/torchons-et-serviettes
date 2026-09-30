@@ -39,6 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.enums import PromptResolution, PromptType
 from app.models.task import Task
 from app.models.user_prompt import UserPrompt
+from app.services.recurrence import is_votable
 
 logger = structlog.get_logger()
 
@@ -82,6 +83,25 @@ async def _task_still_exists(session: AsyncSession, prompt: UserPrompt) -> bool:
     return vivante is not None
 
 
+async def _task_still_votable(session: AsyncSession, prompt: UserPrompt) -> bool:
+    """The task is alive AND its rule still accepts a frequency vote.
+
+    A vote requested before the task switched to a date-anchored rule would
+    otherwise be answered, and refused by `PUT /tasks/{id}/frequency`.
+    """
+    if not await _task_still_exists(session, prompt):
+        return False
+    brut = (prompt.context or {}).get("task_id")
+    try:
+        task_id = uuid.UUID(str(brut))
+    except (ValueError, AttributeError, TypeError):
+        return True
+    regle = (await session.execute(
+        select(Task.recurrence_rule).where(Task.id == task_id)
+    )).scalar_one_or_none()
+    return is_votable(regle)
+
+
 #: Types dont la condition est revalidable. Un type ABSENT de ce registre est
 #: servi sans contrôle — c'est volontaire : n'y ajouter que ce qu'on sait
 #: juger, jamais une heuristique.
@@ -92,7 +112,7 @@ async def _task_still_exists(session: AsyncSession, prompt: UserPrompt) -> bool:
 VALIDATORS: dict[PromptType, Validator] = {
     PromptType.RESOLVE_PRESENCE: _presence_still_uncertain,
     PromptType.BUMP_EFFORT: _task_still_exists,
-    PromptType.VOTE_FREQUENCY: _task_still_exists,
+    PromptType.VOTE_FREQUENCY: _task_still_votable,
 }
 
 

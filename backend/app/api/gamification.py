@@ -33,7 +33,9 @@ from app.services.recurrence import (
     compute_nominal_interval_days,
     compute_urgency_state,
     is_uncertain,
+    is_votable,
     grace_days_of,
+    orange_window_cap_of,
 )
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
@@ -446,6 +448,9 @@ async def set_frequency(
     task = task_result.scalar_one_or_none()
     if not task:
         raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
+    # The consensus would overwrite a date-anchored rule with an interval.
+    if not is_votable(task.recurrence_rule):
+        raise LocalizedHTTPException(status_code=409, error_code="GAMIF_RULE_NOT_VOTABLE")
 
     # Normaliser l'entree : exactement l'un des 2 champs doit etre fourni.
     if (body.every_n_days is None) == (body.days_per_month is None):
@@ -1099,7 +1104,11 @@ async def get_suggestions(
             absent_days=task_absent_days,
         )
 
-        state = compute_urgency_state(due_date, eff_today, nominal, grace_days_of(task.recurrence_rule))
+        state = compute_urgency_state(
+            due_date, eff_today, nominal,
+            grace_days_of(task.recurrence_rule),
+            orange_window_cap_of(task.recurrence_rule),
+        )
         days_until = compute_days_until_due(due_date, eff_today)
         if days_until is None:
             # Ponctuelle deja faite — n'apparait pas dans les suggestions.

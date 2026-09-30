@@ -23,6 +23,7 @@ from app.models.enums import PromptResolution, PromptType
 from app.models.presence_day import PresenceDay
 from app.models.task import Task
 from app.utils.errors import LocalizedHTTPException
+from app.services.recurrence import is_votable
 from app.models.task_effort import TaskEffort
 from app.models.user_prompt import UserPrompt
 from app.services.prompt_validity import close_if_stale
@@ -359,6 +360,8 @@ async def request_revote(
 
     # 4. Mapping kind -> PromptType.
     if body.kind == "frequency":
+        if not is_votable(task.recurrence_rule):
+            raise LocalizedHTTPException(status_code=409, error_code="GAMIF_RULE_NOT_VOTABLE")
         prompt_type = PromptType.VOTE_FREQUENCY
     elif body.kind == "effort":
         prompt_type = PromptType.VOTE_EFFORT

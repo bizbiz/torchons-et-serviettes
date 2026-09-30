@@ -181,8 +181,24 @@ ne décale pas l'échéance de l'année suivante.
   mois ne saute une occurrence.
 - `grace_days` : délai après l'échéance avant le **rouge**. C'est ce qui
   exprime « mai–août » : une occurrence au 1er mai tolérée jusqu'à fin août.
-  L'orange, lui, tombe à la date prévue — la tâche est signalée à son heure et
-  seule l'alerte est repoussée.
+  L'orange n'est pas repoussé : la tâche est signalée avant son échéance, seul
+  le rouge attend la fin de la tolérance.
+
+**Fenêtre orange : 10 % de l'écart entre deux occurrences, plafonnée à 7 jours**
+(décidé le 30/09/2026). L'écart vaut 365 / nombre de mois ; sans plafond, un
+vaccin annuel passait orange **36 jours** avant l'échéance, trop tôt pour être
+utile. Un calendaire mensuel garde ses 3 jours : le plafond borne, il n'élargit
+pas. Seule la fenêtre est plafonnée ; l'intervalle nominal, qui sert au ratio
+de retard, reste entier. Implémenté deux fois, à garder alignées :
+`orange_window_cap_of` (`recurrence.py`) et `orangeWindowCapOf`
+(`TaskUrgencyCalculator.kt`).
+
+**Pas de vote de fréquence.** Le consensus écrit toujours un `interval` ou un
+`monthly_variable` : un vote remplacerait la date fixe et rendrait la dérive.
+`PUT /tasks/{id}/frequency` et la demande de revote rendent 409
+`GAMIF_RULE_NOT_VOTABLE` hors de `VOTABLE_RULE_TYPES`. C'est une liste
+**blanche** : la future forme anniversaire en sera exclue sans que personne ait
+à y penser.
 
 Les trois anciens types `weekdays`, `monthly` et `custom` sont convertis en
 `interval` équivalent à la normalisation (`_legacy_interval`) : plus aucune

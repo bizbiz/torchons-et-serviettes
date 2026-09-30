@@ -27,6 +27,7 @@ from app.services.frequency_vote import (
     upsert_vote_and_sync_consensus,
 )
 from app.services.presence import compute_absent_days_for_tasks
+from app.services.recurrence import VOTABLE_RULE_TYPES
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
 from app.utils.scoping import current_foyer_uuid, scoped
@@ -343,7 +344,7 @@ async def update_task(
     # qui change la cadence et a deja des votes est rejetee. Le retour a un
     # type votable depuis un type non-votable (uncertain ou rule=None) devient
     # un vote de l'user courant.
-    VOTABLE = {"interval", "monthly_variable"}
+    VOTABLE = VOTABLE_RULE_TYPES
     if "recurrence_rule" in updates and updates["recurrence_rule"]:
         new_rule = updates["recurrence_rule"]
         old_rule = task.recurrence_rule or {}

@@ -356,11 +356,39 @@ def grace_days_of(rule: dict | None) -> int:
         return 0
 
 
+#: A calendar rule warns at most this many days ahead. 10 % of a yearly gap is
+#: 36 days of orange, too early to be useful on a vaccine (decided 2026-09-30).
+#: The cap bounds the WINDOW only: the nominal interval still feeds the
+#: lateness ratio untouched. Mirrored in TaskUrgencyCalculator.kt.
+CALENDAR_ORANGE_WINDOW_CAP_DAYS = 7
+
+
+def orange_window_cap_of(rule: dict | None) -> int | None:
+    """Upper bound on the orange window declared by the rule, None if unbounded."""
+    if isinstance(rule, dict) and rule.get("type") == "calendar":
+        return CALENDAR_ORANGE_WINDOW_CAP_DAYS
+    return None
+
+
+#: Rule types a frequency vote may adjust. The consensus always writes
+#: `interval` or `monthly_variable`, so a vote on any other type would silently
+#: replace it — a `calendar` rule would get back the drift it exists to remove.
+#: An allowlist on purpose: a date-anchored type added later (the anniversary
+#: form) is non-votable without anyone having to remember it. Same set as
+#: `isVotableRule` in TaskDetailScreen.kt.
+VOTABLE_RULE_TYPES = frozenset({"interval", "monthly_variable"})
+
+
+def is_votable(rule: dict | None) -> bool:
+    return isinstance(rule, dict) and rule.get("type") in VOTABLE_RULE_TYPES
+
+
 def compute_urgency_state(
     due_date: date | None,
     today: date,
     nominal_interval_days: int,
     grace_days: int = 0,
+    window_cap_days: int | None = None,
 ) -> UrgencyState:
     """Classifie une tache en GREEN / ORANGE / RED selon today <-> due_date.
 
@@ -381,6 +409,8 @@ def compute_urgency_state(
     if today > due_date + timedelta(days=max(0, grace_days)):
         return UrgencyState.RED
     window = max(0, int(math.floor(nominal_interval_days * 0.10)))
+    if window_cap_days is not None:
+        window = min(window, max(0, window_cap_days))
     if today >= due_date - timedelta(days=window):
         return UrgencyState.ORANGE
     return UrgencyState.GREEN

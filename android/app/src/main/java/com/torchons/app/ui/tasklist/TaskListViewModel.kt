@@ -739,7 +739,11 @@ class TaskListViewModel @Inject constructor(
                 createdAt = task.createdAt,
             )
             val absentDays = task.absentDaysSinceLastCompletion
-            val state = TaskUrgencyCalculator.computeState(dueDate, today, nominal, absentDays)
+            val state = TaskUrgencyCalculator.computeState(
+                dueDate, today, nominal, absentDays,
+                graceDays = TaskUrgencyCalculator.graceDaysOf(task.recurrenceRule),
+                windowCapDays = TaskUrgencyCalculator.orangeWindowCapOf(task.recurrenceRule),
+            )
             val daysUntilDue = TaskUrgencyCalculator.daysUntilDue(dueDate, today, absentDays)
             val countdownLabel = TaskUrgencyCalculator.countdownLabel(
                 context.resources, dueDate, today, absentDays,

@@ -24,6 +24,7 @@ from app.services.recurrence import (
     interval_hours,
     next_due,
     normalize_recurrence_rule,
+    orange_window_cap_of,
 )
 
 
@@ -225,6 +226,29 @@ def test_calendar_without_months_has_no_window_rather_than_crashing():
     assert compute_nominal_interval_days({"type": "calendar"}) == 0
 
 
+@pytest.mark.parametrize(
+    "regle, attendu",
+    [
+        ({"type": "calendar", "months": [5]}, 7),
+        # A monthly calendar has a 3-day window: the cap does not widen it.
+        ({"type": "calendar", "months": list(range(1, 13))}, 7),
+        ({"type": "interval", "every_n_days": 365}, None),
+        ({"type": "monthly_variable", "days_per_month": {"1": 60}}, None),
+        (None, None),
+    ],
+)
+def test_only_calendar_rules_cap_the_orange_window(regle, attendu):
+    assert orange_window_cap_of(regle) == attendu
+
+
+def test_cap_never_widens_a_short_window():
+    """Monthly calendar: 3-day window, cap 7 -> still 3 days."""
+    echeance = date(2026, 5, 15)
+    assert compute_urgency_state(echeance, echeance - timedelta(days=4), 30, 0, 7) == (
+        UrgencyState.GREEN
+    )
+
+
 def test_uncertain_keeps_its_deliberate_zero():
     """Chemin (4) : le 0 d'`uncertain` est un choix, il ne doit pas bouger."""
     assert compute_nominal_interval_days({"type": "uncertain"}) == 0
@@ -235,15 +259,21 @@ def test_a_yearly_task_warns_before_the_due_date():
     GREEN a ORANGE le JOUR de l'echeance, sans aucun « bientot du »."""
     regle = {"type": "calendar", "months": [5], "day": 15, "grace_days": 0}
     nominal = compute_nominal_interval_days(regle)
+    cap = orange_window_cap_of(regle)
     echeance = date(2026, 5, 15)
 
-    # 36 jours = floor(365 * 0.10). Un mois avant, on doit deja etre prevenu.
+    # floor(365 * 0.10) = 36 days, capped at 7 since 2026-09-30: 36 days of
+    # orange on a vaccine was too early to be useful.
+    assert cap == 7
+    assert compute_urgency_state(echeance, echeance - timedelta(days=7), nominal, 0, cap) == (
+        UrgencyState.ORANGE
+    ), "une tache annuelle doit prevenir une semaine avant"
+    assert compute_urgency_state(echeance, echeance - timedelta(days=8), nominal, 0, cap) == (
+        UrgencyState.GREEN
+    ), "le plafond de 7 j doit borner la fenetre de 36 j"
+    # Without the cap the 10 % window is untouched (the cap is opt-in per rule).
     assert compute_urgency_state(echeance, echeance - timedelta(days=30), nominal) == (
         UrgencyState.ORANGE
-    ), "une tache annuelle doit prevenir un mois avant"
-    # Bien avant, rien ne presse.
-    assert compute_urgency_state(echeance, echeance - timedelta(days=60), nominal) == (
-        UrgencyState.GREEN
     )
     # Apres, elle est en retard.
     assert compute_urgency_state(echeance, echeance + timedelta(days=1), nominal) == (

@@ -228,6 +228,10 @@ ERROR_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "Fournir exactement un des champs : every_n_days ou days_per_month.",
         "en": "Provide exactly one of: every_n_days or days_per_month.",
     },
+    "GAMIF_RULE_NOT_VOTABLE": {
+        "fr": "Cette tâche suit une date fixe : sa fréquence ne se vote pas.",
+        "en": "This task follows a fixed date: its frequency can't be voted on.",
+    },
     "VALIDATION_ERROR_FORMAT": {
         "fr": "{message}",
         "en": "{message}",
