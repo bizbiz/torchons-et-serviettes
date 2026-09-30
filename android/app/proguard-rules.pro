@@ -11,6 +11,11 @@
 # redondante ne casse rien mais laisse croire qu'elle protege quelque chose.
 
 # Conserver les modeles de donnees pour Gson
+#
+# Rule: every class Gson serialises lives in `data.model`. Outside this package
+# R8 renames fields (measured 2026-09-21 on the v96 mapping: 2639 renamed
+# fields elsewhere, zero here) and Gson then reads and writes obfuscated keys --
+# no crash, no log, just empty fields.
 -keep class com.torchons.app.data.model.** { *; }
 
 # Retrofit

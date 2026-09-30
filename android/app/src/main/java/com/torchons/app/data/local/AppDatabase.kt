@@ -29,6 +29,10 @@ import com.torchons.app.data.local.entities.ViewSnapshotEntity
         TaskHistoryEntity::class,
         ContextEntity::class,
     ],
+    // Raising this ships a Room migration inside a MINIFIED APK (R8 is on since
+    // 2026-09-03). No migration has run under R8 yet -- v95 to v96 both carried
+    // version 12 -- so the first bump must be watched on a phone whose database
+    // predates it, never only on a fresh install.
     version = 12,
     exportSchema = false,
 )

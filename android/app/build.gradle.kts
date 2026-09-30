@@ -154,6 +154,11 @@ android {
             //
             // Shipping a minified APK means crash traces are obfuscated: the
             // matching mapping.txt MUST be archived, see `archiveR8Mapping`.
+            //
+            // Way back if a minified build breaks a screen: forward, never down.
+            // Android refuses to install a lower versionCode without uninstalling
+            // first, which wipes local data. So: flip this to false, raise
+            // tsVersionCode, assembleProdRelease, adb install -r.
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
