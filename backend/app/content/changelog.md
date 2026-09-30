@@ -1,5 +1,31 @@
 # Notes de version
 
+## v0.39.0 — 2026-09-30
+
+### Les dates fixes tiennent parole
+- Une tâche à date fixe (impôts, chaudière, vaccin) affiche enfin son échéance
+  et sa couleur dans la liste et dans sa fiche : elle y restait verte quoi qu'il
+  arrive.
+- Elle prévient une semaine avant l'échéance, et non plus un mois : un vaccin
+  annuel passait orange 36 jours à l'avance.
+- La fréquence d'une date fixe ne se vote plus : le vote la remplaçait par un
+  intervalle, et elle recommençait à glisser.
+- Une tâche mensuelle créée avec un ancien format ne ressortait plus depuis
+  juillet : elle revient chaque mois, à sa date.
+
+### Mes appareils
+- Réglages → Mes appareils : voir les téléphones connectés à ton compte, et
+  couper l'accès de celui que tu n'utilises plus. Il ne reçoit plus non plus
+  les notifications.
+
+### Corrections
+- La synchronisation hors ligne pouvait rester bloquée, voire perdre une
+  modification, quand le serveur refusait une seule opération d'un lot.
+- Les questions devenues sans objet (tâche supprimée, jours déjà confirmés) se
+  referment d'elles-mêmes.
+- La courbe de retard des statistiques ne se chargeait plus quand le gel des
+  absences était actif.
+
 ## v0.38.0 — 2026-08-20
 
 ### Les contextes partout
