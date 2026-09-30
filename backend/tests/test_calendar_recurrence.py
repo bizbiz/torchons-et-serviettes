@@ -59,10 +59,24 @@ def test_calendar_without_months_falls_back_rather_than_crashing():
 # --- Types morts : convertis, plus acceptes tels quels ---
 
 
+def test_dead_monthly_becomes_calendar_every_month():
+    """A fixed day every month is a calendar rule, not a drifting interval 30
+    (decided 2026-09-30). Same output as migration d4ec241658ca."""
+    out = normalize_recurrence_rule({"type": "monthly", "day_of_month": 1})
+    assert out == {"type": "calendar", "months": list(range(1, 13)), "day": 1, "grace_days": 0}
+    # Done late on the 20th: the next one is still the 1st, no drift.
+    assert next_due(out, _at(2026, 7, 20)).date() > date(2026, 7, 20)
+    assert next_due(out, _at(2026, 7, 20)).day == 1
+
+
+def test_dead_monthly_day_is_capped_like_calendar():
+    out = normalize_recurrence_rule({"type": "monthly", "day_of_month": 31})
+    assert out["day"] == 28
+
+
 @pytest.mark.parametrize(
     "dead,expected",
     [
-        ({"type": "monthly", "day_of_month": 1}, 30),
         ({"type": "custom", "every_n_weeks": 2}, 14),
         ({"type": "weekdays", "days": [1, 3, 5]}, 2),
     ],

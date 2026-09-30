@@ -38,7 +38,15 @@ class SyncConflict(BaseModel):
     table: str
     row_id: UUID
     server_data: dict | None = None
-    reason: Literal["stale_update", "deleted", "unique_violation", "not_found"]
+    # `op_error` = the safety net of POST /sync (an unexpected error on ONE op).
+    # It was missing from this Literal from 2026-05-18 (036d084) to 2026-09-30:
+    # building the conflict itself raised, the whole /sync answered 500, and the
+    # client retried the same batch forever — the exact blockage the net exists
+    # to prevent. The Android side reads `reason` as a plain String.
+    reason: Literal["stale_update", "deleted", "unique_violation", "not_found", "op_error"]
+    #: Human-readable cause for `op_error`, kept out of `reason` so that the
+    #: latter stays an enum. Ignored by clients that do not know it.
+    detail: str | None = None
 
 
 class ChangeLogEntry(BaseModel):

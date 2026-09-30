@@ -200,10 +200,22 @@ de retard, reste entier. Implémenté deux fois, à garder alignées :
 **blanche** : la future forme anniversaire en sera exclue sans que personne ait
 à y penser.
 
-Les trois anciens types `weekdays`, `monthly` et `custom` sont convertis en
-`interval` équivalent à la normalisation (`_legacy_interval`) : plus aucune
-tâche n'est silencieusement inerte. Leur refus en entrée reste à faire
-(`todo.md`).
+Les trois anciens types sont convertis à la normalisation : `weekdays` et
+`custom` en `interval` équivalent (`_legacy_interval`), `monthly` en `calendar`
+sur les douze mois, même jour. Une date fixe convertie en intervalle de 30 jours
+dériverait, et c'est la dérive que `calendar` supprime (décidé le 30/09/2026).
+
+La conversion n'agissait qu'à l'écriture : une tâche stockée avant elle restait
+avec son type mort, et aucune lecture ne le connaît, donc sans échéance et verte
+pour toujours. Il en restait une en prod le 30/09 (« Submit my work hours »,
+`monthly` le 1er, muette depuis le 29/07). La migration `d4ec241658ca` convertit
+ces lignes et les journalise dans `change_log`, pour que les téléphones les
+reçoivent par `/sync`.
+
+`/sync`, qui contourne Pydantic, refuse désormais tout type hors de
+`LIVING_RULE_TYPES` (`recurrence.py`). L'op refusée devient un conflit
+`op_error` : elle ne bloque pas la file du téléphone et n'annule plus les ops
+précédentes du lot (un SAVEPOINT par op).
 
 **Phrases explicatives.** `RecurrenceSentence.kt` rend chaque règle en français
 ou en anglais au moment où l'utilisateur la paramètre. L'exemple donné utilise

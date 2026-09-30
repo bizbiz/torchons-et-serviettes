@@ -82,9 +82,40 @@ def normalize_recurrence_rule(rule: dict | None) -> dict | None:
     # weekdays / monthly / custom : types morts depuis v0.27, plus aucun calcul
     # d'echeance ne les traite. On les laissait passer la validation, ce qui
     # produisait une tache silencieusement inerte — ni rouge ni orange. On les
-    # convertit desormais en `interval` plutot que de les accepter tels quels.
-    elif rtype in ("weekdays", "monthly", "custom"):
+    # convertit desormais plutot que de les accepter tels quels.
+    elif rtype == "monthly":
+        # A fixed day every month IS a calendar rule. An `interval: 30` would
+        # drift with each late completion — the defect `calendar` removes.
+        # Same conversion as migration d4ec241658ca, which fixed the rows
+        # stored before this branch existed.
+        out = normalize_recurrence_rule({
+            "type": "calendar",
+            "months": list(range(1, 13)),
+            "day": _to_int(out.get("day_of_month"), 1),
+            "grace_days": 0,
+        })
+    elif rtype in ("weekdays", "custom"):
         out = {"type": "interval", "every_n_days": _legacy_interval(rtype, out)}
+    return out
+
+
+#: Types a stored rule may carry. Anything else has no due-date computation on
+#: either side (server or TaskUrgencyCalculator.kt): the task would be silently
+#: inert. Mirror of `_VALID_RECURRENCE_TYPES` in schemas/task.py, plus
+#: `calendar`, which only /sync accepts so far.
+LIVING_RULE_TYPES = frozenset({"interval", "monthly_variable", "uncertain", "calendar"})
+
+
+def checked_recurrence_rule(rule: dict | None) -> dict | None:
+    """Normalise, then refuse any type no read path knows.
+
+    For /sync, which bypasses Pydantic. Raises ValueError: /sync turns it into a
+    conflict on THIS op, so the client's queue is not blocked.
+    """
+    out = normalize_recurrence_rule(rule)
+    if out is not None and (not isinstance(out, dict) or out.get("type") not in LIVING_RULE_TYPES):
+        kind = out.get("type") if isinstance(out, dict) else type(out).__name__
+        raise ValueError(f"unsupported recurrence type: {kind!r}")
     return out
 
 
@@ -93,8 +124,6 @@ def _legacy_interval(rtype: str, rule: dict) -> int:
     if rtype == "weekdays":
         days = [d for d in (_to_int(x) for x in rule.get("days") or []) if d is not None]
         return max(1, round(7 / len(days))) if days else 7
-    if rtype == "monthly":
-        return 30
     every_n_weeks = _to_int(rule.get("every_n_weeks"), 1) or 1
     return max(1, every_n_weeks * 7)
 

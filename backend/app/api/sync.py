@@ -35,7 +35,7 @@ from app.services.bonus_malus import (
     resolve_stored_reason_and_mult,
 )
 from app.api.tasks import replace_task_contexts
-from app.services.recurrence import normalize_recurrence_rule
+from app.services.recurrence import checked_recurrence_rule
 from app.utils.changelog import record_change
 
 router = APIRouter(prefix="/api", tags=["sync"])
@@ -76,7 +76,13 @@ async def sync(
             continue
 
         try:
-            result = await _apply_op(session, op, user_id, foyer_id, body.device_id)
+            # One SAVEPOINT per op: a failing op rolls back ITSELF only. Until
+            # 2026-09-30 the handlers below called `session.rollback()`, which
+            # also undid every op applied earlier in the same batch — ops
+            # already reported `applied`, which the client then drops from its
+            # queue: silent data loss.
+            async with session.begin_nested():
+                result = await _apply_op(session, op, user_id, foyer_id, body.device_id)
             applied.append(result)
         except StaleUpdateError as e:
             conflicts.append(SyncConflict(
@@ -87,7 +93,6 @@ async def sync(
                 reason="stale_update",
             ))
         except IntegrityError:
-            await session.rollback()
             conflicts.append(SyncConflict(
                 client_op_id=op.client_op_id,
                 table=op.table,
@@ -105,12 +110,12 @@ async def sync(
             # docs/cache-conventions.md + commit 08d4a2c (deploy ordering).
             # StaleUpdateError / IntegrityError sont catches au-dessus :
             # ce bloc ne voit que l'inattendu.
-            await session.rollback()
             conflicts.append(SyncConflict(
                 client_op_id=op.client_op_id,
                 table=op.table,
                 row_id=op.row_id,
-                reason=f"op_error: {type(e).__name__}: {e}",
+                reason="op_error",
+                detail=f"{type(e).__name__}: {e}",
             ))
 
     await session.commit()
@@ -236,7 +241,7 @@ async def _handle_task(
             foyer_id=foyer_uuid,
             title=data.get("title", "Sans titre"),
             description=data.get("description"),
-            recurrence_rule=normalize_recurrence_rule(data.get("recurrence_rule")),
+            recurrence_rule=checked_recurrence_rule(data.get("recurrence_rule")),
             weight=data.get("weight", 1),
             tolerance=data.get("tolerance", "NORMAL"),
         )
@@ -283,7 +288,7 @@ async def _handle_task(
                     session, row, [uuid.UUID(c) for c in (val or [])]
                 )
             elif key == "recurrence_rule":
-                setattr(row, key, normalize_recurrence_rule(val))
+                setattr(row, key, checked_recurrence_rule(val))
             elif hasattr(row, key):
                 setattr(row, key, val)
         row.version += 1
