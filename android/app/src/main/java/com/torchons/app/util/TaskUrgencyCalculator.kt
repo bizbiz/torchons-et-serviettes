@@ -143,17 +143,20 @@ object TaskUrgencyCalculator {
      * Calendar anchoring, mirror of `next_due` in recurrence.py: the latest
      * PAST occurrence stays due until honoured, then the next one is aimed at.
      * The due date never depends on when the task was done — no drift.
+     * A completion honours an occurrence once its orange window has opened:
+     * done on 10 May for the 15th, the task does not turn red on the 16th.
      */
     private fun nextCalendarDue(rule: RecurrenceRule, lastDate: LocalDate, today: LocalDate): LocalDate? {
         val months = rule.months?.filter { it in 1..12 }?.takeIf { it.isNotEmpty() } ?: listOf(1)
         val day = (rule.day ?: 1).coerceIn(1, 28)
-        val candidates = (today.year - 1..today.year + 1).flatMap { y ->
+        // today.year + 2: a yearly deadline honoured early (30 Dec for 1 Jan)
+        // aims at the year after next.
+        val candidates = (today.year - 1..today.year + 2).flatMap { y ->
             months.map { m -> LocalDate.of(y, m, day) }
-        }
-        val latestPast = candidates.filter { !it.isAfter(today) }.maxOrNull()
-        val nextFuture = candidates.filter { it.isAfter(today) }.minOrNull()
-        if (latestPast == null) return nextFuture
-        return if (!lastDate.isBefore(latestPast)) nextFuture else latestPast
+        }.sorted()
+        val window = orangeWindowDays(rule).toLong()
+        val start = candidates.filter { !it.isAfter(today) }.maxOrNull() ?: today
+        return candidates.firstOrNull { !it.isBefore(start) && lastDate.isBefore(it.minusDays(window)) }
     }
 
     /**

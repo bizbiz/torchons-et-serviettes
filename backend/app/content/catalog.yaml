@@ -29,14 +29,15 @@
 # GENERE depuis le document de relecture v3 par scripts/v3_to_catalog.py. Le
 # markdown reste la source editoriale : corriger la-bas, puis regenerer.
 #
-# TODO i18n : les libelles `en` sont pour l'instant identiques aux `fr` — le
-# document source est francais. A traduire avant toute diffusion anglophone.
+# The `en` labels live HERE, not in the (French-only) markdown: regenerating
+# keeps them, matched by key, and seeds a new entry with its French label.
+# tests/test_catalog_translations.py fails on any label left untranslated.
 
 contexts:
 - key: logement
   name:
     fr: Logement
-    en: Logement
+    en: Home
   emoji: 🏠
   default_selected: true
   selectable: true
@@ -45,7 +46,7 @@ contexts:
 - key: cuisine
   name:
     fr: Cuisine
-    en: Cuisine
+    en: Kitchen
   emoji: 🍳
   default_selected: true
   selectable: true
@@ -54,7 +55,7 @@ contexts:
 - key: salle_de_bain
   name:
     fr: Salle de bain
-    en: Salle de bain
+    en: Bathroom
   emoji: 🚿
   default_selected: true
   selectable: true
@@ -63,7 +64,7 @@ contexts:
 - key: toilettes
   name:
     fr: Toilettes
-    en: Toilettes
+    en: Toilet
   emoji: 🚽
   default_selected: true
   selectable: true
@@ -72,7 +73,7 @@ contexts:
 - key: chambre
   name:
     fr: Chambre
-    en: Chambre
+    en: Bedroom
   emoji: 🛏
   default_selected: true
   selectable: true
@@ -81,7 +82,7 @@ contexts:
 - key: salon
   name:
     fr: Salon
-    en: Salon
+    en: Living room
   emoji: 🛋
   default_selected: false
   selectable: true
@@ -90,7 +91,7 @@ contexts:
 - key: entree
   name:
     fr: Entrée
-    en: Entrée
+    en: Entrance
   emoji: 🚪
   default_selected: false
   selectable: true
@@ -99,7 +100,7 @@ contexts:
 - key: couloir
   name:
     fr: Couloir
-    en: Couloir
+    en: Hallway
   emoji: 🧭
   default_selected: false
   selectable: true
@@ -108,7 +109,7 @@ contexts:
 - key: buanderie
   name:
     fr: Buanderie
-    en: Buanderie
+    en: Laundry room
   emoji: 🧺
   default_selected: false
   selectable: true
@@ -117,7 +118,7 @@ contexts:
 - key: bureau
   name:
     fr: Bureau
-    en: Bureau
+    en: Office
   emoji: 💼
   default_selected: false
   selectable: true
@@ -135,7 +136,7 @@ contexts:
 - key: cave
   name:
     fr: Cave
-    en: Cave
+    en: Cellar
   emoji: 🍷
   default_selected: false
   selectable: true
@@ -144,7 +145,7 @@ contexts:
 - key: grenier
   name:
     fr: Grenier
-    en: Grenier
+    en: Attic
   emoji: 📦
   default_selected: false
   selectable: true
@@ -153,7 +154,7 @@ contexts:
 - key: cheminee_poele
   name:
     fr: Cheminée / poêle
-    en: Cheminée / poêle
+    en: Fireplace / stove
   emoji: 🔥
   default_selected: false
   selectable: true
@@ -162,7 +163,7 @@ contexts:
 - key: balcon
   name:
     fr: Balcon
-    en: Balcon
+    en: Balcony
   emoji: 🌿
   default_selected: false
   selectable: true
@@ -171,7 +172,7 @@ contexts:
 - key: terrasse
   name:
     fr: Terrasse
-    en: Terrasse
+    en: Patio
   emoji: 🪑
   default_selected: false
   selectable: true
@@ -180,7 +181,7 @@ contexts:
 - key: jardin
   name:
     fr: Jardin
-    en: Jardin
+    en: Garden
   emoji: 🌳
   default_selected: false
   selectable: true
@@ -189,7 +190,7 @@ contexts:
 - key: potager
   name:
     fr: Potager
-    en: Potager
+    en: Vegetable garden
   emoji: 🥕
   default_selected: false
   selectable: true
@@ -198,7 +199,7 @@ contexts:
 - key: piscine
   name:
     fr: Piscine
-    en: Piscine
+    en: Swimming pool
   emoji: 🏊
   default_selected: false
   selectable: true
@@ -216,7 +217,7 @@ contexts:
 - key: chat
   name:
     fr: Chat
-    en: Chat
+    en: Cat
   emoji: 🐱
   default_selected: false
   selectable: true
@@ -225,7 +226,7 @@ contexts:
 - key: chien
   name:
     fr: Chien
-    en: Chien
+    en: Dog
   emoji: 🐕
   default_selected: false
   selectable: true
@@ -234,7 +235,7 @@ contexts:
 - key: rongeur
   name:
     fr: Rongeur
-    en: Rongeur
+    en: Rodent
   emoji: 🐹
   default_selected: false
   selectable: true
@@ -243,7 +244,7 @@ contexts:
 - key: oiseau
   name:
     fr: Oiseau
-    en: Oiseau
+    en: Bird
   emoji: 🐦
   default_selected: false
   selectable: true
@@ -252,7 +253,7 @@ contexts:
 - key: poissons
   name:
     fr: Poissons
-    en: Poissons
+    en: Fish
   emoji: 🐠
   default_selected: false
   selectable: true
@@ -261,7 +262,7 @@ contexts:
 - key: poules
   name:
     fr: Poules
-    en: Poules
+    en: Chickens
   emoji: 🐔
   default_selected: false
   selectable: true
@@ -270,7 +271,7 @@ contexts:
 - key: plantes_d_interieur
   name:
     fr: Plantes d'intérieur
-    en: Plantes d'intérieur
+    en: Houseplants
   emoji: 🪴
   default_selected: false
   selectable: true
@@ -279,7 +280,7 @@ contexts:
 - key: administratif
   name:
     fr: Administratif
-    en: Administratif
+    en: Paperwork
   emoji: 📄
   default_selected: true
   selectable: true
@@ -288,7 +289,7 @@ contexts:
 - key: sante_et_soins
   name:
     fr: Santé et soins
-    en: Santé et soins
+    en: Health and self-care
   emoji: 💆
   default_selected: false
   selectable: true
@@ -297,7 +298,7 @@ contexts:
 - key: voiture
   name:
     fr: Voiture
-    en: Voiture
+    en: Car
   emoji: 🚙
   default_selected: false
   selectable: true
@@ -306,7 +307,7 @@ contexts:
 - key: velo
   name:
     fr: Vélo
-    en: Vélo
+    en: Bike
   emoji: 🚲
   default_selected: false
   selectable: true
@@ -315,7 +316,7 @@ contexts:
 - key: bebe
   name:
     fr: Bébé
-    en: Bébé
+    en: Baby
   emoji: 🍼
   default_selected: false
   selectable: true
@@ -324,7 +325,7 @@ contexts:
 - key: colocation
   name:
     fr: Colocation
-    en: Colocation
+    en: Flatshare
   emoji: 🤝
   default_selected: false
   selectable: true
@@ -333,7 +334,7 @@ contexts:
 - key: menage
   name:
     fr: Ménage
-    en: Ménage
+    en: Cleaning
   emoji: 🧹
   default_selected: false
   selectable: false
@@ -342,7 +343,7 @@ contexts:
 - key: linge
   name:
     fr: Linge
-    en: Linge
+    en: Laundry
   emoji: 👕
   default_selected: false
   selectable: false
@@ -351,7 +352,7 @@ contexts:
 - key: entretien
   name:
     fr: Entretien
-    en: Entretien
+    en: Maintenance
   emoji: 🔧
   default_selected: false
   selectable: false
@@ -360,7 +361,7 @@ contexts:
 - key: courses
   name:
     fr: Courses
-    en: Courses
+    en: Groceries
   emoji: 🛒
   # Selectionnable et pre-coche, contrairement a menage / linge / entretien :
   # `courses` porte des taches PROPRES (faire les courses, verifier les
@@ -375,7 +376,7 @@ tasks:
 - key: aerer_la_maison
   title:
     fr: Aérer la maison
-    en: Aérer la maison
+    en: Air out the house
   contexts:
   - logement
   - menage
@@ -387,7 +388,7 @@ tasks:
 - key: nettoyer_l_aspirateur_sac_filtre
   title:
     fr: Nettoyer l'aspirateur (sac / filtre)
-    en: Nettoyer l'aspirateur (sac / filtre)
+    en: Clean the vacuum cleaner (bag / filter)
   contexts:
   - logement
   - entretien
@@ -399,7 +400,7 @@ tasks:
 - key: nettoyer_les_interrupteurs_et_poignees
   title:
     fr: Nettoyer les interrupteurs et poignées
-    en: Nettoyer les interrupteurs et poignées
+    en: Clean light switches and door handles
   contexts:
   - logement
   - menage
@@ -411,7 +412,7 @@ tasks:
 - key: tester_les_detecteurs_de_fumee
   title:
     fr: Tester les détecteurs de fumée
-    en: Tester les détecteurs de fumée
+    en: Test the smoke detectors
   contexts:
   - logement
   - entretien
@@ -423,7 +424,7 @@ tasks:
 - key: changer_les_piles_des_detecteurs
   title:
     fr: Changer les piles des détecteurs
-    en: Changer les piles des détecteurs
+    en: Replace the detector batteries
   contexts:
   - logement
   - entretien
@@ -437,7 +438,7 @@ tasks:
 - key: nettoyer_les_bouches_de_vmc_grilles_d_aeration
   title:
     fr: Nettoyer les bouches de VMC / grilles d'aération
-    en: Nettoyer les bouches de VMC / grilles d'aération
+    en: Clean ventilation outlets / air vents
   contexts:
   - logement
   - entretien
@@ -449,7 +450,7 @@ tasks:
 - key: faire_entretenir_la_chaudiere_pro_obligation_ann
   title:
     fr: Faire entretenir la chaudière (pro, obligation annuelle)
-    en: Faire entretenir la chaudière (pro, obligation annuelle)
+    en: Have the boiler serviced (professional, yearly requirement)
   contexts:
   - logement
   - entretien
@@ -464,7 +465,7 @@ tasks:
 - key: purger_les_radiateurs
   title:
     fr: Purger les radiateurs
-    en: Purger les radiateurs
+    en: Bleed the radiators
   contexts:
   - logement
   - entretien
@@ -478,7 +479,7 @@ tasks:
 - key: nettoyer_les_filtres_de_climatisation
   title:
     fr: Nettoyer les filtres de climatisation
-    en: Nettoyer les filtres de climatisation
+    en: Clean the air conditioning filters
   contexts:
   - logement
   - entretien
@@ -502,7 +503,7 @@ tasks:
 - key: nettoyer_les_plinthes
   title:
     fr: Nettoyer les plinthes
-    en: Nettoyer les plinthes
+    en: Clean the skirting boards
   contexts:
   - logement
   - menage
@@ -514,7 +515,7 @@ tasks:
 - key: depoussierer_luminaires_et_abat_jour
   title:
     fr: Dépoussiérer luminaires et abat-jour
-    en: Dépoussiérer luminaires et abat-jour
+    en: Dust light fittings and lampshades
   contexts:
   - logement
   - menage
@@ -526,7 +527,7 @@ tasks:
 - key: verifier_fuites_et_joints_sous_eviers_silicone
   title:
     fr: Vérifier fuites et joints (sous éviers, silicone)
-    en: Vérifier fuites et joints (sous éviers, silicone)
+    en: Check for leaks and seals (under sinks, silicone)
   contexts:
   - logement
   - entretien
@@ -538,7 +539,7 @@ tasks:
 - key: detartrer_robinets_et_mousseurs
   title:
     fr: Détartrer robinets et mousseurs
-    en: Détartrer robinets et mousseurs
+    en: Descale taps and aerators
   contexts:
   - logement
   - entretien
@@ -550,7 +551,7 @@ tasks:
 - key: faire_la_vaisselle
   title:
     fr: Faire la vaisselle
-    en: Faire la vaisselle
+    en: Do the dishes
   contexts:
   - cuisine
   default_weight: 4
@@ -561,7 +562,7 @@ tasks:
 - key: nettoyer_le_plan_de_travail
   title:
     fr: Nettoyer le plan de travail
-    en: Nettoyer le plan de travail
+    en: Wipe the countertop
   contexts:
   - cuisine
   default_weight: 1
@@ -571,7 +572,7 @@ tasks:
 - key: sortir_les_poubelles
   title:
     fr: Sortir les poubelles
-    en: Sortir les poubelles
+    en: Take out the bins
   contexts:
   - cuisine
   - menage
@@ -583,7 +584,7 @@ tasks:
 - key: nettoyer_le_frigo
   title:
     fr: Nettoyer le frigo
-    en: Nettoyer le frigo
+    en: Clean the fridge
   contexts:
   - cuisine
   default_weight: 9
@@ -594,7 +595,7 @@ tasks:
 - key: detartrer_la_bouilloire
   title:
     fr: Détartrer la bouilloire
-    en: Détartrer la bouilloire
+    en: Descale the kettle
   contexts:
   - cuisine
   default_weight: 2
@@ -605,7 +606,7 @@ tasks:
 - key: passer_la_serpillere
   title:
     fr: Passer la serpillère
-    en: Passer la serpillère
+    en: Mop the floor
   contexts:
   - cuisine
   - menage
@@ -617,7 +618,7 @@ tasks:
 - key: nettoyer_le_filtre_du_lave_vaisselle
   title:
     fr: Nettoyer le filtre du lave-vaisselle
-    en: Nettoyer le filtre du lave-vaisselle
+    en: Clean the dishwasher filter
   contexts:
   - cuisine
   - entretien
@@ -629,7 +630,7 @@ tasks:
 - key: detartrer_la_cafetiere
   title:
     fr: Détartrer la cafetière
-    en: Détartrer la cafetière
+    en: Descale the coffee maker
   contexts:
   - cuisine
   - entretien
@@ -641,7 +642,7 @@ tasks:
 - key: aiguiser_les_couteaux
   title:
     fr: Aiguiser les couteaux
-    en: Aiguiser les couteaux
+    en: Sharpen the knives
   contexts:
   - cuisine
   - entretien
@@ -653,7 +654,7 @@ tasks:
 - key: degivrer_le_congelateur
   title:
     fr: Dégivrer le congélateur
-    en: Dégivrer le congélateur
+    en: Defrost the freezer
   contexts:
   - cuisine
   - entretien
@@ -665,7 +666,7 @@ tasks:
 - key: sortir_le_verre_point_d_apport
   title:
     fr: Sortir le verre (point d'apport)
-    en: Sortir le verre (point d'apport)
+    en: Take the glass to the bottle bank
   contexts:
   - cuisine
   - menage
@@ -677,7 +678,7 @@ tasks:
 - key: sortir_le_tri_emballages_cartons
   title:
     fr: Sortir le tri (emballages, cartons)
-    en: Sortir le tri (emballages, cartons)
+    en: Take out the recycling (packaging, cardboard)
   contexts:
   - cuisine
   - menage
@@ -688,7 +689,7 @@ tasks:
 - key: nettoyer_le_micro_ondes
   title:
     fr: Nettoyer le micro-ondes
-    en: Nettoyer le micro-ondes
+    en: Clean the microwave
   contexts:
   - cuisine
   - menage
@@ -700,7 +701,7 @@ tasks:
 - key: nettoyer_le_four
   title:
     fr: Nettoyer le four
-    en: Nettoyer le four
+    en: Clean the oven
   contexts:
   - cuisine
   - entretien
@@ -712,7 +713,7 @@ tasks:
 - key: nettoyer_la_hotte_et_ses_filtres
   title:
     fr: Nettoyer la hotte et ses filtres
-    en: Nettoyer la hotte et ses filtres
+    en: Clean the cooker hood and its filters
   contexts:
   - cuisine
   - entretien
@@ -724,7 +725,7 @@ tasks:
 - key: nettoyer_l_evier_et_le_siphon
   title:
     fr: Nettoyer l'évier et le siphon
-    en: Nettoyer l'évier et le siphon
+    en: Clean the sink and the trap
   contexts:
   - cuisine
   - menage
@@ -736,7 +737,7 @@ tasks:
 - key: laver_la_poubelle
   title:
     fr: Laver la poubelle
-    en: Laver la poubelle
+    en: Wash the bin
   contexts:
   - cuisine
   - menage
@@ -748,7 +749,7 @@ tasks:
 - key: changer_l_eponge_lavette
   title:
     fr: Changer l'éponge / lavette
-    en: Changer l'éponge / lavette
+    en: Replace the sponge / dishcloth
   contexts:
   - cuisine
   default_weight: 1
@@ -759,7 +760,7 @@ tasks:
 - key: laver_les_torchons
   title:
     fr: Laver les torchons
-    en: Laver les torchons
+    en: Wash the tea towels
   contexts:
   - cuisine
   - linge
@@ -771,7 +772,7 @@ tasks:
 - key: verifier_les_dates_de_peremption_frigo_placards
   title:
     fr: Vérifier les dates de péremption (frigo, placards)
-    en: Vérifier les dates de péremption (frigo, placards)
+    en: Check expiry dates (fridge, cupboards)
   contexts:
   - cuisine
   - courses
@@ -783,7 +784,7 @@ tasks:
 - key: nettoyer_l_interieur_des_placards
   title:
     fr: Nettoyer l'intérieur des placards
-    en: Nettoyer l'intérieur des placards
+    en: Clean inside the cupboards
   contexts:
   - cuisine
   - menage
@@ -795,7 +796,7 @@ tasks:
 - key: nettoyer_la_salle_de_bain
   title:
     fr: Nettoyer la salle de bain
-    en: Nettoyer la salle de bain
+    en: Clean the bathroom
   contexts:
   - salle_de_bain
   - menage
@@ -808,7 +809,7 @@ tasks:
 - key: changer_les_serviettes_de_bain
   title:
     fr: Changer les serviettes de bain
-    en: Changer les serviettes de bain
+    en: Change the bath towels
   contexts:
   - salle_de_bain
   - linge
@@ -820,7 +821,7 @@ tasks:
 - key: laver_le_tapis_de_bain
   title:
     fr: Laver le tapis de bain
-    en: Laver le tapis de bain
+    en: Wash the bath mat
   contexts:
   - salle_de_bain
   - linge
@@ -832,7 +833,7 @@ tasks:
 - key: laver_le_rideau_de_douche_nettoyer_les_joints
   title:
     fr: Laver le rideau de douche / nettoyer les joints
-    en: Laver le rideau de douche / nettoyer les joints
+    en: Wash the shower curtain / clean the grout
   contexts:
   - salle_de_bain
   - menage
@@ -844,7 +845,7 @@ tasks:
 - key: detartrer_le_pommeau_de_douche
   title:
     fr: Détartrer le pommeau de douche
-    en: Détartrer le pommeau de douche
+    en: Descale the shower head
   contexts:
   - salle_de_bain
   - entretien
@@ -856,7 +857,7 @@ tasks:
 - key: deboucher_nettoyer_les_siphons_et_bondes
   title:
     fr: Déboucher / nettoyer les siphons et bondes
-    en: Déboucher / nettoyer les siphons et bondes
+    en: Unclog / clean traps and drains
   contexts:
   - salle_de_bain
   - entretien
@@ -868,7 +869,7 @@ tasks:
 - key: nettoyer_les_toilettes
   title:
     fr: Nettoyer les toilettes
-    en: Nettoyer les toilettes
+    en: Clean the toilet
   contexts:
   - toilettes
   - menage
@@ -881,7 +882,7 @@ tasks:
 - key: detartrer_la_cuvette_en_profondeur
   title:
     fr: Détartrer la cuvette en profondeur
-    en: Détartrer la cuvette en profondeur
+    en: Deep-descale the toilet bowl
   contexts:
   - toilettes
   - menage
@@ -893,7 +894,7 @@ tasks:
 - key: changer_la_brosse_wc
   title:
     fr: Changer la brosse WC
-    en: Changer la brosse WC
+    en: Replace the toilet brush
   contexts:
   - toilettes
   - courses
@@ -905,7 +906,7 @@ tasks:
 - key: plier_et_ranger_le_linge
   title:
     fr: Plier et ranger le linge
-    en: Plier et ranger le linge
+    en: Fold and put away the laundry
   contexts:
   - chambre
   - linge
@@ -916,7 +917,7 @@ tasks:
 - key: changer_les_draps_du_lit
   title:
     fr: Changer les draps du lit
-    en: Changer les draps du lit
+    en: Change the bed sheets
   contexts:
   - chambre
   - linge
@@ -929,7 +930,7 @@ tasks:
 - key: aspirer_et_retourner_le_matelas
   title:
     fr: Aspirer et retourner le matelas
-    en: Aspirer et retourner le matelas
+    en: Vacuum and flip the mattress
   contexts:
   - chambre
   - menage
@@ -941,7 +942,7 @@ tasks:
 - key: laver_oreillers_et_couette
   title:
     fr: Laver oreillers et couette
-    en: Laver oreillers et couette
+    en: Wash pillows and duvet
   contexts:
   - chambre
   - linge
@@ -953,7 +954,7 @@ tasks:
 - key: trier_la_garde_robe_selon_la_saison
   title:
     fr: Trier la garde-robe selon la saison
-    en: Trier la garde-robe selon la saison
+    en: Sort the wardrobe for the season
   contexts:
   - chambre
   default_weight: 12
@@ -967,7 +968,7 @@ tasks:
 - key: passer_l_aspirateur
   title:
     fr: Passer l'aspirateur
-    en: Passer l'aspirateur
+    en: Vacuum
   contexts:
   - salon
   - menage
@@ -980,7 +981,7 @@ tasks:
 - key: depoussierer_les_meubles
   title:
     fr: Dépoussiérer les meubles
-    en: Dépoussiérer les meubles
+    en: Dust the furniture
   contexts:
   - salon
   - menage
@@ -993,7 +994,7 @@ tasks:
 - key: nettoyer_les_vitres
   title:
     fr: Nettoyer les vitres
-    en: Nettoyer les vitres
+    en: Clean the windows
   contexts:
   - salon
   - menage
@@ -1005,7 +1006,7 @@ tasks:
 - key: aspirer_le_canape_et_sous_les_coussins
   title:
     fr: Aspirer le canapé (et sous les coussins)
-    en: Aspirer le canapé (et sous les coussins)
+    en: Vacuum the sofa (and under the cushions)
   contexts:
   - salon
   - menage
@@ -1017,7 +1018,7 @@ tasks:
 - key: laver_plaids_et_housses_de_coussin
   title:
     fr: Laver plaids et housses de coussin
-    en: Laver plaids et housses de coussin
+    en: Wash throws and cushion covers
   contexts:
   - salon
   - linge
@@ -1029,7 +1030,7 @@ tasks:
 - key: nettoyer_ecrans_et_telecommandes
   title:
     fr: Nettoyer écrans et télécommandes
-    en: Nettoyer écrans et télécommandes
+    en: Clean screens and remote controls
   contexts:
   - salon
   - menage
@@ -1041,7 +1042,7 @@ tasks:
 - key: secouer_nettoyer_le_paillasson
   title:
     fr: Secouer / nettoyer le paillasson
-    en: Secouer / nettoyer le paillasson
+    en: Shake out / clean the doormat
   contexts:
   - entree
   - menage
@@ -1053,7 +1054,7 @@ tasks:
 - key: ranger_chaussures_et_manteaux
   title:
     fr: Ranger chaussures et manteaux
-    en: Ranger chaussures et manteaux
+    en: Put away shoes and coats
   contexts:
   - entree
   - menage
@@ -1065,7 +1066,7 @@ tasks:
 - key: trier_le_courrier_et_les_papiers_qui_trainent
   title:
     fr: Trier le courrier et les papiers qui traînent
-    en: Trier le courrier et les papiers qui traînent
+    en: Sort the mail and stray papers
   contexts:
   - entree
   - administratif
@@ -1076,7 +1077,7 @@ tasks:
 - key: depoussierer_cadres_etageres_et_plinthes_du_coul
   title:
     fr: Dépoussiérer cadres, étagères et plinthes du couloir
-    en: Dépoussiérer cadres, étagères et plinthes du couloir
+    en: Dust frames, shelves and skirting boards in the hallway
   contexts:
   - couloir
   - menage
@@ -1089,7 +1090,7 @@ tasks:
 - key: lancer_une_machine_a_laver
   title:
     fr: Lancer une machine à laver
-    en: Lancer une machine à laver
+    en: Run a load of washing
   contexts:
   - buanderie
   - linge
@@ -1101,7 +1102,7 @@ tasks:
 - key: etendre_le_linge
   title:
     fr: Étendre le linge
-    en: Étendre le linge
+    en: Hang out the laundry
   contexts:
   - buanderie
   - linge
@@ -1113,7 +1114,7 @@ tasks:
 - key: nettoyer_le_filtre_du_lave_linge
   title:
     fr: Nettoyer le filtre du lave-linge
-    en: Nettoyer le filtre du lave-linge
+    en: Clean the washing machine filter
   contexts:
   - buanderie
   - entretien
@@ -1125,7 +1126,7 @@ tasks:
 - key: nettoyer_le_lave_linge_joint_bac_a_lessive_cycle
   title:
     fr: Nettoyer le lave-linge (joint, bac à lessive, cycle 90°)
-    en: Nettoyer le lave-linge (joint, bac à lessive, cycle 90°)
+    en: Clean the washing machine (seal, detergent drawer, 90° cycle)
   contexts:
   - buanderie
   - entretien
@@ -1137,7 +1138,7 @@ tasks:
 - key: nettoyer_le_filtre_du_seche_linge
   title:
     fr: Nettoyer le filtre du sèche-linge
-    en: Nettoyer le filtre du sèche-linge
+    en: Clean the tumble dryer filter
   contexts:
   - buanderie
   - entretien
@@ -1149,7 +1150,7 @@ tasks:
 - key: detartrer_le_fer_la_centrale_vapeur
   title:
     fr: Détartrer le fer / la centrale vapeur
-    en: Détartrer le fer / la centrale vapeur
+    en: Descale the iron / steam generator
   contexts:
   - buanderie
   - entretien
@@ -1161,7 +1162,7 @@ tasks:
 - key: repasser
   title:
     fr: Repasser
-    en: Repasser
+    en: Do the ironing
   contexts:
   - buanderie
   - linge
@@ -1172,7 +1173,7 @@ tasks:
 - key: nettoyer_ecran_clavier_et_souris
   title:
     fr: Nettoyer écran, clavier et souris
-    en: Nettoyer écran, clavier et souris
+    en: Clean screen, keyboard and mouse
   contexts:
   - bureau
   - menage
@@ -1184,7 +1185,7 @@ tasks:
 - key: trier_et_classer_les_papiers
   title:
     fr: Trier et classer les papiers
-    en: Trier et classer les papiers
+    en: Sort and file the paperwork
   contexts:
   - bureau
   - administratif
@@ -1197,7 +1198,7 @@ tasks:
 - key: sauvegarder_l_ordinateur
   title:
     fr: Sauvegarder l'ordinateur
-    en: Sauvegarder l'ordinateur
+    en: Back up the computer
   contexts:
   - bureau
   - administratif
@@ -1209,7 +1210,7 @@ tasks:
 - key: ranger_le_garage
   title:
     fr: Ranger le garage
-    en: Ranger le garage
+    en: Tidy the garage
   contexts:
   - garage
   - menage
@@ -1221,7 +1222,7 @@ tasks:
 - key: balayer_le_sol_du_garage
   title:
     fr: Balayer le sol du garage
-    en: Balayer le sol du garage
+    en: Sweep the garage floor
   contexts:
   - garage
   - menage
@@ -1234,7 +1235,7 @@ tasks:
 - key: verifier_la_cave_humidite_stock
   title:
     fr: Vérifier la cave (humidité, stock)
-    en: Vérifier la cave (humidité, stock)
+    en: Check the cellar (damp, supplies)
   contexts:
   - cave
   default_weight: 3
@@ -1246,7 +1247,7 @@ tasks:
 - key: verifier_le_grenier_fuites_nuisibles_aeration
   title:
     fr: Vérifier le grenier (fuites, nuisibles, aération)
-    en: Vérifier le grenier (fuites, nuisibles, aération)
+    en: Check the attic (leaks, pests, ventilation)
   contexts:
   - grenier
   - entretien
@@ -1259,7 +1260,7 @@ tasks:
 - key: vider_les_cendres
   title:
     fr: Vider les cendres
-    en: Vider les cendres
+    en: Empty the ashes
   contexts:
   - cheminee_poele
   - menage
@@ -1284,7 +1285,7 @@ tasks:
 - key: rentrer_du_bois
   title:
     fr: Rentrer du bois
-    en: Rentrer du bois
+    en: Bring in firewood
   contexts:
   - cheminee_poele
   default_weight: 4
@@ -1295,7 +1296,7 @@ tasks:
 - key: faire_ramoner_le_conduit_obligation_1_a_2_an
   title:
     fr: Faire ramoner le conduit (obligation, 1 à 2×/an)
-    en: Faire ramoner le conduit (obligation, 1 à 2×/an)
+    en: Have the chimney swept (required, 1 to 2×/year)
   contexts:
   - cheminee_poele
   - entretien
@@ -1309,7 +1310,7 @@ tasks:
 - key: balayer_le_balcon
   title:
     fr: Balayer le balcon
-    en: Balayer le balcon
+    en: Sweep the balcony
   contexts:
   - balcon
   - menage
@@ -1322,7 +1323,7 @@ tasks:
 - key: arroser_les_jardinieres
   title:
     fr: Arroser les jardinières
-    en: Arroser les jardinières
+    en: Water the window boxes
   contexts:
   - balcon
   default_weight: 2
@@ -1346,7 +1347,7 @@ tasks:
 - key: nettoyer_garde_corps_et_rebords
   title:
     fr: Nettoyer garde-corps et rebords
-    en: Nettoyer garde-corps et rebords
+    en: Clean railings and ledges
   contexts:
   - balcon
   - menage
@@ -1358,7 +1359,7 @@ tasks:
 - key: balayer_la_terrasse
   title:
     fr: Balayer la terrasse
-    en: Balayer la terrasse
+    en: Sweep the patio
   contexts:
   - terrasse
   - menage
@@ -1371,7 +1372,7 @@ tasks:
 - key: nettoyer_le_mobilier_de_jardin
   title:
     fr: Nettoyer le mobilier de jardin
-    en: Nettoyer le mobilier de jardin
+    en: Clean the garden furniture
   contexts:
   - terrasse
   - menage
@@ -1395,7 +1396,7 @@ tasks:
 - key: rentrer_sortir_le_mobilier_de_jardin
   title:
     fr: Rentrer / sortir le mobilier de jardin
-    en: Rentrer / sortir le mobilier de jardin
+    en: Bring in / put out the garden furniture
   contexts:
   - terrasse
   default_weight: 9
@@ -1409,7 +1410,7 @@ tasks:
 - key: nettoyer_le_barbecue_la_plancha
   title:
     fr: Nettoyer le barbecue / la plancha
-    en: Nettoyer le barbecue / la plancha
+    en: Clean the barbecue / griddle
   contexts:
   - terrasse
   - menage
@@ -1433,7 +1434,7 @@ tasks:
 - key: demousser_la_terrasse_karcher_brosse
   title:
     fr: Démousser la terrasse (karcher, brosse)
-    en: Démousser la terrasse (karcher, brosse)
+    en: Remove moss from the patio (pressure washer, brush)
   contexts:
   - terrasse
   - entretien
@@ -1448,7 +1449,7 @@ tasks:
 - key: tondre_la_pelouse
   title:
     fr: Tondre la pelouse
-    en: Tondre la pelouse
+    en: Mow the lawn
   contexts:
   - jardin
   default_weight: 12
@@ -1472,7 +1473,7 @@ tasks:
 - key: arroser_les_plantes_exterieures
   title:
     fr: Arroser les plantes extérieures
-    en: Arroser les plantes extérieures
+    en: Water the outdoor plants
   contexts:
   - jardin
   default_weight: 3
@@ -1496,7 +1497,7 @@ tasks:
 - key: tailler_les_arbres_et_haies
   title:
     fr: Tailler les arbres et haies
-    en: Tailler les arbres et haies
+    en: Prune trees and hedges
   contexts:
   - jardin
   default_weight: 36
@@ -1507,7 +1508,7 @@ tasks:
 - key: desherber
   title:
     fr: Désherber
-    en: Désherber
+    en: Weed
   contexts:
   - jardin
   default_weight: 12
@@ -1530,7 +1531,7 @@ tasks:
 - key: ramasser_les_feuilles
   title:
     fr: Ramasser les feuilles
-    en: Ramasser les feuilles
+    en: Rake the leaves
   contexts:
   - jardin
   default_weight: 9
@@ -1553,7 +1554,7 @@ tasks:
 - key: nettoyer_les_gouttieres
   title:
     fr: Nettoyer les gouttières
-    en: Nettoyer les gouttières
+    en: Clean the gutters
   contexts:
   - jardin
   - entretien
@@ -1568,7 +1569,7 @@ tasks:
 - key: scarifier_fertiliser_la_pelouse
   title:
     fr: Scarifier / fertiliser la pelouse
-    en: Scarifier / fertiliser la pelouse
+    en: Scarify / fertilise the lawn
   contexts:
   - jardin
   default_weight: 18
@@ -1582,7 +1583,7 @@ tasks:
 - key: proteger_les_plantes_du_gel_voilage_rentrer_les_
   title:
     fr: Protéger les plantes du gel (voilage, rentrer les pots)
-    en: Protéger les plantes du gel (voilage, rentrer les pots)
+    en: Protect plants from frost (fleece, bring pots inside)
   contexts:
   - jardin
   default_weight: 9
@@ -1595,7 +1596,7 @@ tasks:
 - key: entretenir_les_outils_tondeuse_taille_haie
   title:
     fr: Entretenir les outils (tondeuse, taille-haie)
-    en: Entretenir les outils (tondeuse, taille-haie)
+    en: Maintain the tools (mower, hedge trimmer)
   contexts:
   - jardin
   - entretien
@@ -1609,7 +1610,7 @@ tasks:
 - key: arroser_le_potager
   title:
     fr: Arroser le potager
-    en: Arroser le potager
+    en: Water the vegetable garden
   contexts:
   - potager
   default_weight: 2
@@ -1633,7 +1634,7 @@ tasks:
 - key: recolter
   title:
     fr: Récolter
-    en: Récolter
+    en: Harvest
   contexts:
   - potager
   default_weight: 4
@@ -1643,7 +1644,7 @@ tasks:
 - key: desherber_le_potager
   title:
     fr: Désherber le potager
-    en: Désherber le potager
+    en: Weed the vegetable garden
   contexts:
   - potager
   default_weight: 6
@@ -1666,7 +1667,7 @@ tasks:
 - key: semer_planter_selon_la_saison
   title:
     fr: Semer / planter selon la saison
-    en: Semer / planter selon la saison
+    en: Sow / plant for the season
   contexts:
   - potager
   default_weight: 9
@@ -1681,7 +1682,7 @@ tasks:
 - key: pailler_et_amender_la_terre
   title:
     fr: Pailler et amender la terre
-    en: Pailler et amender la terre
+    en: Mulch and enrich the soil
   contexts:
   - potager
   - compost
@@ -1695,7 +1696,7 @@ tasks:
 - key: nettoyer_la_piscine
   title:
     fr: Nettoyer la piscine
-    en: Nettoyer la piscine
+    en: Clean the pool
   contexts:
   - piscine
   default_weight: 9
@@ -1719,7 +1720,7 @@ tasks:
 - key: verifier_le_ph_et_le_chlore
   title:
     fr: Vérifier le pH et le chlore
-    en: Vérifier le pH et le chlore
+    en: Check pH and chlorine
   contexts:
   - piscine
   default_weight: 1
@@ -1743,7 +1744,7 @@ tasks:
 - key: vider_les_paniers_skimmers_pompe
   title:
     fr: Vider les paniers (skimmers, pompe)
-    en: Vider les paniers (skimmers, pompe)
+    en: Empty the baskets (skimmers, pump)
   contexts:
   - piscine
   default_weight: 1
@@ -1766,7 +1767,7 @@ tasks:
 - key: verifier_le_niveau_d_eau_et_la_pression_du_filtr
   title:
     fr: Vérifier le niveau d'eau et la pression du filtre
-    en: Vérifier le niveau d'eau et la pression du filtre
+    en: Check the water level and filter pressure
   contexts:
   - piscine
   default_weight: 1
@@ -1789,7 +1790,7 @@ tasks:
 - key: brosser_parois_et_ligne_d_eau
   title:
     fr: Brosser parois et ligne d'eau
-    en: Brosser parois et ligne d'eau
+    en: Brush the walls and waterline
   contexts:
   - piscine
   default_weight: 6
@@ -1812,7 +1813,7 @@ tasks:
 - key: faire_une_chloration_choc
   title:
     fr: Faire une chloration choc
-    en: Faire une chloration choc
+    en: Shock-chlorinate the pool
   contexts:
   - piscine
   default_weight: 2
@@ -1835,7 +1836,7 @@ tasks:
 - key: contre_laver_le_filtre_backwash
   title:
     fr: Contre-laver le filtre (backwash)
-    en: Contre-laver le filtre (backwash)
+    en: Backwash the filter
   contexts:
   - piscine
   - entretien
@@ -1859,7 +1860,7 @@ tasks:
 - key: nettoyer_le_filtre_en_profondeur
   title:
     fr: Nettoyer le filtre en profondeur
-    en: Nettoyer le filtre en profondeur
+    en: Deep-clean the filter
   contexts:
   - piscine
   - entretien
@@ -1873,7 +1874,7 @@ tasks:
 - key: hiverner_la_piscine
   title:
     fr: Hiverner la piscine
-    en: Hiverner la piscine
+    en: Winterise the pool
   contexts:
   - piscine
   - entretien
@@ -1887,7 +1888,7 @@ tasks:
 - key: remettre_la_piscine_en_service
   title:
     fr: Remettre la piscine en service
-    en: Remettre la piscine en service
+    en: Open the pool for the season
   contexts:
   - piscine
   - entretien
@@ -1901,7 +1902,7 @@ tasks:
 - key: remuer_le_compost
   title:
     fr: Remuer le compost
-    en: Remuer le compost
+    en: Turn the compost
   contexts:
   - compost
   default_weight: 3
@@ -1913,7 +1914,7 @@ tasks:
 - key: vider_le_bac_a_compost_de_la_cuisine
   title:
     fr: Vider le bac à compost de la cuisine
-    en: Vider le bac à compost de la cuisine
+    en: Empty the kitchen compost caddy
   contexts:
   - compost
   - cuisine
@@ -1924,7 +1925,7 @@ tasks:
 - key: equilibrer_le_compost_apport_de_matiere_seche
   title:
     fr: Équilibrer le compost (apport de matière sèche)
-    en: Équilibrer le compost (apport de matière sèche)
+    en: Balance the compost (add dry material)
   contexts:
   - compost
   default_weight: 2
@@ -1935,7 +1936,7 @@ tasks:
 - key: nourrir_l_animal
   title:
     fr: Nourrir l'animal
-    en: Nourrir l'animal
+    en: Feed the pet
   contexts:
   - chat
   - chien
@@ -1952,7 +1953,7 @@ tasks:
 - key: changer_l_eau_de_l_animal
   title:
     fr: Changer l'eau de l'animal
-    en: Changer l'eau de l'animal
+    en: Change the pet's water
   contexts:
   - chat
   - chien
@@ -1967,7 +1968,7 @@ tasks:
 - key: nettoyer_la_litiere
   title:
     fr: Nettoyer la litière
-    en: Nettoyer la litière
+    en: Scoop the litter box
   contexts:
   - chat
   default_weight: 2
@@ -1979,7 +1980,7 @@ tasks:
 - key: changer_la_litiere_en_totalite
   title:
     fr: Changer la litière en totalité
-    en: Changer la litière en totalité
+    en: Change all the litter
   contexts:
   - chat
   default_weight: 4
@@ -1990,7 +1991,7 @@ tasks:
 - key: recurer_les_gamelles
   title:
     fr: Récurer les gamelles
-    en: Récurer les gamelles
+    en: Scrub the bowls
   contexts:
   - chat
   - chien
@@ -2004,7 +2005,7 @@ tasks:
 - key: laver_le_panier_plaid
   title:
     fr: Laver le panier / plaid
-    en: Laver le panier / plaid
+    en: Wash the pet bed / blanket
   contexts:
   - chat
   - chien
@@ -2016,7 +2017,7 @@ tasks:
 - key: vermifuge_antipuces
   title:
     fr: Vermifuge / antipuces
-    en: Vermifuge / antipuces
+    en: Deworming / flea treatment
   contexts:
   - chat
   - chien
@@ -2028,7 +2029,7 @@ tasks:
 - key: nettoyer_la_fontaine_a_eau
   title:
     fr: Nettoyer la fontaine à eau
-    en: Nettoyer la fontaine à eau
+    en: Clean the water fountain
   contexts:
   - chat
   default_weight: 3
@@ -2039,7 +2040,7 @@ tasks:
 - key: couper_les_griffes
   title:
     fr: Couper les griffes
-    en: Couper les griffes
+    en: Trim the claws
   contexts:
   - chat
   default_weight: 2
@@ -2050,7 +2051,7 @@ tasks:
 - key: rappel_vaccins_visite_veterinaire
   title:
     fr: Rappel vaccins / visite vétérinaire
-    en: Rappel vaccins / visite vétérinaire
+    en: Booster shots / vet visit
   contexts:
   - chat
   - chien
@@ -2065,7 +2066,7 @@ tasks:
 - key: sortir_le_chien
   title:
     fr: Sortir le chien
-    en: Sortir le chien
+    en: Walk the dog
   contexts:
   - chien
   default_weight: 6
@@ -2077,7 +2078,7 @@ tasks:
 - key: brosser_l_animal
   title:
     fr: Brosser l'animal
-    en: Brosser l'animal
+    en: Brush the pet
   contexts:
   - chien
   - chat
@@ -2089,7 +2090,7 @@ tasks:
 - key: laver_le_chien
   title:
     fr: Laver le chien
-    en: Laver le chien
+    en: Bathe the dog
   contexts:
   - chien
   default_weight: 9
@@ -2100,7 +2101,7 @@ tasks:
 - key: laver_les_jouets_et_accessoires
   title:
     fr: Laver les jouets et accessoires
-    en: Laver les jouets et accessoires
+    en: Wash toys and accessories
   contexts:
   - chien
   - chat
@@ -2112,7 +2113,7 @@ tasks:
 - key: nettoyer_la_cage
   title:
     fr: Nettoyer la cage
-    en: Nettoyer la cage
+    en: Clean the cage
   contexts:
   - rongeur
   - oiseau
@@ -2125,7 +2126,7 @@ tasks:
 - key: retirer_les_zones_souillees_de_la_litiere
   title:
     fr: Retirer les zones souillées de la litière
-    en: Retirer les zones souillées de la litière
+    en: Remove soiled bedding
   contexts:
   - rongeur
   default_weight: 1
@@ -2136,7 +2137,7 @@ tasks:
 - key: donner_du_foin_de_la_verdure_fraiche
   title:
     fr: Donner du foin / de la verdure fraîche
-    en: Donner du foin / de la verdure fraîche
+    en: Give hay / fresh greens
   contexts:
   - rongeur
   default_weight: 1
@@ -2147,7 +2148,7 @@ tasks:
 - key: changer_le_fond_de_cage
   title:
     fr: Changer le fond de cage
-    en: Changer le fond de cage
+    en: Change the cage bedding
   contexts:
   - oiseau
   default_weight: 1
@@ -2159,7 +2160,7 @@ tasks:
 - key: nettoyer_l_aquarium
   title:
     fr: Nettoyer l'aquarium
-    en: Nettoyer l'aquarium
+    en: Clean the aquarium
   contexts:
   - poissons
   default_weight: 9
@@ -2171,7 +2172,7 @@ tasks:
 - key: changer_une_partie_de_l_eau_2030
   title:
     fr: Changer une partie de l'eau (20–30 %)
-    en: Changer une partie de l'eau (20–30 %)
+    en: Do a partial water change (20–30%)
   contexts:
   - poissons
   default_weight: 6
@@ -2182,7 +2183,7 @@ tasks:
 - key: tester_les_parametres_de_l_eau
   title:
     fr: Tester les paramètres de l'eau
-    en: Tester les paramètres de l'eau
+    en: Test the water parameters
   contexts:
   - poissons
   default_weight: 2
@@ -2193,7 +2194,7 @@ tasks:
 - key: rincer_le_filtre_de_l_aquarium
   title:
     fr: Rincer le filtre de l'aquarium
-    en: Rincer le filtre de l'aquarium
+    en: Rinse the aquarium filter
   contexts:
   - poissons
   - entretien
@@ -2205,7 +2206,7 @@ tasks:
 - key: nettoyer_les_vitres_interieures_algues
   title:
     fr: Nettoyer les vitres intérieures (algues)
-    en: Nettoyer les vitres intérieures (algues)
+    en: Clean the inside of the glass (algae)
   contexts:
   - poissons
   default_weight: 2
@@ -2216,7 +2217,7 @@ tasks:
 - key: nettoyer_le_poulailler
   title:
     fr: Nettoyer le poulailler
-    en: Nettoyer le poulailler
+    en: Clean the chicken coop
   contexts:
   - poules
   default_weight: 9
@@ -2228,7 +2229,7 @@ tasks:
 - key: ramasser_les_ufs
   title:
     fr: Ramasser les œufs
-    en: Ramasser les œufs
+    en: Collect the eggs
   contexts:
   - poules
   default_weight: 1
@@ -2240,7 +2241,7 @@ tasks:
 - key: changer_la_paille_des_pondoirs
   title:
     fr: Changer la paille des pondoirs
-    en: Changer la paille des pondoirs
+    en: Change the straw in the nesting boxes
   contexts:
   - poules
   default_weight: 2
@@ -2251,7 +2252,7 @@ tasks:
 - key: traiter_contre_les_poux_rouges_desinfecter
   title:
     fr: Traiter contre les poux rouges / désinfecter
-    en: Traiter contre les poux rouges / désinfecter
+    en: Treat for red mites / disinfect
   contexts:
   - poules
   default_weight: 6
@@ -2262,7 +2263,7 @@ tasks:
 - key: verifier_cloture_et_protection_anti_predateurs
   title:
     fr: Vérifier clôture et protection anti-prédateurs
-    en: Vérifier clôture et protection anti-prédateurs
+    en: Check fencing and predator protection
   contexts:
   - poules
   - entretien
@@ -2274,7 +2275,7 @@ tasks:
 - key: arroser_les_plantes
   title:
     fr: Arroser les plantes
-    en: Arroser les plantes
+    en: Water the plants
   contexts:
   - plantes_d_interieur
   - salon
@@ -2287,7 +2288,7 @@ tasks:
 - key: tailler_et_nettoyer_les_plantes
   title:
     fr: Tailler et nettoyer les plantes
-    en: Tailler et nettoyer les plantes
+    en: Prune and tidy the plants
   contexts:
   - plantes_d_interieur
   - salon
@@ -2299,7 +2300,7 @@ tasks:
 - key: rempoter_et_rafraichir_le_terreau
   title:
     fr: Rempoter et rafraîchir le terreau
-    en: Rempoter et rafraîchir le terreau
+    en: Repot and refresh the potting soil
   contexts:
   - plantes_d_interieur
   - salon
@@ -2314,7 +2315,7 @@ tasks:
 - key: sortir_rentrer_les_plantes_selon_la_saison
   title:
     fr: Sortir / rentrer les plantes selon la saison
-    en: Sortir / rentrer les plantes selon la saison
+    en: Move plants outside / inside for the season
   contexts:
   - plantes_d_interieur
   default_weight: 4
@@ -2328,7 +2329,7 @@ tasks:
 - key: fertiliser_en_saison_de_croissance
   title:
     fr: Fertiliser (en saison de croissance)
-    en: Fertiliser (en saison de croissance)
+    en: Fertilise (during the growing season)
   contexts:
   - plantes_d_interieur
   default_weight: 1
@@ -2351,7 +2352,7 @@ tasks:
 - key: depoussierer_les_feuilles_verifier_les_parasites
   title:
     fr: Dépoussiérer les feuilles, vérifier les parasites
-    en: Dépoussiérer les feuilles, vérifier les parasites
+    en: Dust the leaves, check for pests
   contexts:
   - plantes_d_interieur
   default_weight: 3
@@ -2362,7 +2363,7 @@ tasks:
 - key: verifier_les_factures_du_mois
   title:
     fr: Vérifier les factures du mois
-    en: Vérifier les factures du mois
+    en: Check this month's bills
   contexts:
   - administratif
   default_weight: 6
@@ -2387,7 +2388,7 @@ tasks:
 - key: declarer_mes_heures
   title:
     fr: Déclarer mes heures
-    en: Déclarer mes heures
+    en: Submit my work hours
   contexts:
   - administratif
   default_weight: 3
@@ -2411,7 +2412,7 @@ tasks:
 - key: faire_verifier_les_impots
   title:
     fr: Faire / vérifier les impôts
-    en: Faire / vérifier les impôts
+    en: Do / check the taxes
   contexts:
   - administratif
   default_weight: 24
@@ -2424,7 +2425,7 @@ tasks:
 - key: verifier_les_abonnements_et_prelevements
   title:
     fr: Vérifier les abonnements et prélèvements
-    en: Vérifier les abonnements et prélèvements
+    en: Review subscriptions and direct debits
   contexts:
   - administratif
   default_weight: 6
@@ -2435,7 +2436,7 @@ tasks:
 - key: sauvegarder_les_papiers_importants
   title:
     fr: Sauvegarder les papiers importants
-    en: Sauvegarder les papiers importants
+    en: Back up important documents
   contexts:
   - administratif
   default_weight: 4
@@ -2446,7 +2447,7 @@ tasks:
 - key: faire_le_point_sur_le_budget_du_foyer
   title:
     fr: Faire le point sur le budget du foyer
-    en: Faire le point sur le budget du foyer
+    en: Review the household budget
   contexts:
   - administratif
   default_weight: 6
@@ -2470,7 +2471,7 @@ tasks:
 - key: comparer_renouveler_assurances_et_contrats_energ
   title:
     fr: Comparer / renouveler assurances et contrats (énergie, box)
-    en: Comparer / renouveler assurances et contrats (énergie, box)
+    en: Compare / renew insurance and contracts (energy, internet)
   contexts:
   - administratif
   default_weight: 12
@@ -2483,7 +2484,7 @@ tasks:
 - key: anticiper_anniversaires_et_cadeaux_du_mois
   title:
     fr: Anticiper anniversaires et cadeaux du mois
-    en: Anticiper anniversaires et cadeaux du mois
+    en: Plan ahead for this month's birthdays and gifts
   contexts:
   - administratif
   default_weight: 3
@@ -2507,7 +2508,7 @@ tasks:
 - key: planifier_les_vacances_prochains_conges
   title:
     fr: Planifier les vacances / prochains congés
-    en: Planifier les vacances / prochains congés
+    en: Plan the holidays / next time off
   contexts:
   - administratif
   default_weight: 9
@@ -2518,7 +2519,7 @@ tasks:
 - key: faire_un_masque_visage_soin_de_la_peau
   title:
     fr: Faire un masque visage / soin de la peau
-    en: Faire un masque visage / soin de la peau
+    en: Do a face mask / skincare
   contexts:
   - sante_et_soins
   default_weight: 3
@@ -2529,7 +2530,7 @@ tasks:
 - key: prendre_rdv_coiffeur
   title:
     fr: Prendre RDV coiffeur
-    en: Prendre RDV coiffeur
+    en: Book a haircut
   contexts:
   - sante_et_soins
   default_weight: 1
@@ -2540,7 +2541,7 @@ tasks:
 - key: rdv_dentiste
   title:
     fr: RDV dentiste
-    en: RDV dentiste
+    en: Dentist appointment
   contexts:
   - sante_et_soins
   default_weight: 1
@@ -2551,7 +2552,7 @@ tasks:
 - key: rdv_medecin_controle_annuel
   title:
     fr: RDV médecin / contrôle annuel
-    en: RDV médecin / contrôle annuel
+    en: Doctor's appointment / annual check-up
   contexts:
   - sante_et_soins
   default_weight: 1
@@ -2563,7 +2564,7 @@ tasks:
 - key: rdv_ophtalmo_renouveler_lunettes_lentilles
   title:
     fr: RDV ophtalmo / renouveler lunettes-lentilles
-    en: RDV ophtalmo / renouveler lunettes-lentilles
+    en: Eye doctor appointment / renew glasses or contacts
   contexts:
   - sante_et_soins
   default_weight: 1
@@ -2574,7 +2575,7 @@ tasks:
 - key: trier_la_pharmacie_peremption_stocks
   title:
     fr: Trier la pharmacie (péremption, stocks)
-    en: Trier la pharmacie (péremption, stocks)
+    en: Sort the medicine cabinet (expiry, supplies)
   contexts:
   - sante_et_soins
   - courses
@@ -2586,7 +2587,7 @@ tasks:
 - key: renouveler_les_ordonnances_traitements
   title:
     fr: Renouveler les ordonnances / traitements
-    en: Renouveler les ordonnances / traitements
+    en: Renew prescriptions / treatments
   contexts:
   - sante_et_soins
   default_weight: 2
@@ -2597,7 +2598,7 @@ tasks:
 - key: laver_la_voiture
   title:
     fr: Laver la voiture
-    en: Laver la voiture
+    en: Wash the car
   contexts:
   - voiture
   default_weight: 9
@@ -2608,7 +2609,7 @@ tasks:
 - key: verifier_les_pneus
   title:
     fr: Vérifier les pneus
-    en: Vérifier les pneus
+    en: Check the tyres
   contexts:
   - voiture
   default_weight: 2
@@ -2619,7 +2620,7 @@ tasks:
 - key: aspirer_et_ranger_l_interieur
   title:
     fr: Aspirer et ranger l'intérieur
-    en: Aspirer et ranger l'intérieur
+    en: Vacuum and tidy the inside
   contexts:
   - voiture
   - menage
@@ -2631,7 +2632,7 @@ tasks:
 - key: verifier_les_niveaux_huile_lave_glace_refroidiss
   title:
     fr: Vérifier les niveaux (huile, lave-glace, refroidissement)
-    en: Vérifier les niveaux (huile, lave-glace, refroidissement)
+    en: Check fluid levels (oil, washer fluid, coolant)
   contexts:
   - voiture
   default_weight: 2
@@ -2643,7 +2644,7 @@ tasks:
 - key: faire_la_revision
   title:
     fr: Faire la révision
-    en: Faire la révision
+    en: Get the car serviced
   contexts:
   - voiture
   default_weight: 12
@@ -2654,7 +2655,7 @@ tasks:
 - key: controle_technique
   title:
     fr: Contrôle technique
-    en: Contrôle technique
+    en: Vehicle inspection (MOT)
   contexts:
   - voiture
   - administratif
@@ -2666,7 +2667,7 @@ tasks:
 - key: changer_les_pneus_ete_hiver
   title:
     fr: Changer les pneus été / hiver
-    en: Changer les pneus été / hiver
+    en: Swap summer / winter tyres
   contexts:
   - voiture
   default_weight: 9
@@ -2680,7 +2681,7 @@ tasks:
 - key: entretenir_le_velo
   title:
     fr: Entretenir le vélo
-    en: Entretenir le vélo
+    en: Service the bike
   contexts:
   - velo
   default_weight: 9
@@ -2691,7 +2692,7 @@ tasks:
 - key: gonfler_les_pneus_et_lubrifier_la_chaine
   title:
     fr: Gonfler les pneus et lubrifier la chaîne
-    en: Gonfler les pneus et lubrifier la chaîne
+    en: Pump up the tyres and oil the chain
   contexts:
   - velo
   default_weight: 2
@@ -2703,7 +2704,7 @@ tasks:
 - key: steriliser_les_biberons
   title:
     fr: Stériliser les biberons
-    en: Stériliser les biberons
+    en: Sterilise the baby bottles
   contexts:
   - bebe
   default_weight: 3
@@ -2715,7 +2716,7 @@ tasks:
 - key: laver_les_doudous
   title:
     fr: Laver les doudous
-    en: Laver les doudous
+    en: Wash the cuddly toys
   contexts:
   - bebe
   - linge
@@ -2727,7 +2728,7 @@ tasks:
 - key: nettoyer_les_jouets
   title:
     fr: Nettoyer les jouets
-    en: Nettoyer les jouets
+    en: Clean the toys
   contexts:
   - bebe
   - menage
@@ -2739,7 +2740,7 @@ tasks:
 - key: verifier_le_stock_de_couches_et_de_lait
   title:
     fr: Vérifier le stock de couches et de lait
-    en: Vérifier le stock de couches et de lait
+    en: Check the stock of nappies and formula
   contexts:
   - bebe
   - courses
@@ -2751,7 +2752,7 @@ tasks:
 - key: trier_les_vetements_devenus_trop_petits
   title:
     fr: Trier les vêtements devenus trop petits
-    en: Trier les vêtements devenus trop petits
+    en: Sort out clothes that are too small
   contexts:
   - bebe
   default_weight: 9
@@ -2762,7 +2763,7 @@ tasks:
 - key: faire_les_comptes_communs_loyer_charges_pot_comm
   title:
     fr: Faire les comptes communs (loyer, charges, pot commun)
-    en: Faire les comptes communs (loyer, charges, pot commun)
+    en: Settle shared accounts (rent, bills, kitty)
   contexts:
   - colocation
   - administratif
@@ -2788,7 +2789,7 @@ tasks:
 - key: racheter_les_produits_communs_pq_sel_produits_d_
   title:
     fr: Racheter les produits communs (PQ, sel, produits d'entretien)
-    en: Racheter les produits communs (PQ, sel, produits d'entretien)
+    en: Restock shared supplies (toilet paper, salt, cleaning products)
   contexts:
   - colocation
   - courses
@@ -2799,7 +2800,7 @@ tasks:
 - key: reunion_coloc_planning_sujets_qui_fachent
   title:
     fr: Réunion coloc (planning, sujets qui fâchent)
-    en: Réunion coloc (planning, sujets qui fâchent)
+    en: Flatmate meeting (schedule, touchy subjects)
   contexts:
   - colocation
   default_weight: 6
@@ -2823,7 +2824,7 @@ tasks:
 - key: nettoyer_les_parties_communes_tour_de_role
   title:
     fr: Nettoyer les parties communes (tour de rôle)
-    en: Nettoyer les parties communes (tour de rôle)
+    en: Clean the shared areas (taking turns)
   contexts:
   - colocation
   - menage
@@ -2836,7 +2837,7 @@ tasks:
 - key: faire_les_courses
   title:
     fr: Faire les courses
-    en: Faire les courses
+    en: Do the grocery shopping
   contexts:
   - courses
   default_weight: 12
@@ -2847,7 +2848,7 @@ tasks:
 - key: faire_la_liste_de_courses_menus_de_la_semaine
   title:
     fr: Faire la liste de courses / menus de la semaine
-    en: Faire la liste de courses / menus de la semaine
+    en: Write the shopping list / plan the week's meals
   contexts:
   - courses
   - cuisine
@@ -2858,7 +2859,7 @@ tasks:
 - key: verifier_les_stocks_produits_d_entretien_hygiene
   title:
     fr: Vérifier les stocks (produits d'entretien, hygiène)
-    en: Vérifier les stocks (produits d'entretien, hygiène)
+    en: Check supplies (cleaning products, toiletries)
   contexts:
   - courses
   default_weight: 3

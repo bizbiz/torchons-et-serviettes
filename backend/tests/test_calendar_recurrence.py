@@ -293,3 +293,59 @@ def test_a_yearly_task_warns_before_the_due_date():
     assert compute_urgency_state(echeance, echeance + timedelta(days=1), nominal) == (
         UrgencyState.RED
     )
+
+
+# --- Done early, inside the orange window (defect measured 2026-10-01) ---
+
+
+def _frozen(monkeypatch, at: datetime) -> None:
+    import app.services.recurrence as rec
+
+    class _FixedNow(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return at
+
+    monkeypatch.setattr(rec, "datetime", _FixedNow)
+
+
+@pytest.mark.parametrize("today", [_at(2026, 5, 12), _at(2026, 5, 16), _at(2026, 7, 1)])
+def test_done_in_the_orange_window_honours_the_coming_deadline(monkeypatch, today):
+    """Done on 10 May for a 15 May deadline (7-day window open since the 8th):
+    the deadline is honoured, before it, the day after and later on. It used to
+    turn red on the 16th, the completion being earlier than the deadline."""
+    rule = normalize_recurrence_rule({"type": "calendar", "months": [5], "day": 15})
+    _frozen(monkeypatch, today)
+    assert next_due(rule, _at(2026, 5, 10)) == _at(2027, 5, 15)
+
+
+def test_the_first_day_of_the_window_honours_it(monkeypatch):
+    rule = normalize_recurrence_rule({"type": "calendar", "months": [5], "day": 15})
+    _frozen(monkeypatch, _at(2026, 5, 16))
+    assert next_due(rule, _at(2026, 5, 8)) == _at(2027, 5, 15)
+
+
+def test_done_before_the_window_does_not_count(monkeypatch):
+    """A day before the window opens is just too early: the deadline stands."""
+    rule = normalize_recurrence_rule({"type": "calendar", "months": [5], "day": 15})
+    _frozen(monkeypatch, _at(2026, 5, 16))
+    assert next_due(rule, _at(2026, 5, 7)) == _at(2026, 5, 15)
+    _frozen(monkeypatch, _at(2026, 5, 12))
+    assert next_due(rule, _at(2026, 5, 7)) == _at(2026, 5, 15)
+
+
+def test_monthly_calendar_done_early_moves_to_next_month(monkeypatch):
+    """Every month on the 1st: window floor(30 * 0.10) = 3 days. Done on
+    29 March, the 1 April deadline is honoured; the next one is 1 May."""
+    rule = normalize_recurrence_rule(
+        {"type": "calendar", "months": list(range(1, 13)), "day": 1}
+    )
+    _frozen(monkeypatch, _at(2026, 4, 2))
+    assert next_due(rule, _at(2026, 3, 29)) == _at(2026, 5, 1)
+
+
+def test_yearly_done_on_dec_30_for_jan_1_aims_at_the_year_after_next(monkeypatch):
+    """The candidate list must reach now.year + 2, or this returns None."""
+    rule = normalize_recurrence_rule({"type": "calendar", "months": [1], "day": 1})
+    _frozen(monkeypatch, _at(2026, 12, 31))
+    assert next_due(rule, _at(2026, 12, 30)) == _at(2028, 1, 1)

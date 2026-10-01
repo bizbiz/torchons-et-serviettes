@@ -1,5 +1,25 @@
 # Notes de version
 
+## v0.40.0 — 2026-10-01
+
+### Un an après la première fois
+- Nouvelle récurrence « anniversaire », pour les vaccins, la révision ou le
+  contrôle technique : l'échéance part de la première fois que la tâche a été
+  faite, et revient tous les ans (ou tous les N mois) à la même date, même si
+  on la fait en retard.
+- Pour une tâche déjà faite avant d'être créée dans l'app, il suffit
+  d'enregistrer la première fois à sa vraie date.
+
+### Corrections
+- Quand l'autre membre du foyer modifiait une tâche, elle pouvait apparaître
+  vide sur ton téléphone (sans titre, sans personne assignée) jusqu'au
+  prochain rafraîchissement.
+- Une tâche à date fixe faite en avance, dans la semaine qui précède son
+  échéance, ne passe plus en rouge le lendemain : elle compte pour cette
+  échéance, et la suivante est visée.
+- Le catalogue de tâches proposé à la création d'un foyer est traduit en
+  anglais pour les téléphones réglés en anglais.
+
 ## v0.39.0 — 2026-09-30
 
 ### Les dates fixes tiennent parole

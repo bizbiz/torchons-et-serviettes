@@ -183,6 +183,11 @@ ne décale pas l'échéance de l'année suivante.
   exprime « mai–août » : une occurrence au 1er mai tolérée jusqu'à fin août.
   L'orange n'est pas repoussé : la tâche est signalée avant son échéance, seul
   le rouge attend la fin de la tolérance.
+- **Quelle échéance est honorée** : la dernière occurrence passée reste due tant
+  qu'aucune complétion ne l'honore. Une complétion honore une occurrence dès que
+  sa fenêtre orange est ouverte, comme pour l'anniversaire : faite le 10 mai
+  pour le 15, la tâche vise le 15 mai suivant et ne passe pas rouge le 16
+  (défaut corrigé le 01/10/2026). Faite avant la fenêtre, elle ne compte pas.
 
 **Fenêtre orange : 10 % de l'écart entre deux occurrences, plafonnée à 7 jours**
 (décidé le 30/09/2026). L'écart vaut 365 / nombre de mois ; sans plafond, un

@@ -232,22 +232,28 @@ def next_due(
         # ne deplace pas l'echeance de l'an prochain.
         months = rule.get("months") or [1]
         day = rule.get("day", 1)
-        candidates = [
+        # now.year + 2: a deadline honoured early may push to the year after next
+        # (yearly task done on 30 Dec for 1 Jan).
+        candidates = sorted(
             datetime(y, m, day, tzinfo=timezone.utc)
-            for y in (now.year - 1, now.year, now.year + 1)
+            for y in range(now.year - 1, now.year + 3)
             for m in months
-        ]
+        )
         # La derniere echeance PASSEE fait foi tant qu'elle n'est pas honoree ;
         # une fois honoree, on vise la suivante. Sans ca, une tache faite le
         # jour meme repasserait due immediatement.
+        # A completion honours a deadline as soon as its orange window is open,
+        # i.e. while the task is shown orange: done on 10 May for the 15th, it
+        # must not turn red on the 16th. Same rule as next_anniversary_due.
+        window = timedelta(days=_orange_window_days(rule))
         past = [d for d in candidates if d <= now]
-        future = [d for d in candidates if d > now]
-        if not past:
-            return min(future) if future else None
-        latest_past = max(past)
-        if last_completed is not None and last_completed >= latest_past:
-            return min(future) if future else None
-        return latest_past
+        start = max(past) if past else now
+        for d in candidates:
+            if d < start:
+                continue
+            if last_completed is None or last_completed < d - window:
+                return d
+        return None
 
     elif rtype == "anniversary":
         if last_completed is None:
