@@ -11,6 +11,7 @@ officiel du nouveau modele.
 
 from __future__ import annotations
 
+import calendar as _calendar
 import math
 from datetime import date, datetime, timedelta, timezone
 from statistics import median
@@ -96,14 +97,34 @@ def normalize_recurrence_rule(rule: dict | None) -> dict | None:
         })
     elif rtype in ("weekdays", "custom"):
         out = {"type": "interval", "every_n_days": _legacy_interval(rtype, out)}
+    elif rtype == "anniversary":
+        # `every_n_months`: the period, 12 by default ("one year after the
+        # first time"). Months rather than days so that "every 2 years" lands
+        # on the same calendar day, leap years included.
+        out = {"type": "anniversary", "every_n_months": _anniversary_months(out)}
     return out
+
+
+#: `anniversary` period when none is given: one year.
+ANNIVERSARY_DEFAULT_MONTHS = 12
+#: Upper bound on the period (100 years), so a typo cannot make a loop of it.
+ANNIVERSARY_MAX_MONTHS = 1200
+
+
+def _anniversary_months(rule: dict) -> int:
+    n = _to_int(rule.get("every_n_months"), ANNIVERSARY_DEFAULT_MONTHS)
+    if n is None:
+        n = ANNIVERSARY_DEFAULT_MONTHS
+    return min(ANNIVERSARY_MAX_MONTHS, max(1, n))
 
 
 #: Types a stored rule may carry. Anything else has no due-date computation on
 #: either side (server or TaskUrgencyCalculator.kt): the task would be silently
-#: inert. Mirror of `_VALID_RECURRENCE_TYPES` in schemas/task.py, plus
-#: `calendar`, which only /sync accepts so far.
-LIVING_RULE_TYPES = frozenset({"interval", "monthly_variable", "uncertain", "calendar"})
+#: inert. The REST schema (schemas/task.py) reads this set; the Kotlin mirror is
+#: `RecurrenceTypes.LIVING`, compared by tests/test_recurrence_type_lists.py.
+LIVING_RULE_TYPES = frozenset(
+    {"interval", "monthly_variable", "uncertain", "calendar", "anniversary"}
+)
 
 
 def checked_recurrence_rule(rule: dict | None) -> dict | None:
@@ -128,8 +149,50 @@ def _legacy_interval(rtype: str, rule: dict) -> int:
     return max(1, every_n_weeks * 7)
 
 
-def next_due(rule: dict | None, last_completed: datetime | None) -> datetime | None:
-    """Calcule la prochaine echeance d'une tache recurrente."""
+def add_months(d: date, months: int) -> date:
+    """`d` plus `months` calendar months, the day clamped to the month's end.
+
+    Same semantics as `LocalDate.plusMonths` in Kotlin: 31 Jan + 1 -> 28/29 Feb.
+    """
+    y, m = divmod(d.month - 1 + months, 12)
+    year, month = d.year + y, m + 1
+    return date(year, month, min(d.day, _calendar.monthrange(year, month)[1]))
+
+
+def next_anniversary_due(rule: dict, first: date, last: date) -> date:
+    """Due date of an `anniversary` rule: anchored on the FIRST completion.
+
+    Occurrences are `first + k * every_n_months` (k >= 1), each computed from
+    the anchor so a 31st does not decay to the 28th. The due one is the
+    earliest occurrence the LAST completion has not honoured; a completion
+    honours an occurrence when made on or after its orange window opens, i.e.
+    while the task is shown orange or red. Doing it late therefore never moves
+    the next one: no drift, which `interval: 365` cannot promise.
+
+    Pure, no clock. Mirrored by `nextAnniversaryDue` in TaskUrgencyCalculator.kt.
+    """
+    n = _anniversary_months(rule)
+    window = timedelta(days=_orange_window_days(rule))
+    # Start near the last completion rather than at k=1: a monthly rule
+    # anchored ten years ago would otherwise walk 120 occurrences.
+    months_between = (last.year - first.year) * 12 + (last.month - first.month)
+    k = max(1, months_between // n)
+    while k > 1 and add_months(first, (k - 1) * n) - window > last:
+        k -= 1
+    while add_months(first, k * n) - window <= last:
+        k += 1
+    return add_months(first, k * n)
+
+
+def next_due(
+    rule: dict | None,
+    last_completed: datetime | None,
+    first_completed: datetime | None = None,
+) -> datetime | None:
+    """Calcule la prochaine echeance d'une tache recurrente.
+
+    `first_completed` only matters to `anniversary` (see compute_due_date).
+    """
     if rule is None:
         return None  # tache ponctuelle
 
@@ -186,6 +249,13 @@ def next_due(rule: dict | None, last_completed: datetime | None) -> datetime | N
             return min(future) if future else None
         return latest_past
 
+    elif rtype == "anniversary":
+        if last_completed is None:
+            return now
+        anchor = first_completed or last_completed
+        due = next_anniversary_due(rule, anchor.date(), last_completed.date())
+        return datetime(due.year, due.month, due.day, tzinfo=timezone.utc)
+
     # uncertain : pas d'echeance visible. weekdays/monthly/custom ont ete
     # supprimes en v0.27 (ils n'existaient plus en base mais le code mort
     # est nettoye pour reduire la surface de bug).
@@ -232,7 +302,7 @@ def min_completion_gap_seconds(
         every_n_days = rule.get("every_n_days", 1)
         return one_day if every_n_days >= 7 else one_hour
 
-    if rtype == "monthly_variable":
+    if rtype in ("monthly_variable", "anniversary"):
         return one_day
 
     if rtype == "uncertain":
@@ -277,6 +347,9 @@ def interval_hours(
         # elle, ne s'en deduit pas (c'est le calendrier qui la fixe).
         months = rule.get("months") or [1]
         return (365.0 / max(1, len(months))) * 24.0
+
+    elif rtype == "anniversary":
+        return _anniversary_months(rule) * 365.0 / 12 * 24.0
 
     elif rtype == "uncertain":
         days = inferred_interval_days if inferred_interval_days is not None else float(COLD_START_INTERVAL_DAYS)
@@ -333,6 +406,10 @@ def compute_nominal_interval_days(rule: dict | None) -> int:
             return 0
         return max(1, round(365 / n))
 
+    if rtype == "anniversary":
+        # The period in days: 12 months -> 365, 24 -> 730, 1 -> 30.
+        return max(1, round(_anniversary_months(rule) * 365 / 12))
+
     # uncertain : pas de fenetre orange — l'etat reste toujours GREEN.
     return 0
 
@@ -341,6 +418,7 @@ def compute_due_date(
     rule: dict | None,
     last_completed: datetime | None,
     created_at: datetime | None = None,
+    first_completed: datetime | None = None,
 ) -> date | None:
     """Echeance (date) d'une tache dans le modele deterministe.
 
@@ -350,6 +428,11 @@ def compute_due_date(
     - Ponctuelle deja faite (rule None, last_completed set) : None
       (plus d'echeance, la tache est "reglee").
     - Recurrente : due_date = next_due(rule, last_completed).date()
+
+    `first_completed` is the earliest LIVE completion (soft-deleted ones
+    excluded): the anchor of an `anniversary` rule, ignored by every other
+    type. Absent, the last completion stands in for it (one period after the
+    last time) rather than leaving the task without a due date.
 
     Return None signifie "pas d'echeance a surveiller" (ponctuelle faite).
     """
@@ -368,7 +451,7 @@ def compute_due_date(
     if rule is None:
         return None
 
-    nd = next_due(rule, last_completed)
+    nd = next_due(rule, last_completed, first_completed)
     if nd is None:
         return None
     return nd.date() if isinstance(nd, datetime) else nd
@@ -385,26 +468,38 @@ def grace_days_of(rule: dict | None) -> int:
         return 0
 
 
-#: A calendar rule warns at most this many days ahead. 10 % of a yearly gap is
-#: 36 days of orange, too early to be useful on a vaccine (decided 2026-09-30).
-#: The cap bounds the WINDOW only: the nominal interval still feeds the
-#: lateness ratio untouched. Mirrored in TaskUrgencyCalculator.kt.
+#: A date-anchored rule (`calendar`, `anniversary`) warns at most this many
+#: days ahead. 10 % of a yearly gap is 36 days of orange, too early to be useful
+#: on a vaccine (decided 2026-09-30). The cap bounds the WINDOW only: the
+#: nominal interval still feeds the lateness ratio untouched. Mirrored in
+#: TaskUrgencyCalculator.kt.
 CALENDAR_ORANGE_WINDOW_CAP_DAYS = 7
+
+#: Rule types whose orange window is capped. Same set as
+#: `TaskUrgencyCalculator.orangeWindowCapOf`.
+_CAPPED_WINDOW_TYPES = frozenset({"calendar", "anniversary"})
 
 
 def orange_window_cap_of(rule: dict | None) -> int | None:
     """Upper bound on the orange window declared by the rule, None if unbounded."""
-    if isinstance(rule, dict) and rule.get("type") == "calendar":
+    if isinstance(rule, dict) and rule.get("type") in _CAPPED_WINDOW_TYPES:
         return CALENDAR_ORANGE_WINDOW_CAP_DAYS
     return None
+
+
+def _orange_window_days(rule: dict | None) -> int:
+    """Orange window in days, cap applied: the one compute_urgency_state uses."""
+    window = max(0, int(math.floor(compute_nominal_interval_days(rule) * 0.10)))
+    cap = orange_window_cap_of(rule)
+    return window if cap is None else min(window, cap)
 
 
 #: Rule types a frequency vote may adjust. The consensus always writes
 #: `interval` or `monthly_variable`, so a vote on any other type would silently
 #: replace it — a `calendar` rule would get back the drift it exists to remove.
-#: An allowlist on purpose: a date-anchored type added later (the anniversary
-#: form) is non-votable without anyone having to remember it. Same set as
-#: `isVotableRule` in TaskDetailScreen.kt.
+#: An allowlist on purpose: `anniversary`, added after it, is non-votable
+#: without anyone having had to remember it. Same set as
+#: `RecurrenceTypes.VOTABLE` in Kotlin (tests/test_recurrence_type_lists.py).
 VOTABLE_RULE_TYPES = frozenset({"interval", "monthly_variable"})
 
 

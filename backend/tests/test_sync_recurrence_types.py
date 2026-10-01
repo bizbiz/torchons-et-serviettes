@@ -48,7 +48,7 @@ async def test_sync_insert_with_unknown_type_is_a_conflict(client, auth_headers,
     task_id = str(uuid_lib.uuid4())
     body = await _sync(client, auth_headers, device_a, [_op("INSERT", task_id, {
         "title": "unknown type", "assigned_to_ids": [],
-        "recurrence_rule": {"type": "anniversary"},
+        "recurrence_rule": {"type": "foo"},
     })])
     assert [c["row_id"] for c in body["conflicts"]] == [task_id], body
     assert body["conflicts"][0]["reason"] == "op_error"

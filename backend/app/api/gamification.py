@@ -24,6 +24,7 @@ from app.models.task_effort import TaskEffort
 from app.models.task_frequency_vote import TaskFrequencyVote
 from app.services.frequency_vote import upsert_vote_and_sync_consensus
 from app.services.presence import load_freeze_context
+from app.services.completion_anchor import first_completions_by_task
 from app.services.recurrence import (
     COLD_START_INTERVAL_DAYS,
     UNCERTAIN_SCORE_CAP,
@@ -971,6 +972,7 @@ async def get_suggestions(
         ).group_by(TaskCompletion.task_id)
     )
     last_completions = {row[0]: row[1] for row in comp_result.all()}
+    first_completions = await first_completions_by_task(session, tasks)
 
     count_result = await session.execute(
         select(TaskCompletion.task_id, func.count(TaskCompletion.id)).where(
@@ -1091,7 +1093,10 @@ async def get_suggestions(
             })
             continue
 
-        due_date = compute_due_date(task.recurrence_rule, last_comp, task.created_at)
+        due_date = compute_due_date(
+            task.recurrence_rule, last_comp, task.created_at,
+            first_completed=first_completions.get(task.id),
+        )
         nominal = compute_nominal_interval_days(task.recurrence_rule)
 
         # Home freeze v2 : decaler effective_today pour les taches requires_home

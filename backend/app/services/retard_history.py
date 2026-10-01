@@ -177,8 +177,14 @@ def _retard_at(inp: _ComputeInputs, target_date: date, boundary: datetime) -> tu
         comps = inp.comps_by_task.get(task.id, [])
         idx = bisect.bisect_left(comps, boundary)
         last_completed = comps[idx - 1] if idx > 0 else None
+        # Earliest live completion BEFORE the boundary: the anniversary anchor
+        # as it stood that day (`comps` is sorted ascending).
+        first_completed = comps[0] if idx > 0 else None
 
-        due_date = compute_due_date(task.recurrence_rule, last_completed, task.created_at)
+        due_date = compute_due_date(
+            task.recurrence_rule, last_completed, task.created_at,
+            first_completed=first_completed,
+        )
         if due_date is None:
             continue
         nominal = compute_nominal_interval_days(task.recurrence_rule)

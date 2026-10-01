@@ -84,6 +84,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
 import com.torchons.app.data.model.Completion
+import com.torchons.app.data.model.RecurrenceTypes
 import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.TaskHistoryEventType
 import com.torchons.app.ui.common.CelebrationCardContent
@@ -91,6 +92,7 @@ import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.CompletionDialog
 import com.torchons.app.ui.common.CompletionDialogMode
 import com.torchons.app.ui.common.RatingDialog
+import com.torchons.app.ui.common.anniversaryPeriodLabel
 import com.torchons.app.ui.common.randomCelebration
 import com.torchons.app.ui.user.UserProfileDialog
 import com.torchons.app.ui.user.UserProfileRequest
@@ -624,7 +626,7 @@ fun TaskDetailScreen(
                     // Visible si user assigne ET au moins un des 3 votes manque.
                     // Click ouvre RatingDialog (skip auto les sliders deja votes).
                     val rule = task.recurrenceRule
-                    val isVotableType = rule != null && rule.type in setOf("interval", "monthly_variable")
+                    val isVotableType = RecurrenceTypes.isVotable(rule)
                     val freqMissing = isVotableType && uiState.frequencyVotes?.myDaysPerMonth == null
                     val myRow = uiState.ratings.firstOrNull { it.userId == currentUserId }
                     val affMissing = myRow?.affinity == null
@@ -861,7 +863,7 @@ fun TaskDetailScreen(
                                     )
                                     // v0.28 — sous-texte adaptatif des votes + lien "+ d'info".
                                     val freqVotes = uiState.frequencyVotes
-                                    val isVotableRule = task.recurrenceRule.type in setOf("interval", "monthly_variable")
+                                    val isVotableRule = RecurrenceTypes.isVotable(task.recurrenceRule)
                                     if (freqVotes != null && isVotableRule) {
                                         Spacer(modifier = Modifier.height(2.dp))
                                         val youPronoun = stringResource(R.string.proposition_receiver_you_suffix).trim().trimStart('(').trimEnd(')')
@@ -1530,6 +1532,8 @@ private fun formatRecurrence(rule: com.torchons.app.data.model.RecurrenceRule): 
         } ?: stringResource(R.string.task_recurrence_every_unknown)
         "monthly_variable" -> stringResource(R.string.task_recurrence_monthly_variable)
         "uncertain" -> stringResource(R.string.task_recurrence_uncertain)
+        "calendar" -> stringResource(R.string.task_edit_recurrence_calendar)
+        "anniversary" -> anniversaryPeriodLabel(rule.everyNMonths ?: 12)
         else -> rule.type
     }
 }

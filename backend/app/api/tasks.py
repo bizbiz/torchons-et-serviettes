@@ -119,14 +119,18 @@ async def _task_to_response(
     # last_completed_at calcule serveur = source de verite quand le client
     # est en ligne (offline il retombe sur le max local). Cf
     # docs/cache-conventions.md (recalcul derive a chaque mutation).
-    last_completed_at = (
+    # first_completed_at: the anchor of an `anniversary` rule, same query.
+    last_completed_at, first_completed_at = (
         await session.execute(
-            select(func.max(TaskCompletion.completed_at)).where(
+            select(
+                func.max(TaskCompletion.completed_at),
+                func.min(TaskCompletion.completed_at),
+            ).where(
                 TaskCompletion.task_id == task.id,
                 TaskCompletion.deleted_at.is_(None),
             )
         )
-    ).scalar_one_or_none()
+    ).one()
     if contexts is None:
         contexts = (await load_contexts_for_tasks(session, [task.id])).get(task.id, [])
     return {
@@ -146,6 +150,7 @@ async def _task_to_response(
         "updated_at": task.updated_at,
         "absent_days_since_last_completion": absent_days,
         "last_completed_at": last_completed_at,
+        "first_completed_at": first_completed_at,
     }
 
 

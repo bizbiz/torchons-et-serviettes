@@ -215,6 +215,15 @@ private val migration11to12 = object : Migration(11, 12) {
     }
 }
 
+private val migration12to13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Earliest live completion, computed server side: the anchor of an
+        // `anniversary` rule. NULL until the next GET /api/tasks fills it;
+        // meanwhile the calculator falls back on the local completions cache.
+        db.execSQL("ALTER TABLE tasks ADD COLUMN firstCompletedAt TEXT DEFAULT NULL")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -227,7 +236,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8, migration8to9, migration9to10, migration10to11, migration11to12)
+            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8, migration8to9, migration9to10, migration10to11, migration11to12, migration12to13)
             .build()
     }
 

@@ -486,6 +486,7 @@ fun TaskEditScreen(
                 "monthly_variable" -> stringResource(R.string.task_edit_recurrence_monthly)
                 "uncertain" -> stringResource(R.string.task_edit_recurrence_uncertain)
                 "calendar" -> stringResource(R.string.task_edit_recurrence_calendar)
+                "anniversary" -> stringResource(R.string.task_edit_recurrence_anniversary)
                 "none" -> stringResource(R.string.task_edit_recurrence_none)
                 else -> uiState.recurrenceType
             }
@@ -533,6 +534,13 @@ fun TaskEditScreen(
                         text = { Text(stringResource(R.string.task_edit_recurrence_calendar)) },
                         onClick = {
                             viewModel.updateRecurrenceType("calendar")
+                            recurrenceExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.task_edit_recurrence_anniversary)) },
+                        onClick = {
+                            viewModel.updateRecurrenceType("anniversary")
                             recurrenceExpanded = false
                         }
                     )
@@ -586,6 +594,40 @@ fun TaskEditScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            // `anniversary`: only the period. The anchor is the first recorded
+            // completion, not a field: no vote either, the date is a fact.
+            if (uiState.recurrenceType == "anniversary") {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedTextField(
+                        value = uiState.anniversaryAmount.toString(),
+                        onValueChange = { it.toIntOrNull()?.let(viewModel::updateAnniversaryAmount) },
+                        label = { Text(stringResource(R.string.task_edit_anniversary_period_label)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    FilterChip(
+                        selected = uiState.anniversaryInYears,
+                        onClick = { viewModel.updateAnniversaryInYears(true) },
+                        label = { Text(stringResource(R.string.task_edit_anniversary_unit_years)) },
+                    )
+                    FilterChip(
+                        selected = !uiState.anniversaryInYears,
+                        onClick = { viewModel.updateAnniversaryInYears(false) },
+                        label = { Text(stringResource(R.string.task_edit_anniversary_unit_months)) },
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.task_edit_anniversary_help),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 

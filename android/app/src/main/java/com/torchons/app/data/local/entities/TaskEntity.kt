@@ -39,6 +39,8 @@ data class TaskEntity(
     val lastCompletedAt: String? = null,
     /** Rattachements ordonnes, tels que le serveur les a renvoyes. */
     val contexts: List<TaskContextRef> = emptyList(),
+    /** Earliest live completion computed SERVER side: the anniversary anchor. */
+    val firstCompletedAt: String? = null,
 )
 
 /** Conversion DTO -> Entite (pour upsert depuis l'API). */
@@ -59,6 +61,7 @@ fun Task.toEntity(): TaskEntity = TaskEntity(
     absentDaysSinceLastCompletion = absentDaysSinceLastCompletion,
     lastCompletedAt = lastCompletedAt,
     contexts = contexts,
+    firstCompletedAt = firstCompletedAt,
 )
 
 /** Conversion Entite -> DTO (pour exposer aux ViewModels). */
@@ -79,4 +82,5 @@ fun TaskEntity.toDomain(): Task = Task(
     absentDaysSinceLastCompletion = absentDaysSinceLastCompletion,
     lastCompletedAt = lastCompletedAt,
     contexts = contexts,
+    firstCompletedAt = firstCompletedAt,
 )

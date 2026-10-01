@@ -39,6 +39,7 @@ from app.models.user import User
 from app.models.user_foyer import UserFoyer
 from app.models.enums import UrgencyState
 from app.services.presence import load_freeze_context
+from app.services.completion_anchor import first_completions_by_task
 from app.services.recurrence import (
     compute_due_date,
     compute_effective_today,
@@ -217,6 +218,10 @@ async def get_retard(
         today,
     )
 
+    first_completions = await first_completions_by_task(
+        session, (task for task, _ in tasks_with_last)
+    )
+
     overdue: list[RetardTask] = []
     total_minutes = 0
     for task, last_completed in tasks_with_last:
@@ -224,7 +229,10 @@ async def get_retard(
             continue  # ponctuelles exclues
         if is_uncertain(task.recurrence_rule):
             continue  # uncertain : jamais en retard (Q2, Q10)
-        due_date = compute_due_date(task.recurrence_rule, last_completed, task.created_at)
+        due_date = compute_due_date(
+            task.recurrence_rule, last_completed, task.created_at,
+            first_completed=first_completions.get(task.id),
+        )
         nominal = compute_nominal_interval_days(task.recurrence_rule)
         eff_today = compute_effective_today(
             today,

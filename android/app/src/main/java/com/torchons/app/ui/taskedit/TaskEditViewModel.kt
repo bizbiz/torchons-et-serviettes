@@ -62,6 +62,10 @@ data class TaskEditUiState(
      * seconde echeance.
      */
     val recurrenceGraceDays: Int = 0,
+    /** `anniversary` : period amount, in years or months per [anniversaryInYears]. */
+    val anniversaryAmount: Int = 1,
+    /** `anniversary` : true = the amount counts years, false = months. */
+    val anniversaryInYears: Boolean = true,
     val daysPerMonth: Map<String, String> = (1..12).associate { it.toString() to "" },
     val weight: Int = 1,
     val tolerance: String = "NORMAL",
@@ -93,6 +97,16 @@ data class TaskEditUiState(
     val clonedFromTitle: String? = null,
 )
 
+/** `anniversary` period in months, as stored (`every_n_months`). */
+fun TaskEditUiState.anniversaryEveryNMonths(): Int =
+    anniversaryAmount.coerceAtLeast(1) * (if (anniversaryInYears) 12 else 1)
+
+/** Editor fields of a stored `anniversary` rule: whole years when possible. */
+internal fun anniversaryFieldsOf(rule: RecurrenceRule?): Pair<Int, Boolean> {
+    val months = rule?.everyNMonths?.coerceAtLeast(1) ?: 12
+    return if (months % 12 == 0) (months / 12) to true else months to false
+}
+
 /** Duree canonique en jours derivee de [recurrenceFieldText] et [recurrenceUnit]. */
 fun TaskEditUiState.canonicalEveryNDays(): Int {
     val raw = recurrenceFieldText.toIntOrNull() ?: 7
@@ -121,6 +135,7 @@ fun TaskEditUiState.previewRecurrenceRule(): RecurrenceRule? = when (recurrenceT
         day = recurrenceDay,
         graceDays = recurrenceGraceDays,
     )
+    "anniversary" -> RecurrenceRule(type = "anniversary", everyNMonths = anniversaryEveryNMonths())
     else -> null
 }
 
@@ -204,6 +219,8 @@ class TaskEditViewModel @Inject constructor(
             recurrenceMonths = rule?.months?.toSet() ?: emptySet(),
             recurrenceDay = rule?.day ?: 1,
             recurrenceGraceDays = rule?.graceDays ?: 0,
+            anniversaryAmount = anniversaryFieldsOf(rule).first,
+            anniversaryInYears = anniversaryFieldsOf(rule).second,
             recurrenceFieldText = unit.fromDays(canonicalDays).toString(),
             recurrenceUnit = unit,
             daysPerMonth = dpm,
@@ -303,6 +320,8 @@ class TaskEditViewModel @Inject constructor(
                         recurrenceMonths = task.recurrenceRule?.months?.toSet() ?: emptySet(),
                         recurrenceDay = task.recurrenceRule?.day ?: 1,
                         recurrenceGraceDays = task.recurrenceRule?.graceDays ?: 0,
+                        anniversaryAmount = anniversaryFieldsOf(task.recurrenceRule).first,
+                        anniversaryInYears = anniversaryFieldsOf(task.recurrenceRule).second,
                         recurrenceFieldText = unit.fromDays(canonicalDays).toString(),
                         recurrenceUnit = unit,
                         daysPerMonth = dpm,
@@ -409,6 +428,8 @@ class TaskEditViewModel @Inject constructor(
             recurrenceMonths = source.recurrenceRule?.months?.toSet() ?: emptySet(),
             recurrenceDay = source.recurrenceRule?.day ?: 1,
             recurrenceGraceDays = source.recurrenceRule?.graceDays ?: 0,
+            anniversaryAmount = anniversaryFieldsOf(source.recurrenceRule).first,
+            anniversaryInYears = anniversaryFieldsOf(source.recurrenceRule).second,
             recurrenceFieldText = unit.fromDays(canonicalDays).toString(),
             recurrenceUnit = unit,
             daysPerMonth = dpm,
@@ -455,6 +476,14 @@ class TaskEditViewModel @Inject constructor(
 
     fun updateRecurrenceGraceDays(days: Int) {
         _uiState.value = _uiState.value.copy(recurrenceGraceDays = days.coerceAtLeast(0))
+    }
+
+    fun updateAnniversaryAmount(amount: Int) {
+        _uiState.value = _uiState.value.copy(anniversaryAmount = amount.coerceIn(1, 100))
+    }
+
+    fun updateAnniversaryInYears(inYears: Boolean) {
+        _uiState.value = _uiState.value.copy(anniversaryInYears = inYears)
     }
 
     fun updateRecurrenceType(value: String) {
@@ -527,6 +556,10 @@ class TaskEditViewModel @Inject constructor(
                     months = state.recurrenceMonths.sorted().ifEmpty { listOf(1) },
                     day = state.recurrenceDay,
                     graceDays = state.recurrenceGraceDays,
+                )
+                "anniversary" -> RecurrenceRule(
+                    type = "anniversary",
+                    everyNMonths = state.anniversaryEveryNMonths(),
                 )
                 else -> null
             }

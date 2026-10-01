@@ -852,6 +852,23 @@
     <string name="task_edit_calendar_day_label">Day of the month (1 to 28)</string>
     <string name="task_edit_calendar_grace_label">Grace after the due date (days)</string>
     <string name="task_edit_calendar_grace_help">The task is flagged from its due date, but only counts as late after this delay.</string>
+
+    <!-- Anniversary recurrence type: anchored on the first completion -->
+    <string name="task_edit_recurrence_anniversary">Anniversary of the first time</string>
+    <string name="task_edit_anniversary_period_label">Every</string>
+    <string name="task_edit_anniversary_unit_years">Years</string>
+    <string name="task_edit_anniversary_unit_months">Months</string>
+    <string name="task_edit_anniversary_help">The due date starts from the first recorded completion. For a vaccine already given, record it at its real date.</string>
+    <plurals name="anniversary_period_years">
+        <item quantity="one">every year</item>
+        <item quantity="other">every %1$d years</item>
+    </plurals>
+    <plurals name="anniversary_period_months">
+        <item quantity="one">every month</item>
+        <item quantity="other">every %1$d months</item>
+    </plurals>
+    <string name="task_recurrence_anniversary_format">Anniversary, %1$s</string>
+    <string name="recurrence_sentence_anniversary_format">The task comes back %1$s, on the anniversary of the first time it was done, even if it was done late in between. Until it has been done once, it is due right away.</string>
     <string-array name="month_names_short">
         <item>Jan</item><item>Feb</item><item>Mar</item><item>Apr</item>
         <item>May</item><item>Jun</item><item>Jul</item><item>Aug</item>

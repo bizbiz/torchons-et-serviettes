@@ -292,4 +292,7 @@ dependencies {
     // Usage : restoration silencieuse des achats existants au cold start +
     // hook pour lancer le flow d'achat plus tard.
     implementation(libs.billing.ktx)
+
+    // JVM unit tests (pure logic only: no Android framework, no Room).
+    testImplementation("junit:junit:4.13.2")
 }

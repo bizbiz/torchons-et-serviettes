@@ -860,6 +860,23 @@
     <string name="task_edit_calendar_day_label">Jour du mois (1 à 28)</string>
     <string name="task_edit_calendar_grace_label">Tolérance après l\'échéance (jours)</string>
     <string name="task_edit_calendar_grace_help">La tâche est signalée dès l\'échéance, mais n\'est comptée en retard qu\'après ce délai.</string>
+
+    <!-- Type de recurrence anniversaire (anniversary) : ancre sur la 1re execution -->
+    <string name="task_edit_recurrence_anniversary">Anniversaire de la 1re fois</string>
+    <string name="task_edit_anniversary_period_label">Tous les</string>
+    <string name="task_edit_anniversary_unit_years">Ans</string>
+    <string name="task_edit_anniversary_unit_months">Mois</string>
+    <string name="task_edit_anniversary_help">L\'échéance part de la première exécution enregistrée. Pour un vaccin déjà reçu, enregistrez-le à sa vraie date.</string>
+    <plurals name="anniversary_period_years">
+        <item quantity="one">chaque année</item>
+        <item quantity="other">tous les %1$d ans</item>
+    </plurals>
+    <plurals name="anniversary_period_months">
+        <item quantity="one">chaque mois</item>
+        <item quantity="other">tous les %1$d mois</item>
+    </plurals>
+    <string name="task_recurrence_anniversary_format">Anniversaire, %1$s</string>
+    <string name="recurrence_sentence_anniversary_format">La tâche revient %1$s, à la date anniversaire de sa première exécution, même si vous l\'avez faite en retard entre-temps. Tant qu\'elle n\'a jamais été faite, elle est à faire tout de suite.</string>
     <string-array name="month_names_short">
         <item>Jan</item><item>Fév</item><item>Mar</item><item>Avr</item>
         <item>Mai</item><item>Juin</item><item>Juil</item><item>Août</item>

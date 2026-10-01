@@ -58,17 +58,31 @@ object TaskUrgencyCalculator {
                 val n = rule.months?.count { it in 1..12 } ?: 0
                 if (n > 0) maxOf(1, Math.rint(365.0 / n).toInt()) else 0
             }
+            // Mirror of recurrence.py: the period in days (12 -> 365, 6 -> 182).
+            "anniversary" -> maxOf(1, Math.rint(anniversaryMonths(rule) * 365.0 / 12).toInt())
             "uncertain" -> 0
             else -> 0
         }
     }
 
-    /** A calendar rule warns at most this many days ahead (decided 2026-09-30). */
+    /**
+     * A date-anchored rule (`calendar`, `anniversary`) warns at most this many
+     * days ahead (decided 2026-09-30).
+     */
     const val CALENDAR_ORANGE_WINDOW_CAP_DAYS = 7
 
     /** Upper bound on the orange window, null if unbounded. Mirror of recurrence.py. */
     fun orangeWindowCapOf(rule: RecurrenceRule?): Int? =
-        if (rule?.type == "calendar") CALENDAR_ORANGE_WINDOW_CAP_DAYS else null
+        if (rule?.type == "calendar" || rule?.type == "anniversary") CALENDAR_ORANGE_WINDOW_CAP_DAYS else null
+
+    /** Orange window in days, cap applied: the one [computeState] uses. */
+    private fun orangeWindowDays(rule: RecurrenceRule?): Int {
+        val window = floor(nominalIntervalDays(rule) * 0.10).toInt().coerceAtLeast(0)
+        val cap = orangeWindowCapOf(rule) ?: return window
+        return minOf(window, cap)
+    }
+
+    private fun anniversaryMonths(rule: RecurrenceRule): Int = (rule.everyNMonths ?: 12).coerceIn(1, 1200)
 
     /** Days after the due date before RED. Only `calendar` declares any. */
     fun graceDaysOf(rule: RecurrenceRule?): Int = (rule?.graceDays ?: 0).coerceAtLeast(0)
@@ -89,6 +103,8 @@ object TaskUrgencyCalculator {
         createdAt: String?,
         zone: ZoneId = ZoneId.systemDefault(),
         today: LocalDate = LocalDate.now(zone),
+        /** Earliest live completion: the `anniversary` anchor, ignored otherwise. */
+        firstCompletedAt: String? = null,
     ): LocalDate? {
         // uncertain : aucune echeance visible (v0.14, Q2). L'etat reste GREEN.
         if (isUncertain(rule)) return null
@@ -115,6 +131,10 @@ object TaskUrgencyCalculator {
 
             "calendar" -> nextCalendarDue(rule, lastDate, today)
 
+            // Without a known first completion the last one stands in for it,
+            // like compute_due_date: one period after, never "no due date".
+            "anniversary" -> nextAnniversaryDue(rule, parseDate(firstCompletedAt, zone) ?: lastDate, lastDate)
+
             else -> null
         }
     }
@@ -134,6 +154,25 @@ object TaskUrgencyCalculator {
         val nextFuture = candidates.filter { it.isAfter(today) }.minOrNull()
         if (latestPast == null) return nextFuture
         return if (!lastDate.isBefore(latestPast)) nextFuture else latestPast
+    }
+
+    /**
+     * Anniversary anchoring, mirror of `next_anniversary_due` in recurrence.py.
+     *
+     * Occurrences are `first + k * everyNMonths` (k >= 1), each computed from
+     * the anchor (`plusMonths` clamps to the month's end, a 31st does not decay
+     * to the 28th). The due one is the earliest occurrence the last completion
+     * has not honoured; a completion honours an occurrence once its orange
+     * window has opened. Pure: no clock.
+     */
+    fun nextAnniversaryDue(rule: RecurrenceRule, first: LocalDate, last: LocalDate): LocalDate {
+        val n = anniversaryMonths(rule).toLong()
+        val window = orangeWindowDays(rule).toLong()
+        val monthsBetween = (last.year - first.year) * 12L + (last.monthValue - first.monthValue)
+        var k = maxOf(1L, Math.floorDiv(monthsBetween, n))
+        while (k > 1 && first.plusMonths((k - 1) * n).minusDays(window).isAfter(last)) k--
+        while (!first.plusMonths(k * n).minusDays(window).isAfter(last)) k++
+        return first.plusMonths(k * n)
     }
 
     /**
@@ -280,6 +319,23 @@ object TaskUrgencyCalculator {
             l == null -> serverLastCompletedAt
             l.isAfter(s) -> localCacheLatest
             else -> serverLastCompletedAt
+        }
+    }
+
+    /**
+     * Earliest completion: the SERVER value (TaskResponse.first_completed_at)
+     * and the earliest of the LOCAL cache, the older of the two. The local one
+     * wins when an offline completion (possibly backdated) is not yet known to
+     * the server. Counterpart of [latestCompletedAt].
+     */
+    fun earliestCompletedAt(serverFirstCompletedAt: String?, localCacheEarliest: String?): String? {
+        val s = parseInstant(serverFirstCompletedAt)
+        val l = parseInstant(localCacheEarliest)
+        return when {
+            s == null -> localCacheEarliest
+            l == null -> serverFirstCompletedAt
+            l.isBefore(s) -> localCacheEarliest
+            else -> serverFirstCompletedAt
         }
     }
 

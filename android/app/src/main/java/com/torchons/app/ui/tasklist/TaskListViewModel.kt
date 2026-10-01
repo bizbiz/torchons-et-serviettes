@@ -714,10 +714,16 @@ class TaskListViewModel @Inject constructor(
         // recompute (changement de filtre, refresh, scroll), suffisant pour
         // faire ramer le scroll de la liste.
         val lastCompletionByTaskId = HashMap<String, Completion>(completions.size)
+        // Same pass for the earliest one: the anchor of an `anniversary` rule.
+        val firstCompletionByTaskId = HashMap<String, Completion>(completions.size)
         for (c in completions) {
             val existing = lastCompletionByTaskId[c.taskId]
             if (existing == null || c.completedAt > existing.completedAt) {
                 lastCompletionByTaskId[c.taskId] = c
+            }
+            val earliest = firstCompletionByTaskId[c.taskId]
+            if (earliest == null || c.completedAt < earliest.completedAt) {
+                firstCompletionByTaskId[c.taskId] = c
             }
         }
         val today = LocalDate.now()
@@ -737,6 +743,10 @@ class TaskListViewModel @Inject constructor(
                 lastCompletedAt = effectiveLastCompleted,
                 rule = task.recurrenceRule,
                 createdAt = task.createdAt,
+                firstCompletedAt = TaskUrgencyCalculator.earliestCompletedAt(
+                    serverFirstCompletedAt = task.firstCompletedAt,
+                    localCacheEarliest = firstCompletionByTaskId[task.id]?.completedAt,
+                ),
             )
             val absentDays = task.absentDaysSinceLastCompletion
             val state = TaskUrgencyCalculator.computeState(

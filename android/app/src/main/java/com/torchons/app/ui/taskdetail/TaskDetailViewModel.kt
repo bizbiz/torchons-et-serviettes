@@ -154,6 +154,10 @@ class TaskDetailViewModel @Inject constructor(
                     lastCompletedAt = lastCompletion?.completedAt,
                     rule = cached.task?.recurrenceRule,
                     createdAt = cached.task?.createdAt,
+                    firstCompletedAt = TaskUrgencyCalculator.earliestCompletedAt(
+                        serverFirstCompletedAt = cached.task?.firstCompletedAt,
+                        localCacheEarliest = sortedCompletions.lastOrNull()?.completedAt,
+                    ),
                 )
                 val absentDays = cached.task?.absentDaysSinceLastCompletion ?: 0
                 val state = TaskUrgencyCalculator.computeState(

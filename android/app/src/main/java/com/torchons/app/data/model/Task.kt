@@ -48,6 +48,12 @@ data class Task(
     // Reconcilie par max() avec le cache local cf TaskUrgencyCalculator
     // .latestCompletedAt + docs/cache-conventions.md (regle 2).
     @SerializedName("last_completed_at") val lastCompletedAt: String? = null,
+    /**
+     * Earliest live completion, computed SERVER side: the anchor of an
+     * `anniversary` rule. Reconciled by min() with the local cache, see
+     * TaskUrgencyCalculator.earliestCompletedAt.
+     */
+    @SerializedName("first_completed_at") val firstCompletedAt: String? = null,
 )
 
 /**
@@ -86,6 +92,9 @@ data class UpdateTaskRequest(
  * - `monthly_variable` : cadence variable selon le mois (days_per_month
  *   obligatoire — 12 entrees "1".."12").
  * - `uncertain` : cadence libre inferee cote backend (v0.14).
+ * - `calendar` : fixed months and day, no drift.
+ * - `anniversary` : every [everyNMonths] months after the FIRST completion.
+ * The list itself lives in [RecurrenceTypes].
  *
  * @Immutable pour les memes raisons que Task (champs Map).
  */
@@ -104,4 +113,6 @@ data class RecurrenceRule(
      * « avril & octobre » (deux occurrences).
      */
     @SerializedName("grace_days") val graceDays: Int? = null,
+    /** `anniversary` : period in months (12 = yearly), anchored on the first completion. */
+    @SerializedName("every_n_months") val everyNMonths: Int? = null,
 )

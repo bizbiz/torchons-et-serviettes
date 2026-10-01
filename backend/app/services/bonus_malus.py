@@ -72,6 +72,7 @@ def compute_multiplier(
     completion_count_before_this: int,
     completed_at: datetime,
     config: FoyerBonusConfig,
+    first_completed_before_this: datetime | None = None,
 ) -> MultiplierResult:
     """Calcule le multiplicateur bonus/malus pour une completion.
 
@@ -84,6 +85,9 @@ def compute_multiplier(
     last_completed_before_this : datetime | None
         Derniere completion ACTIVE avant celle-ci (soft-deletes exclues).
         None si aucune : c'est la 1ere completion.
+    first_completed_before_this : datetime | None
+        Earliest active completion before this one: the anchor of an
+        `anniversary` rule, ignored by the other types.
     completion_count_before_this : int
         Nombre de completions actives deja existantes (avant celle-ci).
         0 si c'est la 1ere.
@@ -143,7 +147,10 @@ def compute_multiplier(
     # due_date base sur la derniere completion (celle d'avant celle-ci) et
     # sur la recurrence. compute_due_date renvoie None si la regle est
     # invalide — on degrade vers NEUTRAL.
-    due = compute_due_date(recurrence_rule, last_completed_before_this)
+    due = compute_due_date(
+        recurrence_rule, last_completed_before_this,
+        first_completed=first_completed_before_this,
+    )
     if due is None:
         return MultiplierResult(
             multiplier=1.0,
@@ -289,13 +296,16 @@ async def compute_bonus_malus_for_completion(
     completion_count = count_result.scalar() or 0
 
     last_result = await session.execute(
-        select(func.max(TaskCompletion.completed_at)).where(
+        select(
+            func.max(TaskCompletion.completed_at),
+            func.min(TaskCompletion.completed_at),
+        ).where(
             TaskCompletion.task_id == task.id,
             TaskCompletion.deleted_at.is_(None),
             TaskCompletion.completed_at < completed_at,
         )
     )
-    last_completed = last_result.scalar()
+    last_completed, first_completed = last_result.one()
 
     config = await load_or_create_bonus_config(session, foyer_id)
 
@@ -303,6 +313,7 @@ async def compute_bonus_malus_for_completion(
         recurrence_rule=task.recurrence_rule,
         tolerance=task.tolerance,
         last_completed_before_this=last_completed,
+        first_completed_before_this=first_completed,
         completion_count_before_this=completion_count,
         completed_at=completed_at,
         config=config,

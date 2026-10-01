@@ -1210,6 +1210,9 @@ _HISTORY_TEMPLATES: dict[str, dict[str, str]] = {
         "recurrence_interval_format": "tous les {n}j",
         "recurrence_monthly_variable": "variable selon le mois",
         "recurrence_uncertain": "irrégulière",
+        "recurrence_calendar": "à date fixe",
+        "recurrence_anniversary_years_format": "tous les {n} an(s) après la 1re fois",
+        "recurrence_anniversary_months_format": "tous les {n} mois après la 1re fois",
         "recurrence_none": "ponctuelle",
     },
     "en": {
@@ -1231,6 +1234,9 @@ _HISTORY_TEMPLATES: dict[str, dict[str, str]] = {
         "recurrence_interval_format": "every {n}d",
         "recurrence_monthly_variable": "varies by month",
         "recurrence_uncertain": "irregular",
+        "recurrence_calendar": "on a fixed date",
+        "recurrence_anniversary_years_format": "every {n} year(s) after the first time",
+        "recurrence_anniversary_months_format": "every {n} month(s) after the first time",
         "recurrence_none": "one-shot",
     },
 }
@@ -1285,6 +1291,13 @@ def _format_recurrence_rule(rule: dict | None, locale: str = "fr") -> str | None
         return _t(locale, "recurrence_monthly_variable")
     if rtype == "uncertain":
         return _t(locale, "recurrence_uncertain")
+    if rtype == "calendar":
+        return _t(locale, "recurrence_calendar")
+    if rtype == "anniversary":
+        n = rule.get("every_n_months") or 12
+        if n % 12 == 0:
+            return _t(locale, "recurrence_anniversary_years_format", n=n // 12)
+        return _t(locale, "recurrence_anniversary_months_format", n=n)
     if rtype == "none":
         return _t(locale, "recurrence_none")
     return rtype or "?"

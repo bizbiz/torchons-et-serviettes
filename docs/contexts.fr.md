@@ -197,8 +197,53 @@ de retard, reste entier. Implémenté deux fois, à garder alignées :
 `monthly_variable` : un vote remplacerait la date fixe et rendrait la dérive.
 `PUT /tasks/{id}/frequency` et la demande de revote rendent 409
 `GAMIF_RULE_NOT_VOTABLE` hors de `VOTABLE_RULE_TYPES`. C'est une liste
-**blanche** : la future forme anniversaire en sera exclue sans que personne ait
-à y penser.
+**blanche** : la forme anniversaire en est exclue sans que personne ait eu à y
+penser.
+
+### Anniversaire : un an après la première fois
+
+```json
+{"type": "anniversary", "every_n_months": 12}
+```
+
+Pour les vaccins et la révision : l'échéance part de la **première** complétion,
+pas de la dernière. Les occurrences valent `première + k × every_n_months`
+(k ≥ 1), chacune calculée depuis l'ancre (`plusMonths` / `add_months` bornent au
+dernier jour du mois : un 31 janvier mensuel donne le 29 février puis le 31 mars,
+sans s'user au 28). La période est en **mois** pour qu'« tous les 2 ans » tombe
+sur le même jour du calendrier ; l'éditeur la saisit en ans ou en mois.
+
+- **Échéance** : la plus ancienne occurrence que la DERNIÈRE complétion n'a pas
+  honorée. Une complétion honore une occurrence dès que sa fenêtre orange est
+  ouverte : faite en orange ou en rouge, elle compte ; faite deux mois avant,
+  non. Faite en retard, elle ne déplace pas la suivante : aucune dérive.
+- **Jamais faite** : échéance = `created_at`, comme tous les autres types. C'est
+  ce qui pousse à enregistrer la première fois ; pour un vaccin déjà reçu, on
+  saisit la complétion à sa vraie date (le sélecteur de date existe déjà).
+- **« Première »** = la plus ancienne complétion **vivante** (`deleted_at IS
+  NULL`). La supprimer passe l'ancre à la suivante ; antidater une complétion
+  avant l'ancre la déplace. Rien n'est stocké dans la règle : l'ancre se dérive à
+  chaque lecture, donc aucune écriture cachée et aucune ancre périmée.
+- **Où elle vient** : `TaskResponse.first_completed_at` (serveur, autoritaire en
+  ligne), persisté dans Room (`tasks.firstCompletedAt`, base Room 13), réconcilié
+  par `earliestCompletedAt` = min(serveur, cache local) hors ligne. Côté serveur,
+  `first_completions_by_task` (`services/completion_anchor.py`) ne requête que
+  les tâches anniversaire. Un appelant qui ne la fournit pas retombe sur la
+  dernière complétion (une période après la dernière fois), jamais sur « pas
+  d'échéance ».
+- **Fenêtre orange** : 10 %, plafonnée à 7 jours, comme `calendar`.
+- **Pas de vote** : hors de `VOTABLE_RULE_TYPES`.
+
+Implémenté deux fois, à garder alignées : `next_anniversary_due`
+(`recurrence.py`) et `nextAnniversaryDue` (`TaskUrgencyCalculator.kt`), tenues
+par les mêmes cas (`test_anniversary_recurrence.py`, `AnniversaryDueTest.kt`).
+
+**Les listes de types.** `LIVING_RULE_TYPES` fait référence : le schéma REST la
+lit (il refusait `calendar` en 422 jusqu'au 01/10/2026 alors que `/sync`
+l'acceptait), `tests/test_recurrence_type_lists.py` prouve que chaque type est
+accepté en REST et compare `LIVING` / `VOTABLE` au source Kotlin
+(`RecurrenceTypes.kt`), et `RecurrenceTypesTest.kt` prouve que le calculateur
+donne une échéance à chaque type vivant.
 
 Les trois anciens types sont convertis à la normalisation : `weekdays` et
 `custom` en `interval` équivalent (`_legacy_interval`), `monthly` en `calendar`

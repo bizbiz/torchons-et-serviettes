@@ -94,8 +94,31 @@ fun recurrenceSentence(rule: RecurrenceRule?, context: Context): String {
 
         "uncertain" -> res.getString(R.string.recurrence_sentence_uncertain)
 
+        "anniversary" -> res.getString(
+            R.string.recurrence_sentence_anniversary_format,
+            anniversaryPeriodPhrase(res, rule.everyNMonths ?: 12),
+        )
+
         else -> res.getString(R.string.recurrence_sentence_unknown)
     }
+}
+
+/**
+ * "every 2 years" / "every 6 months": whole years when the period is a
+ * multiple of 12, months otherwise. Shared by the sentence and the short label.
+ */
+fun anniversaryPeriodPhrase(res: android.content.res.Resources, months: Int): String =
+    if (months % 12 == 0) {
+        res.getQuantityString(R.plurals.anniversary_period_years, months / 12, months / 12)
+    } else {
+        res.getQuantityString(R.plurals.anniversary_period_months, months, months)
+    }
+
+/** Short label of an `anniversary` rule, for the task detail screen. */
+@Composable
+fun anniversaryPeriodLabel(months: Int): String {
+    val res = LocalContext.current.resources
+    return res.getString(R.string.task_recurrence_anniversary_format, anniversaryPeriodPhrase(res, months))
 }
 
 private fun monthName(res: android.content.res.Resources, month: Int): String {
