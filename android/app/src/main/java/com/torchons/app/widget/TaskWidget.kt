@@ -34,14 +34,30 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.torchons.app.MainActivity
+import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.Suggestion
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
+
+/**
+ * The widget goes through the app's shared Retrofit client, so it carries the
+ * stored token, the app-version header and the device-revocation handling.
+ * It used to call the legacy `/auth/auto` route, removed on 2026-10-05.
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface TaskWidgetEntryPoint {
+    fun apiService(): ApiService
+}
+
+private fun widgetApi(context: Context): ApiService =
+    EntryPointAccessors.fromApplication(context.applicationContext, TaskWidgetEntryPoint::class.java)
+        .apiService()
 
 class TaskWidget : GlanceAppWidget() {
 
@@ -49,7 +65,7 @@ class TaskWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val suggestions = try {
-            fetchSuggestions()
+            fetchSuggestions(context)
         } catch (e: Exception) {
             emptyList()
         }
@@ -59,29 +75,15 @@ class TaskWidget : GlanceAppWidget() {
         }
     }
 
-    private suspend fun fetchSuggestions(): List<Suggestion> = withContext(Dispatchers.IO) {
-        try {
-            val authConn = (URL("${com.torchons.app.BuildConfig.API_BASE_URL}/auth/auto").openConnection() as HttpURLConnection).apply {
-                connectTimeout = 3000
-                readTimeout = 3000
+    private suspend fun fetchSuggestions(context: Context): List<Suggestion> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = widgetApi(context).getSuggestions()
+                if (response.isSuccessful) response.body()?.suggestions.orEmpty() else emptyList()
+            } catch (e: Exception) {
+                emptyList()
             }
-            val authJson = authConn.inputStream.bufferedReader().readText()
-            authConn.disconnect()
-            val authMap = Gson().fromJson(authJson, Map::class.java) as Map<*, *>
-            val token = authMap["token"] as? String ?: return@withContext emptyList()
-
-            val conn = (URL("${com.torchons.app.BuildConfig.API_BASE_URL}/suggestions").openConnection() as HttpURLConnection).apply {
-                connectTimeout = 3000
-                readTimeout = 3000
-                setRequestProperty("Authorization", "Bearer $token")
-            }
-            val json = conn.inputStream.bufferedReader().readText()
-            conn.disconnect()
-            Gson().fromJson(json, object : TypeToken<List<Suggestion>>() {}.type)
-        } catch (e: Exception) {
-            emptyList()
         }
-    }
 }
 
 @Composable
@@ -217,27 +219,7 @@ class CompleteTaskAction : ActionCallback {
         val taskId = parameters[taskIdParam] ?: return
         try {
             withContext(Dispatchers.IO) {
-                // Auto-login
-                val authConn = (URL("${com.torchons.app.BuildConfig.API_BASE_URL}/auth/auto").openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 3000
-                    readTimeout = 3000
-                }
-                val authJson = authConn.inputStream.bufferedReader().readText()
-                authConn.disconnect()
-                val token = (Gson().fromJson(authJson, Map::class.java) as Map<*, *>)["token"] as? String ?: return@withContext
-
-                // Complete task
-                val conn = (URL("${com.torchons.app.BuildConfig.API_BASE_URL}/tasks/$taskId/complete").openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 3000
-                    readTimeout = 3000
-                    requestMethod = "POST"
-                    setRequestProperty("Authorization", "Bearer $token")
-                    setRequestProperty("Content-Type", "application/json")
-                    doOutput = true
-                    outputStream.write("{}".toByteArray())
-                }
-                conn.responseCode
-                conn.disconnect()
+                widgetApi(context).completeTask(taskId)
             }
             // Refresh widget
             TaskWidget().update(context, glanceId)

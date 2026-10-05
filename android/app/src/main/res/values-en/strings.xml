@@ -286,13 +286,6 @@
     <string name="welcome_join_foyer">Join a household</string>
     <string name="welcome_restore_foyer">Recover my household</string>
 
-    <!-- LoginScreen (Tailscale fallback) -->
-    <string name="login_new_device">New device detected</string>
-    <string name="login_who_are_you">Who are you?</string>
-    <string name="login_ip_format">IP: %1$s</string>
-    <string name="login_connection_failed">Connection failed</string>
-    <string name="login_connection_failed_help">Check that Tailscale is on\nand the server is reachable.</string>
-
     <!-- Wizard: shared nav + buttons -->
     <string name="wizard_continue">Continue</string>
     <string name="wizard_skip_step">Skip this step</string>

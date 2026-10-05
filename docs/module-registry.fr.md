@@ -341,7 +341,7 @@ dans les vraies données. La stack beta comble ce trou.
 Pas de Caddy ni de TLS sur la beta : elle n'est joignable que par le
 tailnet, qui chiffre déjà. Un certificat exigerait un DNS public, donc une
 exposition publique — l'inverse de ce qu'on veut d'un serveur de test.
-`TAILSCALE_MAP` y est volontairement vide : sans auto-login par IP, chaque
+Il n'y a pas d'auto-login par IP (routes retirées le 2026-10-05) : chaque
 appareil passe par le wizard, qui est précisément l'objet du chantier.
 
 Le code y arrive par `tar | ssh` depuis le poste et non par `git pull` : le

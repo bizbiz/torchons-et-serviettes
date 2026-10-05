@@ -11,7 +11,6 @@ import javax.inject.Singleton
 /**
  * Intercepteur OkHttp qui ajoute automatiquement le token JWT
  * dans le header Authorization de chaque requete.
- * Les requetes vers /auth/login sont exclues.
  */
 @Singleton
 class AuthInterceptor @Inject constructor(
@@ -20,11 +19,6 @@ class AuthInterceptor @Inject constructor(
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
-
-        // Ne pas ajouter le token pour la route de login
-        if (originalRequest.url.encodedPath.endsWith("auth/login")) {
-            return chain.proceed(originalRequest)
-        }
 
         // Recuperer le token de maniere synchrone (necessaire pour l'intercepteur)
         val token = runBlocking {

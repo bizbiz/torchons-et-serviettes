@@ -35,7 +35,6 @@ import androidx.compose.ui.platform.LocalContext
 import com.torchons.app.ui.devices.DevicesScreen
 import com.torchons.app.ui.changelog.ChangelogScreen
 import com.torchons.app.ui.home.HomeScreen
-import com.torchons.app.ui.login.LoginScreen
 import com.torchons.app.ui.settings.ContextsScreen
 import com.torchons.app.ui.settings.FoyerSettingsScreen
 import com.torchons.app.ui.settings.SettingsScreen
@@ -55,7 +54,6 @@ import androidx.navigation.navArgument
  * Routes de navigation de l'application.
  */
 object Routes {
-    const val LOGIN = "login"
     const val MAIN = "main"
     const val HOME = "home"
     const val TASK_LIST = "task_list"
@@ -122,16 +120,10 @@ fun NavGraph(
         navController = navController,
         startDestination = startDestination
     ) {
-        // v0.30 — Ecran d'accueil onboarding sans compte. Tente Tailscale
-        // auto-login en arriere-plan (fast-path dogfood) puis offre
-        // 3 entrees : Creer / Rejoindre / Retrouver.
+        // v0.30 — Ecran d'accueil onboarding sans compte : 3 entrees,
+        // Creer / Rejoindre / Retrouver.
         composable(Routes.WELCOME) {
             WelcomeScreen(
-                onAutoLoginSuccess = {
-                    navController.navigate(Routes.MAIN) {
-                        popUpTo(Routes.WELCOME) { inclusive = true }
-                    }
-                },
                 onCreateFoyerClick = {
                     navController.navigate(Routes.CREATE_FOYER_WIZARD)
                 },
@@ -228,18 +220,6 @@ fun NavGraph(
             InviteQrScreen(onBack = { navController.popBackStack() })
         }
 
-        // Ecran de connexion (legacy : conserve pour le dogfood Tailscale).
-        // Sera retire a la bascule publique cf. design-onboarding-public.md §6.
-        composable(Routes.LOGIN) {
-            LoginScreen(
-                onLoginSuccess = {
-                    navController.navigate(Routes.MAIN) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
-                    }
-                }
-            )
-        }
-
         // Ecran principal avec bottom nav
         composable(Routes.MAIN) {
             MainScreen(
@@ -268,9 +248,7 @@ fun NavGraph(
                     navController.navigate(Routes.inviteQr(addDevice = true))
                 },
                 onLogout = {
-                    // v0.30 — bascule sur Welcome (les 3 boutons + tentative
-                    // Tailscale en arriere-plan). LOGIN reste un fallback
-                    // legacy mais n'est plus le point d'entree.
+                    // v0.30 — bascule sur Welcome (les 3 boutons).
                     navController.navigate(Routes.WELCOME) {
                         popUpTo(Routes.MAIN) { inclusive = true }
                     }

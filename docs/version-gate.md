@@ -123,8 +123,11 @@ app starts normally again and announces `X-App-Version-Code: 96`.
 
 Two details for whoever replays this:
 
-- `/api/auth/auto` is not exempt — the gate fires on the very first call at
-  startup, with no need to navigate inside the app.
+- The finding above went through `/api/auth/auto`, which the beta app called
+  at startup. That route was removed on 2026-10-05: with no session, the
+  welcome screen no longer calls the server, and the gate fires on the first
+  non-exempt call — the main screen of an already signed-in app, or an
+  onboarding step.
 - The first frame an already-blocked app renders is the gate screen, never the
   normal UI: the system splash stays up for ~1.1 s, which comfortably covers
   `VersionGateMonitor.restore()` re-reading the verdict. Measured with a burst

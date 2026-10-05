@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -19,48 +18,31 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
 
 /**
  * Ecran d'accueil v0.30 — onboarding sans compte.
  *
- * Tente l'auto-login Tailscale en arriere-plan (fast-path dogfood pendant le
- * dogfood). Si echec, affiche 3 boutons :
+ * Trois entrees :
  *  - Creer un foyer  -> CreateFoyerWizardScreen (B3)
  *  - Rejoindre un foyer  -> JoinFoyerScreen (B4)
  *  - Retrouver mon foyer  -> RestoreFoyerScreen (B5, lien discret)
  *
- * Cf. docs/design-onboarding-public.md §4 (welcome 3 boutons) et §6
- * (Tailscale auto-login conserve pendant le dogfood).
+ * L'auto-login par IP Tailscale de la phase dogfood a ete retire le
+ * 2026-10-05 : il reposait sur des routes qui delivraient un jeton sans secret.
  */
 @Composable
 fun WelcomeScreen(
-    onAutoLoginSuccess: () -> Unit,
     onCreateFoyerClick: () -> Unit,
     onJoinFoyerClick: () -> Unit,
     onRestoreFoyerClick: () -> Unit,
-    viewModel: WelcomeViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(Unit) { viewModel.probe() }
-
-    LaunchedEffect(uiState) {
-        if (uiState is WelcomeUiState.AutoLoginSuccess) {
-            onAutoLoginSuccess()
-        }
-    }
-
     Scaffold { paddingValues ->
         Column(
             modifier = Modifier
@@ -93,40 +75,25 @@ fun WelcomeScreen(
             )
             Spacer(Modifier.height(48.dp))
 
-            when (uiState) {
-                WelcomeUiState.Idle, WelcomeUiState.Probing,
-                WelcomeUiState.AutoLoginSuccess -> {
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = stringResource(R.string.welcome_connecting),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                WelcomeUiState.NoSession -> {
-                    Button(
-                        onClick = onCreateFoyerClick,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.welcome_create_foyer))
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedButton(
-                        onClick = onJoinFoyerClick,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.welcome_join_foyer))
-                    }
-                    Spacer(Modifier.height(20.dp))
-                    TextButton(onClick = onRestoreFoyerClick) {
-                        Text(
-                            text = stringResource(R.string.welcome_restore_foyer),
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                    }
-                }
+            Button(
+                onClick = onCreateFoyerClick,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.welcome_create_foyer))
+            }
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onJoinFoyerClick,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.welcome_join_foyer))
+            }
+            Spacer(Modifier.height(20.dp))
+            TextButton(onClick = onRestoreFoyerClick) {
+                Text(
+                    text = stringResource(R.string.welcome_restore_foyer),
+                    style = MaterialTheme.typography.labelLarge,
+                )
             }
         }
     }

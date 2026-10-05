@@ -84,26 +84,25 @@ android {
         versionCode = tsVersionCode
         versionName = tsVersionName
 
-        // SUPPORT_EMAIL commun aux flavors. API_BASE_URL + TAILSCALE_AUTOLOGIN
-        // sont definis PAR FLAVOR (prod = public sans Tailscale, beta = test).
+        // SUPPORT_EMAIL commun aux flavors. API_BASE_URL est defini PAR FLAVOR
+        // (prod = public, beta = test).
         buildConfigField("String", "SUPPORT_EMAIL", "\"$tsSupportEmail\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     // Deux canaux installables cote a cote (applicationId distinct).
-    // `prod` : APK public unique (cf. design-onboarding-public.md §6) —
-    //          Tailscale auto-login DESACTIVE.
-    // `beta` : canal de test (.beta), backend de test separe, Tailscale
-    //          auto-login ACTIF pour le dogfood. « Certains users » = ceux
-    //          qui installent l'APK beta / sont dans le canal Closed Testing.
+    // `prod` : APK public unique.
+    // `beta` : canal de test (.beta), backend de test separe. « Certains
+    //          users » = ceux qui installent l'APK beta / sont dans le canal
+    //          Closed Testing. L'auto-login par IP Tailscale, propre a la beta,
+    //          a ete retire le 2026-10-05.
     flavorDimensions += "channel"
     productFlavors {
         create("prod") {
             dimension = "channel"
             resValue("string", "app_name", "Torchons & Serviettes")
             buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrlProd\"")
-            buildConfigField("boolean", "TAILSCALE_AUTOLOGIN", "false")
             // Pas de marqueur de build en prod public (release reproductible).
             buildConfigField("String", "BUILD_INFO", "\"\"")
         }
@@ -113,7 +112,6 @@ android {
             versionNameSuffix = "-beta"
             resValue("string", "app_name", "T&S Beta")
             buildConfigField("String", "API_BASE_URL", "\"$tsApiBaseUrlBeta\"")
-            buildConfigField("boolean", "TAILSCALE_AUTOLOGIN", "true")
             buildConfigField("String", "BUILD_INFO", "\"$tsBuildStamp\"")
         }
     }

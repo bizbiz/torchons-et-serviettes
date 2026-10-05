@@ -1,6 +1,6 @@
 """Configuration via variables d'environnement (.env).
 
-Toutes les valeurs sensibles (URL DB, secret JWT, mapping Tailscale) sont
+Toutes les valeurs sensibles (URL DB, secret JWT) sont
 chargees depuis `backend/.env` (gitignore). Le fichier `.env.example` du repo
 sert de template avec des valeurs `CHANGE_ME` a remplacer.
 
@@ -28,10 +28,6 @@ class Settings(BaseSettings):
 
     # Auth — secret JWT, lu depuis .env, vide par defaut.
     jwt_secret: str = ""
-
-    # Tailscale — mapping JSON {"ip":"username"} pour l'auto-login zero-config.
-    # Vide par defaut : pas d'auto-login si non configure.
-    tailscale_map: str = "{}"
 
     # Backend
     backend_host: str = "0.0.0.0"

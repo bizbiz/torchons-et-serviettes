@@ -292,13 +292,6 @@
     <string name="welcome_join_foyer">Rejoindre un foyer</string>
     <string name="welcome_restore_foyer">Retrouver mon foyer</string>
 
-    <!-- LoginScreen (Tailscale fallback) -->
-    <string name="login_new_device">Nouvel appareil détecté</string>
-    <string name="login_who_are_you">Qui es-tu&#160;?</string>
-    <string name="login_ip_format">IP&#160;: %1$s</string>
-    <string name="login_connection_failed">Connexion impossible</string>
-    <string name="login_connection_failed_help">Vérifie que Tailscale est activé\net que le serveur est accessible.</string>
-
     <!-- Wizard générique : nav + buttons partagés -->
     <string name="wizard_continue">Continuer</string>
     <string name="wizard_skip_step">Sauter cette étape</string>

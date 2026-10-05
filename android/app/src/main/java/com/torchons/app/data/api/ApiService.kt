@@ -16,8 +16,6 @@ import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.CreateTaskRequest
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.LeaderboardEntry
-import com.torchons.app.data.model.LoginRequest
-import com.torchons.app.data.model.LoginResponse
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.StreakInfo
 import com.torchons.app.data.model.DismissRequest
@@ -45,18 +43,6 @@ import retrofit2.http.Query
 interface ApiService {
 
     // --- Authentification ---
-
-    /** Connexion avec nom d'utilisateur et identifiant appareil. */
-    @POST("auth/login")
-    suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
-
-    /** Auto-login via Tailscale (identification par IP). Retourne LoginResponse ou unknown_ip. */
-    @GET("auth/auto")
-    suspend fun autoLogin(): Response<Map<String, Any>>
-
-    /** Associer l'IP courante a un utilisateur. */
-    @POST("auth/claim")
-    suspend fun claimIP(@Body body: Map<String, String>): Response<Map<String, Any>>
 
     /** Recupere les informations de l'utilisateur connecte. */
     @GET("auth/me")

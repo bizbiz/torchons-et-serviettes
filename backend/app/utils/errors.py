@@ -185,15 +185,6 @@ ERROR_MESSAGES: dict[str, dict[str, str]] = {
     # ============================================================
     # Lot 3 i18n (post-launch) — reste des HTTPException backend.
     # ============================================================
-    # Auth
-    "AUTH_USER_UNKNOWN_FORMAT": {
-        "fr": "Utilisateur inconnu: {username}",
-        "en": "Unknown user: {username}",
-    },
-    "AUTH_USER_NOT_FOUND_FORMAT": {
-        "fr": "Utilisateur '{username}' introuvable",
-        "en": "User '{username}' not found",
-    },
     # Categories / Rooms / Tasks / Completions / Objectives — generic "X not found"
     "CATEGORY_NOT_FOUND": {
         "fr": "Categorie introuvable",

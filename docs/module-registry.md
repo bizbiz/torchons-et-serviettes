@@ -333,9 +333,9 @@ The beta stack closes that gap.
 No Caddy and no TLS on beta: it is reachable only over the tailnet, which
 already encrypts. A certificate would require public DNS, hence public
 exposure — the opposite of what a test server should have.
-`TAILSCALE_MAP` is deliberately empty there: with no IP-to-user
-auto-login, every device goes through the wizard, which is precisely what
-this work is about.
+There is no IP-to-user auto-login (routes removed on 2026-10-05): every
+device goes through the wizard, which is precisely what this work is
+about.
 
 Code reaches it via `tar` over `ssh` from the dev machine rather than
 `git pull`: the repository is private, and a dogfood server has to serve

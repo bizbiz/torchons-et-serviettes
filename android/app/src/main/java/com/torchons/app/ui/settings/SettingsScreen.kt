@@ -200,9 +200,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     // Sous-titre "Connecté via Tailscale" retiré : trompeur en
-                    // beta (API_BASE_URL = Scaleway HTTPS, malgré TAILSCALE_AUTOLOGIN
-                    // qui n'est que la détection de session côté Welcome). Le
-                    // canal effectif est visible dans Infos > Build.
+                    // beta. Le canal effectif est visible dans Infos > Build.
                     Text(
                         text = displayName ?: stringResource(R.string.settings_placeholder_loading),
                         style = MaterialTheme.typography.titleMedium,
