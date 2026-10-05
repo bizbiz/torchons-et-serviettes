@@ -39,7 +39,7 @@ from app.services.recurrence import (
 )
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
-from app.utils.scoping import current_foyer_uuid, scoped
+from app.utils.scoping import assert_active_members, current_foyer_uuid, scoped
 
 router = APIRouter(tags=["completions"])
 
@@ -152,6 +152,7 @@ async def complete_task(
         raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     completed_by = body.completed_by or UUID(current["user_id"])
+    await assert_active_members(session, task.foyer_id, [completed_by])
 
     # Anti-doublon : verifier qu'aucune completion active n'existe dans la fenetre
     # derivee de la recurrence (24h pour hebdo+, 1h sinon).

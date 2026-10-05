@@ -30,7 +30,7 @@ from app.services.presence import compute_absent_days_for_tasks
 from app.services.recurrence import VOTABLE_RULE_TYPES
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
-from app.utils.scoping import current_foyer_uuid, scoped
+from app.utils.scoping import assert_active_members, current_foyer_uuid, scoped
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -257,6 +257,7 @@ async def create_task(
         await replace_task_contexts(session, task, body.context_ids)
 
     # Creer les assignments
+    await assert_active_members(session, task.foyer_id, body.assigned_to_ids)
     for uid in body.assigned_to_ids:
         session.add(TaskAssignment(task_id=task.id, user_id=uid))
     await session.flush()
@@ -332,6 +333,7 @@ async def update_task(
     # Gerer les assignments separement
     new_assigned_ids = updates.pop("assigned_to_ids", None)
     if new_assigned_ids is not None:
+        await assert_active_members(session, current_foyer_uuid(current), new_assigned_ids)
         await session.execute(
             delete(TaskAssignment).where(TaskAssignment.task_id == task_id)
         )

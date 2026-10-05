@@ -24,7 +24,7 @@ from app.models.user import User
 from app.services.presence import get_absent_dates
 from app.services.recurrence import min_completion_gap_seconds
 from app.utils.changelog import record_change
-from app.utils.scoping import current_foyer_uuid
+from app.utils.scoping import assert_active_members, current_foyer_uuid
 from app.utils.text import join_with_amp
 
 router = APIRouter(prefix="/api", tags=["stats"])
@@ -143,6 +143,8 @@ async def update_completion(
     }
 
     updates = body.model_dump(exclude_unset=True)
+    if updates.get("completed_by") is not None:
+        await assert_active_members(session, current_foyer_uuid(current), [updates["completed_by"]])
     for key, val in updates.items():
         setattr(comp, key, val)
     comp.version += 1
@@ -1600,8 +1602,13 @@ async def _build_history(
 
     task_titles: dict[UUID, str] = {}
     if task_ids_needed:
+        # Scoped to the household: a change_log row can name a task id that is
+        # not ours (an op sent by a client on someone else's id is still
+        # journalled), and the title must not leak through it.
         rows = await session.execute(
-            select(Task.id, Task.title).where(Task.id.in_(task_ids_needed))
+            select(Task.id, Task.title).where(
+                Task.id.in_(task_ids_needed), Task.foyer_id == foyer_uuid,
+            )
         )
         task_titles = {row[0]: row[1] for row in rows.all()}
 
@@ -1615,6 +1622,7 @@ async def _build_history(
                 .where(
                     ChangeLog.table_name == "tasks",
                     ChangeLog.row_id.in_(missing),
+                    ChangeLog.foyer_id == foyer_uuid,
                     ChangeLog.new_data["title"].astext.isnot(None),
                 )
                 .order_by(ChangeLog.changed_at.desc())
@@ -1633,7 +1641,7 @@ async def _build_history(
         rows = await session.execute(
             select(TaskCompletion.id, Task.id, Task.title)
             .join(Task, Task.id == TaskCompletion.task_id)
-            .where(TaskCompletion.id.in_(completion_ids_needed))
+            .where(TaskCompletion.id.in_(completion_ids_needed), Task.foyer_id == foyer_uuid)
         )
         completion_task_titles = {row[0]: (row[1], row[2]) for row in rows.all()}
 
@@ -2192,6 +2200,10 @@ async def weekly_summary(
             TaskCompletion,
             (TaskCompletion.completed_by == User.id)
             & (TaskCompletion.deleted_at.is_(None))
+            # Only this household's tasks: the Task outer join below cannot
+            # filter the count, a member's completions in their OTHER
+            # households were counted here.
+            & TaskCompletion.task_id.in_(select(Task.id).where(Task.foyer_id == foyer_uuid))
             & (TaskCompletion.completed_at >= week_start_dt)
             & (TaskCompletion.completed_at <= week_end_dt)
             & (

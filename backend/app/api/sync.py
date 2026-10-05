@@ -37,6 +37,8 @@ from app.services.bonus_malus import (
 from app.api.tasks import replace_task_contexts
 from app.services.recurrence import checked_recurrence_rule
 from app.utils.changelog import record_change
+from app.utils.scoping import assert_active_members, user_foyer_ids
+from app.schemas.task import TaskUpdate
 
 router = APIRouter(prefix="/api", tags=["sync"])
 
@@ -220,6 +222,14 @@ async def _apply_op(
     )
 
 
+# Keys a client may write on a task through /sync. Mirrors the payload built by
+# the app's TaskRepository.updateTask; anything else is dropped.
+_TASK_UPDATE_FIELDS = frozenset({
+    "title", "description", "weight", "tolerance", "is_active",
+    "recurrence_rule", "assigned_to_ids", "context_ids",
+})
+
+
 def _truncate_to_ms(dt: datetime) -> datetime:
     """Tronque un datetime a la milliseconde (resolution Android)."""
     return dt.replace(microsecond=(dt.microsecond // 1000) * 1000)
@@ -236,6 +246,9 @@ async def _handle_task(
     foyer_uuid = uuid.UUID(foyer_id) if isinstance(foyer_id, str) else foyer_id
 
     if op.operation == "INSERT":
+        # Same bounds as the REST route (weight 1..18, tolerance enum, title length).
+        TaskUpdate.model_validate({k: data[k] for k in ("title", "weight", "tolerance") if k in data})
+        await assert_active_members(session, foyer_uuid, data.get("assigned_to_ids", []))
         task = Task(
             id=op.row_id,
             foyer_id=foyer_uuid,
@@ -269,12 +282,19 @@ async def _handle_task(
             raise StaleUpdateError()
         if _truncate_to_ms(row.updated_at) > _truncate_to_ms(op.client_timestamp):
             raise StaleUpdateError(_row_to_dict(row))
-        # is_archived n'est jamais ecrit par le client : seul le job backend
-        # d'auto-archivage le toggle. Defense en profondeur si un vieux client
-        # renvoie le champ par inadvertance.
-        data.pop("is_archived", None)
+        # Only the fields the app sends (TaskRepository.updateTask) are written.
+        # The loop used to `setattr` any key that matched a column, so a client
+        # could move its task into another household (`foyer_id`), set the
+        # points outside 1..18 (`weight`), or rewrite `version`, `is_archived`,
+        # `template_key`... Unknown keys are dropped, not refused: a refused op
+        # would stay in the client's retry queue forever.
+        data = {k: v for k, v in data.items() if k in _TASK_UPDATE_FIELDS}
+        TaskUpdate.model_validate(
+            {k: data[k] for k in ("title", "weight", "tolerance", "is_active") if k in data}
+        )
         for key, val in data.items():
             if key == "assigned_to_ids":
+                await assert_active_members(session, foyer_uuid, val or [])
                 await session.execute(
                     delete(TaskAssignment).where(TaskAssignment.task_id == op.row_id)
                 )
@@ -289,7 +309,7 @@ async def _handle_task(
                 )
             elif key == "recurrence_rule":
                 setattr(row, key, checked_recurrence_rule(val))
-            elif hasattr(row, key):
+            else:
                 setattr(row, key, val)
         row.version += 1
         return row.id
@@ -338,6 +358,19 @@ async def _handle_completion(
     if op.operation == "INSERT":
         # Charger la tache pour calculer le multiplicateur.
         task_id = uuid.UUID(data["task_id"]) if data.get("task_id") else op.row_id
+        # The task must belong to a household the caller is a member of. Not
+        # only the token's household: a completion queued offline before a
+        # household switch is still legitimate, and is replayed under the new
+        # token. A task deleted meanwhile still gets its completion (historical
+        # behaviour), as long as it is in one of the caller's households.
+        my_foyers = await user_foyer_ids(session, uuid.UUID(user_id))
+        owner = (
+            await session.execute(select(Task.foyer_id).where(Task.id == task_id))
+        ).scalar_one_or_none()
+        if owner is None or owner not in my_foyers:
+            raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
+        completed_by = uuid.UUID(data.get("completed_by", user_id))
+        await assert_active_members(session, owner, [completed_by])
         task_result = await session.execute(
             select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
         )
@@ -360,7 +393,7 @@ async def _handle_completion(
         if task is not None:
             base_points = await compute_base_points_for_task(session, task)
             mult_result = await compute_bonus_malus_for_completion(
-                session, task, uuid.UUID(foyer_id), completed_at_eff,
+                session, task, owner, completed_at_eff,
             )
             reason, multiplier = resolve_stored_reason_and_mult(base_points, mult_result)
             points = apply_multiplier_to_points(base_points, mult_result)
@@ -368,7 +401,7 @@ async def _handle_completion(
         comp = TaskCompletion(
             id=op.row_id,
             task_id=task_id,
-            completed_by=uuid.UUID(data.get("completed_by", user_id)),
+            completed_by=completed_by,
             points_earned=points,
             multiplier=multiplier,
             reason=reason,
@@ -380,11 +413,16 @@ async def _handle_completion(
         return comp.id
 
     if op.operation == "DELETE":
+        # Same rule as INSERT: only in a household the caller belongs to.
+        my_foyers = await user_foyer_ids(session, uuid.UUID(user_id))
         row = (
             await session.execute(
-                select(TaskCompletion).where(
+                select(TaskCompletion)
+                .join(Task, Task.id == TaskCompletion.task_id)
+                .where(
                     TaskCompletion.id == op.row_id,
                     TaskCompletion.deleted_at.is_(None),
+                    Task.foyer_id.in_(my_foyers),
                 )
             )
         ).scalar_one_or_none()
@@ -407,6 +445,7 @@ async def _handle_completion(
         ).scalar_one_or_none()
         if row:
             if data.get("completed_by"):
+                await assert_active_members(session, foyer_uuid, [data["completed_by"]])
                 row.completed_by = uuid.UUID(data["completed_by"])
             if data.get("completed_at"):
                 ca = datetime.fromisoformat(data["completed_at"])

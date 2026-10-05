@@ -39,7 +39,7 @@ from app.services.recurrence import (
     orange_window_cap_of,
 )
 from app.utils.changelog import record_change
-from app.utils.scoping import current_foyer_uuid
+from app.utils.scoping import assert_active_members, current_foyer_uuid, scoped
 
 router = APIRouter(prefix="/api", tags=["gamification"])
 
@@ -258,6 +258,13 @@ async def get_task_ratings(
     trompeur et suggere un oubli.
     """
     from app.models.user import User
+
+    # The task must be in the caller's household: the queries below go by
+    # task_id alone, and would otherwise read another household's members,
+    # affinities and efforts.
+    owned = await session.execute(scoped(Task, current).where(Task.id == task_id))
+    if owned.scalar_one_or_none() is None:
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     # Charger uniquement les users ASSIGNES a cette tache dans le foyer actif.
     users_result = await session.execute(
@@ -689,7 +696,7 @@ async def task_rating_context(
     """
     user_id = UUID(current["user_id"])
     result = await session.execute(
-        select(Task).where(Task.id == task_id, Task.deleted_at.is_(None))
+        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -1362,17 +1369,26 @@ class FairShareConfigUpdate(BaseModel):
 async def update_fair_share(
     body: list[FairShareConfigUpdate],
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(get_current_user),
+    current: dict = Depends(get_current_user),
 ):
-    """Met a jour les ratios fair-share. Envoyer la config pour tous les users."""
+    """Met a jour les ratios fair-share du foyer actif. Envoyer la config pour tous les users."""
+    foyer_uuid = current_foyer_uuid(current)
+    # A ratio is per (user, household): only the caller's household, and only
+    # its current members. The lookup used to go by user_id alone.
+    await assert_active_members(session, foyer_uuid, [item.user_id for item in body])
     for item in body:
         result = await session.execute(
-            select(FairShareConfig).where(FairShareConfig.user_id == item.user_id)
+            select(FairShareConfig).where(
+                FairShareConfig.user_id == item.user_id,
+                FairShareConfig.foyer_id == foyer_uuid,
+            )
         )
         config = result.scalar_one_or_none()
         if config:
             config.target_ratio = item.target_ratio
         else:
-            session.add(FairShareConfig(user_id=item.user_id, target_ratio=item.target_ratio))
+            session.add(FairShareConfig(
+                user_id=item.user_id, foyer_id=foyer_uuid, target_ratio=item.target_ratio,
+            ))
     await session.commit()
     return {"ok": True}

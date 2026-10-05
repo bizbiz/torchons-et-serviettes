@@ -178,6 +178,10 @@ ERROR_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "Aucun participant fourni",
         "en": "No participants provided",
     },
+    "USERS_OUTSIDE_FOYER_FORMAT": {
+        "fr": "Utilisateurs hors du foyer : {invalid}",
+        "en": "Users outside the household: {invalid}",
+    },
     "COMPLETION_PARTICIPANTS_OUTSIDE_FOYER": {
         "fr": "Participants hors du foyer : {invalid}",
         "en": "Participants outside the household: {invalid}",
