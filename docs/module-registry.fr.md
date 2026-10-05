@@ -96,8 +96,8 @@ Cohérent avec l'usage constaté : pièces, catégories, tâches et
 collective émet une notification info aux autres membres et une ligne
 dans `change_log`.
 
-Effet de bord à traiter : `PUT /bonus-config` n'a aucun garde alors que
-`PUT /foyers/{id}` est admin-only. L'incohérence est levée par le bas.
+`PUT /bonus-config` reste ouvert à tout membre, alors que `PUT /foyers/{id}`
+est admin-only : tranché le 2026-10-05, l'incohérence est levée par le bas.
 
 **4. Déclencheur — signal contextuel prioritaire, seuil d'usage en repli.**
 

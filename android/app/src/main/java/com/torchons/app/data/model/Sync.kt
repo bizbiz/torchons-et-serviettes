@@ -9,6 +9,8 @@ data class SyncOperation(
     @SerializedName("row_id") val rowId: String,
     @SerializedName("data") val data: Map<String, Any?>? = null,
     @SerializedName("client_timestamp") val clientTimestamp: String,
+    /** Household the op was queued in; omitted when null (older queued ops). */
+    @SerializedName("foyer_id") val foyerId: String? = null,
 )
 
 data class SyncRequest(

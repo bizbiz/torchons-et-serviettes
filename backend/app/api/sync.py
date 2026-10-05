@@ -49,6 +49,23 @@ class StaleUpdateError(Exception):
         self.server_data = server_data
 
 
+class OutOfScopeError(Exception):
+    """The op can never apply: its household is not one of the caller's, or its row is gone.
+
+    Reported as `out_of_scope`, which the client drops from its queue. Any other
+    conflict stays queued and is replayed on every pass.
+    """
+
+
+async def _op_foyer(session: AsyncSession, op: SyncOperation, user_id: str, token_foyer: str) -> str:
+    """Household an op applies to: the one it was queued in, if the caller still belongs to it."""
+    if op.foyer_id is None:
+        return token_foyer
+    if op.foyer_id not in await user_foyer_ids(session, uuid.UUID(user_id)):
+        raise OutOfScopeError(f"not a member of household {op.foyer_id}")
+    return str(op.foyer_id)
+
+
 @router.post("/sync", response_model=SyncResponse)
 async def sync(
     body: SyncRequest,
@@ -84,8 +101,16 @@ async def sync(
             # already reported `applied`, which the client then drops from its
             # queue: silent data loss.
             async with session.begin_nested():
-                result = await _apply_op(session, op, user_id, foyer_id, body.device_id)
+                op_foyer = await _op_foyer(session, op, user_id, foyer_id)
+                result = await _apply_op(session, op, user_id, op_foyer, body.device_id)
             applied.append(result)
+        except OutOfScopeError:
+            conflicts.append(SyncConflict(
+                client_op_id=op.client_op_id,
+                table=op.table,
+                row_id=op.row_id,
+                reason="out_of_scope",
+            ))
         except StaleUpdateError as e:
             conflicts.append(SyncConflict(
                 client_op_id=op.client_op_id,
@@ -279,7 +304,8 @@ async def _handle_task(
             )
         ).scalar_one_or_none()
         if not row:
-            raise StaleUpdateError()
+            # Gone (deleted or never in this household): no replay will ever apply it.
+            raise OutOfScopeError("task not found in this household")
         if _truncate_to_ms(row.updated_at) > _truncate_to_ms(op.client_timestamp):
             raise StaleUpdateError(_row_to_dict(row))
         # Only the fields the app sends (TaskRepository.updateTask) are written.
@@ -368,7 +394,7 @@ async def _handle_completion(
             await session.execute(select(Task.foyer_id).where(Task.id == task_id))
         ).scalar_one_or_none()
         if owner is None or owner not in my_foyers:
-            raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
+            raise OutOfScopeError("task not found in the caller's households")
         completed_by = uuid.UUID(data.get("completed_by", user_id))
         await assert_active_members(session, owner, [completed_by])
         task_result = await session.execute(

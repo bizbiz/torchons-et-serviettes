@@ -34,7 +34,8 @@ import com.torchons.app.data.local.entities.ViewSnapshotEntity
     // version 12 -- so the first bump must be watched on a phone whose database
     // predates it, never only on a fresh install.
     // 13 (2026-10-01): tasks.firstCompletedAt, the anniversary anchor.
-    version = 13,
+    // 14 (2026-10-05): pending_operations.foyerId, the household an op was queued in.
+    version = 14,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

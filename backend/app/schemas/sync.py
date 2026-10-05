@@ -19,6 +19,12 @@ class SyncOperation(BaseModel):
     row_id: UUID
     data: dict | None = None
     client_timestamp: datetime
+    #: Household the op was queued in. A client that switched household keeps
+    #: ops queued under the previous one, and replays them under a token that
+    #: names the new one: without this field a task created offline in A was
+    #: created in B. Absent (older apps, ops queued before the upgrade): the
+    #: token's household, as before.
+    foyer_id: UUID | None = None
 
 
 class SyncRequest(BaseModel):
@@ -43,7 +49,11 @@ class SyncConflict(BaseModel):
     # building the conflict itself raised, the whole /sync answered 500, and the
     # client retried the same batch forever — the exact blockage the net exists
     # to prevent. The Android side reads `reason` as a plain String.
-    reason: Literal["stale_update", "deleted", "unique_violation", "not_found", "op_error"]
+    # `out_of_scope` = the op can never apply (household left, row gone): the
+    # client drops it instead of replaying it forever.
+    reason: Literal[
+        "stale_update", "deleted", "unique_violation", "not_found", "op_error", "out_of_scope",
+    ]
     #: Human-readable cause for `op_error`, kept out of `reason` so that the
     #: latter stays an enum. Ignored by clients that do not know it.
     detail: str | None = None

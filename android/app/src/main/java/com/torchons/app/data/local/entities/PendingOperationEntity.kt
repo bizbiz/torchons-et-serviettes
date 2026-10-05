@@ -17,4 +17,11 @@ data class PendingOperationEntity(
     val createdAt: Long,
     val attemptCount: Int = 0,
     val lastError: String? = null,
+    /**
+     * Household the op was queued in, sent as `foyer_id`. Switching household
+     * does not empty this queue: without it, a task created offline in A was
+     * created in B on the next sync. Null for ops queued before Room v14 — the
+     * server then uses the token's household, as before.
+     */
+    val foyerId: String? = null,
 )

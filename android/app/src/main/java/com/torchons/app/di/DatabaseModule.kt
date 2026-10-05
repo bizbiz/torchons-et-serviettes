@@ -224,6 +224,14 @@ private val migration12to13 = object : Migration(12, 13) {
     }
 }
 
+private val migration13to14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Household each queued op belongs to. NULL for the ops already queued:
+        // the server applies those in the token's household, as before.
+        db.execSQL("ALTER TABLE pending_operations ADD COLUMN foyerId TEXT DEFAULT NULL")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -236,7 +244,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8, migration8to9, migration9to10, migration10to11, migration11to12, migration12to13)
+            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8, migration8to9, migration9to10, migration10to11, migration11to12, migration12to13, migration13to14)
             .build()
     }
 

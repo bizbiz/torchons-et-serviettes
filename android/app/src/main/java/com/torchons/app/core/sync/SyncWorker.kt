@@ -113,7 +113,13 @@ class SyncWorker(
         body.applied.forEach { pendingDao.delete(it.clientOpId) }
 
         body.conflicts.forEach { conflict ->
-            pendingDao.incrementAttempt(conflict.clientOpId, conflict.reason)
+            // `out_of_scope`: the op can never apply (household left, row gone).
+            // Every other conflict stays queued and is replayed on the next pass.
+            if (conflict.reason == "out_of_scope") {
+                pendingDao.delete(conflict.clientOpId)
+            } else {
+                pendingDao.incrementAttempt(conflict.clientOpId, conflict.reason)
+            }
         }
 
         body.serverChanges.forEach { applyServerChange(it, taskDao, completionDao) }
@@ -138,6 +144,7 @@ class SyncWorker(
             clientTimestamp = DateTimeFormatter.ISO_INSTANT.format(
                 Instant.ofEpochMilli(createdAt).atOffset(ZoneOffset.UTC)
             ),
+            foyerId = foyerId,
         )
     }
 

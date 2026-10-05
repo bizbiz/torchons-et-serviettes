@@ -597,6 +597,7 @@ class TaskRepository @Inject constructor(
                 rowId = rowId,
                 payloadJson = gson.toJson(payload),
                 createdAt = System.currentTimeMillis(),
+                foyerId = tokenManager.foyerIdFlow.first(),
             )
         )
         syncTrigger.requestSync()

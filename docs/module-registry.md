@@ -93,8 +93,8 @@ Consistent with observed practice: rooms, categories, tasks and
 collective toggle emits an info notification to the other members and a
 `change_log` entry.
 
-Side effect to handle: `PUT /bonus-config` has no guard while
-`PUT /foyers/{id}` is admin-only. The inconsistency is resolved downward.
+`PUT /bonus-config` stays open to every member while `PUT /foyers/{id}` is
+admin-only: settled on 2026-10-05, the inconsistency is resolved downward.
 
 **4. Trigger — contextual signal first, usage threshold as fallback.**
 
