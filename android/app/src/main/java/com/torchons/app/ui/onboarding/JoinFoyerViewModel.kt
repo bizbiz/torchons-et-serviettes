@@ -61,7 +61,7 @@ class JoinFoyerViewModel @Inject constructor(
     private fun probeKind(token: String) {
         viewModelScope.launch {
             try {
-                val resp = apiService.pairingInfo(token)
+                val resp = apiService.pairingInfo(mapOf("invite_token" to token))
                 if (!resp.isSuccessful) {
                     val msg = when (resp.code()) {
                         404 -> "Code d'invitation invalide"

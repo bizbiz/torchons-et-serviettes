@@ -58,3 +58,23 @@ async def test_sync_refuses_an_oversized_batch(client, auth_headers, device_a):
     too_many = await client.post("/api/sync", headers=auth_headers, json={
         "device_id": device_a, "last_server_version": 0, "changes": [op() for _ in range(2001)]})
     assert too_many.status_code == 422, too_many.text[:300]
+
+
+@pytest.mark.asyncio
+async def test_pairing_info_takes_the_token_in_the_body(client, auth_headers):
+    """POST /pairing/info: the token stays out of the URL, hence out of the access logs.
+
+    The GET with the token in the path is kept for the APKs installed before 2026-10-12.
+    """
+    rate_limit.reset()
+    init = await client.post("/api/pairing/init", headers=auth_headers)
+    assert init.status_code == 200, init.text
+    token = init.json()["invite_token"]
+
+    by_body = await client.post("/api/pairing/info", json={"invite_token": token})
+    assert by_body.status_code == 200, by_body.text
+    assert by_body.json()["kind"] == "foyer_join", by_body.text
+
+    legacy = await client.get(f"/api/pairing/info/{token}")
+    assert legacy.status_code == 200, legacy.text
+    rate_limit.reset()

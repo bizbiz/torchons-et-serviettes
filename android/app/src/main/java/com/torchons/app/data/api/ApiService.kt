@@ -581,9 +581,10 @@ interface ApiService {
     suspend fun pairingInitAddDevice(): Response<com.torchons.app.data.model.PairingInitResponse>
 
     /** v0.31 — Probe le kind d'un invite_token (sans le consommer). Unauth. */
-    @GET("pairing/info/{token}")
+    // POST with the token in the body: in the path it landed in the access logs.
+    @POST("pairing/info")
     suspend fun pairingInfo(
-        @Path("token") token: String,
+        @Body body: Map<String, String>,
     ): Response<com.torchons.app.data.model.PairingInfoResponse>
 
     /** Joiner consomme un invite_token et rejoint le foyer comme membre. Unauth. */

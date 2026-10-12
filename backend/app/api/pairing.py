@@ -163,13 +163,17 @@ class PairingInfoResponse(BaseModel):
     expires_at: datetime
 
 
-@router.get(
-    "/info/{invite_token}",
+class PairingInfoRequest(BaseModel):
+    invite_token: str = Field(min_length=1, max_length=200)
+
+
+@router.post(
+    "/info",
     response_model=PairingInfoResponse,
     dependencies=[Depends(rate_limited("pairing_info", max_calls=30, per_seconds=60))],
 )
 async def pairing_info(
-    invite_token: str,
+    body: PairingInfoRequest,
     session: AsyncSession = Depends(get_session),
 ):
     """Inspecte un invite_token sans le consommer. Unauth.
@@ -177,7 +181,33 @@ async def pairing_info(
     Retourne le kind ('foyer_join' / 'add_device') + le nom du foyer + la
     date d'expiration. Le joiner appelle ca apres avoir scanne pour savoir
     s'il doit demander un display_name (foyer_join) ou non (add_device).
+
+    The token travels in the BODY: in the path (`GET /info/{token}`) it ended up
+    in the access logs of Caddy and uvicorn.
     """
+    return await _pairing_info(session, body.invite_token)
+
+
+@router.get(
+    "/info/{invite_token}",
+    response_model=PairingInfoResponse,
+    dependencies=[Depends(rate_limited("pairing_info", max_calls=30, per_seconds=60))],
+    deprecated=True,
+)
+async def pairing_info_legacy(
+    invite_token: str,
+    session: AsyncSession = Depends(get_session),
+):
+    """Kept for the APKs installed before 2026-10-12, which still call it.
+
+    Remove once every installed app sends `POST /info` (todo.md item on the
+    pairing token in the URL).
+    """
+    return await _pairing_info(session, invite_token)
+
+
+async def _pairing_info(session: AsyncSession, invite_token: str) -> PairingInfoResponse:
+    """Shared body of the two routes above."""
     token_result = await session.execute(
         select(PairingToken).where(PairingToken.token == invite_token)
     )
