@@ -37,6 +37,7 @@ from app.services.recurrence import (
     is_uncertain,
     min_completion_gap_seconds,
 )
+from app.services.task_flags import NO_FLAGS, resolve_flags_for_tasks
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
 from app.utils.scoping import assert_active_members, current_foyer_uuid, scoped
