@@ -83,6 +83,10 @@ async def get_current_user(
     token de continuer a fonctionner sans forcer une reconnexion.
     """
     claims = decode_token(creds.credentials)
+    # A scoped token (the 5-minute restore token between /recovery/restore and
+    # /confirm) is not a session: without this, it opened every route.
+    if claims.get("scope") is not None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalide")
     user_id = claims["sub"]
     foyer_id = claims.get("foyer_id")
 

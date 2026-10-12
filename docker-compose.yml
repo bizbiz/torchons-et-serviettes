@@ -7,7 +7,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
     ports:
-      - "${POSTGRES_PORT:-5435}:5432"
+      # Loopback only: a dev database has no business on every interface.
+      - "127.0.0.1:${POSTGRES_PORT:-5435}:5432"
     volumes:
       - ts_pgdata:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql

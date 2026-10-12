@@ -70,6 +70,8 @@ services:
       # `expose`d, not published, so Caddy is the only sender; and Caddy, with
       # no `trusted_proxies`, replaces any X-Forwarded-For a client sends.
       FORWARDED_ALLOW_IPS: "*"
+      # No /docs, /redoc, /openapi.json in production (app/config.py).
+      EXPOSE_API_DOCS: "false"
     volumes:
       # Cle Firebase fournie au runtime (gitignored, scp manuel sur serveur).
       - ./backend/firebase-key.json:/app/firebase-key.json:ro

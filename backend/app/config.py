@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # Deliberately NOT derived from APP_VERSION: that string is copied by hand
     # between machines and has already lied in both directions.
     min_app_version_code: int = 0
+    # /docs, /redoc and /openapi.json. On by default for development; production
+    # turns them off (EXPOSE_API_DOCS=false in docker-compose.prod.yml).
+    expose_api_docs: bool = True
     min_app_download_url: str = ""
 
 
@@ -65,6 +68,14 @@ def _validate_required() -> None:
         missing.append("DATABASE_URL_SYNC")
     if not settings.jwt_secret:
         missing.append("JWT_SECRET")
+    # A placeholder or a short secret signs tokens anyone can forge: refuse to
+    # start. 16 and not 32: production's secret is 28 characters (measured on
+    # 2026-10-12), and a stricter floor would have kept it from booting.
+    elif settings.jwt_secret.startswith("CHANGE_ME") or len(settings.jwt_secret) < 16:
+        raise RuntimeError(
+            "JWT_SECRET is a placeholder or shorter than 16 characters. Generate one with "
+            'python -c "import secrets; print(secrets.token_urlsafe(32))"'
+        )
     if missing:
         raise RuntimeError(
             "Configuration manquante dans backend/.env : "

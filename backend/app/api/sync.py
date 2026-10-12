@@ -142,7 +142,14 @@ async def sync(
                 table=op.table,
                 row_id=op.row_id,
                 reason="op_error",
-                detail=f"{type(e).__name__}: {e}",
+                # Our own validation errors keep their message (it names the
+                # rule broken); anything else -- driver, database -- gives its
+                # class only, its text can carry SQL and data.
+                detail=(
+                    f"{type(e).__name__}: {e}"
+                    if isinstance(e, (ValueError, LocalizedHTTPException))
+                    else type(e).__name__
+                ),
             ))
 
     await session.commit()

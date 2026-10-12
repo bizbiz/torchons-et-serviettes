@@ -30,6 +30,12 @@ COPY . .
 
 RUN chmod +x /app/docker-entrypoint.sh
 
+# Not root. UID 1000 on purpose: the production host mounts firebase-key.json
+# mode 600, owned by its `ubuntu` user, UID 1000 (measured on 2026-10-12). Any
+# other UID would leave push notifications to fail silently.
+RUN useradd --uid 1000 --no-create-home --shell /usr/sbin/nologin app
+USER app
+
 EXPOSE 8002
 
 # Healthcheck aligne sur l'endpoint /api/health (status ok|degraded).

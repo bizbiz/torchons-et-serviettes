@@ -78,12 +78,24 @@ async def lifespan(app: FastAPI):
 
 from app.api.content import APP_VERSION
 
-app = FastAPI(title="Torchons & Serviettes", version=APP_VERSION, lifespan=lifespan)
+from app.config import settings as _settings
+
+_docs = _settings.expose_api_docs
+app = FastAPI(
+    title="Torchons & Serviettes",
+    version=APP_VERSION,
+    lifespan=lifespan,
+    docs_url="/docs" if _docs else None,
+    redoc_url="/redoc" if _docs else None,
+    openapi_url="/openapi.json" if _docs else None,
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Android app — toutes origines
-    allow_credentials=True,
+    # The Android app sends no Origin and needs no CORS. No browser page calls
+    # this API either; credentials stay off, they never belong with "*".
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -92,7 +104,6 @@ app.add_middleware(
 # Inactif tant que MIN_APP_VERSION_CODE vaut 0, ce qui est le defaut : deployer
 # ce code ne change rien tant qu'un seuil n'est pas pose volontairement.
 # Detail et regles de sortie : app/utils/version_gate.py.
-from app.config import settings as _settings
 from app.utils.code_fingerprint import CODE_FINGERPRINT, GIT_SHA
 from app.utils.version_gate import VersionGateMiddleware
 
@@ -173,7 +184,10 @@ async def health():
             await conn.execute(text("SELECT 1"))
         db_status = "ok"
     except Exception as e:
-        db_status = f"error: {e}"
+        # The exception text (host, driver, sometimes the URL) stays in the logs:
+        # /api/health answers anyone.
+        logger.warning("health_db_error", error=str(e))
+        db_status = "error"
     # `min_app_version_code` est expose ici, et /api/health est exempte du gate :
     # un client refuse doit pouvoir apprendre CE QU'ON LUI DEMANDE, sinon un
     # seuil mal pose devient une panne muette qu'on ne peut plus diagnostiquer.

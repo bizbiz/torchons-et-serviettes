@@ -35,12 +35,24 @@ from app.utils.scoping import current_foyer_uuid
 router = APIRouter(prefix="/api/export", tags=["export"])
 
 
+def _neutralize(cell):
+    """Defuse a cell a spreadsheet would run as a formula (CSV injection).
+
+    A title or a note starting with = + - @ (or a tab / carriage return) is
+    evaluated by Excel or LibreOffice when the export is opened. A leading
+    apostrophe makes it plain text (OWASP's recommendation). Numbers untouched.
+    """
+    if isinstance(cell, str) and cell[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + cell
+    return cell
+
+
 def _csv_response(rows: list[list], filename: str) -> StreamingResponse:
     """Helper : streame `rows` (header en row[0]) en text/csv."""
     buf = io.StringIO()
     writer = csv.writer(buf, dialect="excel", quoting=csv.QUOTE_MINIMAL)
     for row in rows:
-        writer.writerow(row)
+        writer.writerow([_neutralize(c) for c in row])
     buf.seek(0)
     return StreamingResponse(
         iter([buf.getvalue()]),
