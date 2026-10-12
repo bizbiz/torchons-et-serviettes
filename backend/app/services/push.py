@@ -121,9 +121,12 @@ async def send_completion_event(
     if not firebase_admin._apps:
         return
 
-    # 1. Membres du foyer hors recorder = candidats destinataires.
+    # 1. Membres ACTIFS du foyer hors recorder = candidats destinataires. Sans
+    # left_at, un ancien membre recevait encore les titres des taches faites.
     members_result = await session.execute(
-        select(UserFoyer.user_id).where(UserFoyer.foyer_id == foyer_id)
+        select(UserFoyer.user_id).where(
+            UserFoyer.foyer_id == foyer_id, UserFoyer.left_at.is_(None),
+        )
     )
     member_ids = [row[0] for row in members_result.all()]
     candidates = [m for m in member_ids if m != completer_id]

@@ -5,9 +5,10 @@ L'user authentifie supprime son compte. On marque `users.deleted_at = now()`
 chaque foyer comme un leave classique). Job daily (a implementer) purge
 les rows physiquement apres 30 jours.
 
-Pas de verification cote `get_current_user` que `deleted_at IS NULL` :
-le user devra recreer un foyer ou rejoindre via QR pour reutiliser l'app.
-La purge job J+30 cassera son JWT a ce moment-la (FK CASCADE).
+Depuis le 2026-10-05, `get_current_user` refuse le jeton d'un compte supprime
+avec `DEVICE_REVOKED` : chaque telephone du compte s'efface et revient a
+l'accueil des son prochain appel. Avant, le jeton restait valide jusqu'a la
+purge J+30.
 """
 
 from __future__ import annotations

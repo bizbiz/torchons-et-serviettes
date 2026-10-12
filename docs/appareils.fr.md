@@ -95,6 +95,17 @@ et surtout les APK déjà installés sont couverts sans attendre une mise à jou
 lignes créées avant cette colonne ont un `device_id` nul et se rattachent d'elles-mêmes au
 prochain enregistrement FCM.
 
+**8. Quitter le foyer ou supprimer son compte révoque aussi** *(ajouté le 2026-10-05)*.
+`get_current_user` revérifie à chaque appel que l'utilisateur existe et qu'il est membre ACTIF
+du foyer de son jeton (`user_foyers.left_at` nul). Avant, un jeton sans `exp` survivait à un
+départ ou à `DELETE /me` : lecture et écriture conservées, sans limite. Le refus est
+`DEVICE_REVOKED` et pas un 401 ordinaire, parce que c'est le seul que l'app traite en
+s'effaçant : les APK déjà installés retombent sur l'accueil au lieu de rester bloqués sur des
+erreurs. Le téléphone qui quitte lui-même le foyer n'est pas touché, `/leave` lui rend un
+jeton sur son autre foyer ; un AUTRE téléphone du même utilisateur, resté sur le foyer quitté,
+est révoqué, et « Retrouver mon foyer » le ramène sur le foyer restant. Sa file hors ligne est
+perdue : choix assumé, le cas est rare dans un foyer à deux.
+
 ## Comment ça se passe, concrètement
 
 **Changement de téléphone.** Le nouveau restaure tout, sauf l'identité. Au démarrage,

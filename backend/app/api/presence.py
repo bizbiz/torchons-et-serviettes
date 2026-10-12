@@ -470,9 +470,11 @@ async def _ensure_resolve_prompt(
     else:
         context["uncertain_days_count"] = nb
 
-    # Users du foyer
+    # Membres ACTIFS du foyer (un ancien membre recevait aussi la question)
     foyer_users = await session.execute(
-        select(UserFoyer.user_id).where(UserFoyer.foyer_id == foyer_id)
+        select(UserFoyer.user_id).where(
+            UserFoyer.foyer_id == foyer_id, UserFoyer.left_at.is_(None),
+        )
     )
     user_ids = [row[0] for row in foyer_users.all()]
 

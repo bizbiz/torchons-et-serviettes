@@ -156,9 +156,12 @@ async def generate_bump_prompts(
         await session.flush()
         return
 
-    # 6. Inserer un prompt par user du foyer (si pas deja pending)
+    # 6. Inserer un prompt par membre ACTIF du foyer (si pas deja pending) :
+    # un ancien membre recevait aussi la question.
     foyer_users = await session.execute(
-        select(UserFoyer.user_id).where(UserFoyer.foyer_id == foyer_id)
+        select(UserFoyer.user_id).where(
+            UserFoyer.foyer_id == foyer_id, UserFoyer.left_at.is_(None),
+        )
     )
     user_ids = [row[0] for row in foyer_users.all()]
 

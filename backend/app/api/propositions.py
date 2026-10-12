@@ -117,11 +117,12 @@ async def _build_proposition_view(
     session: AsyncSession, prop: ObjectiveProposition
 ) -> PropositionView:
     """Charge les users du foyer + leur statut de reponse pour construire la vue."""
-    # Users du foyer
+    # Membres ACTIFS du foyer : un ancien membre ne repondra jamais, le compter
+    # bloquait la proposition (les quatre requetes ci-dessous filtrent left_at).
     users_result = await session.execute(
         select(User)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == prop.foyer_id)
+        .where(UserFoyer.foyer_id == prop.foyer_id, UserFoyer.left_at.is_(None))
     )
     users = {u.id: u for u in users_result.scalars().all()}
 
@@ -206,6 +207,7 @@ async def create_proposition(
         select(UserFoyer).where(
             UserFoyer.user_id == user_id,
             UserFoyer.foyer_id == foyer_uuid,
+            UserFoyer.left_at.is_(None),
         )
     )
     if membership.scalar_one_or_none() is None:
@@ -221,11 +223,12 @@ async def create_proposition(
     for old in old_result.scalars().all():
         old.status = "expired"
 
-    # Validation des slider_values : tous les users du foyer doivent etre couverts
+    # Validation des slider_values : tous les membres ACTIFS du foyer doivent
+    # etre couverts (sans left_at, un ancien membre etait exige lui aussi).
     users_result = await session.execute(
         select(User.id)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == foyer_uuid)
+        .where(UserFoyer.foyer_id == foyer_uuid, UserFoyer.left_at.is_(None))
     )
     foyer_user_ids = {str(uid) for uid in users_result.scalars().all()}
     body_user_ids = set(body.slider_values.keys())
@@ -309,7 +312,7 @@ async def respond_to_proposition(
         users_result = await session.execute(
             select(User.id)
             .join(UserFoyer, UserFoyer.user_id == User.id)
-            .where(UserFoyer.foyer_id == prop.foyer_id)
+            .where(UserFoyer.foyer_id == prop.foyer_id, UserFoyer.left_at.is_(None))
         )
         await send_data_message_to_users(
             session,
@@ -354,7 +357,7 @@ async def respond_to_proposition(
     foyer_users_result = await session.execute(
         select(User.id)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == prop.foyer_id)
+        .where(UserFoyer.foyer_id == prop.foyer_id, UserFoyer.left_at.is_(None))
     )
     foyer_user_ids = [row for row in foyer_users_result.scalars().all()]
 
@@ -492,7 +495,7 @@ async def cancel_proposition(
     users_result = await session.execute(
         select(User.id)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == prop.foyer_id)
+        .where(UserFoyer.foyer_id == prop.foyer_id, UserFoyer.left_at.is_(None))
     )
     await send_data_message_to_users(
         session,

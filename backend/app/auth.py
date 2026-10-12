@@ -42,6 +42,36 @@ def decode_token(token: str) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalide")
 
 
+async def _require_active_membership(session: AsyncSession, user_id: str, foyer_id: str) -> None:
+    """Refuse a token whose user is deleted or no longer a member of its household.
+
+    The JWT has no expiry (docs/appareils.fr.md), so it is only as good as this
+    check. Without it, a member who left -- or whose account was deleted -- kept
+    reading and writing the household with the token they already had.
+
+    The refusal is `DEVICE_REVOKED`, the one 401 on which the app wipes its local
+    data and goes back to the welcome screen: an ordinary 401 would leave the
+    phone stuck on errors. Decided on 2026-10-05: a phone still on a household the
+    user left elsewhere is revoked too; « Retrouver mon foyer » brings it back on
+    the user's other household.
+    """
+    from app.models.user_foyer import UserFoyer
+    from app.utils.errors import LocalizedHTTPException
+
+    active = await session.execute(
+        select(UserFoyer.user_id)
+        .join(User, User.id == UserFoyer.user_id)
+        .where(
+            UserFoyer.user_id == uuid.UUID(user_id),
+            UserFoyer.foyer_id == uuid.UUID(foyer_id),
+            UserFoyer.left_at.is_(None),
+            User.deleted_at.is_(None),
+        )
+    )
+    if active.first() is None:
+        raise LocalizedHTTPException(status_code=401, error_code="DEVICE_REVOKED")
+
+
 async def get_current_user(
     creds: HTTPAuthorizationCredentials = Depends(_security),
     session: AsyncSession = Depends(get_session),
@@ -68,6 +98,8 @@ async def get_current_user(
                 detail="Aucun foyer actif pour cet utilisateur",
             )
         foyer_id = str(last_active)
+
+    await _require_active_membership(session, user_id, foyer_id)
 
     device_id = claims.get("device_id")
 

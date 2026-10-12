@@ -91,6 +91,17 @@ from the request body: a client cannot lie about it, and above all already-insta
 covered without waiting for an app update. Rows created before that column have a null
 `device_id` and re-attach themselves on the next FCM registration.
 
+**8. Leaving the household or deleting the account revokes too** *(added 2026-10-05)*.
+`get_current_user` rechecks on every call that the user exists and is an ACTIVE member of the
+token's household (`user_foyers.left_at` null). Before, a token with no `exp` outlived a
+departure or a `DELETE /me`: read and write access kept, with no limit. The refusal is
+`DEVICE_REVOKED`, not an ordinary 401, because it is the only one the app handles by wiping
+itself: already-installed APKs fall back to the welcome screen instead of staying stuck on
+errors. The phone that leaves is not affected, `/leave` hands it a token on its other
+household; ANOTHER phone of the same user, left on the departed household, is revoked, and
+"Find my household" brings it back on the remaining one. Its offline queue is lost: a
+deliberate choice, the case is rare in a two-person household.
+
 ## How it plays out
 
 **Changing phone.** The new one restores everything except the identity. At startup,

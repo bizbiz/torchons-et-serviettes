@@ -174,6 +174,7 @@ async def update_foyer_gamification(
         select(UserFoyer).where(
             UserFoyer.user_id == user_id,
             UserFoyer.foyer_id == foyer_id,
+            UserFoyer.left_at.is_(None),
         )
     )
     uf = membership.scalar_one_or_none()
@@ -230,11 +231,13 @@ async def switch_foyer(
     """
     user_id = uuid.UUID(current["user_id"])
 
-    # Verifie que le user est bien membre du foyer demande
+    # Verifie que le user est bien membre ACTIF du foyer demande : sans
+    # left_at, un ancien membre rebasculait sur le foyer qu'il avait quitte.
     membership = await session.execute(
         select(UserFoyer).where(
             UserFoyer.user_id == user_id,
             UserFoyer.foyer_id == foyer_id,
+            UserFoyer.left_at.is_(None),
         )
     )
     if membership.scalar_one_or_none() is None:
