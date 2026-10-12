@@ -27,7 +27,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from jose import JWTError, jwt
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.rate_limit import rate_limited
 
@@ -41,7 +41,9 @@ from app.models.task_affinity import TaskAffinity
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
 from app.utils.errors import LocalizedHTTPException
-from app.utils.recovery_code import generate_code, hash_code, verify_code
+from app.utils.recovery_code import (
+    generate_code, hash_code, lookup_key, lookup_key_id, verify_code,
+)
 
 router = APIRouter(prefix="/api/recovery", tags=["recovery"])
 
@@ -122,6 +124,7 @@ async def regenerate_recovery_code(
 
     new_code = generate_code()
     user.recovery_code_hash = hash_code(new_code)
+    user.recovery_lookup = lookup_key(new_code)
     user.recovery_code_last_used_at = None  # reset
 
     # Un code regenere signifie « l'ancien a pu fuiter ». Fermer la porte du
@@ -159,19 +162,37 @@ async def restore(
     """Etape 1 du flow "Retrouver mon foyer" : trouve le user qui possede le
     code, retourne un preview de son identite + un restore_token pour valider.
 
-    Pas d'auth requise. Iteration O(N) sur les users (cf. note module).
+    Pas d'auth requise.
+
+    Lookup by `recovery_lookup` first (one argon2 verify). Only accounts with no
+    key made with the current secret -- codes issued before 2026-10-12, or keyed
+    before a JWT_SECRET rotation -- are scanned one by one, and the matching one
+    is keyed on the spot: that set only shrinks. A wrong code costs the scan of
+    that set, no longer of every account.
     """
-    # Recupere tous les users avec un hash actif (non supprimes)
-    candidates = await session.execute(
-        select(User).where(
-            User.recovery_code_hash.is_not(None),
-            User.deleted_at.is_(None),
-        )
+    key = lookup_key(body.recovery_code)
+    alive = (User.recovery_code_hash.is_not(None), User.deleted_at.is_(None))
+
+    keyed = await session.execute(select(User).where(*alive, User.recovery_lookup == key))
+    # argon2 is CPU-bound and synchronous: verify in a thread, the event loop of
+    # the single worker would otherwise freeze.
+    matched: User | None = await asyncio.to_thread(
+        _match_code, body.recovery_code, list(keyed.scalars().all())
     )
-    # argon2 is CPU-bound and synchronous: run the whole scan in a thread, the
-    # event loop of the single worker would otherwise freeze for every account.
-    users = list(candidates.scalars().all())
-    matched: User | None = await asyncio.to_thread(_match_code, body.recovery_code, users)
+    if matched is None:
+        unkeyed = await session.execute(select(User).where(
+            *alive,
+            or_(
+                User.recovery_lookup.is_(None),
+                User.recovery_lookup.not_like(f"{lookup_key_id()}:%"),
+            ),
+        ))
+        matched = await asyncio.to_thread(
+            _match_code, body.recovery_code, list(unkeyed.scalars().all())
+        )
+        if matched is not None:
+            matched.recovery_lookup = key
+            await session.commit()
 
     if matched is None:
         raise LocalizedHTTPException(

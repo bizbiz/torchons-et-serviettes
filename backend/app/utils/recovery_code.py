@@ -13,6 +13,8 @@ Jamais persiste en clair.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import secrets
 
 from argon2 import PasswordHasher
@@ -53,6 +55,35 @@ def verify_code(code: str, code_hash: str) -> bool:
         return True
     except VerifyMismatchError:
         return False
+
+
+def _lookup_secret() -> bytes:
+    from app.config import settings
+
+    return settings.jwt_secret.encode()
+
+
+def lookup_key_id() -> str:
+    """Short id of the secret the lookup keys are computed with.
+
+    Stored in front of each key: after a JWT_SECRET rotation, keys made with the
+    old secret no longer carry the current id, so restore treats those accounts as
+    unkeyed (full argon2 scan) and re-keys them on the first success, instead of
+    never finding them again.
+    """
+    return hmac.new(_lookup_secret(), b"recovery-lookup-key-id", hashlib.sha256).hexdigest()[:8]
+
+
+def lookup_key(code: str) -> str:
+    """Deterministic key of a recovery code, to find its account without scanning.
+
+    HMAC with the server secret, never a bare hash: 31^8 codes are enumerable
+    offline, so a plain sha256 stored next to the account would give the codes
+    away to anyone holding a copy of the database. Whoever holds the secret can
+    already forge tokens, so keying on it adds no exposure.
+    """
+    digest = hmac.new(_lookup_secret(), _normalize(code).encode(), hashlib.sha256).hexdigest()
+    return f"{lookup_key_id()}:{digest[:40]}"
 
 
 def _normalize(code: str) -> str:

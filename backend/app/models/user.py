@@ -30,6 +30,10 @@ class User(Base, UUIDMixin, TimestampMixin):
     # v0.30 : code de recuperation hashe argon2id. Genere a la creation du
     # foyer (admin) ou au join (member). Renouvelable depuis Reglages.
     recovery_code_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Deterministic key of the code (utils/recovery_code.lookup_key): restore finds
+    # the account by it instead of an argon2 verify per account. NULL for codes
+    # issued before 2026-10-12, until they are regenerated or used once.
+    recovery_lookup: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     recovery_code_last_used_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

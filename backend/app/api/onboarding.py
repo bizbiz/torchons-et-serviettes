@@ -29,7 +29,7 @@ from app.models.foyer import Foyer
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
 from app.services.presence import seed_initial_presence
-from app.utils.recovery_code import generate_code, hash_code
+from app.utils.recovery_code import generate_code, hash_code, lookup_key
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 
@@ -96,6 +96,7 @@ async def create_foyer_bootstrap(
     new_user.last_active_foyer_id = new_foyer.id
     recovery_code = generate_code()
     new_user.recovery_code_hash = hash_code(recovery_code)
+    new_user.recovery_lookup = lookup_key(recovery_code)
 
     await session.commit()
     await session.refresh(new_user)

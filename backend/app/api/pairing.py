@@ -28,7 +28,7 @@ from app.models.user import User
 from app.models.user_foyer import UserFoyer
 from app.utils.errors import LocalizedHTTPException
 from app.services.module_discovery import propose_module
-from app.utils.recovery_code import generate_code, hash_code
+from app.utils.recovery_code import generate_code, hash_code, lookup_key
 
 router = APIRouter(prefix="/api/pairing", tags=["pairing"])
 
@@ -345,6 +345,7 @@ async def join_pairing(
 
     recovery_code = generate_code()
     new_user.recovery_code_hash = hash_code(recovery_code)
+    new_user.recovery_lookup = lookup_key(recovery_code)
     pt.consumed_at = now
 
     # P4 — signal le plus fiable du dispositif : jusqu'ici le foyer etait solo,
