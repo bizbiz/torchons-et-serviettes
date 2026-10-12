@@ -39,3 +39,22 @@ async def test_completions_limit_is_bounded(client, auth_headers):
     assert at_bound.status_code == 200, at_bound.text
     above = await client.get("/api/completions?limit=100000", headers=auth_headers)
     assert above.status_code == 422, above.text
+
+
+@pytest.mark.asyncio
+async def test_sync_refuses_an_oversized_batch(client, auth_headers, device_a):
+    """`changes` is bounded at 2000: the app batches by 100, a hostile payload is refused."""
+    import uuid
+    from datetime import datetime, timezone
+
+    def op():
+        return {"client_op_id": str(uuid.uuid4()), "table": "tasks", "operation": "DELETE",
+                "row_id": str(uuid.uuid4()), "data": None,
+                "client_timestamp": datetime(2026, 1, 1, tzinfo=timezone.utc).isoformat()}
+
+    ok = await client.post("/api/sync", headers=auth_headers, json={
+        "device_id": device_a, "last_server_version": 0, "changes": [op() for _ in range(3)]})
+    assert ok.status_code == 200, ok.text
+    too_many = await client.post("/api/sync", headers=auth_headers, json={
+        "device_id": device_a, "last_server_version": 0, "changes": [op() for _ in range(2001)]})
+    assert too_many.status_code == 422, too_many.text[:300]

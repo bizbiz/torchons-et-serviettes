@@ -37,6 +37,12 @@ interface SyncWorkerEntryPoint {
     fun tokenManager(): TokenManager
 }
 
+/**
+ * Ops per /sync request. Far below the server's bound on `changes`
+ * (backend/app/schemas/sync.py), which exists to refuse abusive payloads.
+ */
+private const val SYNC_BATCH_SIZE = 100
+
 class SyncWorker(
     ctx: Context,
     params: WorkerParameters,
@@ -96,35 +102,44 @@ class SyncWorker(
         if (rest.isEmpty()) return Result.success()
 
         val deviceId = tokenManager.getOrCreateDeviceId()
-        val cursor = tokenManager.getSyncCursor()
 
-        val ops = rest.map { it.toSyncOperation() }
-        val request = SyncRequest(deviceId, cursor, ops)
+        // Sent in batches, in queue order (an INSERT before its UPDATE). The whole
+        // queue used to go in one request: the server could not bound `changes`
+        // without refusing a long offline queue forever. Each batch is settled --
+        // applied ops dropped, cursor advanced -- before the next one, so a failure
+        // midway retries only what is left.
+        for (batch in rest.chunked(SYNC_BATCH_SIZE)) {
+            val request = SyncRequest(
+                deviceId,
+                tokenManager.getSyncCursor(),
+                batch.map { it.toSyncOperation() },
+            )
 
-        val resp = try {
-            apiService.sync(request)
-        } catch (_: Exception) {
-            return Result.retry()
-        }
-
-        if (!resp.isSuccessful) return Result.retry()
-        val body = resp.body() ?: return Result.retry()
-
-        body.applied.forEach { pendingDao.delete(it.clientOpId) }
-
-        body.conflicts.forEach { conflict ->
-            // `out_of_scope`: the op can never apply (household left, row gone).
-            // Every other conflict stays queued and is replayed on the next pass.
-            if (conflict.reason == "out_of_scope") {
-                pendingDao.delete(conflict.clientOpId)
-            } else {
-                pendingDao.incrementAttempt(conflict.clientOpId, conflict.reason)
+            val resp = try {
+                apiService.sync(request)
+            } catch (_: Exception) {
+                return Result.retry()
             }
+
+            if (!resp.isSuccessful) return Result.retry()
+            val body = resp.body() ?: return Result.retry()
+
+            body.applied.forEach { pendingDao.delete(it.clientOpId) }
+
+            body.conflicts.forEach { conflict ->
+                // `out_of_scope`: the op can never apply (household left, row gone).
+                // Every other conflict stays queued and is replayed on the next pass.
+                if (conflict.reason == "out_of_scope") {
+                    pendingDao.delete(conflict.clientOpId)
+                } else {
+                    pendingDao.incrementAttempt(conflict.clientOpId, conflict.reason)
+                }
+            }
+
+            body.serverChanges.forEach { applyServerChange(it, taskDao, completionDao) }
+
+            tokenManager.setSyncCursor(body.serverVersion)
         }
-
-        body.serverChanges.forEach { applyServerChange(it, taskDao, completionDao) }
-
-        tokenManager.setSyncCursor(body.serverVersion)
 
         return Result.success()
     }

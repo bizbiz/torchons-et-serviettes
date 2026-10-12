@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SyncOperation(BaseModel):
@@ -30,7 +30,11 @@ class SyncOperation(BaseModel):
 class SyncRequest(BaseModel):
     device_id: UUID
     last_server_version: int = 0
-    changes: list[SyncOperation] = []
+    # Bound on a hostile payload. The app sends batches of 100 (SyncWorker,
+    # SYNC_BATCH_SIZE); older apps send their whole queue at once, which stays
+    # far below 2000 in a household's offline life. A request above it is refused
+    # (422) -- and an older app would replay it forever, hence the margin.
+    changes: list[SyncOperation] = Field(default=[], max_length=2000)
 
 
 class SyncAppliedOp(BaseModel):
