@@ -41,7 +41,24 @@ interface SyncWorkerEntryPoint {
  * Ops per /sync request. Far below the server's bound on `changes`
  * (backend/app/schemas/sync.py), which exists to refuse abusive payloads.
  */
-private const val SYNC_BATCH_SIZE = 100
+internal const val SYNC_BATCH_SIZE = 100
+
+/**
+ * Sends [items] in order, [batchSize] at a time, and stops at the first batch
+ * [sendBatch] reports as failed: the batches after it are not sent, so the
+ * next pass replays only what is left. Returns true when every batch went.
+ * Kept out of [SyncWorker] so the batching is testable without Hilt.
+ */
+internal suspend fun <T> sendInBatches(
+    items: List<T>,
+    batchSize: Int,
+    sendBatch: suspend (List<T>) -> Boolean,
+): Boolean {
+    for (batch in items.chunked(batchSize)) {
+        if (!sendBatch(batch)) return false
+    }
+    return true
+}
 
 class SyncWorker(
     ctx: Context,
@@ -108,7 +125,7 @@ class SyncWorker(
         // without refusing a long offline queue forever. Each batch is settled --
         // applied ops dropped, cursor advanced -- before the next one, so a failure
         // midway retries only what is left.
-        for (batch in rest.chunked(SYNC_BATCH_SIZE)) {
+        val allSent = sendInBatches(rest, SYNC_BATCH_SIZE) { batch ->
             val request = SyncRequest(
                 deviceId,
                 tokenManager.getSyncCursor(),
@@ -118,11 +135,11 @@ class SyncWorker(
             val resp = try {
                 apiService.sync(request)
             } catch (_: Exception) {
-                return Result.retry()
+                return@sendInBatches false
             }
 
-            if (!resp.isSuccessful) return Result.retry()
-            val body = resp.body() ?: return Result.retry()
+            if (!resp.isSuccessful) return@sendInBatches false
+            val body = resp.body() ?: return@sendInBatches false
 
             body.applied.forEach { pendingDao.delete(it.clientOpId) }
 
@@ -139,9 +156,10 @@ class SyncWorker(
             body.serverChanges.forEach { applyServerChange(it, taskDao, completionDao) }
 
             tokenManager.setSyncCursor(body.serverVersion)
+            true
         }
 
-        return Result.success()
+        return if (allSent) Result.success() else Result.retry()
     }
 
     private fun PendingOperationEntity.toSyncOperation(): SyncOperation {

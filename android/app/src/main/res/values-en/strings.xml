@@ -340,8 +340,11 @@
 
     <!-- JoinFoyerScreen -->
     <string name="join_scan_title">Scan your household\'s QR code</string>
-    <string name="join_scan_help">Ask a household member to open the app and show an invite QR code. You have 15 minutes to scan it.</string>
+    <string name="join_scan_help">Ask a household member to open the app and show an invite QR code, or to send you the code. You have 15 minutes to use it.</string>
     <string name="join_scan_button">Scan QR code</string>
+    <string name="join_paste_label">Or paste the code you received</string>
+    <string name="join_paste_button">Join with this code</string>
+    <string name="join_paste_invalid">No invite code in this text</string>
     <string name="join_submit_button">Join the household</string>
     <string name="join_adding_device_title">Connecting to your account…</string>
     <string name="join_adding_device_with_foyer_format">This device will be connected to the \"%1$s\" household with your existing account.</string>
@@ -380,7 +383,12 @@
     <string name="invite_title_invite_someone">Invite someone</string>
     <string name="invite_regenerate_cd">Generate a new code</string>
     <string name="invite_help_add_device">On your other device, install the app and choose \"Join a household\" to scan this QR. You\'ll be connected with your current account — no new member created.</string>
-    <string name="invite_help_invite_someone">Ask the person to install the app and choose \"Join a household\". They\'ll then be able to scan this QR.</string>
+    <string name="invite_help_invite_someone">Ask the person to install the app and choose \"Join a household\". They\'ll then be able to scan this QR, or paste the code you send them.</string>
+    <string name="invite_share_button">Share</string>
+    <string name="invite_copy_button">Copy code</string>
+    <string name="invite_share_chooser">Send the invitation</string>
+    <string name="invite_clipboard_label">T&amp;S invite code</string>
+    <string name="invite_share_body_format">Join the \"%1$s\" household on Torchons &amp; Serviettes. In the app, choose \"Join a household\" and paste this message. The code is valid for 15 minutes:\n%2$s</string>
     <string name="invite_qr_cd">Invitation QR code</string>
     <string name="invite_expires_format">Expires %1$s</string>
     <string name="invite_expires_at_format">at %1$s</string>

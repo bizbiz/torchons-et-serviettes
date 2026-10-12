@@ -23,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -34,7 +35,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -117,6 +120,7 @@ fun JoinFoyerScreen(
 
                 state.inviteToken == null -> ScanInvitation(
                     onScanClick = { scanLauncher.launch(null) },
+                    onCodePasted = viewModel::setInviteToken,
                 )
 
                 state.kind == "add_device" -> AddingDevice(
@@ -135,7 +139,9 @@ fun JoinFoyerScreen(
 }
 
 @Composable
-private fun ScanInvitation(onScanClick: () -> Unit) {
+private fun ScanInvitation(onScanClick: () -> Unit, onCodePasted: (String) -> Unit) {
+    var pasted by remember { mutableStateOf("") }
+    var invalid by remember { mutableStateOf(false) }
     Text(
         text = stringResource(R.string.join_scan_title),
         style = MaterialTheme.typography.headlineSmall,
@@ -156,7 +162,34 @@ private fun ScanInvitation(onScanClick: () -> Unit) {
         Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.join_scan_button))
     }
+    Spacer(Modifier.height(32.dp))
+    OutlinedTextField(
+        value = pasted,
+        onValueChange = { pasted = it; invalid = false },
+        label = { Text(stringResource(R.string.join_paste_label)) },
+        isError = invalid,
+        supportingText = if (invalid) {
+            { Text(stringResource(R.string.join_paste_invalid)) }
+        } else null,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Spacer(Modifier.height(8.dp))
+    OutlinedButton(
+        onClick = {
+            val token = extractInviteToken(pasted)
+            if (token == null) invalid = true else onCodePasted(token)
+        },
+        enabled = pasted.isNotBlank(),
+        modifier = Modifier.fillMaxWidth(),
+    ) { Text(stringResource(R.string.join_paste_button)) }
 }
+
+/**
+ * Finds the invite token (32 hex chars, `secrets.token_hex(16)` server side)
+ * in whatever was pasted: the bare code, or the whole shared message.
+ */
+internal fun extractInviteToken(text: String): String? =
+    Regex("(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])").find(text)?.value?.lowercase()
 
 @Composable
 private fun EnterDisplayName(

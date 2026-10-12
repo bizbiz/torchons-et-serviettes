@@ -346,8 +346,11 @@
 
     <!-- JoinFoyerScreen -->
     <string name="join_scan_title">Scanne le QR code de ton foyer</string>
-    <string name="join_scan_help">Demande à un membre du foyer d\'ouvrir l\'app et d\'afficher un QR code d\'invitation. Tu as 15 minutes pour le scanner.</string>
+    <string name="join_scan_help">Demande à un membre du foyer d\'ouvrir l\'app et d\'afficher un QR code d\'invitation, ou de t\'envoyer le code. Tu as 15 minutes pour l\'utiliser.</string>
     <string name="join_scan_button">Scanner le QR code</string>
+    <string name="join_paste_label">Ou colle le code reçu</string>
+    <string name="join_paste_button">Rejoindre avec ce code</string>
+    <string name="join_paste_invalid">Aucun code d\'invitation dans ce texte</string>
     <string name="join_submit_button">Rejoindre le foyer</string>
     <string name="join_adding_device_title">Connexion à ton compte…</string>
     <string name="join_adding_device_with_foyer_format">Cet appareil sera connecté au foyer «&#160;%1$s&#160;» avec ton compte existant.</string>
@@ -386,7 +389,12 @@
     <string name="invite_title_invite_someone">Inviter quelqu\'un</string>
     <string name="invite_regenerate_cd">Générer un nouveau code</string>
     <string name="invite_help_add_device">Sur ton autre appareil, installe l\'app et choisis «&#160;Rejoindre un foyer&#160;» pour scanner ce QR. Tu seras connecté avec ton compte actuel — pas de nouveau membre créé.</string>
-    <string name="invite_help_invite_someone">Demande à la personne d\'installer l\'app et de choisir «&#160;Rejoindre un foyer&#160;». Elle pourra ensuite scanner ce QR.</string>
+    <string name="invite_help_invite_someone">Demande à la personne d\'installer l\'app et de choisir «&#160;Rejoindre un foyer&#160;». Elle pourra ensuite scanner ce QR, ou coller le code que tu lui envoies.</string>
+    <string name="invite_share_button">Partager</string>
+    <string name="invite_copy_button">Copier le code</string>
+    <string name="invite_share_chooser">Envoyer l\'invitation</string>
+    <string name="invite_clipboard_label">Code d\'invitation T&amp;S</string>
+    <string name="invite_share_body_format">Rejoins le foyer «&#160;%1$s&#160;» sur Torchons &amp; Serviettes. Dans l\'app, choisis «&#160;Rejoindre un foyer&#160;» et colle ce message. Le code est valable 15 minutes&#160;:\n%2$s</string>
     <string name="invite_qr_cd">QR code d\'invitation</string>
     <string name="invite_expires_format">Expire %1$s</string>
     <string name="invite_expires_at_format">à %1$s</string>

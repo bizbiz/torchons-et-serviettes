@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,7 +14,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -32,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -186,10 +191,49 @@ fun InviteQrScreen(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         )
                     }
+                    Spacer(Modifier.height(16.dp))
+                    // The QR alone forces both people into the same room: the code
+                    // must also travel by message, and the join screen accepts it pasted.
+                    val context = LocalContext.current
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = {
+                            shareInvite(context, state.foyerName.orEmpty(), state.inviteToken!!)
+                        }) {
+                            Icon(Icons.Default.Share, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.invite_share_button))
+                        }
+                        OutlinedButton(onClick = { copyInvite(context, state.inviteToken!!) }) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.invite_copy_button))
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+private fun shareInvite(context: android.content.Context, foyerName: String, token: String) {
+    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(
+            android.content.Intent.EXTRA_TEXT,
+            context.getString(R.string.invite_share_body_format, foyerName, token),
+        )
+    }
+    context.startActivity(
+        android.content.Intent.createChooser(send, context.getString(R.string.invite_share_chooser)),
+    )
+}
+
+private fun copyInvite(context: android.content.Context, token: String) {
+    val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+        as? android.content.ClipboardManager ?: return
+    cm.setPrimaryClip(
+        android.content.ClipData.newPlainText(context.getString(R.string.invite_clipboard_label), token),
+    )
 }
 
 /**
