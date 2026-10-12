@@ -1338,7 +1338,7 @@ async def fair_share_status(
     users_result = await session.execute(
         select(User)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == foyer_uuid)
+        .where(UserFoyer.foyer_id == foyer_uuid, UserFoyer.left_at.is_(None))
     )
     users = users_result.scalars().all()
 

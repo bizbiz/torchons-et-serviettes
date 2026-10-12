@@ -38,6 +38,7 @@ async def list_my_foyers(
         .join(UserFoyer, UserFoyer.foyer_id == Foyer.id)
         .where(
             UserFoyer.user_id == user_id,
+            UserFoyer.left_at.is_(None),
             Foyer.deleted_at.is_(None),
         )
         .order_by(Foyer.name)
@@ -115,6 +116,7 @@ async def update_foyer(
         select(UserFoyer).where(
             UserFoyer.user_id == user_id,
             UserFoyer.foyer_id == foyer_id,
+            UserFoyer.left_at.is_(None),
         )
     )
     uf = membership.scalar_one_or_none()

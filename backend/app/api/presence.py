@@ -171,6 +171,7 @@ async def get_activity_days(
     # courant. On n'exclut PAS les former_member ici : l'historique d'activite
     # d'un ancien membre reste consultable dans le calendrier du foyer.
     member_check = await session.execute(
+        # left_at deliberately NOT filtered: a former member's past activity stays readable.
         select(UserFoyer.user_id).where(
             UserFoyer.foyer_id == foyer_uuid,
             UserFoyer.user_id == user_id,

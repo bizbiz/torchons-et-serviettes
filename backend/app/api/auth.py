@@ -51,7 +51,7 @@ async def list_users(
     result = await session.execute(
         select(User)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == foyer_uuid)
+        .where(UserFoyer.foyer_id == foyer_uuid, UserFoyer.left_at.is_(None))
         .order_by(User.username)
     )
     users = result.scalars().all()

@@ -348,6 +348,7 @@ async def request_revote(
     member_r = await session.execute(
         select(UserFoyer).where(
             UserFoyer.foyer_id == foyer_uuid,
+            UserFoyer.left_at.is_(None),
             UserFoyer.user_id == body.target_user_id,
         )
     )

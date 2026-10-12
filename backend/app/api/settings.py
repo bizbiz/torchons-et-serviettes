@@ -60,6 +60,7 @@ async def _load_or_create_user_foyer(
 ) -> UserFoyer:
     """Charge la ligne user_foyers ou leve si l'user n'est pas membre."""
     result = await session.execute(
+        # left_at not needed: the current user on the token's household, which get_current_user checks.
         select(UserFoyer).where(
             UserFoyer.user_id == user_id,
             UserFoyer.foyer_id == foyer_id,
@@ -80,7 +81,7 @@ def _ssids_to_list(raw: str | None) -> list[str]:
 async def _count_foyer_members(session: AsyncSession, foyer_id: UUID) -> int:
     """Nombre de membres actifs du foyer (utilise pour gater l'UI without_me)."""
     result = await session.execute(
-        select(func.count(UserFoyer.user_id)).where(UserFoyer.foyer_id == foyer_id)
+        select(func.count(UserFoyer.user_id)).where(UserFoyer.foyer_id == foyer_id, UserFoyer.left_at.is_(None))
     )
     return int(result.scalar_one() or 0)
 

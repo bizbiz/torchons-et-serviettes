@@ -175,6 +175,7 @@ async def _persist_accepted_objectives(
     """Copie les slider_values sur user_foyers.daily_objective_minutes."""
     for user_id_str, minutes in prop.slider_values_json.items():
         await session.execute(
+            # left_at not needed: slider users are the active members validated at creation.
             update(UserFoyer)
             .where(
                 UserFoyer.user_id == uuid.UUID(user_id_str),
@@ -301,6 +302,7 @@ async def respond_to_proposition(
         select(UserFoyer).where(
             UserFoyer.user_id == user_id,
             UserFoyer.foyer_id == prop.foyer_id,
+            UserFoyer.left_at.is_(None),
         )
     )
     if membership.scalar_one_or_none() is None:
@@ -529,6 +531,7 @@ async def get_proposition(
         select(UserFoyer).where(
             UserFoyer.user_id == user_id,
             UserFoyer.foyer_id == prop.foyer_id,
+            UserFoyer.left_at.is_(None),
         )
     )
     if membership.scalar_one_or_none() is None:

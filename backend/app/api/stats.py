@@ -217,7 +217,7 @@ async def get_stats(
     users_result = await session.execute(
         select(User)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == foyer_uuid)
+        .where(UserFoyer.foyer_id == foyer_uuid, UserFoyer.left_at.is_(None))
         .order_by(User.username)
     )
     users = users_result.scalars().all()
@@ -339,7 +339,7 @@ async def get_leaderboard(
     users_result = await session.execute(
         select(User)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == foyer_uuid)
+        .where(UserFoyer.foyer_id == foyer_uuid, UserFoyer.left_at.is_(None))
     )
     user_names = {u.id: u.display_name for u in users_result.scalars().all()}
 
@@ -465,7 +465,7 @@ async def get_streaks(
     users_result = await session.execute(
         select(User)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == foyer_uuid)
+        .where(UserFoyer.foyer_id == foyer_uuid, UserFoyer.left_at.is_(None))
         .order_by(User.username)
     )
     users = users_result.scalars().all()
@@ -672,7 +672,7 @@ async def get_points_timeline(
     users_result = await session.execute(
         select(User)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == foyer_uuid)
+        .where(UserFoyer.foyer_id == foyer_uuid, UserFoyer.left_at.is_(None))
         .order_by(User.username)
     )
     users = users_result.scalars().all()
@@ -829,7 +829,7 @@ async def get_weekday_frequency(
     users_result = await session.execute(
         select(User)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == foyer_uuid)
+        .where(UserFoyer.foyer_id == foyer_uuid, UserFoyer.left_at.is_(None))
         .order_by(User.username)
     )
     users = users_result.scalars().all()
@@ -937,7 +937,7 @@ async def get_category_frequency(
     users_result = await session.execute(
         select(User)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == foyer_uuid)
+        .where(UserFoyer.foyer_id == foyer_uuid, UserFoyer.left_at.is_(None))
         .order_by(User.username)
     )
     users = list(users_result.scalars().all())
@@ -1369,6 +1369,7 @@ async def _build_history(
     # Charger les users du foyer actif uniquement.
     from app.models.user_foyer import UserFoyer
     users_result = await session.execute(
+        # left_at deliberately NOT filtered: past events keep their author's name.
         select(User)
         .join(UserFoyer, UserFoyer.user_id == User.id)
         .where(UserFoyer.foyer_id == foyer_uuid)

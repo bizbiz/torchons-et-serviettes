@@ -171,6 +171,7 @@ async def restore(
     if matched.last_active_foyer_id is not None:
         foyer_id_for_stats = matched.last_active_foyer_id
         foyer_q = await session.execute(
+            # left_at deliberately NOT filtered: restore_confirm reactivates this membership (design Q9e).
             select(Foyer.name, UserFoyer.role)
             .join(UserFoyer, UserFoyer.foyer_id == Foyer.id)
             .where(

@@ -284,6 +284,7 @@ async def complete_task_collective(
     members_result = await session.execute(
         select(UserFoyer.user_id).where(
             UserFoyer.foyer_id == foyer_uuid,
+            UserFoyer.left_at.is_(None),
             UserFoyer.user_id.in_(participants),
         )
     )

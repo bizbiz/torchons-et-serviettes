@@ -284,7 +284,7 @@ async def get_pace(
     users_result = await session.execute(
         select(User, UserFoyer.daily_objective_minutes, UserFoyer.objective_display_unit)
         .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == foyer_uuid)
+        .where(UserFoyer.foyer_id == foyer_uuid, UserFoyer.left_at.is_(None))
         .order_by(User.display_name)
     )
     users_rows = users_result.all()
@@ -368,6 +368,7 @@ async def get_objective(
     foyer_uuid = current_foyer_uuid(current)
 
     result = await session.execute(
+        # left_at not needed: the current user on the token's household, which get_current_user checks.
         select(UserFoyer).where(
             UserFoyer.user_id == user_id,
             UserFoyer.foyer_id == foyer_uuid,
@@ -393,6 +394,7 @@ async def update_objective(
     foyer_uuid = current_foyer_uuid(current)
 
     result = await session.execute(
+        # left_at not needed: the current user on the token's household, which get_current_user checks.
         select(UserFoyer).where(
             UserFoyer.user_id == user_id,
             UserFoyer.foyer_id == foyer_uuid,

@@ -166,6 +166,7 @@ async def propose_module(
         return 0
 
     members = await session.execute(
+        # left_at: filtered through role != "former_member", set together by soft_leave_foyer.
         select(UserFoyer.user_id).where(
             UserFoyer.foyer_id == foyer_id,
             UserFoyer.role != "former_member",
