@@ -1794,7 +1794,7 @@ async def _build_history(
 @router.get("/history")
 async def global_history(
     request: Request,
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=500),
     before: datetime | None = None,
     since: datetime | None = None,
     family: list[str] = Query(default=[]),
@@ -1847,7 +1847,7 @@ async def global_history(
 async def user_history(
     user_id: UUID,
     request: Request,
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=500),
     before: datetime | None = None,
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),

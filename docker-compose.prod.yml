@@ -63,6 +63,13 @@ services:
       # `code_fingerprint`, calcule sur les fichiers servis (cf.
       # backend/app/utils/code_fingerprint.py). Vide hors CI, sans consequence.
       GIT_SHA: ${GIT_SHA:-}
+      # uvicorn takes the client IP from X-Forwarded-For only if the sender is
+      # trusted (default 127.0.0.1). Behind Caddy every request would come from
+      # Caddy's container, and the per-IP rate limit (app/utils/rate_limit.py)
+      # would count all clients as one. "*" is safe HERE only: the API is
+      # `expose`d, not published, so Caddy is the only sender; and Caddy, with
+      # no `trusted_proxies`, replaces any X-Forwarded-For a client sends.
+      FORWARDED_ALLOW_IPS: "*"
     volumes:
       # Cle Firebase fournie au runtime (gitignored, scp manuel sur serveur).
       - ./backend/firebase-key.json:/app/firebase-key.json:ro

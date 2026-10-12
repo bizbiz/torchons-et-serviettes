@@ -455,7 +455,9 @@ async def _handle_resolve_presence(
         # Mode simplifie (>30 jours)
         absent_since = date.fromisoformat(payload["absent_since"])
         today = datetime.now(timezone.utc).date()
-        cursor = absent_since
+        # One upsert per day: an arbitrary past date was an unbounded loop. Absences
+        # older than a year no longer weigh on any interval, so they are not written.
+        cursor = max(absent_since, today - timedelta(days=366))
         while cursor < today:
             await _upsert_presence_day(
                 session, foyer_id, cursor, "confirmed_absent", "manual"

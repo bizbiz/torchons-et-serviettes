@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -447,7 +447,7 @@ def _fields_changed(old_data: dict | None, new_data: dict | None) -> list[str]:
 @router.get("/{task_id}/history")
 async def get_task_history(
     task_id: UUID,
-    limit: int = 100,
+    limit: int = Query(default=100, ge=1, le=500),
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):

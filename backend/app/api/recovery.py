@@ -20,6 +20,7 @@ un prefix-hash deterministe si necessaire.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -28,6 +29,7 @@ from jose import JWTError, jwt
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.utils.rate_limit import rate_limited
 
 from app.auth import ALGORITHM, create_token, get_current_user
 from app.api.devices import revoke_other_devices
@@ -135,7 +137,21 @@ async def regenerate_recovery_code(
     return RegenerateResponse(recovery_code=new_code, revoked_devices=revoked)
 
 
-@router.post("/restore", response_model=RestoreResponse)
+def _match_code(code: str, users: list[User]) -> User | None:
+    """First user whose stored hash matches `code` (argon2, one verify per user)."""
+    for u in users:
+        if verify_code(code, u.recovery_code_hash):
+            return u
+    return None
+
+
+@router.post(
+    "/restore",
+    response_model=RestoreResponse,
+    # A wrong code costs one argon2 verify per account holding a code (61 ms each,
+    # 16 accounts in production on 2026-10-12): about one second per attempt.
+    dependencies=[Depends(rate_limited("recovery_restore", max_calls=5, per_seconds=60))],
+)
 async def restore(
     body: RestoreRequest,
     session: AsyncSession = Depends(get_session),
@@ -152,11 +168,10 @@ async def restore(
             User.deleted_at.is_(None),
         )
     )
-    matched: User | None = None
-    for u in candidates.scalars().all():
-        if verify_code(body.recovery_code, u.recovery_code_hash):
-            matched = u
-            break
+    # argon2 is CPU-bound and synchronous: run the whole scan in a thread, the
+    # event loop of the single worker would otherwise freeze for every account.
+    users = list(candidates.scalars().all())
+    matched: User | None = await asyncio.to_thread(_match_code, body.recovery_code, users)
 
     if matched is None:
         raise LocalizedHTTPException(
@@ -210,7 +225,11 @@ async def restore(
     )
 
 
-@router.post("/restore/confirm", response_model=RestoreConfirmResponse)
+@router.post(
+    "/restore/confirm",
+    response_model=RestoreConfirmResponse,
+    dependencies=[Depends(rate_limited("recovery_confirm", max_calls=10, per_seconds=60))],
+)
 async def restore_confirm(
     body: RestoreConfirmRequest,
     session: AsyncSession = Depends(get_session),

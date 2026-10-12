@@ -21,6 +21,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.utils.rate_limit import rate_limited
 
 from app.auth import create_token
 from app.database import get_session
@@ -47,7 +48,13 @@ class CreateFoyerResponse(BaseModel):
     recovery_code: str  # affiche au user UNE SEULE FOIS
 
 
-@router.post("/create-foyer", response_model=CreateFoyerResponse, status_code=201)
+@router.post(
+    "/create-foyer",
+    response_model=CreateFoyerResponse,
+    status_code=201,
+    # Each call creates a user, a household, an argon2 hash and 360 rows.
+    dependencies=[Depends(rate_limited("create_foyer", max_calls=10, per_seconds=3600))],
+)
 async def create_foyer_bootstrap(
     body: CreateFoyerRequest,
     session: AsyncSession = Depends(get_session),

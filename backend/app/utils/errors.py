@@ -178,6 +178,10 @@ ERROR_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "Aucun participant fourni",
         "en": "No participants provided",
     },
+    "RATE_LIMITED": {
+        "fr": "Trop de tentatives. Réessaie dans une minute.",
+        "en": "Too many attempts. Try again in a minute.",
+    },
     "USERS_OUTSIDE_FOYER_FORMAT": {
         "fr": "Utilisateurs hors du foyer : {invalid}",
         "en": "Users outside the household: {invalid}",

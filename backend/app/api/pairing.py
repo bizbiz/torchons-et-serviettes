@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.utils.rate_limit import rate_limited
 
 from app.auth import create_token, get_current_user
 from app.database import get_session
@@ -162,7 +163,11 @@ class PairingInfoResponse(BaseModel):
     expires_at: datetime
 
 
-@router.get("/info/{invite_token}", response_model=PairingInfoResponse)
+@router.get(
+    "/info/{invite_token}",
+    response_model=PairingInfoResponse,
+    dependencies=[Depends(rate_limited("pairing_info", max_calls=30, per_seconds=60))],
+)
 async def pairing_info(
     invite_token: str,
     session: AsyncSession = Depends(get_session),
@@ -203,7 +208,11 @@ async def pairing_info(
     )
 
 
-@router.post("/join", response_model=PairingJoinResponse)
+@router.post(
+    "/join",
+    response_model=PairingJoinResponse,
+    dependencies=[Depends(rate_limited("pairing_join", max_calls=10, per_seconds=60))],
+)
 async def join_pairing(
     body: PairingJoinRequest,
     session: AsyncSession = Depends(get_session),
@@ -220,9 +229,12 @@ async def join_pairing(
 
     Endpoint unauthenticated : le joiner n'a pas encore de JWT.
     """
-    # Lookup token
+    # Lookup token, row LOCKED until commit: without it two concurrent joins both
+    # read consumed_at IS NULL and both consume a single-use token.
     token_result = await session.execute(
-        select(PairingToken).where(PairingToken.token == body.invite_token)
+        select(PairingToken)
+        .where(PairingToken.token == body.invite_token)
+        .with_for_update()
     )
     pt = token_result.scalar_one_or_none()
     if pt is None:

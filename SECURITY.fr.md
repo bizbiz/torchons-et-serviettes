@@ -47,7 +47,8 @@ Inclure dans le rapport :
 ## Ce qui est out-of-scope
 
 - Self-DoS volontaire (envoyer 10 000 requêtes avec ton propre token)
-- Bypass de rate limiting non implémenté à ce stade
+- Limitation de débit des routes authentifiées, qui n'en ont pas à ce stade (les routes
+  joignables sans jeton sont limitées par IP : contourner cette limite EST dans le périmètre)
 - Vulnérabilités dans une instance auto-hébergée tierce (configure
   Caddy / Tailscale toi-même, ce n'est pas le code applicatif)
 - Suggestions UX/UI déguisées en sécurité

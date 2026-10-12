@@ -7,7 +7,7 @@ import uuid as uuid_lib
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -487,7 +487,8 @@ async def undo_collective_completion(
 async def list_completions(
     user_id: UUID | None = None,
     task_id: UUID | None = None,
-    limit: int = 50,
+    # The app asks up to 2000 (refreshCompletions after a household switch).
+    limit: int = Query(default=50, ge=1, le=5000),
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):

@@ -46,7 +46,8 @@ Include in the report:
 ## Out-of-scope
 
 - Voluntary self-DoS (sending 10 000 requests with your own token)
-- Bypass of rate limiting that isn't implemented at this stage
+- Rate limiting on authenticated routes, which has none at this stage (the routes reachable
+  without a token are limited per IP: bypassing that limit IS in scope)
 - Vulnerabilities in a third-party self-hosted instance (configure
   Caddy / Tailscale yourself, that's not the application code)
 - UX/UI suggestions disguised as security
