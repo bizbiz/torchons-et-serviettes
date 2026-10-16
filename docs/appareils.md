@@ -100,7 +100,8 @@ itself: already-installed APKs fall back to the welcome screen instead of stayin
 errors. The phone that leaves is not affected, `/leave` hands it a token on its other
 household; ANOTHER phone of the same user, left on the departed household, is revoked, and
 "Find my household" brings it back on the remaining one. Its offline queue is lost: a
-deliberate choice, the case is rare in a two-person household.
+deliberate choice, the case is rare in a two-person household. Decided 2026-10-12: no
+"remove a member" for now, leaving voluntarily is the only way out.
 
 ## How it plays out
 

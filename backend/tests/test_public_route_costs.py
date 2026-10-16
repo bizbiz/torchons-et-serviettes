@@ -64,7 +64,7 @@ async def test_sync_refuses_an_oversized_batch(client, auth_headers, device_a):
 async def test_pairing_info_takes_the_token_in_the_body(client, auth_headers):
     """POST /pairing/info: the token stays out of the URL, hence out of the access logs.
 
-    The GET with the token in the path is kept for the APKs installed before 2026-10-12.
+    The GET with the token in the path was removed on 2026-10-16: it must stay gone.
     """
     rate_limit.reset()
     init = await client.post("/api/pairing/init", headers=auth_headers)
@@ -76,5 +76,5 @@ async def test_pairing_info_takes_the_token_in_the_body(client, auth_headers):
     assert by_body.json()["kind"] == "foyer_join", by_body.text
 
     legacy = await client.get(f"/api/pairing/info/{token}")
-    assert legacy.status_code == 200, legacy.text
+    assert legacy.status_code == 404, legacy.text
     rate_limit.reset()

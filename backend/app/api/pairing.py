@@ -188,26 +188,9 @@ async def pairing_info(
     return await _pairing_info(session, body.invite_token)
 
 
-@router.get(
-    "/info/{invite_token}",
-    response_model=PairingInfoResponse,
-    dependencies=[Depends(rate_limited("pairing_info", max_calls=30, per_seconds=60))],
-    deprecated=True,
-)
-async def pairing_info_legacy(
-    invite_token: str,
-    session: AsyncSession = Depends(get_session),
-):
-    """Kept for the APKs installed before 2026-10-12, which still call it.
-
-    Remove once every installed app sends `POST /info` (todo.md item on the
-    pairing token in the URL).
-    """
-    return await _pairing_info(session, invite_token)
-
-
 async def _pairing_info(session: AsyncSession, invite_token: str) -> PairingInfoResponse:
-    """Shared body of the two routes above."""
+    """Body of `POST /info`. The legacy `GET /info/{token}` was removed on
+    2026-10-16, once every phone of the household ran v0.41.0."""
     token_result = await session.execute(
         select(PairingToken).where(PairingToken.token == invite_token)
     )

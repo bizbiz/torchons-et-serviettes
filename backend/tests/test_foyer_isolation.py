@@ -1,7 +1,8 @@
 """Isolation between households: a member of one household must not read or write another's.
 
-Each test plays one attack from todo.md « /sync et trois routes écrivent ou lisent hors du foyer
-du jeton » with an OUTSIDER (own user, own household) against the test household.
+Each test plays one attack found by the 2026-10-03 review and fixed in commit 0fbb06c
+(`git show 0fbb06c` for the full list) with an OUTSIDER (own user, own household) against the
+test household.
 
 Paths through which a household boundary can be crossed, and what covers each:
 - /sync UPDATE tasks, arbitrary columns (foyer_id, version) and bounds (weight) — two tests;

@@ -104,7 +104,8 @@ s'effaçant : les APK déjà installés retombent sur l'accueil au lieu de reste
 erreurs. Le téléphone qui quitte lui-même le foyer n'est pas touché, `/leave` lui rend un
 jeton sur son autre foyer ; un AUTRE téléphone du même utilisateur, resté sur le foyer quitté,
 est révoqué, et « Retrouver mon foyer » le ramène sur le foyer restant. Sa file hors ligne est
-perdue : choix assumé, le cas est rare dans un foyer à deux.
+perdue : choix assumé, le cas est rare dans un foyer à deux. Décidé le 2026-10-12 : pas
+d'« exclure un membre » pour l'instant, seul le départ volontaire existe.
 
 ## Comment ça se passe, concrètement
 
