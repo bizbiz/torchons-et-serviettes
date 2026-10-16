@@ -1405,8 +1405,28 @@
     <string name="sync_diag_no_internet">📵 Your internet connection looks down. Check Wi-Fi or mobile data.</string>
     <string name="sync_diag_server_down">🌐 Internet works, but the server is not answering — it may be under maintenance. Try again a bit later.</string>
     <string name="sync_diag_all_ok">✅ Connection is back — resyncing now.</string>
-    <string name="sync_last_error_format">Last error: %1$s</string>
     <string name="sync_retry">Retry</string>
+    <string name="sync_queue_title">Waiting to be sent</string>
+    <string name="sync_op_task_create">New task</string>
+    <string name="sync_op_task_edit">Task edited</string>
+    <string name="sync_op_task_delete">Task deleted</string>
+    <string name="sync_op_completion_add">Done</string>
+    <string name="sync_op_completion_edit">Completion edited</string>
+    <string name="sync_op_completion_delete">Completion deleted</string>
+    <string name="sync_op_frequency_vote">Frequency vote</string>
+    <string name="sync_op_other">Change</string>
+    <string name="sync_op_unknown_task">unknown task</string>
+    <string name="sync_op_label_format">%1$s: %2$s</string>
+    <string name="sync_op_label_member_format">%1$s: %2$s (%3$s)</string>
+    <string name="sync_op_meta_waiting">Waiting since %1$s</string>
+    <plurals name="sync_op_meta_failed">
+        <item quantity="one">Since %1$s · %2$d failure</item>
+        <item quantity="other">Since %1$s · %2$d failures</item>
+    </plurals>
+    <string name="sync_op_discard_cd">Discard this change</string>
+    <string name="sync_discard_title">Discard this change?</string>
+    <string name="sync_discard_body">“%1$s” will never be sent to the server and will disappear from this phone. What depends on it (a later edit or completion on the same item) is discarded too.</string>
+    <string name="sync_discard_confirm">Discard</string>
     <!-- Contexts (replacing rooms and categories) -->
     <string name="contexts_title">Contexts</string>
     <string name="contexts_help">Rooms, pets, outdoor areas, situations: whatever explains why a chore exists in your home.</string>

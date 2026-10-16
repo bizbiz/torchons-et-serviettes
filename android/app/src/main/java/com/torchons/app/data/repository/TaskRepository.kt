@@ -2,6 +2,7 @@ package com.torchons.app.data.repository
 
 import com.google.gson.Gson
 import com.torchons.app.core.sync.SyncTrigger
+import com.torchons.app.core.sync.opsToDiscard
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.PendingOperationDao
@@ -582,6 +583,29 @@ class TaskRepository @Inject constructor(
         } catch (_: Exception) {
             null
         }
+    }
+
+    /**
+     * Drops a queued op the user gave up on (sync dialog), with the ops that
+     * depend on it ([opsToDiscard]), and undoes its optimistic local write:
+     * a dropped INSERT leaves a row the server will never have, so it is
+     * deleted; a dropped UPDATE or DELETE left the server row as it was, so
+     * a refresh brings it back (the row is no longer pending, the replace
+     * takes it).
+     */
+    suspend fun discardPendingOp(clientOpId: String) {
+        val queue = pendingDao.getAll()
+        val target = queue.firstOrNull { it.clientOpId == clientOpId } ?: return
+        val dropped = opsToDiscard(queue, target)
+        dropped.forEach { pendingDao.delete(it.clientOpId) }
+        for (op in dropped.filter { it.operation == "INSERT" }) {
+            when (op.tableName) {
+                "tasks" -> taskDao.deleteById(op.rowId)
+                "task_completions" -> completionDao.deleteById(op.rowId)
+            }
+        }
+        if (dropped.any { it.tableName == "tasks" && it.operation != "INSERT" }) refreshTasks()
+        if (dropped.any { it.tableName == "task_completions" && it.operation != "INSERT" }) refreshCompletions()
     }
 
     private suspend fun enqueue(

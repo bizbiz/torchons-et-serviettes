@@ -162,7 +162,7 @@ class SyncWorker(
                 if (conflict.reason == "out_of_scope") {
                     pendingDao.delete(conflict.clientOpId)
                 } else {
-                    pendingDao.incrementAttempt(conflict.clientOpId, conflict.reason)
+                    pendingDao.incrementAttempt(conflict.clientOpId, conflict.detail ?: conflict.reason)
                 }
             }
 

@@ -4,16 +4,22 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.core.network.BackendHealthMonitor
 import com.torchons.app.core.network.ConnectionState
+import com.torchons.app.core.sync.PendingOpRow
 import com.torchons.app.core.sync.SyncTrigger
+import com.torchons.app.core.sync.describePendingOps
 import com.torchons.app.data.local.dao.PendingOperationDao
+import com.torchons.app.data.local.dao.TaskDao
+import com.torchons.app.data.local.dao.UserDao
 import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.repository.HomeRepository
+import com.torchons.app.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -26,7 +32,10 @@ class ConnectionViewModel @Inject constructor(
     private val monitor: BackendHealthMonitor,
     private val homeRepository: HomeRepository,
     private val syncTrigger: SyncTrigger,
+    private val taskRepository: TaskRepository,
     pendingDao: PendingOperationDao,
+    taskDao: TaskDao,
+    userDao: UserDao,
 ) : ViewModel() {
 
     val connectionState: StateFlow<ConnectionState> = monitor.state
@@ -37,6 +46,24 @@ class ConnectionViewModel @Inject constructor(
     /** Pending offline ops with their retry metadata (attemptCount, lastError). */
     val pendingOps: StateFlow<List<PendingOperationEntity>> = pendingDao.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** The queue as the dialog lists it: what each op is about, and why it waits. */
+    val pendingRows: StateFlow<List<PendingOpRow>> = combine(
+        pendingDao.observeAll(),
+        taskDao.observeAll(),
+        userDao.observeAll(),
+    ) { ops, tasks, users ->
+        describePendingOps(
+            ops,
+            taskTitles = tasks.associate { it.id to it.title },
+            memberNames = users.associate { it.id to it.displayName },
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Gives up on a queued op: it will never be sent, its local effect is undone. */
+    fun discardPendingOp(clientOpId: String) {
+        viewModelScope.launch { taskRepository.discardPendingOp(clientOpId) }
+    }
 
     private val _cacheTimestamp = MutableStateFlow<Long?>(null)
     val cacheTimestamp: StateFlow<Long?> = _cacheTimestamp.asStateFlow()

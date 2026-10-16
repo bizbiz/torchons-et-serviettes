@@ -1416,8 +1416,28 @@
     <string name="sync_diag_no_internet">📵 Ta connexion internet semble coupée. Vérifie le Wi-Fi ou les données mobiles.</string>
     <string name="sync_diag_server_down">🌐 Internet fonctionne, mais le serveur ne répond pas — il est peut-être en maintenance. Réessaie un peu plus tard.</string>
     <string name="sync_diag_all_ok">✅ La connexion est revenue — resynchronisation en cours.</string>
-    <string name="sync_last_error_format">Dernière erreur : %1$s</string>
     <string name="sync_retry">Réessayer</string>
+    <string name="sync_queue_title">En attente d\'envoi</string>
+    <string name="sync_op_task_create">Nouvelle tâche</string>
+    <string name="sync_op_task_edit">Tâche modifiée</string>
+    <string name="sync_op_task_delete">Tâche supprimée</string>
+    <string name="sync_op_completion_add">Fait</string>
+    <string name="sync_op_completion_edit">Complétion modifiée</string>
+    <string name="sync_op_completion_delete">Complétion supprimée</string>
+    <string name="sync_op_frequency_vote">Vote de fréquence</string>
+    <string name="sync_op_other">Modification</string>
+    <string name="sync_op_unknown_task">tâche inconnue</string>
+    <string name="sync_op_label_format">%1$s : %2$s</string>
+    <string name="sync_op_label_member_format">%1$s : %2$s (%3$s)</string>
+    <string name="sync_op_meta_waiting">En attente depuis le %1$s</string>
+    <plurals name="sync_op_meta_failed">
+        <item quantity="one">Depuis le %1$s · %2$d échec</item>
+        <item quantity="other">Depuis le %1$s · %2$d échecs</item>
+    </plurals>
+    <string name="sync_op_discard_cd">Abandonner cette modification</string>
+    <string name="sync_discard_title">Abandonner cette modification ?</string>
+    <string name="sync_discard_body">« %1$s » ne sera jamais envoyé au serveur et disparaîtra de ce téléphone. Ce qui en dépend (une modification ou une complétion faite ensuite sur le même élément) est abandonné aussi.</string>
+    <string name="sync_discard_confirm">Abandonner</string>
     <!-- Contextes (remplacent pieces et categories) -->
     <string name="contexts_title">Contextes</string>
     <string name="contexts_help">Pièces, animaux, extérieurs, situations&#160;: ce qui explique qu\'une tâche existe chez toi.</string>

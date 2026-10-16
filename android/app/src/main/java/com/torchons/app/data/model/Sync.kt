@@ -31,6 +31,8 @@ data class SyncConflict(
     @SerializedName("row_id") val rowId: String,
     @SerializedName("server_data") val serverData: Map<String, Any?>? = null,
     @SerializedName("reason") val reason: String,
+    /** Why the op failed, for `op_error` (sync.py); the dialog shows it. */
+    @SerializedName("detail") val detail: String? = null,
 )
 
 data class ChangeLogEntry(

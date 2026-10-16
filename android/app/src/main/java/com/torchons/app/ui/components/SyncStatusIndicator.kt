@@ -7,12 +7,18 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SyncProblem
 import androidx.compose.material3.AlertDialog
@@ -28,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
@@ -37,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
 import com.torchons.app.core.network.ConnectionState
+import com.torchons.app.core.sync.PendingOpKind
+import com.torchons.app.core.sync.PendingOpRow
 import com.torchons.app.ui.theme.FreshnessOrange
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -123,10 +132,11 @@ private fun SyncStatusDialog(
     val pendingOps by viewModel.pendingOps.collectAsState()
     val cacheTs by viewModel.cacheTimestamp.collectAsState()
     val diagnosis by viewModel.diagnosis.collectAsState()
+    val pendingRows by viewModel.pendingRows.collectAsState()
+    var discardCandidate by remember { mutableStateOf<PendingOpRow?>(null) }
 
     val offline = state as? ConnectionState.Offline
     val pendingCount = pendingOps.size
-    val lastError = pendingOps.firstOrNull { it.lastError != null }?.lastError
 
     // Run the connectivity diagnosis as soon as the dialog opens while the
     // backend is unreachable (and again after a retry flips us back).
@@ -138,7 +148,7 @@ private fun SyncStatusDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.sync_dialog_title)) },
         text = {
-            Column(Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                 // Headline state
                 Text(
                     text = when {
@@ -197,13 +207,16 @@ private fun SyncStatusDialog(
                         )
                     }
                 }
-                if (lastError != null && (offline != null || pendingOps.any { it.attemptCount >= 2 })) {
-                    Spacer(Modifier.height(8.dp))
+                // The queue itself: what waits, since when, and why it failed.
+                if (pendingRows.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
                     Text(
-                        text = stringResource(R.string.sync_last_error_format, lastError),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = stringResource(R.string.sync_queue_title),
+                        style = MaterialTheme.typography.labelLarge,
                     )
+                    pendingRows.forEach { row ->
+                        PendingOpLine(row = row, onDiscard = { discardCandidate = row })
+                    }
                 }
             }
         },
@@ -223,4 +236,93 @@ private fun SyncStatusDialog(
             }
         },
     )
+
+    discardCandidate?.let { row ->
+        AlertDialog(
+            onDismissRequest = { discardCandidate = null },
+            title = { Text(stringResource(R.string.sync_discard_title)) },
+            text = { Text(stringResource(R.string.sync_discard_body, pendingOpLabel(row))) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.discardPendingOp(row.clientOpId)
+                    discardCandidate = null
+                }) { Text(stringResource(R.string.sync_discard_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { discardCandidate = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+        )
+    }
+}
+
+/** "Fait : Changer les serviettes (Bob)" — what the op is about. */
+@Composable
+private fun pendingOpLabel(row: PendingOpRow): String {
+    val kind = stringResource(
+        when (row.kind) {
+            PendingOpKind.TASK_CREATE -> R.string.sync_op_task_create
+            PendingOpKind.TASK_EDIT -> R.string.sync_op_task_edit
+            PendingOpKind.TASK_DELETE -> R.string.sync_op_task_delete
+            PendingOpKind.COMPLETION_ADD -> R.string.sync_op_completion_add
+            PendingOpKind.COMPLETION_EDIT -> R.string.sync_op_completion_edit
+            PendingOpKind.COMPLETION_DELETE -> R.string.sync_op_completion_delete
+            PendingOpKind.FREQUENCY_VOTE -> R.string.sync_op_frequency_vote
+            PendingOpKind.OTHER -> R.string.sync_op_other
+        }
+    )
+    val title = row.taskTitle ?: stringResource(R.string.sync_op_unknown_task)
+    return if (row.memberName != null) {
+        stringResource(R.string.sync_op_label_member_format, kind, title, row.memberName)
+    } else {
+        stringResource(R.string.sync_op_label_format, kind, title)
+    }
+}
+
+/**
+ * One queued op. The discard button only shows once the op has failed: an op
+ * that has not been tried yet will leave on its own, there is nothing to undo.
+ */
+@Composable
+private fun PendingOpLine(row: PendingOpRow, onDiscard: () -> Unit) {
+    val fmt = remember { SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f).padding(vertical = 4.dp)) {
+            Text(text = pendingOpLabel(row), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = if (row.attemptCount > 0) {
+                    pluralStringResource(
+                        R.plurals.sync_op_meta_failed,
+                        row.attemptCount,
+                        fmt.format(Date(row.queuedAtMs)),
+                        row.attemptCount,
+                    )
+                } else {
+                    stringResource(R.string.sync_op_meta_waiting, fmt.format(Date(row.queuedAtMs)))
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            row.error?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+        if (row.attemptCount > 0) {
+            IconButton(onClick = onDiscard) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.sync_op_discard_cd),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
 }
