@@ -109,7 +109,9 @@ class TaskRepository @Inject constructor(
      */
     suspend fun wipeLocalCache() {
         taskDao.replaceAll(emptyList())
-        completionDao.replaceAll(emptyList())
+        // deleteAll, not replaceAll: replaceAll keeps rows with a pending op,
+        // and nothing of the previous household may stay visible.
+        completionDao.deleteAll()
         // task_history via DAO (clearForTask n'existe que per-task, donc on
         // passe par deleteAll). Les autres caches (users, rooms) sont aussi wipes.
         contextDao.replaceAll(emptyList())

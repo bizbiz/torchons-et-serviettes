@@ -26,6 +26,7 @@ import dagger.hilt.components.SingletonComponent
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.CancellationException
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -132,14 +133,26 @@ class SyncWorker(
                 batch.map { it.toSyncOperation() },
             )
 
-            val resp = try {
-                apiService.sync(request)
-            } catch (_: Exception) {
-                return@sendInBatches false
+            // A failed request is recorded on every op of the batch, like a
+            // conflict: the sync icon turns to "problem" after two failures and
+            // its dialog names the cause. It used to return silently, and the
+            // icon kept spinning as an ordinary sync while the queue waited.
+            suspend fun failed(reason: String): Boolean {
+                batch.forEach { pendingDao.incrementAttempt(it.clientOpId, reason) }
+                return false
             }
 
-            if (!resp.isSuccessful) return@sendInBatches false
-            val body = resp.body() ?: return@sendInBatches false
+            val resp = try {
+                apiService.sync(request)
+            } catch (e: CancellationException) {
+                // requestSync REPLACEs a running pass: not a failure of the ops.
+                throw e
+            } catch (e: Exception) {
+                return@sendInBatches failed(e.javaClass.simpleName)
+            }
+
+            if (!resp.isSuccessful) return@sendInBatches failed("HTTP ${resp.code()}")
+            val body = resp.body() ?: return@sendInBatches failed("HTTP ${resp.code()}: empty body")
 
             body.applied.forEach { pendingDao.delete(it.clientOpId) }
 
