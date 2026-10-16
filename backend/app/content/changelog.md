@@ -1,5 +1,26 @@
 # Notes de version
 
+## v0.41.0 — 2026-10-16
+
+### Inviter à distance
+- L'écran « Inviter quelqu'un » propose « Partager » et « Copier le code » :
+  plus besoin d'être côte à côte pour scanner le QR.
+- « Rejoindre un foyer » accepte un code collé, seul ou avec le message
+  entier.
+
+### Synchronisation
+- Une tâche marquée faite hors connexion, par exemple pour l'autre membre,
+  ne disparaît plus de l'historique en attendant d'être envoyée.
+- Après une coupure, les changements repartent dès la modification
+  suivante, au lieu d'attendre parfois plusieurs heures.
+- Quand l'envoi échoue, l'icône de synchronisation le signale au lieu de
+  tourner comme si de rien n'était.
+- La fenêtre de synchronisation liste ce qui attend d'être envoyé, depuis
+  quand et pourquoi, et permet d'abandonner une modification que le serveur
+  refuse.
+- Quand tout va bien, elle affiche le dernier échange avec le serveur, le
+  dernier envoi, et les versions de l'application et du serveur.
+
 ## v0.40.0 — 2026-10-01
 
 ### Un an après la première fois

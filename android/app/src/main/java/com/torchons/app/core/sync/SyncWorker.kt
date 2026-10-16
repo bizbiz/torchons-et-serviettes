@@ -155,6 +155,7 @@ class SyncWorker(
             val body = resp.body() ?: return@sendInBatches failed("HTTP ${resp.code()}: empty body")
 
             body.applied.forEach { pendingDao.delete(it.clientOpId) }
+            if (body.applied.isNotEmpty()) tokenManager.setLastSyncPushAt(System.currentTimeMillis())
 
             body.conflicts.forEach { conflict ->
                 // `out_of_scope`: the op can never apply (household left, row gone).

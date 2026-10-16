@@ -46,8 +46,16 @@ class BackendHealthMonitor @Inject constructor(
     private val _state = MutableStateFlow<ConnectionState>(ConnectionState.Online)
     val state: StateFlow<ConnectionState> = _state.asStateFlow()
 
+    /**
+     * Epoch ms of the last API call that succeeded, since the app process
+     * started (null = none yet). Shown in the sync dialog details.
+     */
+    private val _lastSuccessAtMs = MutableStateFlow<Long?>(null)
+    val lastSuccessAtMs: StateFlow<Long?> = _lastSuccessAtMs.asStateFlow()
+
     /** Notifie qu'un appel API a reussi (HTTP 2xx). */
     fun reportSuccess() {
+        _lastSuccessAtMs.value = System.currentTimeMillis()
         if (_state.value !is ConnectionState.Online) {
             _state.value = ConnectionState.Online
             stopPolling()

@@ -42,6 +42,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.BuildConfig
 import com.torchons.app.R
 import com.torchons.app.core.network.ConnectionState
 import com.torchons.app.core.sync.PendingOpKind
@@ -133,6 +134,9 @@ private fun SyncStatusDialog(
     val cacheTs by viewModel.cacheTimestamp.collectAsState()
     val diagnosis by viewModel.diagnosis.collectAsState()
     val pendingRows by viewModel.pendingRows.collectAsState()
+    val lastContactMs by viewModel.lastServerContactMs.collectAsState()
+    val lastPushMs by viewModel.lastSyncPushMs.collectAsState()
+    val serverInfo by viewModel.serverInfo.collectAsState()
     var discardCandidate by remember { mutableStateOf<PendingOpRow?>(null) }
 
     val offline = state as? ConnectionState.Offline
@@ -142,6 +146,7 @@ private fun SyncStatusDialog(
     // backend is unreachable (and again after a retry flips us back).
     LaunchedEffect(offline != null) {
         if (offline != null) viewModel.runDiagnosis()
+        viewModel.loadServerInfo()
     }
 
     AlertDialog(
@@ -157,7 +162,6 @@ private fun SyncStatusDialog(
                         else -> stringResource(R.string.sync_state_up_to_date)
                     },
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
                 )
                 if (offline != null) {
                     Spacer(Modifier.height(4.dp))
@@ -218,6 +222,12 @@ private fun SyncStatusDialog(
                         PendingOpLine(row = row, onDiscard = { discardCandidate = row })
                     }
                 }
+                Spacer(Modifier.height(12.dp))
+                SyncDetails(
+                    lastContactMs = lastContactMs,
+                    lastPushMs = lastPushMs,
+                    server = serverInfo,
+                )
             }
         },
         confirmButton = {
@@ -254,6 +264,66 @@ private fun SyncStatusDialog(
                 }
             },
         )
+    }
+}
+
+/**
+ * What Réglages > Infos shows, plus when the server last answered and when
+ * it last took our changes: the dialog is not empty when all is well.
+ */
+@Composable
+private fun SyncDetails(
+    lastContactMs: Long?,
+    lastPushMs: Long?,
+    server: ConnectionViewModel.ServerInfo?,
+) {
+    val fmt = remember { SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()) }
+    val never = stringResource(R.string.sync_details_never)
+    val unknown = stringResource(R.string.sync_details_unknown)
+    Text(
+        text = stringResource(R.string.sync_details_title),
+        style = MaterialTheme.typography.labelLarge,
+    )
+    Spacer(Modifier.height(4.dp))
+    DetailLine(R.string.sync_details_last_contact, lastContactMs?.let { fmt.format(Date(it)) } ?: never)
+    DetailLine(R.string.sync_details_last_push, lastPushMs?.let { fmt.format(Date(it)) } ?: never)
+    DetailLine(
+        R.string.sync_details_app,
+        stringResource(
+            R.string.sync_details_app_format,
+            BuildConfig.VERSION_NAME,
+            BuildConfig.VERSION_CODE,
+        ),
+    )
+    if (BuildConfig.BUILD_INFO.isNotEmpty()) {
+        DetailLine(R.string.settings_infos_build, BuildConfig.BUILD_INFO)
+    }
+    DetailLine(R.string.sync_details_server_version, server?.version ?: unknown)
+    DetailLine(R.string.sync_details_server_fingerprint, server?.fingerprint ?: unknown)
+    DetailLine(
+        R.string.sync_details_server_status,
+        if (server == null) {
+            stringResource(R.string.settings_infos_backend_offline)
+        } else {
+            stringResource(
+                R.string.sync_details_server_status_format,
+                server.status ?: unknown,
+                server.database ?: unknown,
+            )
+        },
+    )
+}
+
+@Composable
+private fun DetailLine(labelRes: Int, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
+        Text(
+            text = stringResource(labelRes),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Text(text = value, style = MaterialTheme.typography.bodySmall)
     }
 }
 

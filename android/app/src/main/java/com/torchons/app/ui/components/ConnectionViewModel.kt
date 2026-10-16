@@ -7,6 +7,8 @@ import com.torchons.app.core.network.ConnectionState
 import com.torchons.app.core.sync.PendingOpRow
 import com.torchons.app.core.sync.SyncTrigger
 import com.torchons.app.core.sync.describePendingOps
+import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.UserDao
@@ -14,6 +16,7 @@ import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.repository.HomeRepository
 import com.torchons.app.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -33,6 +36,8 @@ class ConnectionViewModel @Inject constructor(
     private val homeRepository: HomeRepository,
     private val syncTrigger: SyncTrigger,
     private val taskRepository: TaskRepository,
+    private val apiService: ApiService,
+    tokenManager: TokenManager,
     pendingDao: PendingOperationDao,
     taskDao: TaskDao,
     userDao: UserDao,
@@ -63,6 +68,45 @@ class ConnectionViewModel @Inject constructor(
     /** Gives up on a queued op: it will never be sent, its local effect is undone. */
     fun discardPendingOp(clientOpId: String) {
         viewModelScope.launch { taskRepository.discardPendingOp(clientOpId) }
+    }
+
+    /** Last time the server answered an API call (this app session). */
+    val lastServerContactMs: StateFlow<Long?> = monitor.lastSuccessAtMs
+
+    /** Last time /sync accepted ops from this phone. */
+    val lastSyncPushMs: StateFlow<Long?> = tokenManager.lastSyncPushAtFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** What /api/health says about the server; null while loading or unreachable. */
+    data class ServerInfo(
+        val version: String?,
+        val fingerprint: String?,
+        val status: String?,
+        val database: String?,
+    )
+
+    private val _serverInfo = MutableStateFlow<ServerInfo?>(null)
+    val serverInfo: StateFlow<ServerInfo?> = _serverInfo.asStateFlow()
+
+    /** Reads /api/health for the dialog details. */
+    fun loadServerInfo() {
+        viewModelScope.launch {
+            _serverInfo.value = try {
+                val resp = apiService.health()
+                resp.body()?.takeIf { resp.isSuccessful }?.let { h ->
+                    ServerInfo(
+                        version = h["version"] as? String,
+                        fingerprint = h["code_fingerprint"] as? String,
+                        status = h["status"] as? String,
+                        database = h["database"] as? String,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+        }
     }
 
     private val _cacheTimestamp = MutableStateFlow<Long?>(null)

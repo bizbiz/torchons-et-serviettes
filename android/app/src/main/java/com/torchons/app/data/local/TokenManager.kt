@@ -53,6 +53,8 @@ class TokenManager @Inject constructor(
         // Sync offline
         private val DEVICE_ID_KEY = stringPreferencesKey("device_id")
         private val SYNC_CURSOR_KEY = longPreferencesKey("last_server_version")
+        // When /sync last accepted ops from this phone (sync dialog details).
+        private val LAST_SYNC_PUSH_AT_KEY = longPreferencesKey("last_sync_push_at")
         // versionCode vu au dernier lancement de l'app — sert a detecter une
         // mise a jour et invalider le cache view_snapshots (v0.10.2+).
         private val LAST_SEEN_VERSION_CODE_KEY = intPreferencesKey("last_seen_version_code")
@@ -320,6 +322,13 @@ class TokenManager @Inject constructor(
 
     suspend fun setSyncCursor(version: Long) {
         context.dataStore.edit { it[SYNC_CURSOR_KEY] = version }
+    }
+
+    /** Epoch ms of the last /sync that applied at least one op of ours; null = never. */
+    val lastSyncPushAtFlow: Flow<Long?> = context.dataStore.data.map { it[LAST_SYNC_PUSH_AT_KEY] }
+
+    suspend fun setLastSyncPushAt(millis: Long) {
+        context.dataStore.edit { it[LAST_SYNC_PUSH_AT_KEY] = millis }
     }
 
     // --- Cache invalidation ---
