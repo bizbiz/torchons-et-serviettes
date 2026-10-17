@@ -29,6 +29,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.device import Device
@@ -36,6 +37,45 @@ from app.utils.errors import LocalizedHTTPException
 
 # How stale `last_seen` may get before we spend a write on it.
 LAST_SEEN_THROTTLE = timedelta(hours=1)
+
+
+async def _adopt_device(
+    session: AsyncSession,
+    uid: uuid.UUID,
+    device_id: str,
+    device_name: str | None,
+    now: datetime,
+) -> Device:
+    """Register an unknown device_id (rule 2) and return its row.
+
+    `first_seen` is now and not "unknown": for a device already in the field it
+    means "first seen by this mechanism", which is the honest reading and the one
+    the screen shows. ON CONFLICT DO NOTHING: a new phone sends several requests at
+    once, and with a plain insert the second adoption failed on
+    uq_devices_user_device, a 500 (found 2026-10-17 by
+    tests/test_settings_first_read_race.py). The loser reads the winner's row.
+    """
+    await session.execute(
+        pg_insert(Device).values(
+            id=uuid.uuid4(),
+            user_id=uid,
+            device_id=device_id,
+            device_name=device_name,
+            first_seen=now,
+            last_seen=now,
+        ).on_conflict_do_nothing(index_elements=[Device.user_id, Device.device_id])
+    )
+    # COMMIT, pas seulement flush : cette fonction tourne dans une
+    # dependance d'authentification, avant le corps de la route. Sans
+    # commit la ligne meurt avec la transaction et l'appareil est
+    # re-adopte a chaque appel — donc jamais revocable. Mesure : les
+    # trois tests de revocation echouaient en 404 sans cette ligne.
+    await session.commit()
+    return (
+        await session.execute(
+            select(Device).where(Device.user_id == uid, Device.device_id == device_id)
+        )
+    ).scalar_one()
 
 
 async def resolve_device(
@@ -62,25 +102,7 @@ async def resolve_device(
     now = datetime.now(timezone.utc)
 
     if row is None:
-        # Adoption. `first_seen` is now and not "unknown": for a device
-        # already in the field it means "first seen by this mechanism",
-        # which is the honest reading and the one the screen shows.
-        row = Device(
-            user_id=uid,
-            device_id=device_id,
-            device_name=device_name,
-            first_seen=now,
-            last_seen=now,
-        )
-        session.add(row)
-        # COMMIT, pas seulement flush : cette fonction tourne dans une
-        # dependance d'authentification, avant le corps de la route. Sans
-        # commit la ligne meurt avec la transaction et l'appareil est
-        # re-adopte a chaque appel — donc jamais revocable. Mesure : les
-        # trois tests de revocation echouaient en 404 sans cette ligne.
-        await session.commit()
-        await session.refresh(row)
-        return row
+        return await _adopt_device(session, uid, device_id, device_name, now)
 
     dirty = False
     if device_name and row.device_name != device_name:

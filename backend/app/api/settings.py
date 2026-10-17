@@ -12,9 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.database import get_session
 from app.models.user_foyer import UserFoyer
-from app.models.user_settings import UserSettings
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
+from app.utils.user_settings import get_or_create_user_settings
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -97,15 +97,8 @@ async def get_settings(
     user_id = UUID(current["user_id"])
     foyer_uuid = current_foyer_uuid(current)
 
-    result = await session.execute(
-        select(UserSettings).where(UserSettings.user_id == user_id)
-    )
-    settings = result.scalar_one_or_none()
-    if not settings:
-        settings = UserSettings(user_id=user_id)
-        session.add(settings)
-        await session.commit()
-        await session.refresh(settings)
+    settings = await get_or_create_user_settings(session, user_id)
+    await session.commit()
 
     # Home SSIDs : per-foyer depuis v0.7.2. On lit la row user_foyers.
     uf = await _load_or_create_user_foyer(session, user_id, foyer_uuid)
@@ -140,14 +133,7 @@ async def update_settings(
     user_id = UUID(current["user_id"])
     foyer_uuid = current_foyer_uuid(current)
 
-    result = await session.execute(
-        select(UserSettings).where(UserSettings.user_id == user_id)
-    )
-    settings = result.scalar_one_or_none()
-    if not settings:
-        settings = UserSettings(user_id=user_id)
-        session.add(settings)
-        await session.flush()
+    settings = await get_or_create_user_settings(session, user_id)
 
     updates = body.model_dump(exclude_unset=True)
 

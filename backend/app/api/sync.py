@@ -19,7 +19,6 @@ from app.models.enums import CompletionReason
 from app.models.sync import ChangeLog, ProcessedOp
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
-from app.models.user_settings import UserSettings
 from app.schemas.sync import (
     ChangeLogEntry,
     SyncAppliedOp,
@@ -39,6 +38,7 @@ from app.api.tasks import replace_task_contexts
 from app.services.recurrence import checked_recurrence_rule
 from app.utils.changelog import record_change
 from app.utils.scoping import assert_active_members, user_foyer_ids
+from app.utils.user_settings import get_or_create_user_settings
 from app.schemas.task import TaskUpdate
 
 router = APIRouter(prefix="/api", tags=["sync"])
@@ -533,15 +533,7 @@ async def _handle_settings(
     uid = uuid.UUID(user_id)
 
     if op.operation == "UPDATE":
-        row = (
-            await session.execute(
-                select(UserSettings).where(UserSettings.user_id == uid)
-            )
-        ).scalar_one_or_none()
-        if not row:
-            row = UserSettings(user_id=uid)
-            session.add(row)
-            await session.flush()
+        row = await get_or_create_user_settings(session, uid)
         for key, val in data.items():
             if hasattr(row, key) and key != "user_id":
                 setattr(row, key, val)
