@@ -130,6 +130,7 @@ from app.api.projection import router as projection_router
 from app.api.propositions import router as propositions_router
 from app.api.catalog import router as catalog_router
 from app.api.completions import router as completions_router
+from app.api.completion_edits import router as completion_edits_router
 from app.api.gamification import router as gamification_router
 from app.api.stats import router as stats_router
 from app.api.notifications import router as notifications_router
@@ -157,6 +158,7 @@ app.include_router(projection_router)
 app.include_router(propositions_router)
 app.include_router(catalog_router)
 app.include_router(completions_router)
+app.include_router(completion_edits_router)
 app.include_router(gamification_router)
 app.include_router(stats_router)
 app.include_router(notifications_router)

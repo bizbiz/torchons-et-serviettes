@@ -55,6 +55,20 @@ def _safe_uuid(value: str | None) -> UUID | None:
         return None
 
 
+async def recompute_interval_of_task(session: AsyncSession, task_id: UUID) -> None:
+    """Re-infer the interval of the task a completion was added to, removed from or moved in.
+
+    For the paths that hold a completion, not its task: /sync INSERT, DELETE and date
+    UPDATE, REST undo and date edit. Until 2026-10-17 they did not recompute, and an
+    uncertain task done solo (queued, so pushed by /sync) kept a stale interval.
+    Flushes first, so the change is visible to the recompute's query.
+    """
+    await session.flush()
+    task = await session.get(Task, task_id)
+    if task is not None:
+        await _recompute_inferred_interval(session, task, task.foyer_id)
+
+
 async def _recompute_inferred_interval(
     session: AsyncSession,
     task: Task,
@@ -426,6 +440,7 @@ async def undo_completion(
     if not comp:
         raise LocalizedHTTPException(status_code=404, error_code="COMPLETION_NOT_FOUND")
     comp.deleted_at = datetime.now(timezone.utc)
+    await recompute_interval_of_task(session, comp.task_id)
     await record_change(
         session, "task_completions", comp.id, "DELETE", current["user_id"],
         foyer_id=current["foyer_id"],

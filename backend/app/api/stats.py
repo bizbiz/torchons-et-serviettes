@@ -1,4 +1,4 @@
-"""Routes statistiques — points, leaderboard, streaks, badges, edition completions."""
+"""Routes statistiques — points, leaderboard, streaks, badges."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from app.utils.errors import LocalizedHTTPException
 from app.utils.locale import pick_locale_from_header
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, or_, select, case, extract
@@ -23,19 +22,13 @@ from app.models.task import Task
 from app.models.user import User
 from app.services.presence import get_absent_dates
 from app.services.recurrence import min_completion_gap_seconds
-from app.utils.changelog import record_change
-from app.utils.scoping import assert_active_members, current_foyer_uuid
+from app.utils.scoping import current_foyer_uuid
 from app.utils.text import join_with_amp
 
 router = APIRouter(prefix="/api", tags=["stats"])
 
 
 # --- Schemas ---
-
-class CompletionUpdate(BaseModel):
-    completed_by: UUID | None = None
-    completed_at: datetime | None = None
-
 
 class UserStats(BaseModel):
     user_id: UUID
@@ -112,59 +105,6 @@ BADGE_CATALOG_BY_LOCALE: dict[str, dict[str, tuple[str, str]]] = {
 
 # Backward-compat alias : ancien nom utilise par d'autres modules eventuels.
 BADGE_CATALOG = BADGE_CATALOG_BY_LOCALE["fr"]
-
-
-# --- Edition completions ---
-
-@router.put("/completions/{completion_id}")
-async def update_completion(
-    completion_id: UUID,
-    body: CompletionUpdate,
-    session: AsyncSession = Depends(get_session),
-    current: dict = Depends(get_current_user),
-):
-    """Modifie une completion (completed_by et/ou completed_at). Scope foyer via JOIN tasks."""
-    result = await session.execute(
-        select(TaskCompletion)
-        .join(Task, Task.id == TaskCompletion.task_id)
-        .where(
-            TaskCompletion.id == completion_id,
-            TaskCompletion.deleted_at.is_(None),
-            Task.foyer_id == current_foyer_uuid(current),
-        )
-    )
-    comp = result.scalar_one_or_none()
-    if not comp:
-        raise LocalizedHTTPException(status_code=404, error_code="COMPLETION_NOT_FOUND")
-
-    old_data = {
-        "completed_by": str(comp.completed_by),
-        "completed_at": comp.completed_at.isoformat(),
-    }
-
-    updates = body.model_dump(exclude_unset=True)
-    if updates.get("completed_by") is not None:
-        await assert_active_members(session, current_foyer_uuid(current), [updates["completed_by"]])
-    for key, val in updates.items():
-        setattr(comp, key, val)
-    comp.version += 1
-
-    await record_change(
-        session, "task_completions", comp.id, "UPDATE", current["user_id"],
-        foyer_id=current["foyer_id"],
-        old_data=old_data,
-        new_data={k: str(v) for k, v in updates.items()},
-    )
-    await session.commit()
-    await session.refresh(comp)
-    return {
-        "id": str(comp.id),
-        "task_id": str(comp.task_id),
-        "completed_by": str(comp.completed_by),
-        "completed_at": comp.completed_at.isoformat(),
-        "points_earned": comp.points_earned,
-        "notes": comp.notes,
-    }
 
 
 # --- Stats ---
