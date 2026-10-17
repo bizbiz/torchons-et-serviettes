@@ -1,5 +1,15 @@
 # Notes de version
 
+## v0.41.2 — 2026-10-18
+
+### Widget
+- Le widget affiche toutes les tâches, dans le même ordre que l'onglet Tâches, et défile quand
+  elles ne tiennent pas toutes.
+- Chaque tâche porte les trois boutons de la liste : « Fait », « Déjà fait » et « Fait ensemble ».
+  Les deux derniers ouvrent l'app sur la fenêtre correspondante.
+- Le widget fonctionne hors ligne, avec les dernières données du téléphone, et une tâche marquée
+  « Fait » part dès que le réseau revient.
+
 ## v0.41.1 — 2026-10-17
 
 ### Widget

@@ -29,8 +29,6 @@ import androidx.compose.material.icons.filled.FilterListOff
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -45,7 +43,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.Composable
@@ -143,33 +140,17 @@ fun TaskListScreen(
         )
     }
 
-    // Cas foyer 2-pers + Fait ensemble : DatePickerDialog direct, pas de
-    // picker participants (split auto entre les deux membres).
     twoPersonFaitEnsembleTaskId?.let { tid ->
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
-        DatePickerDialog(
-            onDismissRequest = { twoPersonFaitEnsembleTaskId = null },
-            confirmButton = {
-                androidx.compose.material3.Button(onClick = {
-                    val millis = datePickerState.selectedDateMillis
-                    if (millis != null) {
-                        val date = java.time.Instant.ofEpochMilli(millis)
-                            .atZone(java.time.ZoneOffset.UTC)
-                            .toLocalDate()
-                        val bothIds = users.map { it.id }
-                        viewModel.completeTaskCollective(
-                            taskId = tid,
-                            participantUserIds = bothIds,
-                            isoDate = "${date}T12:00:00Z",
-                        )
-                    }
-                    twoPersonFaitEnsembleTaskId = null
-                }) { Text(stringResource(R.string.common_validate)) }
+        TwoPersonTogetherDatePicker(
+            onConfirm = { isoDate ->
+                viewModel.completeTaskCollective(
+                    taskId = tid,
+                    participantUserIds = users.map { it.id },
+                    isoDate = isoDate,
+                )
             },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { twoPersonFaitEnsembleTaskId = null }) { Text(stringResource(R.string.common_cancel)) }
-            },
-        ) { DatePicker(state = datePickerState) }
+            onDismiss = { twoPersonFaitEnsembleTaskId = null },
+        )
     }
 
     // Recharger les donnees quand on revient sur cet ecran
@@ -530,6 +511,14 @@ fun TaskListScreen(
                                 )
                             }
                         }
+                    }
+                    // A widget button lands here (WidgetLaunch): same dialog as the card's.
+                    val widgetRequest by com.torchons.app.widget.WidgetLaunch.request.collectAsState()
+                    LaunchedEffect(widgetRequest, users.isNotEmpty()) {
+                        val req = widgetRequest ?: return@LaunchedEffect
+                        if (users.isEmpty()) return@LaunchedEffect
+                        com.torchons.app.widget.WidgetLaunch.consume()
+                        if (req.together) onCardFaitEnsemble(req.taskId) else onCardHistorical(req.taskId)
                     }
 
                     // Liste des taches avec pull-to-refresh

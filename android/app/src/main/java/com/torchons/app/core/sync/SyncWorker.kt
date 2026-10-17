@@ -21,6 +21,8 @@ import com.torchons.app.data.model.SyncRequest
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.SyncConflict
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.widget.TaskWidget
+import androidx.glance.appwidget.updateAll
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -168,6 +170,9 @@ class SyncWorker(
             true
         }
 
+        // The widget skips its server refresh while ops are queued (it would wipe
+        // their optimistic rows): once they are sent, it redraws from fresh data.
+        if (allSent) runCatching { TaskWidget().updateAll(applicationContext) }
         return if (allSent) Result.success() else Result.retry()
     }
 

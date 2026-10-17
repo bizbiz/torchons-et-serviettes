@@ -432,6 +432,8 @@ fun MainScreen(
         }
     }
 
+    FollowWidgetRequest(innerNavController, currentRoute)
+
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -518,3 +520,17 @@ interface ApiServiceEntryPoint {
 
 // P1 refonte — FoyersEntryPoint supprime avec l'ecran autonome "Mes foyers".
 // Le switch/create foyer passe desormais par SettingsViewModel (Hilt).
+
+/** A widget button that needs a dialog lands on the Tasks tab, which opens it (WidgetLaunch). */
+@Composable
+private fun FollowWidgetRequest(innerNavController: NavHostController, currentRoute: String?) {
+    val widgetRequest by com.torchons.app.widget.WidgetLaunch.request.collectAsState()
+    LaunchedEffect(widgetRequest, currentRoute) {
+        if (widgetRequest != null && currentRoute != null && currentRoute != Routes.TASK_LIST) {
+            innerNavController.navigate(Routes.TASK_LIST) {
+                popUpTo(Routes.HOME) { saveState = true }
+                launchSingleTop = true
+            }
+        }
+    }
+}

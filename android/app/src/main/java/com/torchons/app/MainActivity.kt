@@ -20,6 +20,7 @@ import com.torchons.app.ui.navigation.Routes
 import com.torchons.app.ui.theme.TorchonsServiettesTheme
 import com.torchons.app.util.PopupSessionGate
 import com.torchons.app.widget.TaskWidget
+import com.torchons.app.widget.WidgetLaunch
 import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -61,6 +62,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        WidgetLaunch.postFrom(intent)
 
         // Rearmer la popup d'accueil a chaque ON_RESUME de l'activite :
         // cold start + retour depuis le background. La navigation Compose
@@ -126,6 +128,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        WidgetLaunch.postFrom(intent)
     }
 }
 
