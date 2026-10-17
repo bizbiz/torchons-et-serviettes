@@ -55,6 +55,8 @@ class TokenManager @Inject constructor(
         private val SYNC_CURSOR_KEY = longPreferencesKey("last_server_version")
         // When /sync last accepted ops from this phone (sync dialog details).
         private val LAST_SYNC_PUSH_AT_KEY = longPreferencesKey("last_sync_push_at")
+        // Ops the server refused for good, dropped from the queue, not yet acknowledged (JSON).
+        private val REJECTED_SYNC_OPS_KEY = stringPreferencesKey("rejected_sync_ops")
         // versionCode vu au dernier lancement de l'app — sert a detecter une
         // mise a jour et invalider le cache view_snapshots (v0.10.2+).
         private val LAST_SEEN_VERSION_CODE_KEY = intPreferencesKey("last_seen_version_code")
@@ -329,6 +331,17 @@ class TokenManager @Inject constructor(
 
     suspend fun setLastSyncPushAt(millis: Long) {
         context.dataStore.edit { it[LAST_SYNC_PUSH_AT_KEY] = millis }
+    }
+
+    /** Refused ops awaiting acknowledgement, as JSON (core/sync/RejectedOps.kt); null = none. */
+    val rejectedSyncOpsJsonFlow: Flow<String?> = context.dataStore.data.map { it[REJECTED_SYNC_OPS_KEY] }
+
+    /** Rewrites the refused-ops JSON from its current value; null removes it. */
+    suspend fun updateRejectedSyncOpsJson(transform: (String?) -> String?) {
+        context.dataStore.edit { prefs ->
+            val next = transform(prefs[REJECTED_SYNC_OPS_KEY])
+            if (next == null) prefs.remove(REJECTED_SYNC_OPS_KEY) else prefs[REJECTED_SYNC_OPS_KEY] = next
+        }
     }
 
     // --- Cache invalidation ---

@@ -1429,6 +1429,9 @@
     <string name="sync_op_frequency_vote">Vote de fréquence</string>
     <string name="sync_op_other">Modification</string>
     <string name="sync_op_unknown_task">tâche inconnue</string>
+    <string name="sync_rejected_title">Refusé par le serveur</string>
+    <string name="sync_rejected_hint">Ces modifications ne pouvaient pas être enregistrées : elles ont été retirées de la file et annulées sur ce téléphone.</string>
+    <string name="sync_rejected_meta">Retirée le %1$s</string>
     <string name="sync_op_label_format">%1$s : %2$s</string>
     <string name="sync_op_label_member_format">%1$s : %2$s (%3$s)</string>
     <string name="sync_op_meta_waiting">En attente depuis le %1$s</string>

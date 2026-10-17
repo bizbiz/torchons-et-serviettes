@@ -55,8 +55,11 @@ class SyncConflict(BaseModel):
     # to prevent. The Android side reads `reason` as a plain String.
     # `out_of_scope` = the op can never apply (household left, row gone): the
     # client drops it instead of replaying it forever.
+    # `rejected` = a refusal no replay can lift (sync.py `DEFINITIVE_REFUSALS`):
+    # the client drops it and tells the user. Older clients keep it queued.
     reason: Literal[
         "stale_update", "deleted", "unique_violation", "not_found", "op_error", "out_of_scope",
+        "rejected",
     ]
     #: Human-readable cause for `op_error`, kept out of `reason` so that the
     #: latter stays an enum. Ignored by clients that do not know it.

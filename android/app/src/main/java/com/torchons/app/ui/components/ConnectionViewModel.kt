@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.core.network.BackendHealthMonitor
 import com.torchons.app.core.network.ConnectionState
 import com.torchons.app.core.sync.PendingOpRow
+import com.torchons.app.core.sync.RejectedSyncOp
 import com.torchons.app.core.sync.SyncTrigger
+import com.torchons.app.core.sync.decodeRejectedOps
 import com.torchons.app.core.sync.describePendingOps
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -37,7 +40,7 @@ class ConnectionViewModel @Inject constructor(
     private val syncTrigger: SyncTrigger,
     private val taskRepository: TaskRepository,
     private val apiService: ApiService,
-    tokenManager: TokenManager,
+    private val tokenManager: TokenManager,
     pendingDao: PendingOperationDao,
     taskDao: TaskDao,
     userDao: UserDao,
@@ -68,6 +71,16 @@ class ConnectionViewModel @Inject constructor(
     /** Gives up on a queued op: it will never be sent, its local effect is undone. */
     fun discardPendingOp(clientOpId: String) {
         viewModelScope.launch { taskRepository.discardPendingOp(clientOpId) }
+    }
+
+    /** Ops the server refused for good, already out of the queue, not yet acknowledged. */
+    val rejectedOps: StateFlow<List<RejectedSyncOp>> = tokenManager.rejectedSyncOpsJsonFlow
+        .map { decodeRejectedOps(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** The user has seen the refused ops: their notices go. */
+    fun acknowledgeRejectedOps() {
+        viewModelScope.launch { tokenManager.updateRejectedSyncOpsJson { null } }
     }
 
     /** Last time the server answered an API call (this app session). */

@@ -19,6 +19,8 @@ import com.torchons.app.data.model.RecurrenceRule
 import com.torchons.app.data.model.SyncOperation
 import com.torchons.app.data.model.SyncRequest
 import com.torchons.app.data.model.Task
+import com.torchons.app.data.model.SyncConflict
+import com.torchons.app.data.repository.TaskRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -36,6 +38,7 @@ interface SyncWorkerEntryPoint {
     fun taskDao(): TaskDao
     fun completionDao(): CompletionDao
     fun tokenManager(): TokenManager
+    fun taskRepository(): TaskRepository
 }
 
 /**
@@ -157,15 +160,7 @@ class SyncWorker(
             body.applied.forEach { pendingDao.delete(it.clientOpId) }
             if (body.applied.isNotEmpty()) tokenManager.setLastSyncPushAt(System.currentTimeMillis())
 
-            body.conflicts.forEach { conflict ->
-                // `out_of_scope`: the op can never apply (household left, row gone).
-                // Every other conflict stays queued and is replayed on the next pass.
-                if (conflict.reason == "out_of_scope") {
-                    pendingDao.delete(conflict.clientOpId)
-                } else {
-                    pendingDao.incrementAttempt(conflict.clientOpId, conflict.detail ?: conflict.reason)
-                }
-            }
+            settleConflicts(body.conflicts, batch, ep)
 
             body.serverChanges.forEach { applyServerChange(it, taskDao, completionDao) }
 
@@ -174,6 +169,59 @@ class SyncWorker(
         }
 
         return if (allSent) Result.success() else Result.retry()
+    }
+
+    private suspend fun settleConflicts(
+        conflicts: List<SyncConflict>,
+        batch: List<PendingOperationEntity>,
+        ep: SyncWorkerEntryPoint,
+    ) {
+        val pendingDao = ep.pendingOperationDao()
+        conflicts.forEach { conflict ->
+            // `out_of_scope`: the op can never apply (household left, row gone).
+            // `rejected`: refused for good, dropped below and told to the user.
+            // Every other conflict stays queued and is replayed on the next pass.
+            when (conflict.reason) {
+                "out_of_scope" -> pendingDao.delete(conflict.clientOpId)
+                "rejected" -> Unit
+                else -> pendingDao.incrementAttempt(conflict.clientOpId, conflict.detail ?: conflict.reason)
+            }
+        }
+        dropRejected(conflicts.filter { it.reason == "rejected" }, batch, ep)
+    }
+
+    /**
+     * Drops the ops the server refused for good, the way a manual discard does
+     * (their local effect undone, an INSERT's dependents with it), and records a
+     * notice the sync dialog shows until acknowledged.
+     */
+    private suspend fun dropRejected(
+        rejected: List<SyncConflict>,
+        batch: List<PendingOperationEntity>,
+        ep: SyncWorkerEntryPoint,
+    ) {
+        if (rejected.isEmpty()) return
+        val notices = rejected.mapNotNull { conflict ->
+            val op = batch.firstOrNull { it.clientOpId == conflict.clientOpId } ?: return@mapNotNull null
+            RejectedSyncOp(
+                kind = pendingOpKind(op.tableName, op.operation),
+                taskTitle = taskIdOf(op)?.let { ep.taskDao().getById(it)?.title },
+                reason = readableSyncError(conflict.detail),
+                rejectedAtMs = System.currentTimeMillis(),
+            )
+        }
+        ep.tokenManager().updateRejectedSyncOpsJson { appendRejectedOps(it, notices) }
+        for (conflict in rejected) {
+            try {
+                ep.taskRepository().discardPendingOp(conflict.clientOpId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // The refresh that undoes a local edit needs the network; the op itself
+                // is already out of the queue, the next refresh puts the cache right.
+                ep.pendingOperationDao().delete(conflict.clientOpId)
+            }
+        }
     }
 
     private fun PendingOperationEntity.toSyncOperation(): SyncOperation {

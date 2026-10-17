@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
+from pydantic import ValidationError
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,6 +68,41 @@ async def _op_foyer(session: AsyncSession, op: SyncOperation, user_id: str, toke
     return str(op.foyer_id)
 
 
+# Refusals no replay can lift: the op names someone outside the household, or
+# its values break the task bounds. The client drops a `rejected` op and says so.
+# Everything else stays `op_error`, replayed: an unknown table, operation or
+# recurrence type is a server OLDER than the app (CLAUDE.md § Sync ordering),
+# and passes once the server is deployed -- dropping it would lose the op.
+DEFINITIVE_REFUSALS = frozenset({"USERS_OUTSIDE_FOYER_FORMAT"})
+
+
+def _is_definitive_refusal(e: Exception) -> bool:
+    if isinstance(e, ValidationError):
+        return True
+    return isinstance(e, LocalizedHTTPException) and e.error_code in DEFINITIVE_REFUSALS
+
+
+def _conflict_for(op: SyncOperation, e: Exception) -> SyncConflict:
+    """The conflict reported for an op whose handler raised `e`."""
+    base = {"client_op_id": op.client_op_id, "table": op.table, "row_id": op.row_id}
+    if isinstance(e, OutOfScopeError):
+        return SyncConflict(**base, reason="out_of_scope")
+    if isinstance(e, StaleUpdateError):
+        return SyncConflict(**base, server_data=e.server_data, reason="stale_update")
+    if isinstance(e, IntegrityError):
+        return SyncConflict(**base, reason="unique_violation")
+    # Our own validation errors keep their message (it names the rule broken);
+    # anything else -- driver, database -- gives its class only, its text can
+    # carry SQL and data.
+    detail = (
+        f"{type(e).__name__}: {e}"
+        if isinstance(e, (ValueError, LocalizedHTTPException))
+        else type(e).__name__
+    )
+    reason = "rejected" if _is_definitive_refusal(e) else "op_error"
+    return SyncConflict(**base, reason=reason, detail=detail)
+
+
 @router.post("/sync", response_model=SyncResponse)
 async def sync(
     body: SyncRequest,
@@ -105,53 +141,13 @@ async def sync(
                 op_foyer = await _op_foyer(session, op, user_id, foyer_id)
                 result = await _apply_op(session, op, user_id, op_foyer, body.device_id)
             applied.append(result)
-        except OutOfScopeError:
-            conflicts.append(SyncConflict(
-                client_op_id=op.client_op_id,
-                table=op.table,
-                row_id=op.row_id,
-                reason="out_of_scope",
-            ))
-        except StaleUpdateError as e:
-            conflicts.append(SyncConflict(
-                client_op_id=op.client_op_id,
-                table=op.table,
-                row_id=op.row_id,
-                server_data=e.server_data,
-                reason="stale_update",
-            ))
-        except IntegrityError:
-            conflicts.append(SyncConflict(
-                client_op_id=op.client_op_id,
-                table=op.table,
-                row_id=op.row_id,
-                reason="unique_violation",
-            ))
         except Exception as e:
-            # Filet de securite : toute erreur inattendue sur UNE op (ex.
-            # operation non supportee par un handler, payload incoherent,
-            # client plus recent que le serveur sur une table non geree)
-            # devient un conflit LOCALISE a cette op au lieu de faire
-            # remonter l'exception hors du endpoint -> sinon le batch /sync
-            # entier renvoie 400, ne commit jamais, et la file offline du
-            # foyer reste bloquee a l'infini (retry de la meme op). Voir
-            # docs/cache-conventions.md + commit 08d4a2c (deploy ordering).
-            # StaleUpdateError / IntegrityError sont catches au-dessus :
-            # ce bloc ne voit que l'inattendu.
-            conflicts.append(SyncConflict(
-                client_op_id=op.client_op_id,
-                table=op.table,
-                row_id=op.row_id,
-                reason="op_error",
-                # Our own validation errors keep their message (it names the
-                # rule broken); anything else -- driver, database -- gives its
-                # class only, its text can carry SQL and data.
-                detail=(
-                    f"{type(e).__name__}: {e}"
-                    if isinstance(e, (ValueError, LocalizedHTTPException))
-                    else type(e).__name__
-                ),
-            ))
+            # Filet de securite : toute erreur sur UNE op devient un conflit
+            # LOCALISE a cette op au lieu de faire remonter l'exception hors du
+            # endpoint -> sinon le batch /sync entier renvoie 400, ne commit
+            # jamais, et la file offline du foyer reste bloquee a l'infini.
+            # Voir docs/cache-conventions.md + commit 08d4a2c (deploy ordering).
+            conflicts.append(_conflict_for(op, e))
 
     await session.commit()
 

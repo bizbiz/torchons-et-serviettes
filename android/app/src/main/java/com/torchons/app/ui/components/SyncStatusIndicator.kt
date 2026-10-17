@@ -70,11 +70,13 @@ fun SyncStatusIcon(
 ) {
     val state by viewModel.connectionState.collectAsState()
     val pendingOps by viewModel.pendingOps.collectAsState()
+    val rejectedOps by viewModel.rejectedOps.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
 
     val isOffline = state is ConnectionState.Offline
     val pendingCount = pendingOps.size
-    val stuck = pendingOps.any { it.attemptCount >= 2 }
+    // A refused op left the queue: the icon still says "problem" until the dialog is read.
+    val stuck = pendingOps.any { it.attemptCount >= 2 } || rejectedOps.isNotEmpty()
     val syncing = !isOffline && pendingCount > 0 && !stuck
 
     val icon = when {
@@ -118,6 +120,7 @@ fun SyncStatusIcon(
             viewModel = viewModel,
             onDismiss = {
                 viewModel.clearDiagnosis()
+                viewModel.acknowledgeRejectedOps()
                 showDialog = false
             },
         )
@@ -137,6 +140,7 @@ private fun SyncStatusDialog(
     val lastContactMs by viewModel.lastServerContactMs.collectAsState()
     val lastPushMs by viewModel.lastSyncPushMs.collectAsState()
     val serverInfo by viewModel.serverInfo.collectAsState()
+    val rejectedOps by viewModel.rejectedOps.collectAsState()
     var discardCandidate by remember { mutableStateOf<PendingOpRow?>(null) }
 
     val offline = state as? ConnectionState.Offline
@@ -222,6 +226,7 @@ private fun SyncStatusDialog(
                         PendingOpLine(row = row, onDiscard = { discardCandidate = row })
                     }
                 }
+                RejectedOpsSection(rejectedOps)
                 Spacer(Modifier.height(12.dp))
                 SyncDetails(
                     lastContactMs = lastContactMs,
@@ -327,28 +332,8 @@ private fun DetailLine(labelRes: Int, value: String) {
     }
 }
 
-/** "Fait : Changer les serviettes (Bob)" — what the op is about. */
 @Composable
-private fun pendingOpLabel(row: PendingOpRow): String {
-    val kind = stringResource(
-        when (row.kind) {
-            PendingOpKind.TASK_CREATE -> R.string.sync_op_task_create
-            PendingOpKind.TASK_EDIT -> R.string.sync_op_task_edit
-            PendingOpKind.TASK_DELETE -> R.string.sync_op_task_delete
-            PendingOpKind.COMPLETION_ADD -> R.string.sync_op_completion_add
-            PendingOpKind.COMPLETION_EDIT -> R.string.sync_op_completion_edit
-            PendingOpKind.COMPLETION_DELETE -> R.string.sync_op_completion_delete
-            PendingOpKind.FREQUENCY_VOTE -> R.string.sync_op_frequency_vote
-            PendingOpKind.OTHER -> R.string.sync_op_other
-        }
-    )
-    val title = row.taskTitle ?: stringResource(R.string.sync_op_unknown_task)
-    return if (row.memberName != null) {
-        stringResource(R.string.sync_op_label_member_format, kind, title, row.memberName)
-    } else {
-        stringResource(R.string.sync_op_label_format, kind, title)
-    }
-}
+private fun pendingOpLabel(row: PendingOpRow): String = syncOpLabel(row.kind, row.taskTitle, row.memberName)
 
 /**
  * One queued op. The discard button only shows once the op has failed: an op

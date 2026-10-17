@@ -1418,6 +1418,9 @@
     <string name="sync_op_frequency_vote">Frequency vote</string>
     <string name="sync_op_other">Change</string>
     <string name="sync_op_unknown_task">unknown task</string>
+    <string name="sync_rejected_title">Refused by the server</string>
+    <string name="sync_rejected_hint">These changes could not be saved: they were removed from the queue and undone on this phone.</string>
+    <string name="sync_rejected_meta">Removed on %1$s</string>
     <string name="sync_op_label_format">%1$s: %2$s</string>
     <string name="sync_op_label_member_format">%1$s: %2$s (%3$s)</string>
     <string name="sync_op_meta_waiting">Waiting since %1$s</string>
