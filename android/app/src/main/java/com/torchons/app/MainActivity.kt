@@ -19,6 +19,8 @@ import com.torchons.app.ui.navigation.NavGraph
 import com.torchons.app.ui.navigation.Routes
 import com.torchons.app.ui.theme.TorchonsServiettesTheme
 import com.torchons.app.util.PopupSessionGate
+import com.torchons.app.widget.TaskWidget
+import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +69,14 @@ class MainActivity : ComponentActivity() {
         lifecycle.addObserver(LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 popupSessionGate.arm()
+            }
+            // Leaving the app refreshes the home-screen widget: without it, the widget
+            // waited for its 30-minute period (often deferred by Android) and kept
+            // showing tasks just done, or none at all.
+            if (event == Lifecycle.Event.ON_STOP) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    runCatching { TaskWidget().updateAll(applicationContext) }
+                }
             }
         })
 

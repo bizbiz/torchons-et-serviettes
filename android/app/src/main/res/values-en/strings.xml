@@ -34,6 +34,8 @@
     <string name="completed_at">Completed at</string>
     <string name="points_earned">Points earned</string>
     <string name="widget_description">Task suggestions</string>
+    <string name="widget_all_fresh">All fresh!</string>
+    <string name="widget_load_failed">Could not load the tasks. Tap to open the app.</string>
 
     <!-- ============================================================
          E3.1.0 — i18n proof of pattern (Categories + Rooms screens).

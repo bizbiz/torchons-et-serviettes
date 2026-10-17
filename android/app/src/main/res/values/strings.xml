@@ -35,6 +35,8 @@
     <string name="completed_at">Complété le</string>
     <string name="points_earned">Points gagnés</string>
     <string name="widget_description">Suggestions de tâches</string>
+    <string name="widget_all_fresh">Tout est frais !</string>
+    <string name="widget_load_failed">Impossible de charger les tâches. Touche pour ouvrir l\'app.</string>
 
     <!-- ============================================================
          E3.1.0 — i18n proof of pattern (Categories + Rooms screens).

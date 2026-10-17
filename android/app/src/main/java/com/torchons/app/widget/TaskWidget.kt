@@ -34,13 +34,16 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import android.util.Log
 import com.torchons.app.MainActivity
+import com.torchons.app.R
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.Suggestion
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -59,35 +62,56 @@ private fun widgetApi(context: Context): ApiService =
     EntryPointAccessors.fromApplication(context.applicationContext, TaskWidgetEntryPoint::class.java)
         .apiService()
 
+/**
+ * What the widget could read. A failure is NOT an empty list: until 2026-10-17 any
+ * error (network, HTTP, parsing) became `emptyList()` and the widget said « Tout est
+ * frais » over overdue tasks, with nothing to tell the two apart.
+ */
+private sealed interface WidgetLoad {
+    data class Loaded(val suggestions: List<Suggestion>) : WidgetLoad
+    data class Failed(val cause: String) : WidgetLoad
+}
+
 class TaskWidget : GlanceAppWidget() {
 
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val suggestions = try {
-            fetchSuggestions(context)
-        } catch (e: Exception) {
-            emptyList()
-        }
+        val load = fetchSuggestions(context)
+        if (load is WidgetLoad.Failed) Log.w(TAG, "suggestions not loaded: ${load.cause}")
 
         provideContent {
-            WidgetContent(suggestions)
+            WidgetContent(load)
         }
     }
 
-    private suspend fun fetchSuggestions(context: Context): List<Suggestion> =
+    private suspend fun fetchSuggestions(context: Context): WidgetLoad =
         withContext(Dispatchers.IO) {
             try {
                 val response = widgetApi(context).getSuggestions()
-                if (response.isSuccessful) response.body()?.suggestions.orEmpty() else emptyList()
+                // Gson ignores Kotlin nullability: a body without the field gives null here.
+                val list: List<Suggestion>? = response.body()?.suggestions
+                when {
+                    !response.isSuccessful -> WidgetLoad.Failed("HTTP ${response.code()}")
+                    list == null -> WidgetLoad.Failed("HTTP ${response.code()}: no suggestions")
+                    else -> WidgetLoad.Loaded(list)
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                emptyList()
+                WidgetLoad.Failed(e.javaClass.simpleName)
             }
         }
+
+    companion object {
+        private const val TAG = "TaskWidget"
+    }
 }
 
 @Composable
-private fun WidgetContent(suggestions: List<Suggestion>) {
+private fun WidgetContent(load: WidgetLoad) {
+    val context = androidx.glance.LocalContext.current
+    val suggestions = (load as? WidgetLoad.Loaded)?.suggestions.orEmpty()
     val size = LocalSize.current
     // Calcul dynamique : header ~22dp + padding 24dp = 46dp, item ~36dp
     val availableHeight = size.height.value - 46
@@ -119,9 +143,15 @@ private fun WidgetContent(suggestions: List<Suggestion>) {
 
         Spacer(modifier = GlanceModifier.height(6.dp))
 
-        if (suggestions.isEmpty()) {
+        if (load is WidgetLoad.Failed) {
             Text(
-                text = "Tout est frais ! 🎉",
+                text = context.getString(R.string.widget_load_failed),
+                style = TextStyle(fontSize = 13.sp, color = ColorProvider(Color(0xFFEF4444))),
+                modifier = GlanceModifier.clickable(actionStartActivity<MainActivity>()),
+            )
+        } else if (suggestions.isEmpty()) {
+            Text(
+                text = context.getString(R.string.widget_all_fresh),
                 style = TextStyle(fontSize = 13.sp, color = ColorProvider(Color(0xFF6B7280)))
             )
         } else {
