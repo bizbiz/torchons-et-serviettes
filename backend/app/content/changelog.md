@@ -1,5 +1,21 @@
 # Notes de version
 
+## v0.41.1 — 2026-10-17
+
+### Widget
+- Le widget ne dit plus « Tout est frais » quand il n'a pas pu charger les tâches : il affiche
+  « Impossible de charger les tâches », et le toucher ouvre l'app.
+- Le widget se met à jour dès qu'on quitte l'app.
+
+### Synchronisation
+- Une modification que le serveur refuse pour de bon, par exemple une tâche attribuée à quelqu'un
+  qui a quitté le foyer, sort seule de la file d'attente. La fenêtre de synchronisation l'indique
+  sous « Refusé par le serveur ».
+
+### Corrections
+- Le rythme d'une tâche « incertain » compte une tâche faite ensemble une seule fois, et non une
+  fois par participant.
+
 ## v0.41.0 — 2026-10-16
 
 ### Inviter à distance
