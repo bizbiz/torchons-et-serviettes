@@ -6,6 +6,7 @@ from pathlib import Path
 from uuid import UUID
 
 import firebase_admin
+import structlog
 from firebase_admin import credentials, messaging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,11 +17,29 @@ from app.models.user_foyer import UserFoyer
 from app.models.user_settings import UserSettings
 from app.utils.text import join_with_amp
 
+logger = structlog.get_logger()
+
 # Initialiser Firebase Admin SDK
 _firebase_key = Path(__file__).parent.parent.parent / "firebase-key.json"
 if _firebase_key.exists() and not firebase_admin._apps:
     cred = credentials.Certificate(str(_firebase_key))
     firebase_admin.initialize_app(cred)
+
+
+def _send_multicast(kind: str, message: messaging.MulticastMessage) -> None:
+    """Send and log the outcome: counts and error classes only, never titles or tokens.
+
+    Until 2026-10-17 every failure was swallowed, so a notification that never left
+    looked exactly like one that did.
+    """
+    try:
+        resp = messaging.send_each_for_multicast(message)
+    except Exception as e:
+        logger.warning("push_failed", kind=kind, error=type(e).__name__)
+        return
+    errors = sorted({type(r.exception).__name__ for r in resp.responses if r.exception})
+    log = logger.warning if resp.failure_count else logger.info
+    log("push_sent", kind=kind, ok=resp.success_count, failed=resp.failure_count, errors=errors)
 
 
 # --- Helper centralise pour construire titre + corps + bucket de pref ---
@@ -119,6 +138,7 @@ async def send_completion_event(
     les autres.
     """
     if not firebase_admin._apps:
+        logger.info("push_skipped", kind="completion", reason="firebase_not_initialized")
         return
 
     # 1. Membres ACTIFS du foyer hors recorder = candidats destinataires. Sans
@@ -161,6 +181,8 @@ async def send_completion_event(
         allowed.append((r, title, body))
 
     if not allowed:
+        logger.info("push_skipped", kind="completion", reason="recipients_muted",
+                    candidates=len(candidates))
         return
 
     # 5. Tokens FCM des destinataires retenus.
@@ -180,17 +202,16 @@ async def send_completion_event(
         for tok in tokens_by_user.get(uid, []):
             grouped.setdefault((title, body), []).append(tok)
 
+    if not grouped:
+        logger.info("push_skipped", kind="completion", reason="no_token", recipients=len(allowed))
+        return
+
     for (title, body), tokens in grouped.items():
-        if not tokens:
-            continue
         message = messaging.MulticastMessage(
             notification=messaging.Notification(title=title, body=body),
             tokens=tokens,
         )
-        try:
-            messaging.send_each_for_multicast(message)
-        except Exception:
-            pass  # Silencieux — pas critique
+        _send_multicast("completion", message)
 
 
 async def send_data_message_to_users(
@@ -222,7 +243,5 @@ async def send_data_message_to_users(
         data=data,
         tokens=tokens,
     )
-    try:
-        messaging.send_each_for_multicast(message)
-    except Exception:
-        pass  # Silencieux — non critique, le polling fallback prendra le relai
+    # Not critical: the polling fallback takes over. Logged so a failure is visible.
+    _send_multicast("data", message)

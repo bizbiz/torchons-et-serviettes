@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     # turns them off (EXPOSE_API_DOCS=false in docker-compose.prod.yml).
     expose_api_docs: bool = True
     min_app_download_url: str = ""
+    # The Play Billing routes (app/api/billing.py) are stubs: /verify grants premium on
+    # any token, /rtdn takes unauthenticated posts. Off unless explicitly enabled, until
+    # they verify with Google.
+    billing_stub_enabled: bool = False
 
 
 settings = Settings()

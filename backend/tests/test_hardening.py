@@ -3,7 +3,8 @@
 Paths, and what covers each:
 - j. a scoped token (the 5-minute restore token) used as a session — refused 401;
 - h. a task title a spreadsheet would run as a formula — exported with a leading apostrophe;
-- a. a placeholder or short JWT_SECRET — the app refuses to start.
+- a. a placeholder or short JWT_SECRET — the app refuses to start;
+- the Play Billing stubs (/verify grants premium on any token, /rtdn unauthenticated) — 404.
 Not covered by a test (read, and checked by todo-checks/durcissements-backend.sh): b. CORS
 without credentials, c. docs off when EXPOSE_API_DOCS=false (the flag is read at import),
 d. /api/health without exception text, e. USER in the Dockerfile, f. python-jose floor,
@@ -28,6 +29,18 @@ async def test_a_restore_token_is_not_a_session(client, auth_headers):
     restore = {"Authorization": f"Bearer {_create_restore_token(TEST_USER_ID)}"}
     r = await client.get("/api/tasks", headers=restore)
     assert r.status_code == 401, r.text
+
+
+@pytest.mark.asyncio
+async def test_billing_stubs_are_not_served(client, auth_headers):
+    """The billing stubs grant premium on any token: not mounted unless BILLING_STUB_ENABLED."""
+    verify = await client.post("/api/billing/verify", headers=auth_headers, json={
+        "purchase_token": "anything", "product_id": "premium_monthly"})
+    assert verify.status_code == 404, verify.text
+    rtdn = await client.post("/api/billing/rtdn", json={"message": {"data": "x"}})
+    assert rtdn.status_code == 404, rtdn.text
+    health = await client.get("/api/health")
+    assert health.status_code == 200, health.text
 
 
 @pytest.mark.asyncio

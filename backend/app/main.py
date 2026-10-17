@@ -169,7 +169,9 @@ app.include_router(onboarding_router)
 app.include_router(pairing_router)
 app.include_router(recovery_router)
 app.include_router(me_router)
-app.include_router(billing_router)
+if _settings.billing_stub_enabled:
+    # Stubs that grant premium without asking Google: never mounted by default.
+    app.include_router(billing_router)
 app.include_router(objectives_router)
 app.include_router(export_router)
 app.include_router(modules_router)

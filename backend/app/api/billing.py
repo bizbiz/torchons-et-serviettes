@@ -17,6 +17,11 @@ Deux endpoints :
   et mettra a jour `foyer.is_premium` / `premium_until` en consequence.
 
 Cf. docs/design-onboarding-public.md §7 (decision background).
+
+Since 2026-10-16 this router is mounted only when BILLING_STUB_ENABLED=true
+(app/config.py): served as is, /verify granted premium to any household admin
+holding a made-up token. Wire the Google Play Developer API before turning it on
+anywhere but a development machine.
 """
 
 from __future__ import annotations
