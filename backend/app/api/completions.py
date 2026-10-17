@@ -90,14 +90,24 @@ async def _recompute_inferred_interval(
         return
 
     comp_result = await session.execute(
-        select(TaskCompletion.completed_at)
+        select(TaskCompletion.completed_at, TaskCompletion.collective_id)
         .where(
             TaskCompletion.task_id == task.id,
             TaskCompletion.deleted_at.is_(None),
         )
         .order_by(TaskCompletion.completed_at.asc())
     )
-    times = [row[0] for row in comp_result.all()]
+    # A « done together » writes one row per participant: it is ONE occurrence of the
+    # task. Counted per row, two collective completions ten days apart gave the gaps
+    # [0, 10, 0] and an interval of 5.05 instead of 10 (beta, 2026-10-12).
+    times = []
+    seen_collectives = set()
+    for completed_at, collective_id in comp_result.all():
+        if collective_id is not None:
+            if collective_id in seen_collectives:
+                continue
+            seen_collectives.add(collective_id)
+        times.append(completed_at)
 
     if len(times) < 2:
         task.inferred_interval_days = None
