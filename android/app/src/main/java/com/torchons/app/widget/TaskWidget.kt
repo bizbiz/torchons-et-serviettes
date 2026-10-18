@@ -3,6 +3,8 @@ package com.torchons.app.widget
 import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,7 +45,10 @@ import androidx.glance.unit.ColorProvider
 import com.torchons.app.MainActivity
 import com.torchons.app.R
 import com.torchons.app.data.local.dao.PendingOperationDao
+import com.torchons.app.data.local.TokenManager
+import com.torchons.app.data.model.Task
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.util.WifiHelper
 import com.torchons.app.ui.tasklist.computeTasksWithUrgency
 import com.torchons.app.ui.tasklist.sortForTaskList
 import com.torchons.app.util.TaskUrgencyCalculator
@@ -54,7 +59,11 @@ import dagger.hilt.components.SingletonComponent
 import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -69,7 +78,22 @@ import kotlinx.coroutines.withTimeoutOrNull
 interface TaskWidgetEntryPoint {
     fun taskRepository(): TaskRepository
     fun pendingOperationDao(): PendingOperationDao
+    fun tokenManager(): TokenManager
 }
+
+/**
+ * What the widget may show, before ranking. Not a setting, both rules always apply:
+ * - a task assigned to others only is never shown, whatever the cache holds (the
+ *   server already sends only the user's tasks, `GET /tasks`; this is the second lock,
+ *   see the todo item on solo tasks) ;
+ * - off the home WiFi, tasks that need presence are hidden, as in the Tasks tab
+ *   (user setting `hideHomeTasksOffWifi`).
+ */
+internal fun visibleOnWidget(tasks: List<Task>, userId: String?, hidePresence: Boolean): List<Task> =
+    tasks.filter { task ->
+        val mine = task.assignedToIds.isEmpty() || (userId != null && userId in task.assignedToIds)
+        mine && !(hidePresence && task.contexts.any { it.requiresPresence })
+    }
 
 private fun widgetDeps(context: Context): TaskWidgetEntryPoint =
     EntryPointAccessors.fromApplication(context.applicationContext, TaskWidgetEntryPoint::class.java)
@@ -100,42 +124,63 @@ class TaskWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val load = loadTasks(context)
-        if (load is WidgetLoad.Failed) Log.w(TAG, "tasks not loaded: ${load.cause}")
+        val deps = widgetDeps(context)
+        val refreshed = refreshIfIdle(deps)
+        val loads = observeTasks(context, deps, refreshed)
+        val initial = loads.first()
+        if (initial is WidgetLoad.Failed) Log.w(TAG, "tasks not loaded: ${initial.cause}")
 
+        // Collected INSIDE the composition: a Glance session outlives provideGlance
+        // (~45 s after a tap), and update() on a live session only recomposes. A
+        // list computed once before provideContent stayed frozen, so a task done
+        // from the widget kept its red line (2026-10-18, v0.41.2).
         provideContent {
+            val load by loads.collectAsState(initial)
             WidgetContent(load)
         }
     }
 
-    private suspend fun loadTasks(context: Context): WidgetLoad =
+    /**
+     * Online, the server is authoritative. Not while ops are queued: the refresh
+     * REPLACEs the cache and would drop their optimistic rows (a task just done
+     * would turn red again); SyncWorker redraws the widget once they are sent.
+     */
+    private suspend fun refreshIfIdle(deps: TaskWidgetEntryPoint): Boolean =
         withContext(Dispatchers.IO) {
             try {
-                val deps = widgetDeps(context)
+                if (deps.pendingOperationDao().getAll().isNotEmpty()) return@withContext false
                 val repo = deps.taskRepository()
-                // Online, the server is authoritative. Not while ops are queued: the
-                // refresh REPLACEs the cache and would drop their optimistic rows
-                // (a task just done would turn red again); SyncWorker redraws the
-                // widget once they are sent.
-                var refreshed = false
-                if (deps.pendingOperationDao().getAll().isEmpty()) {
-                    refreshed = withTimeoutOrNull(REFRESH_TIMEOUT_MS) {
-                        repo.refreshTasks() && repo.refreshCompletions(limit = 2000)
-                    } ?: false
-                }
-                val tasks = repo.observeActiveTasks().first()
-                if (tasks.isEmpty() && !refreshed) return@withContext WidgetLoad.Failed("no cache, refresh failed")
-                val completions = repo.observeRecentCompletions(2000).first()
-                val ranked = sortForTaskList(
-                    computeTasksWithUrgency(tasks, completions, LocalDate.now(), context.resources),
-                )
-                WidgetLoad.Loaded(ranked.map { WidgetTask(it.task.id, it.task.title, it.state, it.countdownLabel) })
+                withTimeoutOrNull(REFRESH_TIMEOUT_MS) {
+                    repo.refreshTasks() && repo.refreshCompletions(limit = 2000)
+                } ?: false
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                WidgetLoad.Failed(e.javaClass.simpleName)
+                false
             }
         }
+
+    /** The ranked list, recomputed on every change of the Room cache. */
+    private fun observeTasks(context: Context, deps: TaskWidgetEntryPoint, refreshed: Boolean): Flow<WidgetLoad> {
+        val repo = deps.taskRepository()
+        val tokens = deps.tokenManager()
+        return combine(repo.observeActiveTasks(), repo.observeRecentCompletions(2000)) { tasks, completions ->
+            if (tasks.isEmpty() && !refreshed) {
+                WidgetLoad.Failed("no cache, refresh failed")
+            } else {
+                // Read at each emission: the phone may have left the home WiFi.
+                val hidePresence = tokens.hideHomeTasksOffWifiFlow.first() &&
+                    !WifiHelper.isAtHome(context, tokens.homeSsidsFlow.first())
+                val visible = visibleOnWidget(tasks, tokens.userIdFlow.first(), hidePresence)
+                val ranked = sortForTaskList(
+                    computeTasksWithUrgency(visible, completions, LocalDate.now(), context.resources),
+                )
+                WidgetLoad.Loaded(ranked.map { WidgetTask(it.task.id, it.task.title, it.state, it.countdownLabel) })
+            }
+        }
+            .catch { e -> emit(WidgetLoad.Failed(e.javaClass.simpleName)) }
+            .flowOn(Dispatchers.IO)
+    }
 
     companion object {
         private const val TAG = "TaskWidget"

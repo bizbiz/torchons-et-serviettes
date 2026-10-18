@@ -1,5 +1,12 @@
 # Notes de version
 
+## v0.41.3 — 2026-10-18
+
+### Widget
+- Une tâche validée depuis le widget passe au vert tout de suite, sans attendre.
+- Le widget ne montre que vos tâches : celles qui vous sont attribuées et celles du foyer.
+- Hors du WiFi de la maison, il masque les tâches à faire sur place, comme l'onglet Tâches.
+
 ## v0.41.2 — 2026-10-18
 
 ### Widget
