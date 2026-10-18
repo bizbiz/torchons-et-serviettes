@@ -120,6 +120,34 @@ l'ancien. Il est déconnecté, et ses données locales sont effacées à sa proc
 **Code de récupération divulgué.** Régénérer le code : le nouveau s'affiche une seule fois,
 et tous les autres appareils sont coupés dans le même geste.
 
+## Dépannage : un membre a perdu l'accès à son compte, sans code
+
+⚠️ **Cette procédure ne devrait jamais servir.** Elle écrit en base de prod hors migration, ce
+que `CLAUDE.md` interdit : chaque usage est une exception, accordée par Quentin pour ce cas-là
+seulement. Si elle sert, c'est que le produit a laissé un membre sans issue — le défaut à
+corriger est dans `todo.md`, pas dans cette page.
+
+Le cas, vécu le 2026-10-18 : une mise à jour refusée par Android, l'app désinstallée puis
+réinstallée sans la session, aucun code de récupération noté. Le membre a rejoint le foyer par
+un QR « Rejoindre » et s'est retrouvé sur un compte **neuf** et vide ; son compte d'origine,
+avec tout son historique, était intact en base. On rend donc un code à l'ancien compte au lieu
+de fusionner les deux : une fusion réécrirait une vingtaine de tables pointant vers `users.id`,
+dont plusieurs à clé primaire (user, tâche).
+
+1. **Lire** (lecture seule) les membres du foyer et l'activité de chacun, pour identifier
+   l'ancien compte et vérifier que le doublon n'a rien produit.
+2. **Dump** : `bash scripts/backup_prod.sh`.
+3. **Régénérer** le code de l'ancien compte par un script lancé une fois dans `ts_api_prod`,
+   qui fait les mêmes écritures que `/recovery/regenerate` (`generate_code`, `hash_code`,
+   `lookup_key`, `revoke_other_devices`), vérifie l'identité du compte avant d'écrire et relit
+   le hash après. Le code s'affiche dans le terminal, jamais dans un fichier, un commit ou un
+   log Actions. Script effacé du conteneur et de l'hôte ensuite.
+4. **Sur le téléphone** : Réglages → Foyer → « Quitter le foyer » sur le compte en double,
+   puis « Retrouver mon foyer » avec le code. L'écran de confirmation doit montrer le nombre de
+   complétions de l'ancien compte, pas zéro.
+5. Le membre **régénère aussitôt** son code depuis l'app et le note : celui de l'étape 3 est
+   passé par un terminal.
+
 ## Ce que ça ne protège pas — à dire, pas à cacher
 
 **Un appareil qui ne se reconnecte jamais garde son cache.** Aucune application ne peut

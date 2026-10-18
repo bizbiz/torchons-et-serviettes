@@ -116,6 +116,34 @@ old one. It is signed out, and its local data is erased on its next connection.
 **Recovery code leaked.** Regenerate it: the new one is shown once, and every other device is
 cut in the same gesture.
 
+## Troubleshooting: a member lost access to their account, with no code
+
+⚠️ **This procedure should never be needed.** It writes to the production database outside a
+migration, which `CLAUDE.md` forbids: every use is an exception, granted by Quentin for that
+one case. If it is needed, the product left a member with no way back — the defect to fix is
+in `todo.md`, not on this page.
+
+The case, lived on 2026-10-18: an update refused by Android, the app uninstalled then
+reinstalled without its session, no recovery code written down. The member joined the
+household through a "Join" QR code and landed on a **new**, empty account; their original
+account, with its whole history, was intact in the database. So the old account is given a
+new code instead of merging the two: a merge would rewrite some twenty tables pointing at
+`users.id`, several of them keyed on (user, task).
+
+1. **Read** (read-only) the household members and each one's activity, to identify the old
+   account and check that the duplicate produced nothing.
+2. **Dump**: `bash scripts/backup_prod.sh`.
+3. **Regenerate** the old account's code with a script run once inside `ts_api_prod`, doing
+   the same writes as `/recovery/regenerate` (`generate_code`, `hash_code`, `lookup_key`,
+   `revoke_other_devices`), checking the account's identity before writing and re-reading the
+   hash after. The code is shown in the terminal, never in a file, a commit or an Actions log.
+   Delete the script from the container and the host afterwards.
+4. **On the phone**: Settings → Household → "Leave household" on the duplicate account, then
+   "Recover my household" with the code. The confirmation screen must show the old account's
+   completion count, not zero.
+5. The member **immediately regenerates** their code from the app and writes it down: the one
+   from step 3 went through a terminal.
+
 ## What this does NOT protect — stated, not hidden
 
 **A device that never reconnects keeps its cache.** No app can wipe an offline phone. The
