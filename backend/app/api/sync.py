@@ -36,6 +36,7 @@ from app.services.bonus_malus import (
 )
 from app.api.completions import recompute_interval_of_task
 from app.api.tasks import replace_task_contexts
+from app.services.push import send_sync_completions
 from app.services.recurrence import checked_recurrence_rule
 from app.utils.changelog import record_change
 from app.utils.scoping import assert_active_members, hidden_among, user_foyer_ids, visible_to
@@ -143,6 +144,7 @@ async def sync(
     foyer_id = current["foyer_id"]
     applied: list[SyncAppliedOp] = []
     conflicts: list[SyncConflict] = []
+    inserted_completions: list[uuid.UUID] = []  # notified once committed (services/push.py)
 
     for op in body.changes:
         # Idempotence : si deja traite, retourner le resultat precedent
@@ -170,6 +172,8 @@ async def sync(
                 op_foyer = await _op_foyer(session, op, user_id, foyer_id)
                 result = await _apply_op(session, op, user_id, op_foyer, body.device_id)
             applied.append(result)
+            if op.table == "task_completions" and op.operation == "INSERT":
+                inserted_completions.append(result.server_row_id)
         except Exception as e:
             # Filet de securite : toute erreur sur UNE op devient un conflit
             # LOCALISE a cette op au lieu de faire remonter l'exception hors du
@@ -179,6 +183,7 @@ async def sync(
             conflicts.append(_conflict_for(op, e))
 
     await session.commit()
+    await send_sync_completions(session, inserted_completions, user_id)
 
     # Pull : changements serveur depuis last_server_version,
     # en excluant les ops originant de ce device. SCOPE FOYER : un client ne

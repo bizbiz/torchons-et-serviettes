@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID
 
@@ -189,7 +190,11 @@ async def send_completion_event(
         logger.info("push_skipped", kind="completion", reason="recipients_muted",
                     candidates=len(candidates))
         return
+    await _send_to_users(session, "completion", allowed)
 
+
+async def _send_to_users(session: AsyncSession, kind: str, allowed: list[tuple[UUID, str, str]]) -> None:
+    """Send each (user_id, title, body) to every token of its user."""
     # 5. Tokens FCM des destinataires retenus.
     tokens_result = await session.execute(
         select(NotificationToken.user_id, NotificationToken.fcm_token)
@@ -208,7 +213,7 @@ async def send_completion_event(
             grouped.setdefault((title, body), []).append(tok)
 
     if not grouped:
-        logger.info("push_skipped", kind="completion", reason="no_token", recipients=len(allowed))
+        logger.info("push_skipped", kind=kind, reason="no_token", recipients=len(allowed))
         return
 
     for (title, body), tokens in grouped.items():
@@ -216,7 +221,90 @@ async def send_completion_event(
             notification=messaging.Notification(title=title, body=body),
             tokens=tokens,
         )
-        _send_multicast("completion", message)
+        _send_multicast(kind, message)
+
+
+# --- Completions arriving through /sync -------------------------------------------------
+#
+# The app records a completion offline-first, through /sync, and until 2026-10-18 that path
+# sent nothing: only the REST routes notified, so a plain completion never reached anyone.
+# A queue replayed on reconnection can carry many completions at once, hence ONE notification
+# per member who did them, per /sync call; and a completion dated more than a day back is
+# old news, it notifies nobody.
+
+SYNC_NOTIFY_MAX_AGE = timedelta(days=1)
+_SYNC_TITLES_SHOWN = 5
+
+
+def build_sync_completions_body(completer_name: str, titles: list[str]) -> str:
+    """« Lo a fait : X », or « Lo a fait 3 tâches : X, Y, Z » (at most five titles)."""
+    if len(titles) == 1:
+        return f"{completer_name} a fait : {titles[0]}"
+    shown = ", ".join(titles[:_SYNC_TITLES_SHOWN])
+    more = "…" if len(titles) > _SYNC_TITLES_SHOWN else ""
+    return f"{completer_name} a fait {len(titles)} tâches : {shown}{more}"
+
+
+async def send_sync_completions(session: AsyncSession, completion_ids: list, recorder_id) -> None:
+    """Notify the household of the completions a /sync call has just inserted.
+
+    Called after the commit: a failure here is logged, never raised, the ops are applied.
+    """
+    if not completion_ids:
+        return
+    if not firebase_admin._apps:
+        logger.info("push_skipped", kind="sync_completion", reason="firebase_not_initialized")
+        return
+    try:
+        await _send_sync_completions(session, completion_ids, UUID(str(recorder_id)))
+    except Exception as e:
+        logger.warning("push_failed", kind="sync_completion", error=type(e).__name__)
+
+
+async def _send_sync_completions(session: AsyncSession, completion_ids: list, recorder_id: UUID) -> None:
+    from app.models.completion import TaskCompletion
+
+    rows = await session.execute(
+        select(TaskCompletion.completed_by, Task.foyer_id, Task.id, Task.title)
+        .join(Task, Task.id == TaskCompletion.task_id)
+        .where(
+            TaskCompletion.id.in_(completion_ids),
+            TaskCompletion.deleted_at.is_(None),
+            TaskCompletion.completed_at >= datetime.now(timezone.utc) - SYNC_NOTIFY_MAX_AGE,
+            Task.deleted_at.is_(None),
+        )
+        .order_by(TaskCompletion.completed_at)
+    )
+    # (household, completer) -> {task id: title}, in completion order.
+    done: dict[tuple[UUID, UUID], dict[UUID, str]] = {}
+    for completer, foyer, task_id, title in rows.all():
+        done.setdefault((foyer, completer), {})[task_id] = title
+
+    allowed: list[tuple[UUID, str, str]] = []
+    for (foyer, completer), tasks in done.items():
+        members = await session.execute(
+            select(UserFoyer.user_id).where(UserFoyer.foyer_id == foyer, UserFoyer.left_at.is_(None))
+        )
+        # Neither the one who did it nor the one who recorded it on their behalf.
+        candidates = [m for (m,) in members.all() if m not in (completer, recorder_id)]
+        settings = await session.execute(
+            select(UserSettings.user_id).where(
+                UserSettings.user_id.in_(candidates), UserSettings.notif_solo.is_(True),
+            )
+        )
+        name = (await session.execute(select(User.display_name).where(User.id == completer))).scalar()
+        for recipient in [s for (s,) in settings.all()]:
+            # Each recipient hears only of the tasks they may see (app/utils/scoping.py).
+            hidden = await hidden_among(session, recipient, set(tasks))
+            titles = [t for tid, t in tasks.items() if str(tid) not in hidden]
+            if titles:
+                title = "Tache completee !" if len(titles) == 1 else "Taches completees !"
+                allowed.append((recipient, title, build_sync_completions_body(name or "?", titles)))
+
+    if not allowed:
+        logger.info("push_skipped", kind="sync_completion", reason="no_recipient", groups=len(done))
+        return
+    await _send_to_users(session, "sync_completion", allowed)
 
 
 async def send_data_message_to_users(
