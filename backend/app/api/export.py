@@ -30,7 +30,7 @@ from app.models.completion import TaskCompletion
 from app.models.context import Context, TaskContext
 from app.models.task import Task
 from app.models.user import User
-from app.utils.scoping import current_foyer_uuid
+from app.utils.scoping import current_foyer_uuid, visible_to
 
 router = APIRouter(prefix="/api/export", tags=["export"])
 
@@ -108,6 +108,7 @@ async def export_completions(
         .where(
             Task.foyer_id == foyer_uuid,
             TaskCompletion.deleted_at.is_(None),
+            visible_to(Task.id, current),
         )
         .order_by(TaskCompletion.completed_at.desc())
     )
@@ -150,6 +151,7 @@ async def export_tasks(
         .where(
             Task.foyer_id == foyer_uuid,
             Task.deleted_at.is_(None),
+            visible_to(Task.id, current),
         )
         .order_by(Task.title)
     )

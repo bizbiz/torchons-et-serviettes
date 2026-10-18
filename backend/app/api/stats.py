@@ -22,7 +22,7 @@ from app.models.task import Task
 from app.models.user import User
 from app.services.presence import get_absent_dates
 from app.services.recurrence import min_completion_gap_seconds
-from app.utils.scoping import current_foyer_uuid
+from app.utils.scoping import current_foyer_uuid, visible_to, without_hidden_tasks
 from app.utils.text import join_with_amp
 
 router = APIRouter(prefix="/api", tags=["stats"])
@@ -1052,45 +1052,6 @@ async def get_retard_timeline(
     ])
 
 
-# --- Historique audit ---
-
-@router.get("/completions/{completion_id}/history")
-async def completion_history(
-    completion_id: UUID,
-    session: AsyncSession = Depends(get_session),
-    current: dict = Depends(get_current_user),
-):
-    """Historique des modifications d'une completion. Scope foyer."""
-    from app.models.sync import ChangeLog
-    foyer_uuid = current_foyer_uuid(current)
-    result = await session.execute(
-        select(ChangeLog).where(
-            ChangeLog.table_name == "task_completions",
-            ChangeLog.row_id == completion_id,
-            ChangeLog.foyer_id == foyer_uuid,
-        ).order_by(ChangeLog.changed_at.desc())
-    )
-    logs = result.scalars().all()
-
-    # Charger les noms d'utilisateurs
-    user_ids = {log.changed_by for log in logs if log.changed_by}
-    user_names = {}
-    if user_ids:
-        users = await session.execute(select(User).where(User.id.in_(user_ids)))
-        user_names = {u.id: u.display_name for u in users.scalars().all()}
-
-    return [
-        {
-            "operation": log.operation,
-            "changed_by": user_names.get(log.changed_by, str(log.changed_by)) if log.changed_by else None,
-            "changed_at": log.changed_at.isoformat(),
-            "old_data": log.old_data,
-            "new_data": log.new_data,
-        }
-        for log in logs
-    ]
-
-
 # --- Historique global ---
 
 # Champs "techniques" ignores dans les UPDATE tasks : leur presence seule
@@ -1770,7 +1731,7 @@ async def global_history(
         event_types = None
 
     locale = pick_locale_from_header(request.headers.get("accept-language"))
-    return await _build_history(
+    events = await _build_history(
         session,
         foyer_uuid=current_foyer_uuid(current),
         limit=limit,
@@ -1781,6 +1742,7 @@ async def global_history(
         q=q,
         locale=locale,
     )
+    return await without_hidden_tasks(session, current, events)
 
 
 @router.get("/users/{user_id}/history")
@@ -1794,7 +1756,7 @@ async def user_history(
 ):
     """Historique personnel d'un utilisateur dans le foyer actif."""
     locale = pick_locale_from_header(request.headers.get("accept-language"))
-    return await _build_history(
+    events = await _build_history(
         session,
         foyer_uuid=current_foyer_uuid(current),
         limit=limit,
@@ -1802,6 +1764,7 @@ async def user_history(
         actor_id=user_id,
         locale=locale,
     )
+    return await without_hidden_tasks(session, current, events)
 
 
 # --- Stats long-terme (v0.31, item roadmap "Stats long-terme et par dimension") ---
@@ -2090,6 +2053,46 @@ class WeeklySummaryResponse(BaseModel):
     foyer_total_points: int
 
 
+async def _weekly_top_tasks(
+    session: AsyncSession,
+    current: dict,
+    foyer_uuid: UUID,
+    week_start_dt: datetime,
+    week_end_dt: datetime,
+    absent_filter: list,
+) -> list[WeeklySummaryTopTask]:
+    """The five tasks done most often in the window, among those the user may see."""
+    # Top tasks (par nombre de completions) sur la fenetre.
+    top_tasks_result = await session.execute(
+        select(
+            Task.id,
+            Task.title,
+            func.count(TaskCompletion.id),
+        )
+        .join(TaskCompletion, TaskCompletion.task_id == Task.id)
+        .where(
+            Task.foyer_id == foyer_uuid,
+            visible_to(Task.id, current),
+            TaskCompletion.deleted_at.is_(None),
+            TaskCompletion.completed_at >= week_start_dt,
+            TaskCompletion.completed_at <= week_end_dt,
+            *absent_filter,
+        )
+        .group_by(Task.id, Task.title)
+        .order_by(func.count(TaskCompletion.id).desc())
+        .limit(5)
+    )
+    top_tasks = [
+        WeeklySummaryTopTask(
+            task_id=row[0],
+            title=row[1],
+            count=row[2] or 0,
+        )
+        for row in top_tasks_result.all()
+    ]
+    return top_tasks
+
+
 @router.get("/stats/weekly-summary", response_model=WeeklySummaryResponse)
 async def weekly_summary(
     week_offset: int = Query(default=0, ge=-52, le=0),
@@ -2145,6 +2148,8 @@ async def weekly_summary(
             # filter the count, a member's completions in their OTHER
             # households were counted here.
             & TaskCompletion.task_id.in_(select(Task.id).where(Task.foyer_id == foyer_uuid))
+            # Nor another member's solo tasks (0 points, but counted).
+            & visible_to(TaskCompletion.task_id, current)
             & (TaskCompletion.completed_at >= week_start_dt)
             & (TaskCompletion.completed_at <= week_end_dt)
             & (
@@ -2175,33 +2180,9 @@ async def weekly_summary(
         for row in per_user_result.all()
     ]
 
-    # Top tasks (par nombre de completions) sur la fenetre.
-    top_tasks_result = await session.execute(
-        select(
-            Task.id,
-            Task.title,
-            func.count(TaskCompletion.id),
-        )
-        .join(TaskCompletion, TaskCompletion.task_id == Task.id)
-        .where(
-            Task.foyer_id == foyer_uuid,
-            TaskCompletion.deleted_at.is_(None),
-            TaskCompletion.completed_at >= week_start_dt,
-            TaskCompletion.completed_at <= week_end_dt,
-            *absent_filter,
-        )
-        .group_by(Task.id, Task.title)
-        .order_by(func.count(TaskCompletion.id).desc())
-        .limit(5)
+    top_tasks = await _weekly_top_tasks(
+        session, current, foyer_uuid, week_start_dt, week_end_dt, absent_filter,
     )
-    top_tasks = [
-        WeeklySummaryTopTask(
-            task_id=row[0],
-            title=row[1],
-            count=row[2] or 0,
-        )
-        for row in top_tasks_result.all()
-    ]
 
     # Totaux foyer = somme des per_user (deja scope foyer).
     total_completions = sum(u.completions_count for u in per_user)

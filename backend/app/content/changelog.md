@@ -1,5 +1,13 @@
 # Notes de version
 
+## v0.41.4 — 2026-10-18
+
+### Confidentialité
+- Une tâche attribuée à une seule personne n'est visible que par elle, peu importe qui l'a créée :
+  elle n'apparaît plus chez les autres membres du foyer, ni dans l'historique, ni dans le résumé
+  de la semaine, ni dans les exports.
+- Sa validation n'envoie plus de notification aux autres membres.
+
 ## v0.41.3 — 2026-10-18
 
 ### Widget

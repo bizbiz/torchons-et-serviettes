@@ -38,7 +38,7 @@ from app.api.completions import recompute_interval_of_task
 from app.api.tasks import replace_task_contexts
 from app.services.recurrence import checked_recurrence_rule
 from app.utils.changelog import record_change
-from app.utils.scoping import assert_active_members, user_foyer_ids
+from app.utils.scoping import assert_active_members, hidden_among, user_foyer_ids
 from app.utils.user_settings import get_or_create_user_settings
 from app.schemas.task import TaskUpdate
 
@@ -101,6 +101,35 @@ def _conflict_for(op: SyncOperation, e: Exception) -> SyncConflict:
     )
     reason = "rejected" if _is_definitive_refusal(e) else "op_error"
     return SyncConflict(**base, reason=reason, detail=detail)
+
+
+async def _visible_changes(session: AsyncSession, user_id, rows: list) -> list:
+    """The pulled changes minus those about a task hidden from the user (solo task of another
+    member, app/utils/scoping.py): the task's own rows, and every row that points to it.
+
+    A completion UPDATE or DELETE may carry no `task_id`: its task is read from the completion.
+    """
+    def task_of(row):
+        if row.table_name == "tasks":
+            return str(row.row_id)
+        data = row.new_data or row.old_data or {}
+        return str(data["task_id"]) if isinstance(data, dict) and data.get("task_id") else None
+
+    orphan_completions = [
+        r.row_id for r in rows if r.table_name == "task_completions" and task_of(r) is None
+    ]
+    completion_task = {}
+    if orphan_completions:
+        found = await session.execute(
+            select(TaskCompletion.id, TaskCompletion.task_id).where(TaskCompletion.id.in_(orphan_completions))
+        )
+        completion_task = {str(cid): str(tid) for cid, tid in found.all()}
+
+    def resolved(row):
+        return task_of(row) or completion_task.get(str(row.row_id))
+
+    hidden = await hidden_among(session, user_id, {t for t in map(resolved, rows) if t})
+    return [r for r in rows if resolved(r) not in hidden]
 
 
 @router.post("/sync", response_model=SyncResponse)
@@ -172,6 +201,7 @@ async def sync(
             .limit(500)
         )
     ).scalars().all()
+    server_rows = await _visible_changes(session, user_id, server_rows)
 
     max_version_row = await session.execute(
         select(func.max(ChangeLog.server_version))

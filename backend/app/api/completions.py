@@ -40,7 +40,7 @@ from app.services.recurrence import (
 from app.services.task_flags import NO_FLAGS, resolve_flags_for_tasks
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
-from app.utils.scoping import assert_active_members, current_foyer_uuid, scoped
+from app.utils.scoping import assert_active_members, current_foyer_uuid, visible_tasks, visible_to
 
 router = APIRouter(tags=["completions"])
 
@@ -170,7 +170,7 @@ async def complete_task(
 ):
     """Marque une tache comme completee (scope foyer)."""
     result = await session.execute(
-        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
+        visible_tasks(current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -260,7 +260,7 @@ async def complete_task(
         session,
         completer_id=UUID(current["user_id"]),
         participant_ids=[UUID(current["user_id"])],
-        task_title=task.title,
+        task=task,
         foyer_id=current_foyer_uuid(current),
     )
 
@@ -294,7 +294,7 @@ async def complete_task_collective(
     """
     # 1. Task existe et scope foyer
     result = await session.execute(
-        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
+        visible_tasks(current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -409,7 +409,7 @@ async def complete_task_collective(
         session,
         completer_id=UUID(current["user_id"]),
         participant_ids=list(participants),
-        task_title=task.title,
+        task=task,
         foyer_id=foyer_uuid,
     )
 
@@ -499,7 +499,7 @@ async def undo_collective_completion(
 
     # Recalcul de inferred_interval_days vu qu'on retire des points d'ancrage.
     task_result = await session.execute(
-        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
+        visible_tasks(current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = task_result.scalar_one_or_none()
     if task is not None:
@@ -525,6 +525,7 @@ async def list_completions(
         .where(
             TaskCompletion.deleted_at.is_(None),
             Task.foyer_id == current_foyer_uuid(current),
+            visible_to(Task.id, current),
         )
     )
     if user_id:
@@ -561,7 +562,7 @@ async def completion_preview(
     """
     foyer_uuid = current_foyer_uuid(current)
     result = await session.execute(
-        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
+        visible_tasks(current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
     if not task:

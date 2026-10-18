@@ -30,7 +30,7 @@ from app.services.presence import compute_absent_days_for_tasks
 from app.services.recurrence import VOTABLE_RULE_TYPES
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
-from app.utils.scoping import assert_active_members, current_foyer_uuid, scoped
+from app.utils.scoping import assert_active_members, current_foyer_uuid, scoped, visible_tasks
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -223,7 +223,7 @@ async def get_task(
     current: dict = Depends(get_current_user),
 ):
     result = await session.execute(
-        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
+        visible_tasks(current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -305,7 +305,7 @@ async def update_task(
     current: dict = Depends(get_current_user),
 ):
     result = await session.execute(
-        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
+        visible_tasks(current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -456,7 +456,7 @@ async def get_task_history(
     """
     # Verifier d'abord que la tache appartient au foyer courant
     ownership_check = await session.execute(
-        scoped(Task, current).where(Task.id == task_id)
+        visible_tasks(current).where(Task.id == task_id)
     )
     if ownership_check.scalar_one_or_none() is None:
         raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
@@ -559,7 +559,7 @@ async def delete_task(
 ):
     """Soft delete."""
     result = await session.execute(
-        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
+        visible_tasks(current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
     if not task:

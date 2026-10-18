@@ -39,7 +39,7 @@ from app.services.recurrence import (
     orange_window_cap_of,
 )
 from app.utils.changelog import record_change
-from app.utils.scoping import assert_active_members, current_foyer_uuid, scoped
+from app.utils.scoping import assert_active_members, current_foyer_uuid, visible_tasks
 
 router = APIRouter(prefix="/api", tags=["gamification"])
 
@@ -171,6 +171,8 @@ async def get_affinity(
     current: dict = Depends(get_current_user),
 ):
     """Recupere l'affinite de l'utilisateur courant pour une tache."""
+    if (await session.execute(visible_tasks(current).where(Task.id == task_id))).scalar_one_or_none() is None:
+        raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
     user_id = UUID(current["user_id"])
     result = await session.execute(
         select(TaskAffinity).where(
@@ -262,7 +264,7 @@ async def get_task_ratings(
     # The task must be in the caller's household: the queries below go by
     # task_id alone, and would otherwise read another household's members,
     # affinities and efforts.
-    owned = await session.execute(scoped(Task, current).where(Task.id == task_id))
+    owned = await session.execute(visible_tasks(current).where(Task.id == task_id))
     if owned.scalar_one_or_none() is None:
         raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
@@ -516,12 +518,10 @@ async def get_frequency_votes(
     from app.models.user import User
 
     user_id = UUID(current["user_id"])
-    foyer_uuid = current_foyer_uuid(current)
 
     task_r = await session.execute(
-        select(Task).where(
+        visible_tasks(current).where(
             Task.id == task_id,
-            Task.foyer_id == foyer_uuid,
             Task.deleted_at.is_(None),
         )
     )
@@ -619,12 +619,10 @@ async def get_effort_votes(
     from app.models.task_effort import TaskEffort
 
     user_id = UUID(current["user_id"])
-    foyer_uuid = current_foyer_uuid(current)
 
     task_r = await session.execute(
-        select(Task).where(
+        visible_tasks(current).where(
             Task.id == task_id,
-            Task.foyer_id == foyer_uuid,
             Task.deleted_at.is_(None),
         )
     )
@@ -696,7 +694,7 @@ async def task_rating_context(
     """
     user_id = UUID(current["user_id"])
     result = await session.execute(
-        scoped(Task, current).where(Task.id == task_id, Task.deleted_at.is_(None))
+        visible_tasks(current).where(Task.id == task_id, Task.deleted_at.is_(None))
     )
     task = result.scalar_one_or_none()
     if not task:

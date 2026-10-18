@@ -85,3 +85,64 @@ async def user_foyer_ids(session, user_uuid: uuid.UUID) -> set[uuid.UUID]:
         )
     )
     return {row[0] for row in rows.all()}
+
+
+# --- Inside the household: a solo task is visible to its assignee only ---------------------
+#
+# A task that has assignees, none of whom is the user, is invisible to that user: neither its
+# title, nor its id, nor its completions. Rule set by Quentin on 2026-10-18 — "une tâche
+# attribuée que à Lo n'est visible que par Lo", whoever created it. Such a task earns no points
+# (`compute_base_points_for_task`: 0 for one assignee), so hiding it changes no total.
+# `scoped()` bounds the HOUSEHOLD only; every route that reads or writes a task, or a row that
+# points to one, adds this bound. `tests/test_solo_task_privacy.py` sweeps the GET routes and
+# the /sync pull with a second member.
+
+
+def _user_uuid(current_or_id: dict | str | uuid.UUID) -> uuid.UUID:
+    raw = current_or_id["user_id"] if isinstance(current_or_id, dict) else current_or_id
+    return raw if isinstance(raw, uuid.UUID) else uuid.UUID(str(raw))
+
+
+def hidden_task_ids(current_or_id: dict | str | uuid.UUID) -> Select:
+    """Ids of the tasks assigned to others only, as a subquery."""
+    from app.models.task_assignment import TaskAssignment
+
+    user_id = _user_uuid(current_or_id)
+    mine = select(TaskAssignment.task_id).where(TaskAssignment.user_id == user_id)
+    return select(TaskAssignment.task_id).where(TaskAssignment.task_id.not_in(mine))
+
+
+def visible_to(task_id_column: Any, current_or_id: dict | str | uuid.UUID) -> Any:
+    """WHERE clause: the task behind `task_id_column` is visible to the user."""
+    return task_id_column.not_in(hidden_task_ids(current_or_id))
+
+
+def visible_tasks(current: dict) -> Select:
+    """`scoped(Task, current)` minus the tasks assigned to others only."""
+    from app.models.task import Task
+
+    return scoped(Task, current).where(visible_to(Task.id, current))
+
+
+async def hidden_among(session, current_or_id: dict | str | uuid.UUID, task_ids: set) -> set[str]:
+    """Which of `task_ids` are hidden from the user, as strings."""
+    from app.models.task_assignment import TaskAssignment
+
+    if not task_ids:
+        return set()
+    wanted = [i if isinstance(i, uuid.UUID) else uuid.UUID(str(i)) for i in task_ids]
+    rows = await session.execute(
+        hidden_task_ids(current_or_id).where(TaskAssignment.task_id.in_(wanted)).distinct()
+    )
+    return {str(r) for r in rows.scalars().all()}
+
+
+async def without_hidden_tasks(session, current: dict, events: list[dict]) -> list[dict]:
+    """History events minus those about a task hidden from the user.
+
+    Applied after `_build_history` has cut its page, so a page can come back shorter than
+    `limit`; the `before` cursor still moves on, from the last event the client received.
+    """
+    task_ids = {e["task"]["id"] for e in events if e.get("task")}
+    hidden = await hidden_among(session, current, task_ids)
+    return [e for e in events if not (e.get("task") and e["task"]["id"] in hidden)]

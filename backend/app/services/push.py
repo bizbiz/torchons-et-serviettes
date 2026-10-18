@@ -13,7 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notification import NotificationToken
 from app.models.user import User
+from app.models.task import Task
 from app.models.user_foyer import UserFoyer
+from app.utils.scoping import hidden_among
 from app.models.user_settings import UserSettings
 from app.utils.text import join_with_amp
 
@@ -125,7 +127,7 @@ async def send_completion_event(
     *,
     completer_id: UUID,
     participant_ids: list[UUID],
-    task_title: str,
+    task: Task,
     foyer_id: UUID,
 ) -> None:
     """Envoie une (ou plusieurs) notif(s) push apres une completion.
@@ -150,6 +152,9 @@ async def send_completion_event(
     )
     member_ids = [row[0] for row in members_result.all()]
     candidates = [m for m in member_ids if m != completer_id]
+    # Nor the members a solo task is hidden from (app/utils/scoping.py): the text carries
+    # its title. Until 2026-10-18 every member got « Lo a fait <title> ».
+    candidates = [m for m in candidates if str(task.id) not in await hidden_among(session, m, {task.id})]
     if not candidates:
         return
 
@@ -172,7 +177,7 @@ async def send_completion_event(
     allowed: list[tuple[UUID, str, str]] = []  # (user_id, title, body)
     for r in candidates:
         title, body, bucket = build_completion_notification(
-            r, completer_id, participant_ids, names, task_title
+            r, completer_id, participant_ids, names, task.title
         )
         s = settings_by_user.get(r)
         flag_name = _BUCKET_FLAG[bucket]
