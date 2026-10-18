@@ -16,6 +16,7 @@ le scoping est transitif : on joint sur tasks et on filtre via Task.foyer_id.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Select, select
@@ -138,11 +139,30 @@ async def hidden_among(session, current_or_id: dict | str | uuid.UUID, task_ids:
 
 
 async def without_hidden_tasks(session, current: dict, events: list[dict]) -> list[dict]:
-    """History events minus those about a task hidden from the user.
-
-    Applied after `_build_history` has cut its page, so a page can come back shorter than
-    `limit`; the `before` cursor still moves on, from the last event the client received.
-    """
+    """History events minus those about a task hidden from the user."""
     task_ids = {e["task"]["id"] for e in events if e.get("task")}
     hidden = await hidden_among(session, current, task_ids)
     return [e for e in events if not (e.get("task") and e["task"]["id"] in hidden)]
+
+
+# Bounds the refills of one page: a member with hundreds of solo events in a row gets a short
+# page rather than an unbounded request.
+_HISTORY_REFILLS = 10
+
+
+async def visible_history(session, current: dict, build, limit: int, before) -> list[dict]:
+    """A page of `limit` history events, none about a task hidden from the user.
+
+    `build(n, cursor)` returns the `n` events strictly before `cursor`, newest first, dates in
+    ISO. Hidden events are dropped AFTER that cut, so the page is refilled from older events:
+    the app reads a short page as the end of the history.
+    """
+    page: list[dict] = []
+    cursor = before
+    for _ in range(_HISTORY_REFILLS):
+        events = await build(limit, cursor)
+        page += await without_hidden_tasks(session, current, events)
+        if len(page) >= limit or len(events) < limit:
+            break
+        cursor = datetime.fromisoformat(events[-1]["date"])
+    return page[:limit]

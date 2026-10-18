@@ -38,7 +38,7 @@ from app.api.completions import recompute_interval_of_task
 from app.api.tasks import replace_task_contexts
 from app.services.recurrence import checked_recurrence_rule
 from app.utils.changelog import record_change
-from app.utils.scoping import assert_active_members, hidden_among, user_foyer_ids
+from app.utils.scoping import assert_active_members, hidden_among, user_foyer_ids, visible_to
 from app.utils.user_settings import get_or_create_user_settings
 from app.schemas.task import TaskUpdate
 
@@ -249,7 +249,11 @@ async def _apply_op(
             format_args={"table": op.table},
         )
 
-    server_row_id = await handler(session, op, user_id, foyer_id)
+    written_id = await handler(session, op, user_id, foyer_id)
+    # None: nothing was written (row gone, or not visible to the caller). The op is
+    # acknowledged, but journalled nowhere: a change_log row would show the owner an
+    # edit that never happened, and send it to every device.
+    server_row_id = written_id or op.row_id
 
     # Enregistrer dans processed_ops
     session.add(ProcessedOp(
@@ -260,12 +264,13 @@ async def _apply_op(
     ))
 
     # Enregistrer dans change_log (avec foyer_id)
-    await record_change(
-        session, op.table, server_row_id, op.operation, user_id,
-        foyer_id=foyer_id,
-        new_data=op.data,
-        client_op_id=op.client_op_id,
-    )
+    if written_id is not None:
+        await record_change(
+            session, op.table, server_row_id, op.operation, user_id,
+            foyer_id=foyer_id,
+            new_data=op.data,
+            client_op_id=op.client_op_id,
+        )
 
     await session.flush()
 
@@ -294,12 +299,26 @@ def _truncate_to_ms(dt: datetime) -> datetime:
     return dt.replace(microsecond=(dt.microsecond // 1000) * 1000)
 
 
+async def _writable_task(session: AsyncSession, task_id, foyer_uuid: uuid.UUID, user_id: str):
+    """The live task of this household the caller may see, or None."""
+    return (
+        await session.execute(
+            select(Task).where(
+                Task.id == task_id,
+                Task.foyer_id == foyer_uuid,
+                Task.deleted_at.is_(None),
+                visible_to(Task.id, user_id),
+            )
+        )
+    ).scalar_one_or_none()
+
+
 async def _handle_task(
     session: AsyncSession,
     op: SyncOperation,
     user_id: str,
     foyer_id: str,
-) -> uuid.UUID:
+) -> uuid.UUID | None:
     """Traite INSERT / UPDATE / DELETE sur tasks."""
     data = op.data or {}
     foyer_uuid = uuid.UUID(foyer_id) if isinstance(foyer_id, str) else foyer_id
@@ -328,17 +347,9 @@ async def _handle_task(
         return task.id
 
     if op.operation == "UPDATE":
-        row = (
-            await session.execute(
-                select(Task).where(
-                    Task.id == op.row_id,
-                    Task.foyer_id == foyer_uuid,
-                    Task.deleted_at.is_(None),
-                )
-            )
-        ).scalar_one_or_none()
+        row = await _writable_task(session, op.row_id, foyer_uuid, user_id)
         if not row:
-            # Gone (deleted or never in this household): no replay will ever apply it.
+            # Gone, never in this household, or assigned to others only: no replay will apply it.
             raise OutOfScopeError("task not found in this household")
         if _truncate_to_ms(row.updated_at) > _truncate_to_ms(op.client_timestamp):
             raise StaleUpdateError(_row_to_dict(row))
@@ -375,19 +386,11 @@ async def _handle_task(
         return row.id
 
     if op.operation == "DELETE":
-        row = (
-            await session.execute(
-                select(Task).where(
-                    Task.id == op.row_id,
-                    Task.foyer_id == foyer_uuid,
-                    Task.deleted_at.is_(None),
-                )
-            )
-        ).scalar_one_or_none()
+        row = await _writable_task(session, op.row_id, foyer_uuid, user_id)
         if row:
             row.deleted_at = datetime.now(timezone.utc)
             row.version += 1
-        return op.row_id
+        return row.id if row else None
 
     raise LocalizedHTTPException(
         status_code=400,
@@ -409,7 +412,7 @@ async def _insert_completion(
     # behaviour), as long as it is in one of the caller's households.
     my_foyers = await user_foyer_ids(session, uuid.UUID(user_id))
     owner = (
-        await session.execute(select(Task.foyer_id).where(Task.id == task_id))
+        await session.execute(select(Task.foyer_id).where(Task.id == task_id, visible_to(Task.id, user_id)))
     ).scalar_one_or_none()
     if owner is None or owner not in my_foyers:
         raise OutOfScopeError("task not found in the caller's households")
@@ -459,7 +462,7 @@ async def _insert_completion(
 
 async def _delete_completion(
     session: AsyncSession, op: SyncOperation, user_id: str,
-) -> uuid.UUID:
+) -> uuid.UUID | None:
     """/sync DELETE on task_completions (soft delete)."""
     # Same rule as INSERT: only in a household the caller belongs to.
     my_foyers = await user_foyer_ids(session, uuid.UUID(user_id))
@@ -471,18 +474,19 @@ async def _delete_completion(
                 TaskCompletion.id == op.row_id,
                 TaskCompletion.deleted_at.is_(None),
                 Task.foyer_id.in_(my_foyers),
+                visible_to(Task.id, user_id),
             )
         )
     ).scalar_one_or_none()
     if row:
         row.deleted_at = datetime.now(timezone.utc)
         await recompute_interval_of_task(session, row.task_id)
-    return op.row_id
+    return row.id if row else None
 
 
 async def _update_completion(
-    session: AsyncSession, op: SyncOperation, data: dict, foyer_id: str,
-) -> uuid.UUID:
+    session: AsyncSession, op: SyncOperation, data: dict, foyer_id: str, user_id: str,
+) -> uuid.UUID | None:
     """/sync UPDATE on task_completions (see _handle_completion)."""
     foyer_uuid = uuid.UUID(foyer_id) if isinstance(foyer_id, str) else foyer_id
     row = (
@@ -493,6 +497,7 @@ async def _update_completion(
                 TaskCompletion.id == op.row_id,
                 TaskCompletion.deleted_at.is_(None),
                 Task.foyer_id == foyer_uuid,
+                visible_to(Task.id, user_id),
             )
         )
     ).scalar_one_or_none()
@@ -510,7 +515,7 @@ async def _update_completion(
         row.version += 1
         if data.get("completed_at"):
             await recompute_interval_of_task(session, row.task_id)
-    return op.row_id
+    return row.id if row else None
 
 
 async def _handle_completion(
@@ -518,7 +523,7 @@ async def _handle_completion(
     op: SyncOperation,
     user_id: str,
     foyer_id: str,
-) -> uuid.UUID:
+) -> uuid.UUID | None:
     """Traite INSERT / UPDATE / DELETE sur task_completions.
 
     Sur INSERT : applique le systeme bonus/malus (points_earned + multiplier
@@ -539,7 +544,7 @@ async def _handle_completion(
     if op.operation == "DELETE":
         return await _delete_completion(session, op, user_id)
     if op.operation == "UPDATE":
-        return await _update_completion(session, op, data, foyer_id)
+        return await _update_completion(session, op, data, foyer_id, user_id)
 
     raise LocalizedHTTPException(
         status_code=400,

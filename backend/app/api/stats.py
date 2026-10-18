@@ -22,7 +22,7 @@ from app.models.task import Task
 from app.models.user import User
 from app.services.presence import get_absent_dates
 from app.services.recurrence import min_completion_gap_seconds
-from app.utils.scoping import current_foyer_uuid, visible_to, without_hidden_tasks
+from app.utils.scoping import current_foyer_uuid, visible_history, visible_to
 from app.utils.text import join_with_amp
 
 router = APIRouter(prefix="/api", tags=["stats"])
@@ -1731,18 +1731,18 @@ async def global_history(
         event_types = None
 
     locale = pick_locale_from_header(request.headers.get("accept-language"))
-    events = await _build_history(
+    build = lambda n, cursor: _build_history(  # noqa: E731
         session,
         foyer_uuid=current_foyer_uuid(current),
-        limit=limit,
-        before=before,
+        limit=n,
+        before=cursor,
         actor_id=actor_id,
         event_types=event_types,
         since=since,
         q=q,
         locale=locale,
     )
-    return await without_hidden_tasks(session, current, events)
+    return await visible_history(session, current, build, limit, before)
 
 
 @router.get("/users/{user_id}/history")
@@ -1756,15 +1756,15 @@ async def user_history(
 ):
     """Historique personnel d'un utilisateur dans le foyer actif."""
     locale = pick_locale_from_header(request.headers.get("accept-language"))
-    events = await _build_history(
+    build = lambda n, cursor: _build_history(  # noqa: E731
         session,
         foyer_uuid=current_foyer_uuid(current),
-        limit=limit,
-        before=before,
+        limit=n,
+        before=cursor,
         actor_id=user_id,
         locale=locale,
     )
-    return await without_hidden_tasks(session, current, events)
+    return await visible_history(session, current, build, limit, before)
 
 
 # --- Stats long-terme (v0.31, item roadmap "Stats long-terme et par dimension") ---

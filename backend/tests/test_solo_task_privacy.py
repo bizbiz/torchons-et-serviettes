@@ -9,20 +9,25 @@ PATHS by which A can learn of B's solo task, listed before the cases:
   (1) GET routes without path parameters (lists, stats, history, export, suggestions) ... COVERED
   (2) GET routes by id, given B's task id, completion id or user id ..................... COVERED
   (3) the /sync pull from version 0 ...................................................... COVERED
-  (4) write routes by id (PUT/DELETE /tasks/{id}, POST /tasks/{id}/complete) ... not covered:
-      they need the id first, which (1) to (3) must not give.
+  (4) /sync writes by id (UPDATE/DELETE of the task, INSERT/UPDATE/DELETE of a completion),
+      given B's ids ........................................................................ COVERED
+      (the REST write routes go through `visible_tasks`; not swept.)
   (5) the push notification of a REST completion (services/push.py), which carries the title:
       routed to the members who may see the task ......................................... COVERED
       (the /sync completion path sends no push.)
   (6) GET routes that require a query parameter answer 422 here, and are listed by
-      `test_sweep_reached_the_routes` so that a silent 422 is not read as "no leak".
+      `test_sweep_reached_the_routes` so that a silent 422 is not read as "no leak". Of these,
+      /activity-days (B's days of work) is COVERED by its own case; /presence carries no task.
+  (7) a history page cut on hidden events, read by the app as the end of the history ... COVERED
 
 The task title carries a random suffix, so a match can only come from this task.
 """
 
 from __future__ import annotations
 
+import random
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 import pytest_asyncio
@@ -173,6 +178,66 @@ async def test_a_solo_completion_notifies_no_other_member(client, monkeypatch):
     assert await _push_logs_after_b_completes(client, monkeypatch, [B_ID]) == []
     shared = await _push_logs_after_b_completes(client, monkeypatch, [A_ID, B_ID])
     assert shared != [], "control: a shared task must reach A's push routing"
+
+
+@pytest.mark.asyncio
+async def test_sync_writes_by_id_refuse_a_solo_task_of_another_member(client):
+    """Path (4): A knows B's ids, and every /sync write on them is refused."""
+    ops = [
+        _op("tasks", "UPDATE", SOLO_TASK_ID, {"title": "renamed by A"}),
+        _op("task_completions", "INSERT", str(uuid.uuid4()), {"task_id": SOLO_TASK_ID, "completed_by": A_ID}),
+        _op("task_completions", "UPDATE", SOLO_COMPLETION_ID, {"notes": "edited by A"}),
+        _op("task_completions", "DELETE", SOLO_COMPLETION_ID, {}),
+        _op("tasks", "DELETE", SOLO_TASK_ID, {}),
+    ]
+    body = {"device_id": A_DEVICE, "last_server_version": 0, "changes": ops}
+    r = await client.post("/api/sync", json=body, headers=_headers(A_ID, A_DEVICE))
+    assert r.status_code == 200, r.text
+    # UPDATE/DELETE of a row the caller cannot see is a no-op or a conflict, never a write.
+    r = await client.get(f"/api/tasks/{SOLO_TASK_ID}", headers=_headers(B_ID, B_DEVICE))
+    assert r.status_code == 200 and SOLO_TITLE in r.text, r.text
+    r = await client.get(f"/api/completions/{SOLO_COMPLETION_ID}/history", headers=_headers(B_ID, B_DEVICE))
+    assert "edited by A" not in r.text, r.text
+    r = await client.get("/api/completions", headers=_headers(B_ID, B_DEVICE))
+    mine = [c for c in r.json() if c["task_id"] == SOLO_TASK_ID]
+    assert [c["completed_by"] for c in mine] == [B_ID], mine
+
+
+async def _b_completes(client, assignees, completed_at):
+    """B creates a task assigned to `assignees` and completes it at `completed_at`."""
+    task_id = str(uuid.uuid4())
+    body = {"device_id": B_DEVICE, "last_server_version": 0, "changes": [
+        _op("tasks", "INSERT", task_id, {"title": f"Dated {task_id[:8]}", "assigned_to_ids": assignees}),
+        _op("task_completions", "INSERT", str(uuid.uuid4()),
+            {"task_id": task_id, "completed_by": B_ID, "completed_at": completed_at}),
+    ]}
+    r = await client.post("/api/sync", json=body, headers=_headers(B_ID, B_DEVICE))
+    assert len(r.json()["applied"]) == 2, r.text
+    return task_id
+
+
+@pytest.mark.asyncio
+async def test_activity_days_do_not_show_a_day_of_solo_work(client):
+    await _b_completes(client, [B_ID], "2025-06-15T10:00:00+00:00")
+    url = f"/api/activity-days?user_id={B_ID}&from=2025-06-01&to=2025-06-30"
+    assert (await client.get(url, headers=_headers(A_ID, A_DEVICE))).json()["days"] == []
+    # Control: B sees the day.
+    assert (await client.get(url, headers=_headers(B_ID, B_DEVICE))).json()["days"] == ["2025-06-15"]
+
+
+@pytest.mark.asyncio
+async def test_a_history_page_is_refilled_past_hidden_events(client):
+    """A page cut on hidden events used to come back empty, and the app read it as the end."""
+    # The dev database keeps earlier runs: a random instant keeps their events out of this window.
+    base = datetime(2000, 1, 1, tzinfo=timezone.utc) + timedelta(minutes=random.randrange(10_000_000))
+    shared = await _b_completes(client, [A_ID, B_ID], base.isoformat())
+    solo = {await _b_completes(client, [B_ID], (base + timedelta(hours=h)).isoformat()) for h in (1, 2, 3)}
+    before = (base + timedelta(days=1)).isoformat().replace("+00:00", "Z")
+    url = f"/api/history?family=completions&limit=3&before={before}"
+    r = await client.get(url, headers=_headers(A_ID, A_DEVICE))
+    assert r.status_code == 200, r.text
+    ids = [e["task"]["id"] for e in r.json()]
+    assert shared in ids and not solo & set(ids), r.json()
 
 
 @pytest.mark.asyncio

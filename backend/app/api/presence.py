@@ -34,7 +34,7 @@ from app.models.user_foyer import UserFoyer
 from app.models.user_prompt import UserPrompt
 from app.services.module_discovery import propose_module
 from app.services.presence import count_absent_days_since
-from app.utils.scoping import current_foyer_uuid
+from app.utils.scoping import current_foyer_uuid, visible_to
 
 #: Nombre de jours absents sur les 15 derniers qui declenche la proposition
 #: du module Absences. Trois jours, c'est le seuil ou "on etait partis" cesse
@@ -191,6 +191,8 @@ async def get_activity_days(
             TaskCompletion.completed_by == user_id,
             TaskCompletion.deleted_at.is_(None),
             Task.foyer_id == foyer_uuid,
+            # A day whose only completion is someone else's solo task does not show.
+            visible_to(Task.id, current),
             day_col >= from_date,
             day_col <= to_date,
         )
