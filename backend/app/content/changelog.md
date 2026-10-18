@@ -1,5 +1,17 @@
 # Notes de version
 
+## v0.41.5 — 2026-10-18
+
+### Notifications
+- Valider une tâche prévient de nouveau les autres membres du foyer qui ont activé la
+  notification : jusqu'ici, seul « fait ensemble » les prévenait.
+- Plusieurs tâches validées hors ligne arrivent en une seule notification à la reconnexion.
+- Une validation enregistrée avec une date de plus d'un jour ne prévient personne.
+
+### Confidentialité
+- Les tâches attribuées à une seule personne n'apparaissent plus non plus dans le calendrier
+  des autres membres, et l'historique ne s'arrête plus trop tôt quand il en contenait.
+
 ## v0.41.4 — 2026-10-18
 
 ### Confidentialité
