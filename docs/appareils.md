@@ -120,8 +120,9 @@ cut in the same gesture.
 
 ⚠️ **This procedure should never be needed.** It writes to the production database outside a
 migration, which `CLAUDE.md` forbids: every use is an exception, granted by Quentin for that
-one case. If it is needed, the product left a member with no way back — the defect to fix is
-in `todo.md`, not on this page.
+one case. If it is needed, the product left a member with no way back — the two leads that
+would avoid it are on the roadmap (`backend/app/content/roadmap.md`, "Plus tard"), not on
+this page.
 
 The case, lived on 2026-10-18: an update refused by Android, the app uninstalled then
 reinstalled without its session, no recovery code written down. The member joined the

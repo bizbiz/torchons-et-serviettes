@@ -124,8 +124,9 @@ et tous les autres appareils sont coupés dans le même geste.
 
 ⚠️ **Cette procédure ne devrait jamais servir.** Elle écrit en base de prod hors migration, ce
 que `CLAUDE.md` interdit : chaque usage est une exception, accordée par Quentin pour ce cas-là
-seulement. Si elle sert, c'est que le produit a laissé un membre sans issue — le défaut à
-corriger est dans `todo.md`, pas dans cette page.
+seulement. Si elle sert, c'est que le produit a laissé un membre sans issue — les deux pistes
+qui l'éviteraient sont dans la roadmap (`backend/app/content/roadmap.md`, « Plus tard »),
+pas dans cette page.
 
 Le cas, vécu le 2026-10-18 : une mise à jour refusée par Android, l'app désinstallée puis
 réinstallée sans la session, aucun code de récupération noté. Le membre a rejoint le foyer par

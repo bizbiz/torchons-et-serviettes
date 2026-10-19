@@ -9,4 +9,11 @@
 ## Plus tard
 
 - **Grace period differenciee accept/refus pour le bump penibilite** : quand l'app propose de bumper l'effort d'une tache souvent en retard, appliquer un cooldown court (50% de la fenetre d'analyse) si le user accepte le bump (pour laisser l'ajustement produire son effet), et un cooldown long (100%) si le user refuse (pour respecter le "non"). Pour l'instant un seul cooldown de 70% est applique dans les deux cas.
+- **Prévenir quand on rejoint le foyer sous un prénom déjà pris** : après une réinstallation, un
+  membre qui scanne le QR « Rejoindre » au lieu de « Retrouver mon foyer » repart aujourd'hui sur
+  un compte neuf, sans ses tâches ni son historique. L'app lui demanderait d'abord s'il est déjà
+  membre et le guiderait vers son code de récupération.
+- **Retrouver son compte sans code de récupération** : un autre membre du foyer pourrait
+  rattacher le nouveau téléphone au compte de celui qui a perdu son code. Cette fonction doit être
+  protégée pour qu'un membre ne puisse pas prendre le compte d'un autre.
 - **Mode "famille etendue"** : plusieurs foyers relies (parents + grands-parents qui se voient les taches), version pro pour airbnb / colocation longue.
