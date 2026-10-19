@@ -9,7 +9,7 @@ from uuid import UUID
 import firebase_admin
 import structlog
 from firebase_admin import credentials, messaging
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notification import NotificationToken
@@ -29,20 +29,48 @@ if _firebase_key.exists() and not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
 
-def _send_multicast(kind: str, message: messaging.MulticastMessage) -> None:
+def _send_multicast(kind: str, message: messaging.MulticastMessage) -> list[str]:
     """Send and log the outcome: counts and error classes only, never titles or tokens.
 
     Until 2026-10-17 every failure was swallowed, so a notification that never left
-    looked exactly like one that did.
+    looked exactly like one that did. Returns the tokens FCM declared unregistered.
     """
     try:
         resp = messaging.send_each_for_multicast(message)
     except Exception as e:
         logger.warning("push_failed", kind=kind, error=type(e).__name__)
-        return
+        return []
     errors = sorted({type(r.exception).__name__ for r in resp.responses if r.exception})
     log = logger.warning if resp.failure_count else logger.info
     log("push_sent", kind=kind, ok=resp.success_count, failed=resp.failure_count, errors=errors)
+    # Responses come back in the order of message.tokens.
+    return [
+        tok for tok, r in zip(message.tokens, resp.responses)
+        if isinstance(r.exception, messaging.UnregisteredError)
+    ]
+
+
+async def _send_and_prune(kind: str, message: messaging.MulticastMessage) -> None:
+    """Send, then delete the tokens FCM answered `UnregisteredError` for.
+
+    Such a token belongs to an uninstalled app or a reset phone: it is refused on
+    every send, forever. Only that error prunes: any other one can be transient.
+    The delete runs in its OWN session, so it never commits the caller's transaction.
+    """
+    dead = _send_multicast(kind, message)
+    if not dead:
+        return
+    from app.database import async_session
+
+    try:
+        async with async_session() as prune:
+            await prune.execute(
+                delete(NotificationToken).where(NotificationToken.fcm_token.in_(dead))
+            )
+            await prune.commit()
+        logger.info("push_pruned", kind=kind, tokens=len(dead))
+    except Exception as e:
+        logger.warning("push_prune_failed", kind=kind, error=type(e).__name__)
 
 
 # --- Helper centralise pour construire titre + corps + bucket de pref ---
@@ -221,7 +249,7 @@ async def _send_to_users(session: AsyncSession, kind: str, allowed: list[tuple[U
             notification=messaging.Notification(title=title, body=body),
             tokens=tokens,
         )
-        _send_multicast(kind, message)
+        await _send_and_prune(kind, message)
 
 
 # --- Completions arriving through /sync -------------------------------------------------
@@ -337,4 +365,4 @@ async def send_data_message_to_users(
         tokens=tokens,
     )
     # Not critical: the polling fallback takes over. Logged so a failure is visible.
-    _send_multicast("data", message)
+    await _send_and_prune("data", message)
