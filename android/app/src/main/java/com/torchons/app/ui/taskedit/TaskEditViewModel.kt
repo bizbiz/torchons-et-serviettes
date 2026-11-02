@@ -271,12 +271,11 @@ class TaskEditViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            val usersResult = taskRepository.getUsers()
-            // Refresh rooms via cache + API (pattern observe non utilise ici car
-            // l'ecran d'edition est one-shot, pas reactif).
-
-            // Meme pattern que les pieces : refresh REPLACE puis lecture du
-            // cache, pour que le selecteur reste peuple hors ligne.
+            // Users, contexts and the task: refresh the cache when online (REPLACE), then
+            // ALWAYS read the cache (docs/cache-conventions.md). Reading the network answer
+            // left the form empty offline: "Nouvelle tâche" on an existing task (2026-11-02).
+            // One-shot reads, not observed: the edit screen is not reactive.
+            taskRepository.refreshUsers()
             taskRepository.refreshContexts()
             // Uniquement en creation : proposer des taches a qui est en train
             // d'en modifier une n'aurait aucun sens.
@@ -291,12 +290,12 @@ class TaskEditViewModel @Inject constructor(
             } catch (e: Exception) {
                 emptyList()
             }
-            val users = usersResult.getOrNull() ?: emptyList()
+            val users = taskRepository.observeUsers().first()
 
             if (taskId != null) {
-                // Mode edition — charger la tache
-                val tasksResult = taskRepository.getTasks(activeOnly = false)
-                val task = tasksResult.getOrNull()?.find { it.id == taskId }
+                // Edit mode: the task from the cache, refreshed first when online.
+                taskRepository.refreshTasks()
+                val task = taskRepository.getCachedTaskById(taskId)
                 if (task != null) {
                     val dpm = task.recurrenceRule?.daysPerMonth?.mapValues { it.value.toString() }
                         ?: (1..12).associate { it.toString() to "" }

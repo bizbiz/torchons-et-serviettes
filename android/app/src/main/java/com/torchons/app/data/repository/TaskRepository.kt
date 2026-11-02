@@ -633,24 +633,6 @@ class TaskRepository @Inject constructor(
     // Legacy one-shot (gardes pour compat)
     // -------------------------------------------------------------------
 
-    suspend fun getTasks(
-        contextId: String? = null,
-        activeOnly: Boolean? = true,
-    ): Result<List<Task>> {
-        return try {
-            val response = apiService.getTasks(contextId, activeOnly)
-            if (response.isSuccessful) {
-                val tasks = response.body() ?: emptyList()
-                taskDao.replaceAll(tasks.map { it.toEntity() })
-                Result.success(tasks)
-            } else {
-                Result.failure(Exception("Erreur lors du chargement des taches: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
     suspend fun getCompletions(
         userId: String? = null,
         taskId: String? = null,
@@ -677,18 +659,4 @@ class TaskRepository @Inject constructor(
         }
     }
 
-    suspend fun getUsers(): Result<List<User>> {
-        return try {
-            val response = apiService.getUsers()
-            if (response.isSuccessful) {
-                val users = response.body() ?: emptyList()
-                userDao.replaceAll(users.map { it.toEntity() })
-                Result.success(users)
-            } else {
-                Result.failure(Exception("Erreur lors du chargement des utilisateurs: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
 }
