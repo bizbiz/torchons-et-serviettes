@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.foyer import Foyer
 from app.models.user_foyer import UserFoyer
+from app.services.task_departure import detach_member_from_tasks
 
 
 async def soft_leave_foyer(
@@ -50,6 +51,8 @@ async def soft_leave_foyer(
     now = datetime.now(timezone.utc)
     uf.left_at = now
     uf.role = "former_member"
+    # Their tasks: dropped from the shared ones, the solo ones suspended (task_departure.py).
+    await detach_member_from_tasks(session, user_id, foyer_id)
 
     if not was_admin:
         return True

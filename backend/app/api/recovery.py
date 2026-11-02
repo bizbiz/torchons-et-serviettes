@@ -285,6 +285,9 @@ async def restore_confirm(
             uf.left_at = None
             if uf.role == "former_member":
                 uf.role = "member"
+            # The solo tasks suspended at their departure come back with them.
+            from app.services.task_departure import reactivate_suspended_tasks
+            await reactivate_suspended_tasks(session, user_id, foyer_id)
 
     await session.commit()
 

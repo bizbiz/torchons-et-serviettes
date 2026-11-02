@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session
 from app.services.prompt_validity import report_stale_candidates
+from app.services.task_departure import delete_tasks_only_assigned_to
 from app.models.foyer import Foyer
 from app.models.pairing_token import PairingToken
 from app.models.user import User
@@ -110,14 +111,12 @@ async def purge_deleted_users(session: AsyncSession) -> int:
     ou CASCADE selon la migration originale — verifier avant prod publique).
     """
     cutoff = datetime.now(timezone.utc) - timedelta(days=USER_PURGE_AFTER_DAYS)
-    result = await session.execute(
-        delete(User).where(
-            and_(
-                User.deleted_at.isnot(None),
-                User.deleted_at < cutoff,
-            )
-        )
-    )
+    purged = and_(User.deleted_at.isnot(None), User.deleted_at < cutoff)
+    # Their solo tasks go first: once the users are gone, CASCADE drops the assignment rows
+    # and those tasks would become visible to the whole household (task_departure.py).
+    purged_ids = (await session.execute(select(User.id).where(purged))).scalars().all()
+    await delete_tasks_only_assigned_to(session, purged_ids)
+    result = await session.execute(delete(User).where(purged))
     return result.rowcount or 0
 
 

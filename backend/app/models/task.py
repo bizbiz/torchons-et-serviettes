@@ -1,8 +1,9 @@
 """Modele tache — table centrale avec recurrence JSONB."""
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Boolean, Enum as SAEnum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Enum as SAEnum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -45,6 +46,10 @@ class Task(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     )
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Set when the task was deactivated because its ONLY assignee left the household
+    # (services/task_departure.py). Lets a return reactivate exactly those tasks, and
+    # not the ones someone had deactivated by hand. Never sent to the app.
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # v0.20 : archivage soft des ponctuelles terminees. Job quotidien met
     # is_archived=true pour toute tache sans recurrence completee depuis
     # plus de ARCHIVE_AFTER_DAYS jours. Toutes les lectures liste filtrent
