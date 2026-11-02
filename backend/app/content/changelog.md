@@ -1,5 +1,20 @@
 # Notes de version
 
+## v0.42.0 — 2026-11-02
+
+### Quitter le foyer
+- Un membre qui quitte le foyer est retiré des tâches qu'il partageait ; les tâches
+  qui n'étaient qu'à lui sont mises en pause et reviennent s'il revient.
+- Pendant 30 jours, un membre parti peut retrouver son foyer avec son code de
+  récupération ; passé ce délai, son compte est anonymisé.
+- Ses validations restent : son nom y apparaît barré, puis « Ancien membre ».
+- L'historique d'une tâche indique « X a quitté le foyer ».
+
+### Corrections
+- Hors ligne, « Modifier » ouvre bien la tâche au lieu d'un formulaire vide.
+- La ligne des votes de fréquence affiche « tu n'as pas voté » au lieu de
+  « toi n'ont pas voté », avec l'espace qui manquait.
+
 ## v0.41.5 — 2026-10-18
 
 ### Notifications
