@@ -455,8 +455,10 @@
         <item quantity="one">%1$s hasn\'t voted</item>
         <item quantity="other">%1$s haven\'t voted</item>
     </plurals>
-    <string name="task_detail_freq_subline_format">%1$s%2$s · </string>
-    <string name="task_detail_no_voters_suffix_format"> · %1$s</string>
+    <string name="task_detail_freq_you_not_voted">you haven\'t voted</string>
+    <!-- Quoted: aapt trims the leading/trailing spaces of an unquoted string. -->
+    <string name="task_detail_freq_subline_format">"%1$s%2$s · "</string>
+    <string name="task_detail_no_voters_suffix_format">" · %1$s"</string>
     <string name="task_detail_section_tolerance">Late tolerance</string>
     <string name="task_detail_tolerance_help_title">What\'s tolerance for?</string>
 
@@ -505,6 +507,7 @@
     <string name="task_history_update_one_format">%1$s edited %2$s</string>
     <string name="task_history_update_many_format">%1$s edited %2$d fields</string>
     <string name="task_history_update_unknown_format">%1$s edited the task</string>
+    <string name="task_history_member_left_format">%1$s left the household</string>
 
     <!-- TaskDetail — field names -->
     <string name="task_field_title">the title</string>

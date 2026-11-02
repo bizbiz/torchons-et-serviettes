@@ -36,11 +36,18 @@ async def _assignees(session: AsyncSession, task_id: uuid.UUID) -> list[uuid.UUI
     return list(rows.scalars().all())
 
 
-async def _log(session: AsyncSession, task: Task, user_id: uuid.UUID, new_data: dict) -> None:
+MEMBER_LEFT_REASON = "member_left"
+
+
+async def _log(
+    session: AsyncSession, task: Task, user_id: uuid.UUID, new_data: dict, reason: str | None = None,
+) -> None:
     task.version += 1
+    # The reason goes to old_data: /sync applies new_data only (api/sync.py), so the marker
+    # reaches the task history (api/tasks.py::get_task_history) and never a phone's task row.
     await record_change(
         session, "tasks", task.id, "UPDATE", str(user_id),
-        foyer_id=task.foyer_id, new_data=new_data,
+        foyer_id=task.foyer_id, old_data={"reason": reason} if reason else None, new_data=new_data,
     )
 
 
@@ -64,12 +71,15 @@ async def detach_member_from_tasks(
             await session.execute(delete(TaskAssignment).where(
                 TaskAssignment.task_id == task.id, TaskAssignment.user_id == user_id,
             ))
-            await _log(session, task, user_id, {"assigned_to_ids": [str(u) for u in others]})
+            await _log(
+                session, task, user_id, {"assigned_to_ids": [str(u) for u in others]},
+                reason=MEMBER_LEFT_REASON,
+            )
         elif task.is_active:
             # Already inactive: left as it is, unmarked, so a return does not revive it.
             task.is_active = False
             task.suspended_at = now
-            await _log(session, task, user_id, {"is_active": False})
+            await _log(session, task, user_id, {"is_active": False}, reason=MEMBER_LEFT_REASON)
 
 
 async def reactivate_suspended_tasks(

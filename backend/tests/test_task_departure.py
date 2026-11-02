@@ -131,6 +131,23 @@ async def test_the_change_reaches_the_other_phones(client, house):
 
 
 @pytest.mark.asyncio
+async def test_the_history_says_the_member_left(client, house):
+    """A's history of SHARED reads "B a quitté le foyer", not "B a modifié les affectations".
+
+    Red without the reason marker of task_departure._log (the event comes back as task_update).
+    An ordinary edit by A stays task_update: the marker is not read from the assignee list.
+    """
+    await _leave(client, house)
+    await client.put(f"/api/tasks/{house['shared']}", headers=_headers(house["a"], house["foyer"]),
+                     json={"description": "edited after B left"})
+    r = await client.get(f"/api/tasks/{house['shared']}/history",
+                         headers=_headers(house["a"], house["foyer"]))
+    assert r.status_code == 200, r.text
+    by_actor = {e["actor_user_id"]: e["event_type"] for e in r.json()}
+    assert by_actor == {str(house["b"]): "member_left", str(house["a"]): "task_update"}
+
+
+@pytest.mark.asyncio
 async def test_solo_tasks_are_suspended_and_come_back(client, house):
     from app.database import async_session
     from app.services.task_departure import reactivate_suspended_tasks

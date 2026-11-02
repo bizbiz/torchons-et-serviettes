@@ -6,6 +6,8 @@ enum class TaskHistoryEventType {
     VOTE_EFFORT,
     VOTE_FREQUENCY,
     TASK_UPDATE,
+    /** A member left the household: the server removed them from this task. */
+    MEMBER_LEFT,
     UNKNOWN,
 }
 

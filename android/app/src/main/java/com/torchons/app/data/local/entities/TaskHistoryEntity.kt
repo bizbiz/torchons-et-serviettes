@@ -63,6 +63,7 @@ fun TaskHistoryEntity.toDomain(): TaskHistoryEvent {
         "vote_effort" -> TaskHistoryEventType.VOTE_EFFORT
         "vote_frequency" -> TaskHistoryEventType.VOTE_FREQUENCY
         "task_update" -> TaskHistoryEventType.TASK_UPDATE
+        "member_left" -> TaskHistoryEventType.MEMBER_LEFT
         else -> TaskHistoryEventType.UNKNOWN
     }
     val fields = fieldsChangedJson?.let {

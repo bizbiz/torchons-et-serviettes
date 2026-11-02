@@ -884,10 +884,11 @@ fun TaskDetailScreen(
                                             else -> stringResource(R.string.task_detail_freq_no_vote)
                                         }
                                         val nonVoteSuffix = if (nonVoterNames.isNotEmpty()) {
-                                            val qty = if (nonVoterNames.size > 1 || nonVoterNames.singleOrNull() == youPronoun) 2 else 1
-                                            val phrase = pluralStringResource(
+                                            val phrase = if (nonVoterNames.singleOrNull() == youPronoun) {
+                                                stringResource(R.string.task_detail_freq_you_not_voted)
+                                            } else pluralStringResource(
                                                 R.plurals.task_detail_freq_no_voters_format,
-                                                qty,
+                                                nonVoterNames.size,
                                                 joinFr(nonVoterNames),
                                             )
                                             stringResource(R.string.task_detail_no_voters_suffix_format, phrase)
@@ -1138,136 +1139,12 @@ fun TaskDetailScreen(
     } // fin du Box outer (celebration overlay layer)
 }
 
-/** Carte compacte affichant un evenement de l'historique de modification. */
 @Composable
-private fun HistoryEventCard(event: TaskHistoryEvent) {
-    val icon = when (event.type) {
-        TaskHistoryEventType.VOTE_AFFINITY -> Icons.Default.Favorite
-        TaskHistoryEventType.VOTE_EFFORT -> Icons.Default.Timer
-        TaskHistoryEventType.VOTE_FREQUENCY -> Icons.Default.Schedule
-        TaskHistoryEventType.TASK_UPDATE -> Icons.Default.Edit
-        TaskHistoryEventType.UNKNOWN -> Icons.Default.History
-    }
-    val label = formatHistoryEvent(event)
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                if (event.at != null) {
-                    Text(
-                        text = formatDateTime(event.at),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * Formate un evenement d'historique en libelle localisé.
- *
- * - VOTE_EFFORT : les points sont convertis en minutes (1pt = 5min)
- * - VOTE_FREQUENCY / VOTE_AFFINITY : valeurs affichees telles quelles
- * - TASK_UPDATE : liste des champs modifies (titre, recurrence, ...)
- */
-@Composable
-private fun formatHistoryEvent(event: TaskHistoryEvent): String {
-    val actor = event.actorName.ifBlank { stringResource(R.string.task_history_actor_fallback) }
-    return when (event.type) {
-        TaskHistoryEventType.VOTE_FREQUENCY -> {
-            val value = event.voteValue ?: return stringResource(R.string.task_history_vote_freq_no_value_format, actor)
-            val consensus = event.consensusAfter
-            if (consensus != null) {
-                stringResource(R.string.task_history_vote_freq_consensus_format, actor, value, consensus)
-            } else {
-                stringResource(R.string.task_history_vote_freq_format, actor, value)
-            }
-        }
-        TaskHistoryEventType.VOTE_AFFINITY -> {
-            val value = event.voteValue ?: return stringResource(R.string.task_history_vote_aff_no_value_format, actor)
-            val consensus = event.consensusAfter
-            if (consensus != null) {
-                stringResource(R.string.task_history_vote_aff_consensus_format, actor, value, consensus)
-            } else {
-                stringResource(R.string.task_history_vote_aff_format, actor, value)
-            }
-        }
-        TaskHistoryEventType.VOTE_EFFORT -> {
-            val points = event.voteValue ?: return stringResource(R.string.task_history_vote_eff_no_value_format, actor)
-            val minutes = points * 5
-            val consensusMin = event.consensusAfter?.let { it * 5 }
-            val voteLabel = formatMinutes(minutes)
-            if (consensusMin != null) {
-                stringResource(R.string.task_history_vote_eff_consensus_format, actor, voteLabel, formatMinutes(consensusMin))
-            } else {
-                stringResource(R.string.task_history_vote_eff_format, actor, voteLabel)
-            }
-        }
-        TaskHistoryEventType.TASK_UPDATE -> {
-            val fields = event.fieldsChanged.mapNotNull { localizedFieldName(it) }
-            when {
-                fields.isEmpty() -> stringResource(R.string.task_history_update_unknown_format, actor)
-                fields.size == 1 -> stringResource(R.string.task_history_update_one_format, actor, fields[0])
-                else -> stringResource(R.string.task_history_update_many_format, actor, fields.size)
-            }
-        }
-        TaskHistoryEventType.UNKNOWN -> stringResource(R.string.task_history_update_unknown_format, actor)
-    }
-}
-
-@Composable
-private fun formatMinutes(min: Int): String =
+internal fun formatMinutes(min: Int): String =
     if (min >= 60) {
         if (min % 60 > 0) stringResource(R.string.duration_hours_minutes_format, min / 60, min % 60)
         else stringResource(R.string.duration_hours_only_format, min / 60)
     } else stringResource(R.string.duration_minutes_format, min)
-
-@Composable
-private fun localizedFieldName(key: String): String? = when (key) {
-    "title" -> stringResource(R.string.task_field_title)
-    "description" -> stringResource(R.string.task_field_description)
-    "category_id" -> stringResource(R.string.task_field_category)
-    "tolerance" -> stringResource(R.string.task_field_tolerance)
-    "assigned_to_ids" -> stringResource(R.string.task_field_assigned)
-    "recurrence_rule" -> stringResource(R.string.task_field_recurrence)
-    "weight" -> stringResource(R.string.task_field_weight)
-    "is_active" -> stringResource(R.string.task_field_active)
-    "sort_order" -> stringResource(R.string.task_field_order)
-    else -> null
-}
 
 /** Formate une date ISO 8601 en format lisible (pattern localisé via stringResource). */
 @Composable

@@ -27,6 +27,7 @@ from app.services.frequency_vote import (
     upsert_vote_and_sync_consensus,
 )
 from app.services.presence import compute_absent_days_for_tasks
+from app.services.task_departure import MEMBER_LEFT_REASON
 from app.services.recurrence import VOTABLE_RULE_TYPES
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
@@ -425,8 +426,10 @@ _HISTORY_TABLES = (
 )
 
 
-def _event_type(table_name: str, operation: str) -> str:
+def _event_type(table_name: str, old_data: dict) -> str:
     """Mappe une ligne change_log vers un type d'evenement d'historique."""
+    if table_name == "tasks" and old_data.get("reason") == MEMBER_LEFT_REASON:
+        return "member_left"  # services/task_departure.py; older apps show it as unknown
     if table_name == "task_affinities":
         return "vote_affinity"
     if table_name == "task_efforts":
@@ -509,9 +512,9 @@ async def get_task_history(
             if skip:
                 continue
 
-        evt_type = _event_type(r.table_name, r.operation)
         new_data = r.new_data or {}
         old_data = r.old_data or {}
+        evt_type = _event_type(r.table_name, old_data)
 
         details: dict = {
             "operation": r.operation,

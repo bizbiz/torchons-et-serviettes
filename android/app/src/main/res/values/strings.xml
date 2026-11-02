@@ -461,8 +461,10 @@
         <item quantity="one">%1$s n\'a pas voté</item>
         <item quantity="other">%1$s n\'ont pas voté</item>
     </plurals>
-    <string name="task_detail_freq_subline_format">%1$s%2$s · </string>
-    <string name="task_detail_no_voters_suffix_format"> · %1$s</string>
+    <string name="task_detail_freq_you_not_voted">tu n\'as pas voté</string>
+    <!-- Quoted: aapt trims the leading/trailing spaces of an unquoted string. -->
+    <string name="task_detail_freq_subline_format">"%1$s%2$s · "</string>
+    <string name="task_detail_no_voters_suffix_format">" · %1$s"</string>
     <string name="task_detail_section_tolerance">Tolérance au retard</string>
     <string name="task_detail_tolerance_help_title">À quoi sert la tolérance ?</string>
 
@@ -511,6 +513,7 @@
     <string name="task_history_update_one_format">%1$s a modifié %2$s</string>
     <string name="task_history_update_many_format">%1$s a modifié %2$d champs</string>
     <string name="task_history_update_unknown_format">%1$s a modifié la tâche</string>
+    <string name="task_history_member_left_format">%1$s a quitté le foyer</string>
 
     <!-- TaskDetail — frenchFieldName (noms de champs) -->
     <string name="task_field_title">le titre</string>
