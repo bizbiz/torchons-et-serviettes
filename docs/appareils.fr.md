@@ -160,8 +160,49 @@ plutôt que de laisser croire à un effacement à distance.
 requête, l'ancien code fabriquant un UUID neuf à chaque appel. Le remède, si le cas se
 présente, reste la rotation de `jwt_secret`.
 
+**Tourner `jwt_secret` déconnecte tout le monde, et c'est voulu.** Depuis `8ce7850`, un jeton
+dont la signature ne se vérifie pas rend `DEVICE_REVOKED` (`auth.py::decode_token`) : chaque
+téléphone s'efface et revient à l'accueil, au lieu de rester sur des 401 ordinaires.
+
+- **Faite une fois, le 2026-11-02 en prod.** L'ancien secret était lisible dans le commit
+  `5d45e42c` : il est toujours servi par GitHub et était commun avec le dev.
+- **Avant de tourner** : chaque membre doit avoir noté son code de récupération. Ils sont tous
+  déconnectés en même temps, donc aucun ne peut en faire revenir un autre par QR.
+- **Comment c'est fait** :
+  - La valeur est générée sur le serveur et n'en sort jamais. On ne compare que des empreintes.
+  - Le conteneur `api` est recréé avec `--force-recreate`. Attention : recréé ainsi, il perd
+    `git_sha` dans `/api/health` jusqu'au prochain `deploy.yml`.
+- **Preuve que la rotation a pris** : un jeton signé avec l'ancien secret qui porte un claim
+  `scope` passe de « 401 ordinaire » (signature valide, puis refus par `get_current_user`) à
+  `DEVICE_REVOKED`.
+- **Ce que la rotation coûte** : les actions hors ligne pas encore envoyées sont perdues. Les
+  écrans ne suivent pas tout de suite, voir le paragraphe suivant.
+
 Ces deux chemins sont énumérés dans l'en-tête de `backend/tests/test_devices.py`, avec ceux
 qui sont couverts — l'inventaire vit à côté des tests, pas seulement ici.
+
+**L'écran ne suit pas l'effacement (constaté le 2026-11-02, piste « Plus tard » de la
+roadmap).** Lors de la rotation du `JWT_SECRET` de prod, le téléphone de Quentin n'est pas revenu
+à l'accueil : l'app ouverte affichait des erreurs « serveur injoignable » et y restait. Il a fallu
+la tuer et la relancer pour retomber sur l'écran d'accueil, puis « Retrouver mon foyer ».
+
+- **Cause, lue dans le code** : `DeviceRevocationMonitor.revoked` est un `StateFlow` dont la
+  KDoc dit qu'il renvoie l'interface vers l'onboarding, mais aucun écran ne le collecte. Seul
+  `versionGateMonitor.blocked` est collecté, dans `MainActivity.setContent`. L'effacement a bien
+  lieu (tables Room, jeton, identité), mais l'interface garde son état. Au lancement suivant,
+  comme il n'y a plus de jeton, l'app ouvre l'onboarding.
+- **Non vérifié** : pourquoi le message affiché parle de serveur injoignable plutôt que d'accès
+  coupé. Une hypothèse est que les appels partent sans jeton une fois celui-ci effacé, et que leur
+  erreur passe dans le message générique. À confirmer avant de corriger.
+- **Remède envisagé** : collecter `revoked` dans `MainActivity`, sur le modèle du version gate.
+  L'app afficherait alors un écran terminal « Cet appareil n'a plus accès au foyer », avec un
+  bouton « Retrouver mon foyer ».
+  - Le texte doit couvrir les deux causes, parce que le serveur rend le même `DEVICE_REVOKED`
+    pour l'une et l'autre : un autre membre a coupé l'appareil, ou le secret a tourné.
+  - L'écran pourrait aussi dire que les actions faites hors ligne et pas encore envoyées sont
+    perdues, puisque la table des opérations en attente est effacée avec le reste.
+- **Vérifier** : sur l'émulateur (`ts-test-runner`), couper l'appareil depuis un autre membre
+  pendant que l'app est ouverte. Le retour à l'accueil doit se faire sans relancer l'app.
 
 ## Pièges pour qui touchera à ça
 

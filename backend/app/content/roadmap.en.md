@@ -16,4 +16,8 @@
 - **Recover an account without a recovery code**: another household member could link the new
   phone to the account of the member who lost their code. This must be protected so that one
   member cannot take over another's account.
+- **Say clearly when a phone loses access to the household**: today the app does wipe its
+  data, but it stays on the current screen and shows connection errors until it is relaunched.
+  It would instead show a screen right away that explains the access was cut and offers "Recover
+  my household".
 - **Extended family mode**: multiple linked households (parents + grandparents who see each other's tasks), pro version for airbnb / long-term coloc.

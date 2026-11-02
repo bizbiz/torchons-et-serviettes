@@ -154,8 +154,49 @@ screen says so at confirmation time rather than implying a remote wipe.
 matches them. Wiring them would create one row per request, since the old code minted a fresh
 UUID on every call. The remedy, should it ever matter, remains rotating `jwt_secret`.
 
+**Rotating `jwt_secret` signs everyone out, on purpose.** Since `8ce7850`, a token whose
+signature does not verify returns `DEVICE_REVOKED` (`auth.py::decode_token`). Every phone wipes
+itself and returns to the welcome screen, instead of sitting on ordinary 401s.
+
+- **Done once, on 2026-11-02 in prod.** The old secret was readable in commit `5d45e42c`, which
+  GitHub still serves, and it was shared with dev.
+- **Before rotating**: every member must have noted their recovery code. They are all signed
+  out at once, so none of them can bring another back by QR.
+- **How it is done**:
+  - The value is generated on the server and never leaves it. Only fingerprints are compared.
+  - The `api` container is recreated with `--force-recreate`. Beware: recreated this way, it
+    loses `git_sha` in `/api/health` until the next `deploy.yml`.
+- **Proof that the rotation took**: a token signed with the old secret and carrying a `scope`
+  claim goes from "ordinary 401" (valid signature, then refused by `get_current_user`) to
+  `DEVICE_REVOKED`.
+- **What the rotation costs**: offline actions not yet sent are lost. The screens do not follow
+  at once; see the next paragraph.
+
 These two paths are enumerated in the header of `backend/tests/test_devices.py`, together
 with the covered ones — the inventory lives next to the tests, not only here.
+
+**The screen does not follow the wipe (seen on 2026-11-02, a "Later" item of the roadmap).**
+When prod's `JWT_SECRET` was rotated, Quentin's phone did not go back to the welcome screen. The
+open app showed "server unreachable" errors and stayed there. Only after killing and relaunching
+it did the phone land on the welcome screen, then "Recover my household".
+
+- **Cause, read in the code**: `DeviceRevocationMonitor.revoked` is a `StateFlow` whose KDoc
+  says it sends the UI back to onboarding, but no screen collects it. Only
+  `versionGateMonitor.blocked` is collected, in `MainActivity.setContent`. The wipe does run
+  (Room tables, token, identity), but the UI keeps its state. At the next launch there is no
+  token any more, so the app opens onboarding.
+- **Not checked**: why the message talks about an unreachable server rather than a cut access.
+  One hypothesis is that calls go out with no token once it is wiped, and their error falls into
+  the generic message. Confirm before fixing.
+- **Planned remedy**: collect `revoked` in `MainActivity`, the way the version gate does. The
+  app would then show a terminal "This device no longer has access to the household" screen, with
+  a "Recover my household" button.
+  - The wording must cover both causes, since the server returns the same `DEVICE_REVOKED` for
+    either: another member cut the device off, or the secret was rotated.
+  - The screen could also say that actions made offline and not yet sent are lost, since the
+    pending-operations table is wiped with the rest.
+- **Check**: on the emulator (`ts-test-runner`), cut the device off from another member while
+  the app is open. The app must return to the welcome screen without being relaunched.
 
 ## Traps for whoever touches this next
 

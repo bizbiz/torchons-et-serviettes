@@ -16,4 +16,8 @@
 - **Retrouver son compte sans code de récupération** : un autre membre du foyer pourrait
   rattacher le nouveau téléphone au compte de celui qui a perdu son code. Cette fonction doit être
   protégée pour qu'un membre ne puisse pas prendre le compte d'un autre.
+- **Prévenir clairement quand un téléphone perd l'accès au foyer** : aujourd'hui, l'app efface
+  bien ses données, mais elle reste sur l'écran en cours et affiche des erreurs de connexion
+  jusqu'à ce qu'on la relance. Elle afficherait tout de suite un écran qui explique que
+  l'accès a été coupé et propose « Retrouver mon foyer ».
 - **Mode "famille etendue"** : plusieurs foyers relies (parents + grands-parents qui se voient les taches), version pro pour airbnb / colocation longue.
