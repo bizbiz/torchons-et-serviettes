@@ -8,8 +8,9 @@ Trois passes :
      modification). On ne les delete pas, juste un flag pour la passe (3).
   3. Hard-delete des foyers ou archived_at < now() - 365j. CASCADE sur
      toutes les tables scopees foyer (tasks, completions, sync, etc.).
-  4. Hard-delete des users ou deleted_at < now() - 30j. CASCADE sur
-     user_foyers, ratings, completions personnelles.
+  4. Anonymize the accounts that left their last household, or were deleted, more than 30
+     days ago (services/member_departure.py). Since 2026-11-02 they are no longer deleted:
+     deleting failed on any account that had acted, and failed the whole job with it.
 
 Execute par APScheduler a 03h30 UTC (apres archive @03h00 et retard @03h15
 pour etaler la charge). Idempotent — un re-run apres redemarrage applique
@@ -27,11 +28,10 @@ from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session
+from app.services.member_departure import anonymize_departed_users
 from app.services.prompt_validity import report_stale_candidates
-from app.services.task_departure import delete_tasks_only_assigned_to
 from app.models.foyer import Foyer
 from app.models.pairing_token import PairingToken
-from app.models.user import User
 from app.models.user_foyer import UserFoyer
 
 logger = structlog.get_logger()
@@ -41,7 +41,6 @@ logger = structlog.get_logger()
 PAIRING_TOKEN_GRACE_HOURS = 24
 FOYER_ARCHIVE_INACTIVE_DAYS = 90
 FOYER_PURGE_AFTER_DAYS = 365
-USER_PURGE_AFTER_DAYS = 30
 
 
 async def cleanup_pairing_tokens(session: AsyncSession) -> int:
@@ -103,23 +102,6 @@ async def purge_old_foyers(session: AsyncSession) -> int:
     return result.rowcount or 0
 
 
-async def purge_deleted_users(session: AsyncSession) -> int:
-    """Hard-delete les users RGPD-supprimes depuis > USER_PURGE_AFTER_DAYS.
-
-    CASCADE supprime les UserFoyer, TaskAffinity, TaskEffort, Streak etc.
-    Les TaskCompletion gardent leur completed_by FK (ON DELETE SET NULL
-    ou CASCADE selon la migration originale — verifier avant prod publique).
-    """
-    cutoff = datetime.now(timezone.utc) - timedelta(days=USER_PURGE_AFTER_DAYS)
-    purged = and_(User.deleted_at.isnot(None), User.deleted_at < cutoff)
-    # Their solo tasks go first: once the users are gone, CASCADE drops the assignment rows
-    # and those tasks would become visible to the whole household (task_departure.py).
-    purged_ids = (await session.execute(select(User.id).where(purged))).scalars().all()
-    await delete_tasks_only_assigned_to(session, purged_ids)
-    result = await session.execute(delete(User).where(purged))
-    return result.rowcount or 0
-
-
 async def daily_cleanup_job() -> None:
     """Job APScheduler. Execute en transaction unique pour la consistance."""
     async with async_session() as session:
@@ -127,7 +109,7 @@ async def daily_cleanup_job() -> None:
             tokens = await cleanup_pairing_tokens(session)
             ghosts = await archive_ghost_foyers(session)
             purged_foyers = await purge_old_foyers(session)
-            purged_users = await purge_deleted_users(session)
+            anonymized = await anonymize_departed_users(session)
             await session.commit()
             stale = await report_stale_candidates(session)
             logger.info(
@@ -135,7 +117,7 @@ async def daily_cleanup_job() -> None:
                 pairing_tokens_deleted=tokens,
                 foyers_archived=ghosts,
                 foyers_purged=purged_foyers,
-                users_purged=purged_users,
+                users_anonymized=anonymized,
                 stale_prompt_candidates=stale,
             )
         except Exception as e:

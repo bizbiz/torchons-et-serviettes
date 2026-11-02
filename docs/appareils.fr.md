@@ -120,6 +120,21 @@ l'ancien. Il est déconnecté, et ses données locales sont effacées à sa proc
 **Code de récupération divulgué.** Régénérer le code : le nouveau s'affiche une seule fois,
 et tous les autres appareils sont coupés dans le même geste.
 
+**Quitter son dernier foyer, ou supprimer son compte : 30 jours pour revenir** (décidé le
+2026-11-02, même règle pour les deux).
+- **Au départ** : le membre est retiré des tâches partagées. Ses tâches solo sont désactivées,
+  mais restent à son nom.
+- **Pendant 30 jours** : « Retrouver mon foyer » avec son code le ramène dans le foyer quitté,
+  avec ses tâches. Les autres voient son nom barré.
+- **Ensuite** : le nettoyage de nuit anonymise le compte, sans le supprimer. Son nom devient
+  « Ancien membre » et son code est effacé, donc il n'y a plus de retour possible. Ses données
+  personnelles et ses tâches solo sont supprimées. Ses validations restent dans l'historique du
+  foyer.
+
+Le détail est dans `backend/app/services/member_departure.py` et `task_departure.py`.
+L'anonymisation remplace une purge qui échouait sur tout compte ayant agi : six clés
+étrangères vers `users` n'avaient pas de règle `ON DELETE`.
+
 ## Dépannage : un membre a perdu l'accès à son compte, sans code
 
 ⚠️ **Cette procédure ne devrait jamais servir.** Elle écrit en base de prod hors migration, ce

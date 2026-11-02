@@ -44,3 +44,9 @@ class User(Base, UUIDMixin, TimestampMixin):
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Since 2026-11-02 the account is ANONYMIZED, not deleted, 30 days after it left its last
+    # household or was deleted: its completions stay in the household history under a neutral
+    # name, and nothing can bring it back (services/member_departure.py).
+    anonymized_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

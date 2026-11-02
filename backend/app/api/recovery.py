@@ -40,6 +40,12 @@ from app.models.foyer import Foyer
 from app.models.task_affinity import TaskAffinity
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
+from app.services.member_departure import (
+    bring_back,
+    can_still_return,
+    foyer_to_return_to,
+    return_cutoff,
+)
 from app.utils.errors import LocalizedHTTPException
 from app.utils.recovery_code import (
     generate_code, hash_code, lookup_key, lookup_key_id, verify_code,
@@ -171,7 +177,12 @@ async def restore(
     that set, no longer of every account.
     """
     key = lookup_key(body.recovery_code)
-    alive = (User.recovery_code_hash.is_not(None), User.deleted_at.is_(None))
+    # A deleted account can still come back during its return window (member_departure.py);
+    # an anonymized one has no code left.
+    alive = (
+        User.recovery_code_hash.is_not(None),
+        or_(User.deleted_at.is_(None), User.deleted_at >= return_cutoff()),
+    )
 
     keyed = await session.execute(select(User).where(*alive, User.recovery_lookup == key))
     # argon2 is CPU-bound and synchronous: verify in a thread, the event loop of
@@ -203,15 +214,14 @@ async def restore(
     # Resoud le foyer actif (si encore membre, sinon best-effort first foyer)
     foyer_name: str | None = None
     role: str | None = None
-    foyer_id_for_stats: uuid.UUID | None = None
-    if matched.last_active_foyer_id is not None:
-        foyer_id_for_stats = matched.last_active_foyer_id
+    foyer_id_for_stats = await foyer_to_return_to(session, matched)
+    if foyer_id_for_stats is not None:
         foyer_q = await session.execute(
             # left_at deliberately NOT filtered: restore_confirm reactivates this membership (design Q9e).
             select(Foyer.name, UserFoyer.role)
             .join(UserFoyer, UserFoyer.foyer_id == Foyer.id)
             .where(
-                Foyer.id == matched.last_active_foyer_id,
+                Foyer.id == foyer_id_for_stats,
                 UserFoyer.user_id == matched.id,
                 Foyer.deleted_at.is_(None),
             )
@@ -264,30 +274,15 @@ async def restore_confirm(
 
     user_result = await session.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
-    if user is None or user.deleted_at is not None:
+    if user is None or not can_still_return(user):
         raise LocalizedHTTPException(status_code=404, error_code="USER_NOT_FOUND")
 
     user.recovery_code_last_used_at = datetime.now(timezone.utc)
 
-    # Si l'user avait quitte son dernier foyer, on reactive sa membership
-    # (cf. Q9e du design review : recovery code => restauration de l'identite
-    # complete, y compris la membership).
-    foyer_id: uuid.UUID | None = user.last_active_foyer_id
-    if foyer_id is not None:
-        membership_result = await session.execute(
-            select(UserFoyer).where(
-                UserFoyer.user_id == user_id,
-                UserFoyer.foyer_id == foyer_id,
-            )
-        )
-        uf = membership_result.scalar_one_or_none()
-        if uf is not None and uf.left_at is not None:
-            uf.left_at = None
-            if uf.role == "former_member":
-                uf.role = "member"
-            # The solo tasks suspended at their departure come back with them.
-            from app.services.task_departure import reactivate_suspended_tasks
-            await reactivate_suspended_tasks(session, user_id, foyer_id)
+    # The recovery code restores the whole identity, membership included (design Q9e). Since
+    # 2026-11-02 this also undoes a departure or a deletion still in its 30-day window: the
+    # household left last, the suspended solo tasks (services/member_departure.py).
+    foyer_id = await bring_back(session, user)
 
     await session.commit()
 

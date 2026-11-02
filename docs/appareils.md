@@ -116,6 +116,20 @@ old one. It is signed out, and its local data is erased on its next connection.
 **Recovery code leaked.** Regenerate it: the new one is shown once, and every other device is
 cut in the same gesture.
 
+**Leaving one's last household, or deleting one's account: 30 days to come back** (decided on
+2026-11-02, the same rule for both).
+- **On leaving**: the member is removed from shared tasks. Their solo tasks are deactivated but
+  stay theirs.
+- **For 30 days**: "Recover my household" with their code brings them back into the household
+  they left, with their tasks. The others see their name struck through.
+- **After that**: the nightly cleanup anonymizes the account instead of deleting it. The name
+  becomes "Ancien membre" and the code is erased, so no return is possible any more. Their
+  personal data and solo tasks are deleted. Their completions stay in the household history.
+
+Details are in `backend/app/services/member_departure.py` and `task_departure.py`.
+Anonymization replaces a purge that failed on any account that had acted: six foreign keys to
+`users` had no `ON DELETE` rule.
+
 ## Troubleshooting: a member lost access to their account, with no code
 
 ⚠️ **This procedure should never be needed.** It writes to the production database outside a

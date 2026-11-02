@@ -38,6 +38,7 @@ async def me(
 
 @router.get("/users")
 async def list_users(
+    include_former: bool = False,
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):
@@ -55,4 +56,22 @@ async def list_users(
         .order_by(User.username)
     )
     users = result.scalars().all()
-    return [{"id": str(u.id), "username": u.username, "display_name": u.display_name} for u in users]
+    active = [{"id": str(u.id), "username": u.username, "display_name": u.display_name}
+              for u in users]
+    if not include_former:
+        return active
+    # Former members, so the app can still NAME the author of an old completion: struck
+    # through during their 30-day return window, a neutral name once anonymized
+    # (services/member_departure.py). Opt-in: pickers and older APKs keep active members only.
+    former = await session.execute(
+        select(User, UserFoyer.left_at)
+        .join(UserFoyer, UserFoyer.user_id == User.id)
+        .where(UserFoyer.foyer_id == foyer_uuid, UserFoyer.left_at.is_not(None),
+               User.id.not_in([u.id for u in users]))
+        .order_by(UserFoyer.left_at)
+    )
+    return active + [
+        {"id": str(u.id), "username": u.username, "display_name": u.display_name,
+         "left_at": left_at.isoformat(), "anonymized": u.anonymized_at is not None}
+        for u, left_at in former.all()
+    ]
