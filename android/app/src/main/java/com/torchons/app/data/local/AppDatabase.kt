@@ -8,6 +8,7 @@ import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.TaskHistoryDao
+import com.torchons.app.data.local.dao.FormerMemberDao
 import com.torchons.app.data.local.dao.UserDao
 import com.torchons.app.data.local.dao.ViewSnapshotDao
 import com.torchons.app.data.local.entities.CompletionEntity
@@ -16,6 +17,7 @@ import com.torchons.app.data.local.entities.TaskEntity
 import com.torchons.app.data.local.entities.TaskHistoryEntity
 import com.torchons.app.data.local.dao.ContextDao
 import com.torchons.app.data.local.entities.ContextEntity
+import com.torchons.app.data.local.entities.FormerMemberEntity
 import com.torchons.app.data.local.entities.UserEntity
 import com.torchons.app.data.local.entities.ViewSnapshotEntity
 
@@ -28,6 +30,7 @@ import com.torchons.app.data.local.entities.ViewSnapshotEntity
         PendingOperationEntity::class,
         TaskHistoryEntity::class,
         ContextEntity::class,
+        FormerMemberEntity::class,
     ],
     // Raising this ships a Room migration inside a MINIFIED APK (R8 is on since
     // 2026-09-03). No migration has run under R8 yet -- v95 to v96 both carried
@@ -35,7 +38,8 @@ import com.torchons.app.data.local.entities.ViewSnapshotEntity
     // predates it, never only on a fresh install.
     // 13 (2026-10-01): tasks.firstCompletedAt, the anniversary anchor.
     // 14 (2026-10-05): pending_operations.foyerId, the household an op was queued in.
-    version = 14,
+    // 15 (2026-11-02): former_members, authors who left the household.
+    version = 15,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -47,4 +51,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun pendingOperationDao(): PendingOperationDao
     abstract fun taskHistoryDao(): TaskHistoryDao
     abstract fun contextDao(): ContextDao
+    abstract fun formerMemberDao(): FormerMemberDao
 }

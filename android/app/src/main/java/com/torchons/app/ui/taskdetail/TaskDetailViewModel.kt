@@ -12,6 +12,7 @@ import com.torchons.app.data.model.RequestRevoteBody
 import com.torchons.app.data.model.TaskContextRef
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskHistoryEvent
+import com.torchons.app.data.model.FormerMember
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
@@ -43,6 +44,8 @@ data class TaskDetailUiState(
     val task: Task? = null,
     val completions: List<Completion> = emptyList(),
     val userNames: Map<String, String> = emptyMap(),
+    /** Members who left, by id: author labels only, never a selector. */
+    val formerMembers: Map<String, FormerMember> = emptyMap(),
     val ratings: List<TaskRating> = emptyList(),
     val avgEffortTimeMin: Int? = null,
     val scorePoints: Int? = null,
@@ -140,8 +143,9 @@ class TaskDetailViewModel @Inject constructor(
                 taskRepository.observeCompletionsByTask(taskId),
                 taskRepository.observeUsers(),
                 taskRepository.observeTaskHistory(taskId),
-            ) { task, completions, users, history ->
-                CachedDetail(task, completions, users, history)
+                taskRepository.observeFormerMembers(),
+            ) { task, completions, users, history, former ->
+                CachedDetail(task, completions, users, history, former)
             }.collect { cached ->
                 val hasCache = cached.task != null
                 val userNames = cached.users.associate { it.id to it.displayName }
@@ -178,6 +182,7 @@ class TaskDetailViewModel @Inject constructor(
                     task = cached.task,
                     completions = sortedCompletions,
                     userNames = userNames,
+                    formerMembers = cached.former.associateBy { it.id },
                     urgencyState = state,
                     daysUntilDue = daysUntilDue,
                     countdownLabel = countdownLabel,
@@ -722,11 +727,3 @@ class TaskDetailViewModel @Inject constructor(
         }
     }
 }
-
-/** Conteneur interne pour le combine des flows. */
-private data class CachedDetail(
-    val task: Task?,
-    val completions: List<Completion>,
-    val users: List<User>,
-    val history: List<TaskHistoryEvent>,
-)

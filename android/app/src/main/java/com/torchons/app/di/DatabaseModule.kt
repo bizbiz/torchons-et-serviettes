@@ -10,6 +10,7 @@ import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.ContextDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.TaskHistoryDao
+import com.torchons.app.data.local.dao.FormerMemberDao
 import com.torchons.app.data.local.dao.UserDao
 import com.torchons.app.data.local.dao.ViewSnapshotDao
 import dagger.Module
@@ -232,6 +233,19 @@ private val migration13to14 = object : Migration(13, 14) {
     }
 }
 
+private val migration14to15 = object : Migration(14, 15) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Members who left the household, kept apart from `users` so they never
+        // reach a selector. Filled by the next GET /auth/users?include_former.
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `former_members` (" +
+                "`id` TEXT NOT NULL, `username` TEXT NOT NULL, " +
+                "`displayName` TEXT NOT NULL, `anonymized` INTEGER NOT NULL, " +
+                "`leftAt` TEXT, PRIMARY KEY(`id`))"
+        )
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -244,7 +258,22 @@ object DatabaseModule {
             AppDatabase::class.java,
             "torchons.db",
         )
-            .addMigrations(migration1to2, migration2to3, migration3to4, migration4to5, migration5to6, migration6to7, migration7to8, migration8to9, migration9to10, migration10to11, migration11to12, migration12to13, migration13to14)
+            .addMigrations(
+                migration1to2,
+                migration2to3,
+                migration3to4,
+                migration4to5,
+                migration5to6,
+                migration6to7,
+                migration7to8,
+                migration8to9,
+                migration9to10,
+                migration10to11,
+                migration11to12,
+                migration12to13,
+                migration13to14,
+                migration14to15,
+            )
             .build()
     }
 
@@ -254,6 +283,9 @@ object DatabaseModule {
     @Provides
     fun provideContextDao(db: AppDatabase): ContextDao = db.contextDao()
 
+
+    @Provides
+    fun provideFormerMemberDao(db: AppDatabase): FormerMemberDao = db.formerMemberDao()
 
     @Provides
     fun provideUserDao(db: AppDatabase): UserDao = db.userDao()

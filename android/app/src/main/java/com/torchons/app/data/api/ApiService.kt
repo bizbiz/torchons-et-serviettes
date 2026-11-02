@@ -48,9 +48,9 @@ interface ApiService {
     @GET("auth/me")
     suspend fun getMe(): Response<User>
 
-    /** Liste tous les utilisateurs du foyer. */
+    /** Foyer members; includeFormer=true appends those who left (older servers ignore it). */
     @GET("auth/users")
-    suspend fun getUsers(): Response<List<User>>
+    suspend fun getUsers(@Query("include_former") includeFormer: Boolean? = null): Response<List<User>>
 
     // --- Taches ---
 

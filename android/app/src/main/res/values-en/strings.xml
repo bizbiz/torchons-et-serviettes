@@ -449,6 +449,7 @@
     <string name="task_detail_section_frequency">Frequency</string>
     <string name="task_detail_freq_vote_one_format">%1$s\'s vote</string>
     <string name="task_detail_freq_vote_many_format">Average of votes from %1$s</string>
+    <string name="former_member">Former member</string>
     <string name="task_detail_freq_no_vote">No votes yet</string>
     <plurals name="task_detail_freq_no_voters_format">
         <item quantity="one">%1$s hasn\'t voted</item>

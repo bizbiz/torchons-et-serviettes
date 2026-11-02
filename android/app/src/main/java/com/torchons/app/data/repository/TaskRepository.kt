@@ -9,7 +9,7 @@ import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.ContextDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.TaskHistoryDao
-import com.torchons.app.data.local.dao.UserDao
+import com.torchons.app.data.model.FormerMember
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.toDomain
@@ -46,7 +46,7 @@ class TaskRepository @Inject constructor(
     private val apiService: ApiService,
     private val taskDao: TaskDao,
     private val completionDao: CompletionDao,
-    private val userDao: UserDao,
+    private val members: MemberRepository,
     private val pendingDao: PendingOperationDao,
     private val taskHistoryDao: TaskHistoryDao,
     private val contextDao: ContextDao,
@@ -116,7 +116,7 @@ class TaskRepository @Inject constructor(
         // task_history via DAO (clearForTask n'existe que per-task, donc on
         // passe par deleteAll). Les autres caches (users, rooms) sont aussi wipes.
         contextDao.replaceAll(emptyList())
-        userDao.replaceAll(emptyList())
+        members.wipe()
     }
 
     // -------------------------------------------------------------------
@@ -156,23 +156,11 @@ class TaskRepository @Inject constructor(
     // Users
     // -------------------------------------------------------------------
 
-    fun observeUsers(): Flow<List<User>> =
-        userDao.observeAll().map { list -> list.map { it.toDomain() } }
+    fun observeUsers(): Flow<List<User>> = members.observeUsers()
 
-    suspend fun refreshUsers(): Boolean {
-        return try {
-            val response = apiService.getUsers()
-            if (response.isSuccessful) {
-                val users = response.body() ?: emptyList()
-                userDao.replaceAll(users.map { it.toEntity() })
-                true
-            } else {
-                false
-            }
-        } catch (_: Exception) {
-            false
-        }
-    }
+    fun observeFormerMembers(): Flow<List<FormerMember>> = members.observeFormerMembers()
+
+    suspend fun refreshUsers(): Boolean = members.refreshUsers()
 
     // -------------------------------------------------------------------
     // Completions
