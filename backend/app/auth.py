@@ -35,11 +35,21 @@ def create_token(user_id: str, device_id: str, foyer_id: str | None = None) -> s
 
 
 def decode_token(token: str) -> dict:
-    """Decode et valide un JWT. Retourne les claims."""
+    """Decode and validate a session JWT; return its claims.
+
+    A token that does not verify answers `DEVICE_REVOKED`, not an ordinary 401: the
+    app wipes and goes back to the welcome screen instead of staying stuck on errors.
+    This is what makes rotating `JWT_SECRET` survivable -- every phone holding a token
+    signed with the old secret lands on the welcome screen, where « Retrouver mon
+    foyer » brings it back (decided on 2026-11-02, option (b) of the todo item on the
+    exposed production secret).
+    """
+    from app.utils.errors import LocalizedHTTPException
+
     try:
         return jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM])
     except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalide")
+        raise LocalizedHTTPException(status_code=401, error_code="DEVICE_REVOKED")
 
 
 async def _require_active_membership(session: AsyncSession, user_id: str, foyer_id: str) -> None:

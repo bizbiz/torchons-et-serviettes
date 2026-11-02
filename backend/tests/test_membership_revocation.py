@@ -8,6 +8,7 @@ Paths, and what covers each:
 - a member who LEFT the household (`user_foyers.left_at` set), old token on it — one test;
 - a DELETED account (`users.deleted_at` set), old token — one test;
 - a former member switching BACK into the household left (`POST /foyers/{id}/switch`) — one test;
+- a token signed with another secret (what a `JWT_SECRET` rotation leaves on phones) — one test;
 - an active member keeps working — the standard, played first in each test.
 Not covered: `PUT /foyers/{id}/gamification` and propositions.py, whose membership checks got the
 same `left_at` filter; they sit behind `get_current_user`, so a former member's token is refused
@@ -106,3 +107,20 @@ async def test_a_former_member_cannot_switch_back_into_the_household(client):
     r = await client.post(f"/api/foyers/{LEFT_FOYER_ID}/switch",
                           headers=_headers(LEAVER_ID, KEPT_FOYER_ID))
     assert r.status_code == 403, r.text
+
+
+@pytest.mark.asyncio
+async def test_a_token_signed_with_another_secret_is_revoked(client):
+    """What a `JWT_SECRET` rotation does to every phone: wipe and welcome, not stuck on 401s."""
+    from jose import jwt
+
+    from app.auth import ALGORITHM
+
+    standard = await client.get("/api/tasks", headers=_headers(LEAVER_ID, KEPT_FOYER_ID))
+    assert standard.status_code == 200, standard.text
+
+    claims = {"sub": LEAVER_ID, "device_id": DEVICE, "foyer_id": KEPT_FOYER_ID}
+    old = jwt.encode(claims, "a-secret-rotated-away", algorithm=ALGORITHM)
+    r = await client.get("/api/tasks", headers={"Authorization": f"Bearer {old}"})
+    assert r.status_code == 401, r.text
+    assert r.json()["code"] == "DEVICE_REVOKED", r.text
