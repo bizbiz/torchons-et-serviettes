@@ -20,4 +20,9 @@
   bien ses données, mais elle reste sur l'écran en cours et affiche des erreurs de connexion
   jusqu'à ce qu'on la relance. Elle afficherait tout de suite un écran qui explique que
   l'accès a été coupé et propose « Retrouver mon foyer ».
+- **Mettre le foyer en pause pendant une absence** : quand personne n'a ouvert l'app ni validé de
+  tâche depuis 3 jours ou plus, le foyer passerait en pause. Les fréquences calculées
+  automatiquement ne bougeraient plus. Aujourd'hui, des vacances font croire à l'app que la
+  vaisselle se fait tous les 44 jours. On regardera aussi ce qui doit se mettre en pause avec
+  elles. Au retour du premier membre, un message d'accueil l'aiderait à reprendre.
 - **Mode "famille etendue"** : plusieurs foyers relies (parents + grands-parents qui se voient les taches), version pro pour airbnb / colocation longue.
