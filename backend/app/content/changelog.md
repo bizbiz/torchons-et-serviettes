@@ -1,5 +1,20 @@
 # Notes de version
 
+## v0.43.0 — 2026-11-03
+
+### Modules
+- Chaque module a sa page d'explication : à quoi il sert, pourquoi, et comment bien
+  l'utiliser. Dans Réglages, un ⓘ à côté de son interrupteur la rouvre à tout moment.
+- La page s'affiche une fois, quand l'app propose le module ou quand on l'active
+  soi-même. Quand quelqu'un active un module pour tout le foyer, les autres membres
+  la voient à leur prochaine ouverture de l'app.
+- Motivation, Bonus et malus, Objectifs et Statistiques sont désormais proposés quand
+  le foyer s'y prête, au lieu de rester cachés dans Réglages.
+- Deux propositions sont espacées d'au moins 5 jours.
+
+### Corrections
+- Hors connexion, l'écran Contextes affiche un message au lieu de fermer l'app.
+
 ## v0.42.1 — 2026-11-03
 
 ### Quitter le foyer
