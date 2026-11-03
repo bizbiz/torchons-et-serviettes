@@ -835,6 +835,13 @@
     <string name="discover_module_accept">Turn it on</string>
     <string name="discover_module_decline">No thanks</string>
 
+    <!-- Module guide page -->
+    <string name="module_guide_section_purpose">What it is for</string>
+    <string name="module_guide_section_why">Why</string>
+    <string name="module_guide_section_how">How to use it well</string>
+    <string name="module_guide_understood">Got it</string>
+    <string name="module_guide_info_description">Show the guide for %1$s</string>
+
     <!-- Sentence explaining a recurrence: the BEHAVIOUR, not just the value -->
     <string name="recurrence_sentence_one_shot">One-off task: it will not come back once done.</string>
     <string name="recurrence_sentence_daily">The task repeats every day, counting from the last time it was done.</string>

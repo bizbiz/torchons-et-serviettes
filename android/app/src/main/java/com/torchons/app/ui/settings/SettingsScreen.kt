@@ -126,7 +126,6 @@ fun SettingsScreen(
     val s by viewModel.settings.collectAsState()
     val modules by viewModel.modules.collectAsState()
     val moduleError by viewModel.moduleError.collectAsState()
-
     // Vrai si le module est actif. Tant que GET /api/modules n'a pas repondu la
     // liste est vide et on repond `true` : l'ecran reste alors exactement ce
     // qu'il etait avant P2, au lieu de faire disparaitre des reglages le temps

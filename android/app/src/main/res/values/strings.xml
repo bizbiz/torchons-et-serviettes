@@ -842,6 +842,13 @@
     <string name="discover_module_accept">Activer</string>
     <string name="discover_module_decline">Non merci</string>
 
+    <!-- Page guide d'un module -->
+    <string name="module_guide_section_purpose">À quoi ça sert</string>
+    <string name="module_guide_section_why">Pourquoi</string>
+    <string name="module_guide_section_how">Comment bien l\'utiliser</string>
+    <string name="module_guide_understood">Compris</string>
+    <string name="module_guide_info_description">Voir le guide de %1$s</string>
+
     <!-- Phrase expliquant une recurrence : le COMPORTEMENT, pas la valeur -->
     <string name="recurrence_sentence_one_shot">Tâche ponctuelle : elle ne reviendra pas une fois faite.</string>
     <string name="recurrence_sentence_daily">La tâche se répète chaque jour, à partir de la dernière fois où elle a été faite.</string>

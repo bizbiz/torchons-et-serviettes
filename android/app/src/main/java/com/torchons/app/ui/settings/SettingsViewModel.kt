@@ -94,10 +94,8 @@ class SettingsViewModel @Inject constructor(
     private val _bonusConfig = MutableStateFlow<BonusConfig?>(null)
     val bonusConfig: StateFlow<BonusConfig?> = _bonusConfig.asStateFlow()
 
-    // v0.32 : foyer courant + nom (pour les labels des dialogs gamif).
-    // P2 — registre des modules (GET /api/modules). Liste vide tant que la
-    // reponse n'est pas arrivee : l'ecran affiche alors le bloc en chargement
-    // plutot que 8 lignes fantomes.
+    // P2 — registre des modules (GET /api/modules), vide tant que la reponse
+    // n'est pas arrivee (l'ecran montre alors le chargement).
     private val _modules = MutableStateFlow<List<ModuleView>>(emptyList())
     val modules: StateFlow<List<ModuleView>> = _modules.asStateFlow()
 
@@ -297,16 +295,16 @@ class SettingsViewModel @Inject constructor(
      * l'interrupteur ou il etait, sinon l'ecran affiche un etat que le
      * serveur a refuse.
      */
-    fun toggleModule(key: String, enabled: Boolean) {
+    fun toggleModule(key: String, enabled: Boolean, onEnabled: (ModuleView) -> Unit = {}) {
         val before = _modules.value
         _modules.value = before.map { if (it.key == key) it.copy(enabled = enabled) else it }
         viewModelScope.launch {
             try {
                 val resp = apiService.toggleModule(key, ModuleToggleRequest(enabled))
                 if (resp.isSuccessful) {
-                    // Le serveur peut avoir change d'autres champs
-                    // (unmet_requires des dependants) : on relit tout.
-                    loadModules()
+                    loadModules() // the server may have changed dependants too
+                    // Manual enable confirmed by the server: hand the fresh module over.
+                    if (enabled) _modules.value.firstOrNull { it.key == key }?.let(onEnabled)
                 } else {
                     _modules.value = before
                     // Le corps est du JSON localise par le serveur

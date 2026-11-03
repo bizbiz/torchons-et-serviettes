@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -245,11 +246,20 @@ private fun DiscoverModuleDialog(
     onAccept: () -> Unit,
     onDecline: () -> Unit,
 ) {
-    val ctx = prompt.context
-    val title = ctx["title"]?.toString().orEmpty()
-    val pitch = ctx["pitch"]?.toString().orEmpty()
-    val details = ctx["details"]?.toString().orEmpty()
-    val example = ctx["example"]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+    val moduleKey = prompt.context["module_key"]?.toString().orEmpty()
+    val guide = guideFromPromptContext(moduleKey, prompt.context)
+    val title = guide.title
+    val pitch = guide.pitch
+    val details = guide.details
+    val guideVm: ModuleGuideViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    // The guide sections (why / how) are on screen: record it as seen, once
+    // per prompt. Prompts created before the server sent them have no guide
+    // text, so nothing was shown and nothing is recorded.
+    LaunchedEffect(prompt.id) {
+        if (moduleKey.isNotBlank() && (guide.why.isNotBlank() || guide.how.isNotBlank())) {
+            guideVm.markSeen(moduleKey)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDecline,
@@ -265,7 +275,7 @@ private fun DiscoverModuleDialog(
             }
         },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 if (pitch.isNotBlank()) {
                     Text(text = pitch, style = MaterialTheme.typography.bodyMedium)
                 }
@@ -277,15 +287,7 @@ private fun DiscoverModuleDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                if (example != null) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = example,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
+                ModuleGuideSections(guide = guide, includePurpose = false)
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = stringResource(R.string.discover_module_reassurance),

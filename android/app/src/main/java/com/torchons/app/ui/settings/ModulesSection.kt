@@ -18,6 +18,12 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.collectAsState
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.ui.common.ModuleGuideDialog
+import com.torchons.app.ui.common.ModuleGuideViewModel
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,9 +66,13 @@ import com.torchons.app.data.model.ModuleView
 @Composable
 fun ModulesSection(
     modules: List<ModuleView>,
-    onToggle: (String, Boolean) -> Unit,
+    onToggle: (String, Boolean, (ModuleView) -> Unit) -> Unit,
     isLoading: Boolean,
 ) {
+    val guideVm: ModuleGuideViewModel = hiltViewModel()
+    val guide by guideVm.settingsGuide.collectAsState()
+    guide?.let { ModuleGuideDialog(guide = it, onDismiss = guideVm::dismissSettingsGuide) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -116,7 +126,17 @@ fun ModulesSection(
                         if (index > 0) {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         }
-                        ModuleRow(module = module, onToggle = onToggle)
+                        ModuleRow(
+                            module = module,
+                            // Manual enable confirmed by the server: show the guide
+                            // (only if never seen; recorded as seen when shown).
+                            onToggle = { key, on ->
+                                onToggle(key, on) { fresh ->
+                                    if (!fresh.guideSeen) guideVm.showSettingsGuide(fresh)
+                                }
+                            },
+                            onShowGuide = { guideVm.showSettingsGuide(module) },
+                        )
                     }
                 }
             }
@@ -128,6 +148,7 @@ fun ModulesSection(
 private fun ModuleRow(
     module: ModuleView,
     onToggle: (String, Boolean) -> Unit,
+    onShowGuide: () -> Unit,
 ) {
     var expanded by remember(module.key) { mutableStateOf(false) }
     // Une dependance non satisfaite ne rend pas la ligne invisible : elle la
@@ -173,7 +194,14 @@ private fun ModuleRow(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            IconButton(onClick = onShowGuide, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = stringResource(R.string.module_guide_info_description, module.title),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
             Switch(
                 checked = module.enabled,
                 enabled = !blocked,

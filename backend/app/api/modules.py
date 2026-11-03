@@ -3,6 +3,7 @@
 - GET /api/modules        the registry localized, plus this member's effective
                           state for each module.
 - PUT /api/modules/{key}  enable or disable one module.
+- POST /api/modules/{key}/guide-seen  this member has read the module's guide.
 
 Who may write: any member of the foyer, including for collective modules. That
 is a deliberate decision (see docs/module-registry.fr.md) matching how rooms,
@@ -20,7 +21,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +30,11 @@ from app.auth import get_current_user
 from app.database import get_session
 from app.models.foyer import Foyer
 from app.models.module_state import ModuleState
+from app.services.module_guides import (
+    due_module_keys,
+    mark_guide_seen,
+    seen_module_keys,
+)
 from app.services.modules import (
     Module,
     dependents_of,
@@ -68,6 +74,12 @@ class ModuleView(BaseModel):
     unmet_requires: list[str] = []
     trigger_kind: str
     sub_options: list[SubOptionView] = []
+    # Guide page text (localized) and this member's reading state. `guide_due`:
+    # show it at the next app open (see services/module_guides.py).
+    guide_why: str = ""
+    guide_how: str = ""
+    guide_seen: bool = False
+    guide_due: bool = False
 
 
 class ModulesResponse(BaseModel):
@@ -95,7 +107,14 @@ def _titles(keys: list[str], locale: str) -> str:
     )
 
 
-def _to_view(module: Module, enabled: bool, states: dict[str, bool], locale: str) -> ModuleView:
+def _to_view(
+    module: Module,
+    enabled: bool,
+    states: dict[str, bool],
+    locale: str,
+    seen: set[str] = frozenset(),
+    due: set[str] = frozenset(),
+) -> ModuleView:
     return ModuleView(
         key=module.key,
         scope=module.scope,
@@ -108,6 +127,10 @@ def _to_view(module: Module, enabled: bool, states: dict[str, bool], locale: str
         requires=list(module.requires),
         unmet_requires=unmet_requirements(module, states),
         trigger_kind=module.trigger_kind,
+        guide_why=pick_locale(module.guide_why, locale),
+        guide_how=pick_locale(module.guide_how, locale),
+        guide_seen=module.key in seen,
+        guide_due=module.key in due,
         sub_options=[
             SubOptionView(
                 key=s.key,
@@ -135,12 +158,33 @@ async def list_modules(
 
     states = await resolve_states(session, foyer_id, user_id)
     registry = get_registry()
+    seen = await seen_module_keys(session, user_id)
+    due = await due_module_keys(session, foyer_id, user_id, states, seen)
 
     return ModulesResponse(
         modules=[
-            _to_view(m, states[m.key], states, locale) for m in registry.modules
+            _to_view(m, states[m.key], states, locale, seen, due)
+            for m in registry.modules
         ]
     )
+
+
+@router.post("/{module_key}/guide-seen", status_code=204)
+async def mark_module_guide_seen(
+    module_key: str,
+    current: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Record that this member has read the module's guide. Idempotent.
+
+    Per USER, not per foyer: no foyer is read here. Replaying it, or sending it
+    for a module the member never enabled, is harmless.
+    """
+    if get_registry().by_key(module_key) is None:
+        raise LocalizedHTTPException(status_code=404, error_code="MODULE_UNKNOWN")
+    await mark_guide_seen(session, uuid.UUID(current["user_id"]), module_key)
+    await session.commit()
+    return Response(status_code=204)
 
 
 @router.put("/{module_key}", response_model=ModuleView)
@@ -237,4 +281,6 @@ async def toggle_module(
     await session.commit()
 
     states[module.key] = body.enabled
-    return _to_view(module, body.enabled, states, locale)
+    # `due` stays empty: the actor is the one who just switched it, never "another member".
+    seen = await seen_module_keys(session, user_id)
+    return _to_view(module, body.enabled, states, locale, seen)

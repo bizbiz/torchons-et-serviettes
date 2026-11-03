@@ -24,6 +24,7 @@ from app.models.foyer_retard_snapshot import FoyerRetardSnapshot
 from app.models.pairing_token import PairingToken
 from app.models.objective import Objective
 from app.models.module_state import ModuleState
+from app.models.module_guide_view import ModuleGuideView
 from app.models.context import Context, TaskContext
 
 __all__ = [
@@ -39,6 +40,6 @@ __all__ = [
     "FoyerRetardSnapshot",
     "PairingToken",
     "Objective",
-    "ModuleState",
+    "ModuleState", "ModuleGuideView",
     "Context", "TaskContext",
 ]

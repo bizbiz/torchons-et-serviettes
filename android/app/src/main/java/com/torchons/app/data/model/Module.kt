@@ -27,6 +27,15 @@ data class ModuleView(
     /** "signal", "usage" ou "none". */
     @SerializedName("trigger_kind") val triggerKind: String = "none",
     @SerializedName("sub_options") val subOptions: List<SubOptionView> = emptyList(),
+    // Guide page fields. Defaults keep the app working against a server
+    // that does not send them yet. Strings are nullable on purpose: Gson
+    // bypasses Kotlin defaults, so an absent field arrives as null, not "".
+    @SerializedName("guide_why") val guideWhy: String? = null,
+    @SerializedName("guide_how") val guideHow: String? = null,
+    /** This member has already seen the guide (server-side, per user). */
+    @SerializedName("guide_seen") val guideSeen: Boolean = false,
+    /** Show the guide at next app open (module enabled by another member). */
+    @SerializedName("guide_due") val guideDue: Boolean = false,
 ) {
     val isCollective: Boolean get() = scope == "collective"
 }

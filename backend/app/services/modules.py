@@ -55,6 +55,9 @@ class Module:
     pitch: dict[str, str]
     details: dict[str, str]
     example: dict[str, str] | None = None
+    #: Localized "why" and "how" of the module's guide page (modules.yaml `guide`).
+    guide_why: dict[str, str] = field(default_factory=dict)
+    guide_how: dict[str, str] = field(default_factory=dict)
     requires: tuple[str, ...] = ()
     trigger_kind: str = "none"
     trigger_key: str | None = None
@@ -91,6 +94,7 @@ def _parse_sub_option(raw: dict[str, Any]) -> SubOption:
 
 def _parse_module(raw: dict[str, Any]) -> Module:
     trigger = raw.get("trigger") or {}
+    guide = raw.get("guide") or {}
     return Module(
         key=raw["key"],
         scope=raw.get("scope") or SCOPE_COLLECTIVE,
@@ -100,6 +104,8 @@ def _parse_module(raw: dict[str, Any]) -> Module:
         pitch=raw.get("pitch") or {},
         details=raw.get("details") or {},
         example=raw.get("example"),
+        guide_why=guide.get("why") or {},
+        guide_how=guide.get("how") or {},
         requires=tuple(raw.get("requires") or ()),
         trigger_kind=trigger.get("kind") or "none",
         trigger_key=trigger.get("key"),

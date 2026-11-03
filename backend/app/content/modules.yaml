@@ -50,6 +50,26 @@ modules:
     example:
       fr: "L'un préfère l'aspirateur, l'autre la vaisselle : l'app en tient compte."
       en: "One prefers vacuuming, the other the dishes: the app takes note."
+    guide:
+      why:
+        fr: >-
+          Dès qu'on est deux, la question « qui s'en occupe ? » revient sans cesse.
+          Le module y répond une fois pour toutes, et rend visible un déséquilibre
+          avant qu'il ne devienne un reproche.
+        en: >-
+          As soon as there are two of you, "who's doing it?" keeps coming back. The
+          module answers it once and for all, and shows an imbalance before it turns
+          into a grievance.
+      how:
+        fr: >-
+          Attribuez les tâches récurrentes, notez celles que vous aimez ou détestez
+          quand l'app vous le demande, et réglez la pénibilité des plus lourdes.
+          Regardez la part de chacun de temps en temps : un écart n'est pas un échec,
+          c'est une conversation à avoir.
+        en: >-
+          Assign the recurring tasks, rate the ones you like or dislike when the app
+          asks, and set the effort of the heaviest ones. Check everyone's share now
+          and then: a gap is not a failure, it is a conversation to have.
     trigger:
       kind: signal
       key: second_member_joined
@@ -93,6 +113,27 @@ modules:
     example:
       fr: "À l'activation, les points déjà gagnés apparaissent : rien n'est perdu."
       en: "On enabling, points already earned show up: nothing is lost."
+    guide:
+      why:
+        fr: >-
+          Une tâche ménagère faite ne laisse aucune trace : le lendemain, tout est à
+          refaire. Les points et la série gardent la mémoire de ce qui a été fait, et
+          rendent visible l'effort de chacun.
+        en: >-
+          A finished chore leaves no trace: the next day, it all needs doing again.
+          Points and the streak keep a record of what was done, and make everyone's
+          effort visible.
+      how:
+        fr: >-
+          Validez les tâches au moment où vous les faites, même les petites : c'est
+          là que la série se construit. Le classement sert à se situer, pas à se
+          comparer ; qui préfère ne pas le voir peut le masquer pour lui seul avec
+          « Ne pas me les afficher ».
+        en: >-
+          Complete tasks as you do them, even the small ones: that is how the streak
+          builds up. The leaderboard is there to see where you stand, not to compete;
+          anyone who would rather not see it can hide it just for themselves with
+          "Do not show them to me".
     trigger:
       kind: usage
       key: completions_reached
@@ -136,6 +177,25 @@ modules:
       en: >-
         Adjusts points by the gap to the due date, with separate thresholds per
         task tolerance and a floor so lateness never becomes discouraging.
+    guide:
+      why:
+        fr: >-
+          Avec les points seuls, une tâche faite avec trois semaines de retard vaut
+          autant qu'une tâche faite à temps. Le bonus et le malus récompensent
+          l'anticipation, sans faire du retard une punition.
+        en: >-
+          With points alone, a task done three weeks late is worth as much as one
+          done on time. The bonus and the penalty reward getting ahead, without
+          turning lateness into a punishment.
+      how:
+        fr: >-
+          Rien à faire au quotidien : le calcul se fait quand vous validez. Réglez la
+          tolérance de chaque tâche (Strict, Normal ou Souple) selon ce qui compte
+          vraiment pour vous : une tâche Souple reste peu pénalisée, même en retard.
+        en: >-
+          Nothing to do day to day: the calculation happens when you complete a task.
+          Set each task's tolerance (Strict, Normal or Loose) to match what really
+          matters to you: a Loose task is barely penalised, even when late.
     trigger:
       kind: usage
       key: after_motivation
@@ -166,6 +226,26 @@ modules:
         Quantifies the accumulated backlog, the real pace over the last 14 days,
         and the pace needed to hold it. Anyone can set a personal goal, or
         propose one to the foyer.
+    guide:
+      why:
+        fr: >-
+          Quand le retard s'accumule, on ne sait plus par où reprendre, et la liste
+          rouge décourage. Le module ramène ce retard à un chiffre simple : combien
+          de minutes par jour pour revenir à zéro.
+        en: >-
+          When the backlog piles up, it is hard to know where to start, and the red
+          list is discouraging. The module boils it down to one simple number: how
+          many minutes a day to get back to zero.
+      how:
+        fr: >-
+          Ouvrez le cockpit pour voir le retard et le rythme des 14 derniers jours,
+          puis essayez la simulation avant de vous engager. Fixez-vous un objectif
+          quotidien réaliste, ou proposez-en un au foyer : mieux vaut 15 minutes
+          tenues qu'une heure abandonnée.
+        en: >-
+          Open the cockpit to see the backlog and the pace of the last 14 days, then
+          try the simulation before committing. Set yourself a realistic daily goal,
+          or propose one to the foyer: 15 minutes kept beat an hour given up.
     trigger:
       kind: signal
       key: backlog_threshold_reached
@@ -204,6 +284,26 @@ modules:
     example:
       fr: "Quinze jours d'absence : pas besoin de changer les draps en rentrant."
       en: "Fifteen days away: no need to change the sheets on your return."
+    guide:
+      why:
+        fr: >-
+          Partir en week-end ou en vacances ne devrait pas laisser une liste de
+          tâches en retard au retour. Le module sait quand la maison est vide et met
+          en pause ce qui ne peut se faire que sur place.
+        en: >-
+          A weekend or a holiday away should not leave a list of overdue tasks
+          waiting for you. The module knows when the home is empty and pauses what
+          can only be done there.
+      how:
+        fr: >-
+          Répondez à la question de présence quand l'app la pose : c'est elle qui
+          déclenche la pause. Indiquez dans les contextes les tâches qui exigent
+          d'être à la maison, et renseignez le WiFi du foyer pour que l'app sache
+          quand vous y êtes.
+        en: >-
+          Answer the presence question when the app asks: that is what triggers the
+          pause. Mark in the contexts which tasks require being home, and enter the
+          foyer's WiFi so the app knows when you are there.
     trigger:
       kind: signal
       key: absence_detected
@@ -238,6 +338,26 @@ modules:
       en: >-
         Spots tasks that are chronically late or early and offers to adjust their
         effort or frequency. Any member can ask the others to weigh in.
+    guide:
+      why:
+        fr: >-
+          Une tâche toujours en retard est souvent une tâche mal réglée : trop
+          fréquente, ou plus pénible qu'annoncé. Plutôt que de culpabiliser, l'app
+          propose de revoir son réglage.
+        en: >-
+          A task that is always late is often a badly tuned one: too frequent, or
+          harder than stated. Rather than feeling guilty, the app offers to revisit
+          its settings.
+      how:
+        fr: >-
+          Quand une proposition arrive, répondez-y franchement : augmenter la
+          pénibilité ou espacer la fréquence est une bonne réponse, pas un aveu.
+          Si vous n'êtes pas d'accord entre vous, demandez l'avis des autres
+          membres par un vote.
+        en: >-
+          When a suggestion comes in, answer it honestly: raising the effort or
+          spacing out the frequency is a good answer, not an admission. If you
+          disagree among yourselves, ask the other members to weigh in with a vote.
     trigger:
       kind: signal
       key: task_chronically_late
@@ -266,6 +386,24 @@ modules:
       en: >-
         Activity charts, breakdown by category and by room, and the enriched
         history of each task — edits, votes, who changed what and when.
+    guide:
+      why:
+        fr: >-
+          Au bout de quelques semaines, l'historique dit des choses qu'on ne voit pas
+          au jour le jour : les semaines chargées, les tâches oubliées, ce qui a
+          changé depuis le début.
+        en: >-
+          After a few weeks, the history shows things you do not notice day to day:
+          the busy weeks, the forgotten tasks, what has changed since the start.
+      how:
+        fr: >-
+          Jetez un œil aux courbes de temps en temps plutôt que chaque jour. Ouvrez
+          l'historique d'une tâche pour savoir qui l'a modifiée et quand, ou pour
+          retrouver la date de sa dernière réalisation.
+        en: >-
+          Glance at the charts now and then rather than every day. Open a task's
+          history to see who changed it and when, or to find the last time it was
+          done.
     trigger:
       kind: usage
       key: history_volume_reached
@@ -295,6 +433,25 @@ modules:
       en: >-
         A digest at the hour of your choosing, an alert when a task turns red, and
         if you want it a ping when someone else completes one.
+    guide:
+      why:
+        fr: >-
+          L'app ne sert que si on y pense. Les rappels vous préviennent au bon
+          moment, sans vous inonder de notifications.
+        en: >-
+          The app only helps if you remember it. Reminders tell you at the right
+          moment, without flooding you with notifications.
+      how:
+        fr: >-
+          Choisissez l'heure du récapitulatif quotidien selon votre rythme, gardez
+          l'alerte des tâches urgentes, et n'activez les complétions des autres que
+          si vous voulez suivre ce qui se fait. Chaque réglage est personnel : il ne
+          change rien pour les autres membres.
+        en: >-
+          Pick the hour of the daily digest to fit your routine, keep the urgent
+          task alert, and only turn on others' completions if you want to follow
+          what gets done. Every setting is personal: it changes nothing for the
+          other members.
     trigger:
       kind: none
     sub_options:

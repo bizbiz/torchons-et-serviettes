@@ -137,4 +137,10 @@ object AppModule {
     fun provideApiService(retrofit: Retrofit): ApiService {
         return retrofit.create(ApiService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideModuleGuideApi(retrofit: Retrofit): com.torchons.app.data.api.ModuleGuideApi {
+        return retrofit.create(com.torchons.app.data.api.ModuleGuideApi::class.java)
+    }
 }

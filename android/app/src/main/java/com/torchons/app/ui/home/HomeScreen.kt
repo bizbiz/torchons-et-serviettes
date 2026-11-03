@@ -241,14 +241,11 @@ fun HomeScreen(
         )
     }
 
-    // Queue unifiee des prompts (BUMP_EFFORT / VOTE_RATING / RESOLVE_PRESENCE
-    // / VOTE_FREQUENCY / VOTE_EFFORT). RESOLVE_PRESENCE ouvre le
-    // StreakCalendarModal (one modal to rule them all) : meme surface
-    // d'edition que l'ecran Foyer / Stats. Le prompt est resolu en
-    // ANSWERED quand l'user ferme le modal ; les jours edites sont deja
-    // persistes via PUT /presence direct (taps dans le modal). Cf state
-    // `streakCalendarUserId` + `streakCalendarFromPrompt` declares plus
-    // haut, et le bloc d'ouverture du modal apres ce PromptModal.
+    // Queue unifiee des prompts (BUMP_EFFORT / VOTE_* / RESOLVE_PRESENCE /
+    // DISCOVER_MODULE). RESOLVE_PRESENCE ouvre le StreakCalendarModal, resolu
+    // en ANSWERED a la fermeture (cf `streakCalendarFromPrompt` plus haut).
+    // Guide de module a l'ouverture : jamais empile sur un prompt.
+    com.torchons.app.ui.common.ModuleGuideHost(promptShowing = uiState.showPromptModal || uiState.currentPrompt != null)
     if (uiState.showPromptModal && uiState.currentPrompt != null) {
         com.torchons.app.ui.common.PromptModal(
             prompt = uiState.currentPrompt!!,

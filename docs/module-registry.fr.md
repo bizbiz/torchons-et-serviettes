@@ -121,8 +121,9 @@ un confort, c'est ce qui empêche 4 modules de rester invisibles à vie.
 Une seule file, deux compteurs.
 
 - Prompts de travail (les 5 types existants) : tolérance 2 h, inchangée.
-- Prompts de découverte : 1 par semaine au maximum, jamais avant J+7,
-  jamais deux dans la même session, 30 jours de silence après un refus.
+- Prompts de découverte : 1 tous les 5 jours au maximum (plancher en dur, une
+  semaine jusqu'au 2026-11-03), jamais avant J+7, jamais deux dans la même
+  session, 30 jours de silence après un refus.
 
 Le budget vit en base (`user_prompts` porte déjà `resolved_at` et
 `grace_until`) et non dans `HomeViewModel`, sinon une réinstallation
@@ -139,7 +140,7 @@ Pas de 10ᵉ écran. Huit des futures sous-options y sont déjà (6
 notifications, popup d'affinité, WiFi maison), rangées par hasard
 historique. Trois blocs : Fonctionnalités, Mon foyer, Mon compte.
 
-Conséquence : le rythme d'un module par semaine devient un défaut, pas
+Conséquence : le rythme d'un module tous les 5 jours devient un défaut, pas
 un plafond. L'impatient ouvre l'écran, le passif se laisse guider.
 
 **8. État d'un foyer neuf — noyau + Rappels.**
@@ -275,8 +276,8 @@ Le compteur porte sur la **creation** et non la resolution : une proposition
 ignoree a quand meme consomme son creneau. Compter les resolutions laisserait
 une proposition sans reponse rouvrir la porte a chaque passage du cron.
 
-Et une proposition expire au bout d'une semaine, sinon elle bloquerait seule
-le creneau suivant — puisque le budget compte les creations.
+Et une proposition expire au bout de `MIN_DAYS_BETWEEN_PROPOSALS` jours, sinon
+elle bloquerait seule le creneau suivant — puisque le budget compte les creations.
 
 ### Les signaux cables
 
@@ -302,13 +303,37 @@ eteint aurait rendu la fonctionnalite improposable aux foyers qui en ont le
 plus besoin. On calcule, puis on route : prompt de travail si le module est
 actif, proposition sinon.
 
-### Pas encore cable
+### Les seuils d'usage (décidés le 2026-11-03)
 
-- `backlog_threshold_reached` (objectives) : le retard est calcule, le seuil
-  reste a poser.
-- Les seuils d'usage des modules sans signal (motivation, statistics,
-  bonus_malus). Inchange depuis le debut : aucune donnee ne permet de les
-  fixer. A instrumenter avant d'arbitrer.
+Les quatre modules sans signal câblé se proposent sur un seuil, évalué chaque
+nuit à 03:45 UTC (`services/module_usage_triggers.py`, après l'instantané de
+retard de 03:15), dans l'ordre du registre, une proposition au plus par foyer
+et par passage :
+
+| Module | Seuil (provisoire, à revoir au lancement) |
+|--------|-------------------------------------------|
+| motivation | 20 validations vivantes dans le foyer |
+| bonus_malus | Motivation active depuis 14 jours |
+| objectives | 3 tâches en retard sur chacun des 3 derniers instantanés |
+| statistics | la plus ancienne validation vivante a 30 jours |
+
+Un seuil reste vrai une fois atteint : sans garde, le premier module de la liste
+reprendrait le créneau à chaque expiration. Un module proposé depuis moins de
+`REFUSAL_COOLDOWN_DAYS` jours est donc sauté, ce qui laisse passer le suivant.
+`statistics` est PERSONNEL : la proposition ne va qu'aux membres qui ne l'ont
+pas, état lu membre par membre (`_recipients` dans `module_discovery.py`).
+
+### Les pages d'explication (décidées le 2026-11-03)
+
+Chaque module porte dans modules.yaml un `guide` (`why`, `how`), affiché avec
+`details` et `example` : à quoi ça sert, pourquoi, comment bien l'utiliser.
+Montré **une fois par membre** (table `module_guide_views`, par utilisateur et
+non par foyer) : dans la proposition, à l'activation manuelle dans Réglages, ou,
+pour un module collectif activé par un autre membre, à la prochaine ouverture
+de l'app (`guide_due` dans `GET /api/modules`, une page par ouverture). Ensuite
+un ⓘ à côté de l'interrupteur la rouvre. La migration `b8c4d2e6f1a3` marque
+comme vues les pages des modules déjà actifs : les foyers existants ne reçoivent
+aucune page à la mise à jour.
 
 ## Les cinq phases
 

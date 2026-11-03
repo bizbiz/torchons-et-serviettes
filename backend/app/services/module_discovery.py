@@ -41,15 +41,17 @@ from app.models.foyer import Foyer
 from app.models.user_foyer import UserFoyer
 from app.models.user_prompt import UserPrompt
 from app.services.catalog import pick_locale
-from app.services.modules import get_registry, is_module_enabled
+from app.services.modules import Module, get_registry, is_module_enabled
 
 # --- Budget (decision 5 of the design) ---
 
 #: Nothing before the foyer has lived a week. A proposal on day two lands on
 #: someone still discovering the core.
 MIN_FOYER_AGE_DAYS = 7
-#: One proposal per week at most, all modules and all members confounded.
-MIN_DAYS_BETWEEN_PROPOSALS = 7
+#: Hard floor between two proposals in a foyer, all modules and all members
+#: confounded. Was 7 days; lowered to 5 once the usage triggers (see
+#: module_usage_triggers.py) made four more modules proposable.
+MIN_DAYS_BETWEEN_PROPOSALS = 5
 #: Silence on a module after a refusal.
 REFUSAL_COOLDOWN_DAYS = 30
 #: Two refusals and the module is never proposed again. It stays reachable in
@@ -111,6 +113,42 @@ async def _refusals_for(
     return len(dates), (datetime.now(timezone.utc) - newest).total_seconds() / 86400.0
 
 
+async def _active_member_ids(
+    session: AsyncSession, foyer_id: uuid.UUID
+) -> list[uuid.UUID]:
+    members = await session.execute(
+        # left_at: filtered through role != "former_member", set together by soft_leave_foyer.
+        select(UserFoyer.user_id).where(
+            UserFoyer.foyer_id == foyer_id,
+            UserFoyer.role != "former_member",
+        )
+    )
+    return list(members.scalars().all())
+
+
+async def _recipients(
+    session: AsyncSession, foyer_id: uuid.UUID, module: Module
+) -> list[uuid.UUID]:
+    """Members a proposal for this module would go to: those who do NOT have it.
+
+    Collective module: its state is foyer-wide, so either nobody is asked (it is
+    on) or every active member is. Personal module: `is_module_enabled` called
+    without a user reads a foyer-wide row that does not exist for it, and would
+    answer from the foyer's grandfathering alone. So each member is asked on
+    their own state, and a member who already has the module on is left out.
+    """
+    members = await _active_member_ids(session, foyer_id)
+    if module.is_collective:
+        if await is_module_enabled(session, foyer_id, module.key):
+            return []
+        return members
+    return [
+        user_id
+        for user_id in members
+        if not await is_module_enabled(session, foyer_id, module.key, user_id)
+    ]
+
+
 async def can_propose(
     session: AsyncSession, foyer_id: uuid.UUID, module_key: str
 ) -> bool:
@@ -121,8 +159,12 @@ async def can_propose(
 
     # Proposing what is already on is noise, and it is the single most likely
     # bug of the whole mechanism: a signal fires for a foyer that adopted the
-    # module long ago.
-    if await is_module_enabled(session, foyer_id, module_key):
+    # module long ago. A personal module has no foyer-wide state: the question
+    # is whether some member still lacks it.
+    if module.is_collective:
+        if await is_module_enabled(session, foyer_id, module_key):
+            return False
+    elif not await _recipients(session, foyer_id, module):
         return False
 
     if await _foyer_age_days(session, foyer_id) < MIN_FOYER_AGE_DAYS:
@@ -165,14 +207,7 @@ async def propose_module(
     if module is None:
         return 0
 
-    members = await session.execute(
-        # left_at: filtered through role != "former_member", set together by soft_leave_foyer.
-        select(UserFoyer.user_id).where(
-            UserFoyer.foyer_id == foyer_id,
-            UserFoyer.role != "former_member",
-        )
-    )
-    user_ids = list(members.scalars().all())
+    user_ids = await _recipients(session, foyer_id, module)
     if not user_ids:
         return 0
 
@@ -182,11 +217,16 @@ async def propose_module(
         "pitch": pick_locale(module.pitch, locale),
         "details": pick_locale(module.details, locale),
         "example": pick_locale(module.example, locale) if module.example else None,
+        # The guide page rides with the proposal. Frozen here like the other copy
+        # fields; prompts created before this change lack both keys, and clients
+        # must tolerate their absence.
+        "guide_why": pick_locale(module.guide_why, locale),
+        "guide_how": pick_locale(module.guide_how, locale),
         "reason": reason,
         "scope": module.scope,
     }
     # A proposal that nobody answers should not sit in the queue forever: it
-    # would block the weekly slot on its own, since the budget counts creation.
+    # would block the foyer's slot on its own, since the budget counts creation.
     expires_at = datetime.now(timezone.utc) + timedelta(days=MIN_DAYS_BETWEEN_PROPOSALS)
 
     for user_id in user_ids:
