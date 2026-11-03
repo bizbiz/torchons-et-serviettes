@@ -41,10 +41,29 @@ object WifiHelper {
         }
     }
 
-    /** Verifie si le WiFi actuel est un des SSIDs maison. */
-    fun isAtHome(context: Context, homeSSIDs: Set<String>): Boolean {
-        if (homeSSIDs.isEmpty()) return true // Pas configure = toujours a la maison
-        val current = getCurrentSsid(context) ?: return false
-        return homeSSIDs.any { it.equals(current, ignoreCase = true) }
+    /**
+     * False only when the phone is known to be away from home: off WiFi, or on a WiFi whose
+     * name is readable and not in the list.
+     *
+     * A WiFi whose name cannot be read counts as home. Android hides the SSID without location
+     * access, and the app only has it in the foreground: the widget, drawn in the background,
+     * always read null, and hid the "on site" tasks at home (Pixel 11, 2026-11-03, appops
+     * FINE_LOCATION rejected). Being on WiFi at all needs no location.
+     */
+    fun isAtHome(context: Context, homeSSIDs: Set<String>): Boolean =
+        isAtHome(homeSSIDs, isOnWifi(context), getCurrentSsid(context))
+
+    /** The decision of [isAtHome], without Android: unit-tested in WifiHelperTest. */
+    fun isAtHome(homeSSIDs: Set<String>, onWifi: Boolean, ssid: String?): Boolean = when {
+        homeSSIDs.isEmpty() -> true // Not configured: always at home
+        !onWifi -> false
+        ssid == null -> true
+        else -> homeSSIDs.any { it.equals(ssid, ignoreCase = true) }
+    }
+
+    private fun isOnWifi(context: Context): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) } ?: return false
+        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
     }
 }

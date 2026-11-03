@@ -6,6 +6,9 @@
 - Un membre qui revient dans le foyer retrouve aussi les tâches qu'il partageait au moment
   de son départ, sauf celles supprimées entre-temps.
 
+### Widget
+- Le widget n'efface plus les tâches à faire sur place quand on est à la maison.
+
 ## v0.42.0 — 2026-11-02
 
 ### Quitter le foyer
