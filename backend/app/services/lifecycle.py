@@ -52,7 +52,7 @@ async def soft_leave_foyer(
     uf.left_at = now
     uf.role = "former_member"
     # Their tasks: dropped from the shared ones, the solo ones suspended (task_departure.py).
-    await detach_member_from_tasks(session, user_id, foyer_id)
+    await detach_member_from_tasks(session, user_id, foyer_id, left_at=now)
 
     if not was_admin:
         return True

@@ -1,5 +1,11 @@
 # Notes de version
 
+## v0.42.1 — 2026-11-03
+
+### Quitter le foyer
+- Un membre qui revient dans le foyer retrouve aussi les tâches qu'il partageait au moment
+  de son départ, sauf celles supprimées entre-temps.
+
 ## v0.42.0 — 2026-11-02
 
 ### Quitter le foyer

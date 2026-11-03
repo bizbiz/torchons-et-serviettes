@@ -4,7 +4,8 @@ Rule set by Quentin on 2026-11-02, the same for both ways of leaving: leaving on
 household (POST /foyers/{id}/leave) and deleting one's account (DELETE /me).
 - For RETURN_WINDOW_DAYS, "Retrouver mon foyer" with the recovery code brings the member back
   into the household they left: the account is undeleted, the membership active again, the
-  household unarchived, their suspended solo tasks reactivated (task_departure.py).
+  household unarchived, their suspended solo tasks reactivated and their shared tasks
+  given back (task_departure.py).
 - After that, the nightly cleanup ANONYMIZES the account instead of deleting it. Deleting failed
   as soon as the account had acted (six foreign keys to users with no ON DELETE, measured on
   2026-11-02), and the completions must stay in the household history (Quentin's choice). The
@@ -30,7 +31,9 @@ from app.models.user import User
 from app.models.user_foyer import UserFoyer
 from app.models.user_prompt import UserPrompt
 from app.models.user_settings import UserSettings
-from app.services.task_departure import delete_tasks_only_assigned_to, reactivate_suspended_tasks
+from app.services.task_departure import (
+    delete_tasks_only_assigned_to, reactivate_suspended_tasks, restore_shared_assignments,
+)
 
 RETURN_WINDOW_DAYS = 30
 # Stored as is, so that APKs that do not know the `anonymized` flag still show something sane.
@@ -89,7 +92,8 @@ async def bring_back(session: AsyncSession, user: User) -> uuid.UUID | None:
     ))).scalar_one_or_none()
     if membership is None:
         return None
-    if membership.left_at is not None:
+    left_at = membership.left_at
+    if left_at is not None:
         membership.left_at = None
         if membership.role == "former_member":
             # Alone in the household again: they must be able to manage it.
@@ -102,6 +106,7 @@ async def bring_back(session: AsyncSession, user: User) -> uuid.UUID | None:
         if foyer is not None:
             foyer.archived_at = None
         await reactivate_suspended_tasks(session, user.id, foyer_id)
+        await restore_shared_assignments(session, user.id, foyer_id, left_at)
     user.last_active_foyer_id = foyer_id
     return foyer_id
 

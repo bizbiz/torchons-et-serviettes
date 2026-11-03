@@ -8,6 +8,9 @@ Rule set by Quentin on 2026-11-02:
 - A SOLO task (they were its only assignee) stays theirs, deactivated (`is_active = false`) and
   marked `suspended_at`. It stays invisible to the others, as any solo task
   (utils/scoping.py). If they come back, it comes back with them.
+- When they come back (rule set on 2026-11-03), they are put back on the shared tasks they
+  were removed from at THAT departure, if the task still exists. The departure marker in
+  change_log carries the departure time, which is how a return finds them without a table.
 - When the account is hard-deleted (`services/cleanup.py`, 30 days after `DELETE /me`), the
   tasks whose only assignees are purged accounts are deleted with it. Without this, the
   assignment rows vanish by CASCADE and the task, with no assignee left, becomes visible to
@@ -21,9 +24,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import DateTime, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.sync import ChangeLog
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
 from app.utils.changelog import record_change
@@ -40,21 +44,27 @@ MEMBER_LEFT_REASON = "member_left"
 
 
 async def _log(
-    session: AsyncSession, task: Task, user_id: uuid.UUID, new_data: dict, reason: str | None = None,
+    session: AsyncSession, task: Task, user_id: uuid.UUID, new_data: dict, marker: dict | None = None,
 ) -> None:
     task.version += 1
-    # The reason goes to old_data: /sync applies new_data only (api/sync.py), so the marker
-    # reaches the task history (api/tasks.py::get_task_history) and never a phone's task row.
+    # The marker goes to old_data: /sync applies new_data only (api/sync.py), so it reaches the
+    # task history (api/tasks.py::get_task_history) and never a phone's task row.
     await record_change(
         session, "tasks", task.id, "UPDATE", str(user_id),
-        foyer_id=task.foyer_id, old_data={"reason": reason} if reason else None, new_data=new_data,
+        foyer_id=task.foyer_id, old_data=marker, new_data=new_data,
     )
 
 
 async def detach_member_from_tasks(
-    session: AsyncSession, user_id: uuid.UUID, foyer_id: uuid.UUID,
+    session: AsyncSession, user_id: uuid.UUID, foyer_id: uuid.UUID, left_at: datetime | None = None,
 ) -> None:
-    """Called when `user_id` leaves `foyer_id` (services/lifecycle.py::soft_leave_foyer)."""
+    """Called when `user_id` leaves `foyer_id` (services/lifecycle.py::soft_leave_foyer).
+
+    `left_at` must be the value written to `user_foyers.left_at`: a return matches the
+    departure markers on it (restore_shared_assignments).
+    """
+    now = left_at or datetime.now(timezone.utc)
+    marker = {"reason": MEMBER_LEFT_REASON, "left_at": now.isoformat()}
     tasks = (await session.execute(
         select(Task)
         .join(TaskAssignment, TaskAssignment.task_id == Task.id)
@@ -64,7 +74,6 @@ async def detach_member_from_tasks(
             TaskAssignment.user_id == user_id,
         )
     )).scalars().all()
-    now = datetime.now(timezone.utc)
     for task in tasks:
         others = [u for u in await _assignees(session, task.id) if u != user_id]
         if others:
@@ -72,14 +81,43 @@ async def detach_member_from_tasks(
                 TaskAssignment.task_id == task.id, TaskAssignment.user_id == user_id,
             ))
             await _log(
-                session, task, user_id, {"assigned_to_ids": [str(u) for u in others]},
-                reason=MEMBER_LEFT_REASON,
+                session, task, user_id, {"assigned_to_ids": [str(u) for u in others]}, marker,
             )
         elif task.is_active:
             # Already inactive: left as it is, unmarked, so a return does not revive it.
             task.is_active = False
             task.suspended_at = now
-            await _log(session, task, user_id, {"is_active": False}, reason=MEMBER_LEFT_REASON)
+            await _log(session, task, user_id, {"is_active": False}, marker)
+
+
+async def restore_shared_assignments(
+    session: AsyncSession, user_id: uuid.UUID, foyer_id: uuid.UUID, left_at: datetime,
+) -> None:
+    """Called when `user_id` comes back: put them back on the shared tasks they left at `left_at`.
+
+    Only the departure that ends now counts: a task they were removed from by hand after an
+    earlier return stays as it is. A task deleted since, or that they are already on, is skipped.
+    Departures recorded before 2026-11-03 carry no time and are not restored.
+    """
+    task_ids = (await session.execute(
+        select(ChangeLog.row_id).distinct().where(
+            ChangeLog.table_name == "tasks",
+            ChangeLog.foyer_id == foyer_id,
+            ChangeLog.changed_by == user_id,
+            ChangeLog.old_data["reason"].astext == MEMBER_LEFT_REASON,
+            ChangeLog.old_data["left_at"].astext.cast(DateTime(timezone=True)) == left_at,
+            ChangeLog.new_data.has_key("assigned_to_ids"),
+        )
+    )).scalars().all()
+    for task_id in task_ids:
+        task = await session.get(Task, task_id)
+        if task is None or task.deleted_at is not None or task.foyer_id != foyer_id:
+            continue
+        assignees = await _assignees(session, task.id)
+        if user_id in assignees:
+            continue
+        session.add(TaskAssignment(task_id=task.id, user_id=user_id))
+        await _log(session, task, user_id, {"assigned_to_ids": [str(u) for u in assignees + [user_id]]})
 
 
 async def reactivate_suspended_tasks(

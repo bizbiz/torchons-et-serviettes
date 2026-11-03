@@ -125,7 +125,9 @@ et tous les autres appareils sont coupés dans le même geste.
 - **Au départ** : le membre est retiré des tâches partagées. Ses tâches solo sont désactivées,
   mais restent à son nom.
 - **Pendant 30 jours** : « Retrouver mon foyer » avec son code le ramène dans le foyer quitté,
-  avec ses tâches. Les autres voient son nom barré.
+  avec ses tâches. Les autres voient son nom barré. Au retour, ses tâches solo se réactivent et
+  il est remis sur les tâches partagées qu'il avait au départ (décidé le 2026-11-03), sauf
+  celles supprimées depuis. Seul compte le dernier départ.
 - **Ensuite** : le nettoyage de nuit anonymise le compte, sans le supprimer. Son nom devient
   « Ancien membre » et son code est effacé, donc il n'y a plus de retour possible. Ses données
   personnelles et ses tâches solo sont supprimées. Ses validations restent dans l'historique du

@@ -5,7 +5,8 @@ Rule set by Quentin on 2026-11-02 (app/services/task_departure.py). B leaves a h
 - SOLO is assigned to B alone, active: it is deactivated and marked `suspended_at`;
 - PAUSED is assigned to B alone, deactivated by hand earlier: it is left as it was, unmarked.
 Then:
-- B comes back: SOLO is active again, PAUSED stays inactive;
+- B comes back: SOLO is active again, PAUSED stays inactive, B is on SHARED again (rule
+  set on 2026-11-03, only for the tasks of the departure that ends);
 - B's account is purged (30 days after DELETE /me): SOLO and PAUSED are deleted, SHARED stays.
 
 Before 2026-11-02 B stayed on SHARED, and an edit of SHARED sent from the app (which sends the
@@ -16,18 +17,13 @@ PATHS by which a member stops, or starts again, being an active member (writers 
 `user_foyers.left_at`, grepped on 2026-11-02):
   (1) POST /foyers/{id}/leave, through soft_leave_foyer ........................... COVERED
   (2) DELETE /me, through soft_leave_foyer for each household ..................... COVERED
-  (3) the restore of recovery.py, which clears left_at: its call to
-      reactivate_suspended_tasks is COVERED at service level; the route itself is not
-      (it only rejoins the user's last active household, which /leave clears when they had
-      no other: unreachable in that common case, said in the report of 2026-11-02).
-  (4) the purge of cleanup.py (users deleted for more than 30 days): its task step,
-      delete_tasks_only_assigned_to, is COVERED.
-non couvert : purge_deleted_users de bout en bout, parce qu'elle échoue avant ce test (mesuré le
-2026-11-02) : six clés étrangères vers users sans ON DELETE refusent la suppression d'un compte
-qui a agi (todo.md, « La purge des comptes supprimés échoue dès qu'un compte a agi »).
+  (3) the restore of recovery.py, through member_departure.bring_back, which clears left_at:
+      COVERED at service level (solo tasks reactivated, shared tasks given back).
+  (4) the nightly anonymization (member_departure.anonymize_departed_users, which replaced
+      the purge on 2026-11-02): its task step, delete_tasks_only_assigned_to, is COVERED.
 Not a path: a QR join always creates a NEW account, it never revives a former member.
-non couvert : la route POST /recovery/restore elle-même, parce qu'elle ne réintègre que le
-dernier foyer actif, que /leave efface quand il n'y en a pas d'autre (cas courant inatteignable).
+non couvert : la route POST /recovery/restore elle-même ; ce fichier appelle bring_back
+directement.
 """
 
 from __future__ import annotations
@@ -187,4 +183,42 @@ async def test_the_purge_deletes_the_solo_tasks_only(client, house):
 
     assert await _state(house["solo"]) is None
     assert await _state(house["paused"]) is None
+    assert (await _state(house["shared"]))[2] == [str(house["a"])]
+
+
+async def _bring_b_back(ids):
+    from app.database import async_session
+    from app.models.user import User
+    from app.services.member_departure import bring_back
+
+    async with async_session() as session:
+        user = await session.get(User, ids["b"])
+        assert await bring_back(session, user) == ids["foyer"]
+        await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_a_return_gives_back_the_shared_tasks(client, house):
+    """Rule set on 2026-11-03. Red before restore_shared_assignments: SHARED stays [A]."""
+    await _leave(client, house)
+    await _bring_b_back(house)
+
+    active, _, assignees = await _state(house["shared"])
+    assert assignees == sorted([str(house["a"]), str(house["b"])])
+    assert active is True
+    assert (await _state(house["solo"]))[0] is True
+
+
+@pytest.mark.asyncio
+async def test_only_the_last_departure_is_given_back(client, house):
+    """B leaves, comes back, A takes B off SHARED by hand, B leaves and comes back again:
+    SHARED stays A's. Red if the restore read every departure marker, not the last one."""
+    await _leave(client, house)
+    await _bring_b_back(house)
+    r = await client.put(f"/api/tasks/{house['shared']}", headers=_headers(house["a"], house["foyer"]),
+                         json={"assigned_to_ids": [str(house["a"])]})
+    assert r.status_code == 200, r.text
+
+    await _leave(client, house)
+    await _bring_b_back(house)
     assert (await _state(house["shared"]))[2] == [str(house["a"])]
