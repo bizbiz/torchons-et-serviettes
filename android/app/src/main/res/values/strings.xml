@@ -1466,6 +1466,7 @@
     <string name="contexts_dialog_edit_title">Modifier le contexte</string>
     <string name="contexts_dialog_delete_message">Les tâches de ce contexte le perdront, mais ne seront pas supprimées.</string>
     <string name="contexts_name_taken">Ce nom est déjà pris par un autre contexte.</string>
+    <string name="contexts_unreachable">Pas de connexion au serveur&#160;: les contextes se gèrent en ligne. Réessaie une fois connecté.</string>
     <string name="context_requires_presence_label">Il faut être sur place</string>
     <string name="context_requires_presence_help">Ces tâches se cachent quand tu n\'es pas à la maison.</string>
     <string name="context_accrues_when_away_label">Ça continue sans nous</string>

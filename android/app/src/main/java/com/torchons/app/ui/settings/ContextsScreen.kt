@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,8 +53,7 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.ContextCreateRequest
 import com.torchons.app.data.model.ContextUpdateRequest
 import com.torchons.app.data.model.ContextView
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /**
@@ -75,7 +75,7 @@ fun ContextsScreen(
     apiService: ApiService,
     onBack: () -> Unit,
 ) {
-    val scope = remember { CoroutineScope(Dispatchers.Main) }
+    val scope = rememberCoroutineScope()
     var contexts by remember { mutableStateOf<List<ContextView>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var editing by remember { mutableStateOf<ContextView?>(null) }
@@ -84,10 +84,20 @@ fun ContextsScreen(
     // Un booleen et non un message : la chaine visible doit venir de
     // strings.xml, pas d'un marqueur trimballe dans l'etat.
     var nomPris by remember { mutableStateOf(false) }
+    var unreachable by remember { mutableStateOf(false) }
 
+    // Every call of this screen is guarded: offline, an uncaught ConnectException in a
+    // Compose coroutine killed the app (emulator, 2026-11-03, retraced stack in todo.md).
     suspend fun reload() {
-        val resp = apiService.getContexts()
-        if (resp.isSuccessful) contexts = resp.body().orEmpty()
+        try {
+            val resp = apiService.getContexts()
+            if (resp.isSuccessful) contexts = resp.body().orEmpty()
+            unreachable = false
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            unreachable = true
+        }
         loading = false
     }
 
@@ -135,7 +145,13 @@ fun ContextsScreen(
             }
             Spacer(Modifier.height(12.dp))
 
-            if (!loading && contexts.isEmpty()) {
+            if (unreachable) {
+                Text(
+                    text = stringResource(R.string.contexts_unreachable),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else if (!loading && contexts.isEmpty()) {
                 Text(
                     text = stringResource(R.string.contexts_empty),
                     style = MaterialTheme.typography.bodyMedium,
@@ -163,7 +179,7 @@ fun ContextsScreen(
             onConfirm = { nom, emoji, presence, accrues ->
                 scope.launch {
                     nomPris = false
-                    val resp = if (cible == null) {
+                    val resp = runCatchingNetwork { if (cible == null) {
                         apiService.createContext(
                             ContextCreateRequest(
                                 name = nom, emoji = emoji,
@@ -178,10 +194,13 @@ fun ContextsScreen(
                                 requiresPresence = presence, accruesWhenAway = accrues,
                             )
                         )
-                    }
+                    } }
                     // 409 = nom deja pris. Le dire plutot que d'echouer en
                     // silence : c'est la seule erreur que l'user peut corriger.
-                    if (resp.code() == 409) {
+                    if (resp == null) {
+                        unreachable = true
+                        creating = false; editing = null
+                    } else if (resp.code() == 409) {
                         nomPris = true
                         creating = false; editing = null
                     } else {
@@ -201,7 +220,7 @@ fun ContextsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
-                        apiService.deleteContext(ctx.id)
+                        if (runCatchingNetwork { apiService.deleteContext(ctx.id) } == null) unreachable = true
                         pendingDelete = null
                         reload()
                     }
@@ -343,4 +362,13 @@ private fun DrapeauLigne(
         Spacer(Modifier.width(8.dp))
         Switch(checked = valeur, onCheckedChange = onChange)
     }
+}
+
+/** The result of a network call, or null when the server cannot be reached (offline). */
+private suspend fun <T> runCatchingNetwork(call: suspend () -> T): T? = try {
+    call()
+} catch (e: CancellationException) {
+    throw e
+} catch (_: Exception) {
+    null
 }

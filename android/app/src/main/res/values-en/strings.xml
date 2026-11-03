@@ -1455,6 +1455,7 @@
     <string name="contexts_dialog_edit_title">Edit context</string>
     <string name="contexts_dialog_delete_message">Chores in this context will lose it, but will not be deleted.</string>
     <string name="contexts_name_taken">That name is already taken by another context.</string>
+    <string name="contexts_unreachable">No connection to the server: contexts are managed online. Try again once connected.</string>
     <string name="context_requires_presence_label">You must be there</string>
     <string name="context_requires_presence_help">These chores hide when you are away from home.</string>
     <string name="context_accrues_when_away_label">It keeps going without us</string>
