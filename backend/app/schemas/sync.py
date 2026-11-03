@@ -14,8 +14,13 @@ class SyncOperation(BaseModel):
     client_op_id: UUID
     #: `categories` a disparu avec la bascule contextes : les contextes se
     #: gerent via leur CRUD REST, pas via la file offline.
-    table: Literal["tasks", "task_completions", "user_settings"]
-    operation: Literal["INSERT", "UPDATE", "DELETE"]
+    #: Known values: tasks, task_completions, user_settings; INSERT, UPDATE, DELETE.
+    #: Plain strings on purpose (2026-11-03): with Literals, ONE op of an app newer than
+    #: the server refused the whole batch with a 422, valid ops included, and the queue
+    #: stayed blocked. An unknown value now fails that op alone, as a replayable
+    #: `op_error` (api/sync.py, SYNC_UNKNOWN_TABLE / SYNC_UNKNOWN_OPERATION).
+    table: str = Field(max_length=50)
+    operation: str = Field(max_length=10)
     row_id: UUID
     data: dict | None = None
     client_timestamp: datetime
