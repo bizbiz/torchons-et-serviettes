@@ -52,6 +52,14 @@ class UserSettings(Base):
     hide_home_tasks_off_wifi: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true", nullable=False
     )
+    # Cadence of the automatic rating pop-up (app/services/rating_cadence.py).
+    # NULL next_at = never scheduled, due now. Written only by POST /api/rating-prompt/outcome.
+    rating_prompt_gap_days: Mapped[int] = mapped_column(
+        Integer, default=1, server_default="1", nullable=False
+    )
+    rating_prompt_next_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # NOTE : home_ssids a ete deplace sur user_foyers (per-foyer) dans la
     # migration h6c7d8e9f0a1 v0.7.2+. Un user dans 2 foyers a 2 lieux physiques
     # differents donc 2 listes de WiFi distinctes.

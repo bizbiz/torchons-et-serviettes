@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -12,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.database import get_session
 from app.models.user_foyer import UserFoyer
+from app.services.rating_cadence import is_due
 from app.utils.changelog import record_change
 from app.utils.scoping import current_foyer_uuid
 from app.utils.user_settings import get_or_create_user_settings
@@ -38,6 +40,9 @@ class SettingsResponse(BaseModel):
     gamification_enabled: bool
     # Masquer les taches maison de la liste hors WiFi maison (user-level).
     hide_home_tasks_off_wifi: bool
+    # Read-only: may the automatic rating pop-up show now? Moved by
+    # POST /api/rating-prompt/outcome, never by the PUT below.
+    rating_prompt_due: bool
 
 
 class SettingsUpdate(BaseModel):
@@ -118,6 +123,7 @@ async def get_settings(
         foyer_member_count=member_count,
         gamification_enabled=settings.gamification_enabled,
         hide_home_tasks_off_wifi=settings.hide_home_tasks_off_wifi,
+        rating_prompt_due=is_due(settings, datetime.now(timezone.utc)),
     )
 
 
@@ -172,4 +178,5 @@ async def update_settings(
         foyer_member_count=member_count,
         gamification_enabled=settings.gamification_enabled,
         hide_home_tasks_off_wifi=settings.hide_home_tasks_off_wifi,
+        rating_prompt_due=is_due(settings, datetime.now(timezone.utc)),
     )

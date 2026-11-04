@@ -303,6 +303,15 @@ ERROR_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "Seul le proposer peut annuler",
         "en": "Only the proposer can cancel",
     },
+    # Fair-share (target share of each member)
+    "FAIR_SHARE_MEMBERS_MISMATCH": {
+        "fr": "Il faut une part pour chaque membre du foyer, une seule fois chacun",
+        "en": "A share is required for every household member, once each",
+    },
+    "FAIR_SHARE_TOTAL_INVALID": {
+        "fr": "Le total des parts doit valoir 100 % (actuellement {total} %)",
+        "en": "The shares must add up to 100% (currently {total}%)",
+    },
     # Sync
     "SYNC_UNKNOWN_TABLE_FORMAT": {
         "fr": "Table inconnue: {table}",

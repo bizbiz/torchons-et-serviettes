@@ -8,7 +8,7 @@ from app.models.task_affinity import TaskAffinity
 from app.models.task_effort import TaskEffort
 from app.models.task_frequency_vote import TaskFrequencyVote
 from app.models.completion import TaskCompletion
-from app.models.fair_share import FairShareConfig
+from app.models.fair_share import FairShareConfig, FairShareHistory
 from app.models.streak import Streak
 from app.models.sync import ChangeLog
 from app.models.device import Device
@@ -30,7 +30,7 @@ from app.models.context import Context, TaskContext
 __all__ = [
     "Base", "User", "Foyer", "UserFoyer", "Task",
     "TaskAssignment", "TaskAffinity", "TaskEffort", "TaskFrequencyVote",
-    "TaskCompletion", "FairShareConfig", "Streak",
+    "TaskCompletion", "FairShareConfig", "FairShareHistory", "Streak",
     "ChangeLog", "Device",
     "NotificationToken", "Badge", "UserSettings",
     "ObjectiveProposition", "ObjectivePropositionResponse",

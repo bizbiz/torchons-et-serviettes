@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MeetingRoom
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -71,14 +70,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
 import com.torchons.app.ui.common.InfoTooltip
-import com.torchons.app.ui.common.PresenceCalendarGrid
 import com.torchons.app.ui.common.Modules
 import com.torchons.app.ui.common.moduleEnabled
 import com.torchons.app.ui.home.ProjectionSimulationDialog
 import com.torchons.app.ui.stats.StreakCalendarModal
 import com.torchons.app.ui.stats.StreakMember
 import com.torchons.app.util.WifiHelper
-import java.time.YearMonth
 
 /**
  * Ecran "Foyer" (P1 refonte — design-foyer-settings-presence.md decision 9).
@@ -767,6 +764,8 @@ fun FoyerSettingsScreen(
                 )
             }
 
+            if (moduleEnabled(Modules.REPARTITION)) FairShareTargetSection() // (15) part visee
+
             Spacer(Modifier.height(32.dp))
         }
     }
@@ -947,12 +946,13 @@ fun FoyerSettingsScreen(
                 viewModel.saveObjective(minutes, unit)
                 showSimulationDialog = false
             },
-            // TODO P1 : le flow live "Proposer au foyer" (FCM, ecran d'attente
-            // bloquant + modal accept/decline cote receveur) est pilote par
-            // HomeViewModel/PropositionStateHolder. Le rebrancher hors du
-            // HomeScreen depasse le scope P1 (refonte IA pure, zero backend) ;
-            // ici on supporte uniquement "Juste pour moi". Bouton inerte.
-            onProposeToFoyer = { _, _ -> showSimulationDialog = false },
+            // Same live flow as the home screen; back to the shell, which follows
+            // the proposition to the home tab (waiting and answer dialogs live there).
+            onProposeToFoyer = { values, unit ->
+                viewModel.proposeToFoyer(values, unit)
+                showSimulationDialog = false
+                onBack()
+            },
         )
     }
 

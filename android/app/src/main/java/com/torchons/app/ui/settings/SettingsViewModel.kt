@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.BonusConfig
-import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.Foyer
 import com.torchons.app.data.model.FoyerCreateRequest
 import com.torchons.app.data.model.MaintenanceRateResponse
@@ -15,13 +14,11 @@ import com.torchons.app.data.model.ModuleToggleRequest
 import com.torchons.app.data.model.ModuleView
 import com.torchons.app.data.model.ObjectiveUpdate
 import com.torchons.app.data.model.PaceResponse
-import com.torchons.app.data.model.PresenceCellState
-import com.torchons.app.data.model.PresenceDayPut
-import com.torchons.app.data.model.PresenceSource
 import com.torchons.app.data.model.RetardResponse
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.core.proposition.PropositionStateHolder
 import com.torchons.app.worker.DailyNotificationWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -65,8 +62,13 @@ class SettingsViewModel @Inject constructor(
     private val tokenManager: TokenManager,
     private val apiService: ApiService,
     private val taskRepository: TaskRepository,
+    private val propositionStateHolder: PropositionStateHolder,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
+
+    /** "Propose to household" from the Foyer screen: same live flow as the home screen. */
+    fun proposeToFoyer(sliderValues: Map<String, Int>, unit: String) =
+        propositionStateHolder.propose(sliderValues, unit)
 
     val displayName: StateFlow<String?> = authRepository.displayNameFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -82,14 +84,8 @@ class SettingsViewModel @Inject constructor(
     private val _settings = MutableStateFlow(UserSettingsState())
     val settings: StateFlow<UserSettingsState> = _settings.asStateFlow()
 
-    private val _fairShare = MutableStateFlow<List<FairShareStatus>>(emptyList())
-    val fairShare: StateFlow<List<FairShareStatus>> = _fairShare.asStateFlow()
-
     private val _users = MutableStateFlow<List<User>>(emptyList())
     val users: StateFlow<List<User>> = _users.asStateFlow()
-
-    private val _fairShareRatio = MutableStateFlow(60)
-    val fairShareRatio: StateFlow<Int> = _fairShareRatio.asStateFlow()
 
     private val _bonusConfig = MutableStateFlow<BonusConfig?>(null)
     val bonusConfig: StateFlow<BonusConfig?> = _bonusConfig.asStateFlow()
@@ -98,6 +94,11 @@ class SettingsViewModel @Inject constructor(
     // n'est pas arrivee (l'ecran montre alors le chargement).
     private val _modules = MutableStateFlow<List<ModuleView>>(emptyList())
     val modules: StateFlow<List<ModuleView>> = _modules.asStateFlow()
+
+    // True while loadAll() runs. Drives the modules spinner: it must stop once
+    // an attempt has failed (offline), so the "unavailable" message can show.
+    private val _loadingAll = MutableStateFlow(true)
+    val loadingAll: StateFlow<Boolean> = _loadingAll.asStateFlow()
 
     // Message d'erreur transitoire d'une bascule refusee (409 dependance).
     private val _moduleError = MutableStateFlow<String?>(null)
@@ -144,8 +145,19 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Reloads when the screen comes back and the first load left gaps. The
+     * bottom tabs keep this ViewModel alive (saveState), so a screen first
+     * opened offline would otherwise never retry once the network is back.
+     */
+    fun refreshIfIncomplete() {
+        if (_loadingAll.value) return
+        if (!_settings.value.isLoaded || _modules.value.isEmpty()) loadAll()
+    }
+
     private fun loadAll() {
         viewModelScope.launch {
+            _loadingAll.value = true
             try {
                 // Settings from backend
                 val resp = apiService.getSettings()
@@ -183,18 +195,6 @@ class SettingsViewModel @Inject constructor(
                     // User connecte en premier pour le slider fair-share
                     _users.value = (usersResp.body() ?: emptyList()).sortedBy { if (it.id == meId) 0 else 1 }
                 }
-                val fsResp = apiService.getFairShareStatus()
-                if (fsResp.isSuccessful) {
-                    val data = fsResp.body() ?: emptyList()
-                    _fairShare.value = data
-                    // Le slider montre le ratio du user connecte (users[0] alphabetique)
-                    // On trie toujours pareil pour coherence
-                    val firstUser = _users.value.firstOrNull()
-                    if (firstUser != null) {
-                        val fs = data.find { it.userId == firstUser.id }
-                        _fairShareRatio.value = ((fs?.targetRatio ?: 0.5) * 100).toInt()
-                    }
-                }
             } catch (_: Exception) {}
 
             // Config bonus/malus du foyer
@@ -230,6 +230,9 @@ class SettingsViewModel @Inject constructor(
                     }
                 }
             } catch (_: Exception) {}
+            // Every step above catches its own failures, so this is reached
+            // on success and offline alike.
+            _loadingAll.value = false
         }
     }
 
@@ -581,73 +584,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    // --- Calendrier de presence (P2 — design decision 4) ---
-    // Editeur ONLINE : serveur autoritaire (cf docs/cache-conventions.md).
-    // On charge la plage du mois visible via GET /presence, on edite via
-    // PUT /presence puis on recharge la plage (GET-after-PUT) pour refleter
-    // la verite serveur. Pas de cache Room (rien d'offline-first ici).
-
-    /** date ISO "YYYY-MM-DD" -> (etat de case, source). Jours absents de la
-     *  map = non renseignes (la grille les rend gris). */
-    private val _presenceDays =
-        MutableStateFlow<Map<String, Pair<PresenceCellState, PresenceSource>>>(emptyMap())
-    val presenceDays: StateFlow<Map<String, Pair<PresenceCellState, PresenceSource>>> =
-        _presenceDays.asStateFlow()
-
-    /** Charge les jours de presence du foyer dans [from, to] (ISO). */
-    fun loadPresence(from: String, to: String) {
-        viewModelScope.launch {
-            try {
-                val resp = apiService.getPresence(from, to)
-                if (resp.isSuccessful) {
-                    val rows = resp.body() ?: emptyList()
-                    _presenceDays.value = rows.associate { row ->
-                        val state = when (row.status) {
-                            "confirmed_present" -> PresenceCellState.PRESENT
-                            "confirmed_absent" -> PresenceCellState.ABSENT
-                            else -> PresenceCellState.UNKNOWN
-                        }
-                        val source = when (row.source) {
-                            "auto_wifi" -> PresenceSource.AUTO_WIFI
-                            "manual" -> PresenceSource.MANUAL
-                            else -> PresenceSource.MANUAL // foyer_init -> traite comme pose
-                        }
-                        row.date to (state to source)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("SettingsVM", "loadPresence failed", e)
-            }
-        }
-    }
-
-    /**
-     * Pose / efface un jour de presence puis recharge la plage visible
-     * (GET-after-PUT — online = serveur autoritaire). `status` : "present",
-     * "absent" ou "clear". `rangeFrom`/`rangeTo` = plage a recharger apres
-     * (le mois visible).
-     */
-    fun setPresence(date: String, status: String, rangeFrom: String, rangeTo: String) {
-        viewModelScope.launch {
-            try {
-                val resp = apiService.putPresence(
-                    listOf(PresenceDayPut(date = date, status = status)),
-                )
-                if (resp.isSuccessful) {
-                    loadPresence(rangeFrom, rangeTo)
-                    // P2 sweep : un changement de presence modifie le
-                    // home-freeze (urgence/retard des taches maison) ET la
-                    // serie/record. cache-conventions regle 1 : etat derive
-                    // recalcule a CHAQUE mutation -> on re-pull l'autoritatif.
-                    taskRepository.refreshTasks()
-                    taskRepository.refreshCompletions(limit = 2000)
-                }
-            } catch (e: Exception) {
-                Log.e("SettingsVM", "setPresence failed", e)
-            }
-        }
-    }
-
     fun setAffinityExpiry(v: Int) { _settings.value = _settings.value.copy(affinityExpiry = v); updateSetting("affinity_expiry_months", v) }
     fun setFairShareTolerance(v: Int) { _settings.value = _settings.value.copy(fairShareTolerance = v); updateSetting("fair_share_tolerance_percent", v) }
 
@@ -660,21 +596,6 @@ class SettingsViewModel @Inject constructor(
         val updated = _settings.value.homeSsids.filter { it != ssid }
         _settings.value = _settings.value.copy(homeSsids = updated)
         updateSetting("home_ssids", updated)
-    }
-
-    fun updateFairShareRatio(ratio: Int) { _fairShareRatio.value = ratio }
-    fun saveFairShare() {
-        viewModelScope.launch {
-            val users = _users.value
-            if (users.size < 2) return@launch
-            val ratio = _fairShareRatio.value / 100.0
-            try {
-                apiService.updateFairShareConfig(listOf(
-                    mapOf("user_id" to users[0].id, "target_ratio" to ratio),
-                    mapOf("user_id" to users[1].id, "target_ratio" to (1.0 - ratio))
-                ))
-            } catch (_: Exception) {}
-        }
     }
 
     /**

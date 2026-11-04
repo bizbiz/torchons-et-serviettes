@@ -15,7 +15,6 @@ from app.database import get_session
 from app.utils.errors import LocalizedHTTPException
 from app.models.completion import TaskCompletion
 from app.models.enums import TaskTolerance, UrgencyState
-from app.models.fair_share import FairShareConfig
 from app.models.context import TaskContext
 from app.models.task import Task
 from app.models.task_affinity import TaskAffinity
@@ -39,7 +38,7 @@ from app.services.recurrence import (
     orange_window_cap_of,
 )
 from app.utils.changelog import record_change
-from app.utils.scoping import assert_active_members, current_foyer_uuid, visible_tasks
+from app.utils.scoping import current_foyer_uuid, visible_tasks
 
 router = APIRouter(prefix="/api", tags=["gamification"])
 
@@ -139,14 +138,6 @@ class DismissRequest(BaseModel):
     task_id: UUID
     tier: str = Field(pattern="^(urgent|affinity|uncertain)$")
 
-
-
-class FairShareStatus(BaseModel):
-    user_id: UUID
-    display_name: str
-    target_ratio: float
-    actual_ratio: float
-    above_target: bool
 
 
 # --- Affinites ---
@@ -1274,120 +1265,3 @@ async def log_dismiss(
         # delete concurrent de la tache, par exemple).
         await session.rollback()
     return None
-
-
-# --- Fair-share status ---
-
-@router.get("/fair-share/status", response_model=list[FairShareStatus])
-async def fair_share_status(
-    session: AsyncSession = Depends(get_session),
-    current: dict = Depends(get_current_user),
-):
-    """Retourne le statut fair-share : ratio cible vs reel sur les 30 derniers jours.
-    Scope foyer : uniquement les users du foyer actif, sur les completions
-    du foyer actif, avec la config fair_share scopee par foyer.
-    """
-    from app.models.user import User
-    from app.models.user_foyer import UserFoyer
-    from app.models.user_settings import UserSettings
-
-    foyer_uuid = current_foyer_uuid(current)
-    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-
-    # Compte total et points par user sur 30 jours (scope foyer via JOIN tasks).
-    completions_result = await session.execute(
-        select(
-            TaskCompletion.completed_by,
-            func.sum(TaskCompletion.points_earned),
-            func.count(TaskCompletion.id),
-        )
-        .join(Task, Task.id == TaskCompletion.task_id)
-        .where(
-            TaskCompletion.completed_at >= cutoff,
-            TaskCompletion.deleted_at.is_(None),
-            Task.foyer_id == foyer_uuid,
-        ).group_by(TaskCompletion.completed_by)
-    )
-    user_points: dict[UUID, int] = {}
-    user_counts: dict[UUID, int] = {}
-    for row in completions_result.all():
-        user_points[row[0]] = row[1] or 0
-        user_counts[row[0]] = row[2] or 0
-    total_points = sum(user_points.values()) or 1
-    total_completions = sum(user_counts.values())
-
-    # Seuil minimum de complétions cumulees (idem).
-    min_completions = 10
-    has_enough_data = total_completions >= min_completions
-
-    # Configs fair-share scope foyer.
-    fs_result = await session.execute(
-        select(FairShareConfig).where(FairShareConfig.foyer_id == foyer_uuid)
-    )
-    fs_configs = {row.user_id: row.target_ratio for row in fs_result.scalars().all()}
-
-    # Tolerances perso (reste per-user global, pas per-foyer — c'est un
-    # parametre d'affichage personnel indep du foyer).
-    tol_result = await session.execute(
-        select(UserSettings.user_id, UserSettings.fair_share_tolerance_percent)
-    )
-    tolerances = {row[0]: row[1] for row in tol_result.all()}
-
-    # Users du foyer actif uniquement.
-    users_result = await session.execute(
-        select(User)
-        .join(UserFoyer, UserFoyer.user_id == User.id)
-        .where(UserFoyer.foyer_id == foyer_uuid, UserFoyer.left_at.is_(None))
-    )
-    users = users_result.scalars().all()
-
-    statuses = []
-    for user in users:
-        target = fs_configs.get(user.id, 0.5)
-        actual = user_points.get(user.id, 0) / total_points
-        tol = tolerances.get(user.id, 30) / 100.0
-        threshold = target * (1.0 + tol)
-        statuses.append(FairShareStatus(
-            user_id=user.id,
-            display_name=user.display_name,
-            target_ratio=target,
-            actual_ratio=actual,
-            above_target=has_enough_data and actual > threshold,
-        ))
-
-    return statuses
-
-
-class FairShareConfigUpdate(BaseModel):
-    """Ratio cible pour un utilisateur (ex: 0.6 = 60%)."""
-    user_id: UUID
-    target_ratio: float = Field(ge=0.0, le=1.0)
-
-
-@router.put("/fair-share/config")
-async def update_fair_share(
-    body: list[FairShareConfigUpdate],
-    session: AsyncSession = Depends(get_session),
-    current: dict = Depends(get_current_user),
-):
-    """Met a jour les ratios fair-share du foyer actif. Envoyer la config pour tous les users."""
-    foyer_uuid = current_foyer_uuid(current)
-    # A ratio is per (user, household): only the caller's household, and only
-    # its current members. The lookup used to go by user_id alone.
-    await assert_active_members(session, foyer_uuid, [item.user_id for item in body])
-    for item in body:
-        result = await session.execute(
-            select(FairShareConfig).where(
-                FairShareConfig.user_id == item.user_id,
-                FairShareConfig.foyer_id == foyer_uuid,
-            )
-        )
-        config = result.scalar_one_or_none()
-        if config:
-            config.target_ratio = item.target_ratio
-        else:
-            session.add(FairShareConfig(
-                user_id=item.user_id, foyer_id=foyer_uuid, target_ratio=item.target_ratio,
-            ))
-    await session.commit()
-    return {"ok": True}

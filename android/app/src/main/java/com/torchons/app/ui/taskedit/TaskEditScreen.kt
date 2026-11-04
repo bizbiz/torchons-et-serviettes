@@ -406,45 +406,12 @@ fun TaskEditScreen(
                 maxLines = 4
             )
 
-            // Contextes — remplacent les deux listes deroulantes Categorie et
-            // Piece. Une tache en porte PLUSIEURS : « Nettoyer la litiere »
-            // releve du Salon (ou elle est), du Chat (pourquoi elle existe) et
-            // du Menage (ce que c'est). Il fallait choisir, et n'importe quel
-            // choix perdait deux informations sur trois.
-            if (uiState.contexts.isNotEmpty()) {
-                Text(
-                    text = stringResource(R.string.task_contexts_label),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = stringResource(R.string.task_contexts_help),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(4.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    uiState.contexts.forEach { ctx ->
-                        val rang = uiState.contextIds.indexOf(ctx.id)
-                        FilterChip(
-                            selected = rang >= 0,
-                            onClick = { viewModel.toggleContext(ctx.id) },
-                            label = {
-                                // Le rang n'est affiche que sur le principal :
-                                // numeroter tout ferait croire a un classement
-                                // a maintenir, alors que seul le premier compte.
-                                Text(
-                                    if (rang == 0) "★ " + ctx.label else ctx.label
-                                )
-                            },
-                        )
-                    }
-                }
-            }
+            // Contextes : une tache en porte PLUSIEURS (TaskContextsField.kt).
+            TaskContextsField(
+                contexts = uiState.contexts,
+                selectedIds = uiState.contextIds,
+                onToggle = viewModel::toggleContext,
+            )
 
             // Assignes
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {

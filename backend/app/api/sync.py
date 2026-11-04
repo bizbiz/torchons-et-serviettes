@@ -571,6 +571,9 @@ async def _handle_settings(
     if op.operation == "UPDATE":
         row = await get_or_create_user_settings(session, uid)
         for key, val in data.items():
+            # Server-owned: moved only by POST /api/rating-prompt/outcome.
+            if key in ("rating_prompt_gap_days", "rating_prompt_next_at"):
+                continue
             if hasattr(row, key) and key != "user_id":
                 setattr(row, key, val)
         return uid

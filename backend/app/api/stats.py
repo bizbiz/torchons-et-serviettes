@@ -283,18 +283,15 @@ async def get_leaderboard(
     )
     user_names = {u.id: u.display_name for u in users_result.scalars().all()}
 
-    from app.models.fair_share import FairShareConfig
-    fs_result = await session.execute(
-        select(FairShareConfig).where(FairShareConfig.foyer_id == foyer_uuid)
-    )
-    fs_ratios = {r.user_id: r.target_ratio for r in fs_result.scalars().all()}
+    from app.services.fair_share import default_target, load_targets
+    fs_ratios = await load_targets(session, foyer_uuid, set(user_names))
 
     # Construire les entries avec score normalise
     raw_entries = []
     for row in rows:
         uid = row[0]
         pts = int(row[1])
-        ratio = fs_ratios.get(uid, 0.5)
+        ratio = fs_ratios.get(uid, default_target(len(user_names)))
         # Score normalise : points / ratio → si chacun fait sa part, score egal
         norm = pts / ratio if ratio > 0 else pts
         raw_entries.append({

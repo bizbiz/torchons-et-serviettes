@@ -161,7 +161,15 @@ async def resolve_states(
     # de lignes PERSO — et un appareil re-appaire cree un nouvel utilisateur,
     # donc ce cas est courant, pas marginal. Lui appliquer les defauts J0 lui
     # donnerait un ecran different de celui de son conjoint dans le meme foyer.
-    grandfathered = bool(collective)
+    #
+    # The backfill is recognised by its rows being UNSIGNED (updated_by_user_id
+    # NULL): both writers since then (PUT /modules, accepting a module proposal)
+    # sign theirs. Until 2026-11-04 any collective row counted, so a NEW foyer
+    # switching on its first collective module also switched on every member's
+    # personal modules (seen on the beta: Statistics appeared with Auto-adjust).
+    # Measured on prod the same day: all 19 foyers keep unsigned collective rows.
+    # Edge left open: a row whose author is deleted is set NULL (ondelete).
+    grandfathered = any(r.user_id is None and r.updated_by_user_id is None for r in rows)
 
     states: dict[str, bool] = {}
     for module in registry.modules:
@@ -211,7 +219,12 @@ async def is_module_enabled(
     if not module.is_collective:
         has_collective = await session.scalar(
             select(ModuleState.id)
-            .where(ModuleState.foyer_id == foyer_id, ModuleState.user_id.is_(None))
+            .where(
+                ModuleState.foyer_id == foyer_id,
+                ModuleState.user_id.is_(None),
+                # Unsigned = written by the backfill (see resolve_states).
+                ModuleState.updated_by_user_id.is_(None),
+            )
             .limit(1)
         )
         if has_collective is not None:

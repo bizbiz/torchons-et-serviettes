@@ -116,6 +116,7 @@ fun NavGraph(
     navController: NavHostController,
     startDestination: String
 ) {
+    KeepLiveStateFresh()
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -433,6 +434,7 @@ fun MainScreen(
     }
 
     FollowWidgetRequest(innerNavController, currentRoute)
+    FollowLiveProposition(innerNavController, currentRoute)
 
     Scaffold(
         bottomBar = {

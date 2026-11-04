@@ -145,17 +145,17 @@
     <!-- (6) Presence & absence -->
     <string name="foyer_presence_section_title">Presence &amp; absence</string>
     <string name="foyer_presence_section_tooltip_title">Presence &amp; absence</string>
-    <string name="foyer_presence_section_tooltip_description">When no household member has been detected on the home WiFi for more than 24h, tasks in \"at home\" categories stop aging (paused). They resume normally on return.\n\nAutomatic detection relies on the WiFi network(s) declared below. It\'s optional: with no WiFi configured, all tasks stay visible permanently.</string>
+    <string name="foyer_presence_section_tooltip_description">On days the household is away, chores that must be done on site stop aging, then resume on return. The app knows you are there when you open it on your home WiFi; for the other days, it asks you. A day left unanswered counts as an absence.</string>
     <string name="foyer_presence_freeze_title">Pause when everyone is away</string>
-    <string name="foyer_presence_freeze_subtitle">\"At home\" tasks stop aging when no one has been detected for 24h.</string>
+    <string name="foyer_presence_freeze_subtitle">Chores that must be done on site stop aging on days the household is away.</string>
     <string name="foyer_presence_hide_off_wifi_section_title">Hide when off WiFi</string>
     <string name="foyer_presence_hide_off_wifi_tooltip_title">Hide when off WiFi</string>
     <string name="foyer_presence_hide_off_wifi_tooltip_description">Applies to YOU on this household (the other member has their own setting). Without home WiFi configured below, this setting has no effect — everything stays visible.</string>
     <string name="foyer_presence_hide_off_wifi_switch_title">Hide home tasks when off WiFi</string>
-    <string name="foyer_presence_hide_off_wifi_switch_subtitle">\"At home\" tasks are hidden from the list when you\'re not connected to your home WiFi.</string>
+    <string name="foyer_presence_hide_off_wifi_switch_subtitle">Chores that must be done on site hide from your list when you are not on your home WiFi.</string>
     <string name="foyer_presence_wifi_section_title">Home WiFi</string>
     <string name="foyer_presence_wifi_tooltip_title">Home WiFi</string>
-    <string name="foyer_presence_wifi_tooltip_description">Tasks in categories flagged \"at home\" will only be suggested when you\'re connected to one of these WiFi networks.</string>
+    <string name="foyer_presence_wifi_tooltip_description">Opening the app on one of these networks marks the day \"present\" for the whole household, and shows the chores that must be done on site.</string>
     <string name="foyer_presence_wifi_empty">No WiFi configured — all tasks are visible</string>
     <string name="foyer_presence_wifi_remove_cd">Remove</string>
     <string name="foyer_presence_wifi_add_button">Add my current WiFi</string>
@@ -694,7 +694,7 @@
     <!-- PropositionDialogs — Receiver -->
     <string name="proposition_receiver_title_format">%1$s proposes a new goal</string>
     <string name="proposition_receiver_intro">Daily minute goal for each household member:</string>
-    <string name="proposition_receiver_you_suffix"> (you)</string>
+    <string name="proposition_receiver_you_suffix">" (you)"</string>
     <string name="proposition_member_value_format">%1$d min/d</string>
     <string name="proposition_receiver_timeout_hint">You have 3 minutes to answer. If you both accept, these goals will be saved for each of you.</string>
     <string name="proposition_accept">Accept</string>
@@ -705,6 +705,9 @@
     <string name="proposition_waiting_body">You proposed a new goal to the household. The other members need to accept in their app (open right now).</string>
     <string name="proposition_waiting_expire">Expires in 3 min otherwise</string>
     <string name="proposition_waiting_cancel">Cancel proposal</string>
+    <string name="proposition_declined">Proposal declined</string>
+    <string name="proposition_expired">Proposal expired</string>
+    <string name="proposition_cancelled">Proposal cancelled</string>
 
     <!-- PropositionDialogs — Celebration -->
     <string name="proposition_celebration_title">Goals confirmed!</string>
@@ -747,7 +750,7 @@
     <string name="task_list_foyer_settings_cd">Household settings</string>
     <string name="task_list_off_home_banner_format">Away from home — %1$d task(s) hidden</string>
     <string name="task_list_off_home_tooltip_title">Why are some tasks hidden?</string>
-    <string name="task_list_off_home_tooltip_description">Tasks in \"at home\" categories are hidden because the app doesn\'t detect you on your home WiFi: either you\'re away, or no home WiFi is configured / the location permission required to read the WiFi name is missing.\n\nYou can still show them with \"Show all\", configure your home WiFi in household settings, or disable this behaviour there.</string>
+    <string name="task_list_off_home_tooltip_description">Chores that must be done on site are hidden because the app doesn\'t detect you on your home WiFi: either you\'re away, or no home WiFi is configured / the location permission required to read the WiFi name is missing.\n\nYou can still show them with \"Show all\", configure your home WiFi in household settings, or disable this behaviour there.</string>
     <string name="task_list_show_all">Show all</string>
     <string name="task_list_hide_home">Hide</string>
 
@@ -1220,8 +1223,8 @@
 
     <!-- EffortInfoDialog (v0.29) -->
     <string name="effort_info_title">Effort: how does it work?</string>
-    <string name="effort_info_message_gamif">Effort is the average time a task takes, voted on by each member of the household. It\'s used to compute the points earned when the task is validated — these feed the fair-share split between you and the household\'s overall backlog. The more votes, the more accurate. You can adjust your vote or ask another member to re-vote.</string>
-    <string name="effort_info_message_no_gamif">Effort is the average time a task takes, voted on by each member of the household. It helps better estimate the required time and prioritise between short and long tasks. The more votes, the more accurate. You can adjust your vote or ask another member to re-vote.</string>
+    <string name="effort_info_message_gamif">Effort is the average time a task takes, voted on by each member of the household. It\'s used to compute the points earned when the task is validated — these feed the fair-share split between you and the household\'s overall backlog. The more votes, the more accurate. You can adjust your vote.</string>
+    <string name="effort_info_message_no_gamif">Effort is the average time a task takes, voted on by each member of the household. It helps better estimate the required time and prioritise between short and long tasks. The more votes, the more accurate. You can adjust your vote.</string>
 
     <!-- Common vote dialogs (Effort + Frequency Info) -->
     <string name="vote_info_me_label">You</string>
@@ -1234,7 +1237,8 @@
 
     <!-- FrequencyInfoDialog (v0.28) -->
     <string name="frequency_info_title">Frequency: how does it work?</string>
-    <string name="frequency_info_message">The displayed frequency is the average of votes from each household member. The more votes, the more representative. You can adjust your vote or ask another member to re-vote.</string>
+    <string name="vote_info_ask_revote_hint">You can also ask another member to re-vote.</string>
+    <string name="frequency_info_message">The displayed frequency is the average of votes from each household member. The more votes, the more representative. You can adjust your vote.</string>
     <string name="frequency_info_variable_label">varies by month</string>
     <string name="frequency_info_interval_format">every %1$s</string>
     <string name="frequency_info_unknown">?</string>
@@ -1456,7 +1460,9 @@
     <string name="sync_details_server_status_format">%1$s, database %2$s</string>
     <!-- Contexts (replacing rooms and categories) -->
     <string name="contexts_title">Contexts</string>
-    <string name="contexts_help">Rooms, pets, outdoor areas, situations: whatever explains why a chore exists in your home.</string>
+    <string name="contexts_help">A context says why a chore exists in your home: a room (Kitchen), a pet (Cat), an outdoor area (Garden), a situation (Baby). A chore can have several.</string>
+    <string name="contexts_tooltip_title">How contexts work</string>
+    <string name="contexts_tooltip_description">Each context carries two settings, used when you are not home.\n\n• You must be there: the chore can only be done at home. Vacuuming, yes; paying a bill, no.\n• It keeps going without us: the need grows even when nobody is there. Grass grows, plants get thirsty.\n\nDuring an absence, a chore pauses if it requires being there and nothing keeps going without you. Changing the sheets pauses; mowing does not. If a chore has several contexts, one ticked setting is enough for it to apply.</string>
     <string name="contexts_empty">No context yet. Add one to organise your chores.</string>
     <string name="contexts_dialog_new_title">New context</string>
     <string name="contexts_dialog_edit_title">Edit context</string>
@@ -1464,12 +1470,14 @@
     <string name="contexts_name_taken">That name is already taken by another context.</string>
     <string name="contexts_unreachable">No connection to the server: contexts are managed online. Try again once connected.</string>
     <string name="context_requires_presence_label">You must be there</string>
-    <string name="context_requires_presence_help">These chores hide when you are away from home.</string>
+    <string name="context_requires_presence_help">The chore can only be done at home. Off your home WiFi, it can hide from your list. During an absence, it pauses, unless \"It keeps going without us\" is ticked too.</string>
     <string name="context_accrues_when_away_label">It keeps going without us</string>
-    <string name="context_accrues_when_away_help">Grass grows and the calendar turns even during holidays: these chores are not paused.</string>
+    <string name="context_accrues_when_away_help">The need grows even without you: grass grows, the calendar turns. These chores never pause during an absence.</string>
     <string name="foyer_contexts_subtitle">Kitchen, Cat, Garden, Admin… + emoji and colour</string>
     <string name="task_contexts_label">Contexts</string>
-    <string name="task_contexts_help">The first one picked decides where the chore is shown.</string>
+    <string name="task_contexts_help">Tick everything that applies. The first one ticked (★) shows on the chore card; all of them count for filters and absence pauses.</string>
+    <string name="task_contexts_tooltip_title">Why several contexts?</string>
+    <string name="task_contexts_tooltip_description">\"Clean the litter box\" belongs to the Living room (where it is), the Cat (why it exists) and Cleaning (what it is). Tick all three: it will show up in each filter.\n\nTo change the ★, untick then retick the contexts in the order you want.</string>
     <string name="task_contexts_none">No context</string>
     <string name="task_list_filter_all_contexts">All</string>
     <string name="task_edit_catalog_header">Suggestions for your home</string>
@@ -1499,4 +1507,22 @@
     <string name="mydevices_retry">Retry</string>
     <string name="mydevices_cancel">Cancel</string>
     <string name="mydevices_confirm">Confirm</string>
+
+    <!-- Target share of each member (household screen, sharing module) -->
+    <string name="fair_share_target_title">Target share of each member</string>
+    <string name="fair_share_target_info_title">Fair, not necessarily equal</string>
+    <string name="fair_share_target_info_text">Equal means 50/50. Fair means a share that takes each person\'s life into account. If one works 45 hours a week and the other 25, or if one looks after an elderly parent, a load the app cannot see, splitting chores equally is not fair. Agree on each person\'s target share, for example 60/40: the app compares the real share with that target, not with 50/50.</string>
+    <string name="fair_share_target_total_format">Total: %1$d%%</string>
+    <string name="fair_share_target_save_total_format">Save (total: %1$d%%)</string>
+    <string name="fair_share_target_saved">Shares saved.</string>
+    <string name="fair_share_target_rejected">Shares refused. The member list may have changed: check the shares and try again.</string>
+    <string name="fair_share_target_offline_save">Cannot save while offline. Try again once connected.</string>
+    <string name="fair_share_target_unavailable">This setting is unavailable offline.</string>
+    <string name="fair_share_target_retry">Retry</string>
+    <string name="fair_share_target_history_button">History</string>
+    <string name="fair_share_target_history_title">Share history</string>
+    <string name="fair_share_target_history_empty">No change yet.</string>
+    <string name="fair_share_target_history_unavailable">History unavailable offline.</string>
+    <string name="fair_share_target_history_line_format">%1$s, by %2$s</string>
+    <string name="fair_share_target_history_share_format">%1$s: %2$s → %3$s</string>
 </resources>

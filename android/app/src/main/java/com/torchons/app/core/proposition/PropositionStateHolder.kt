@@ -1,11 +1,17 @@
 package com.torchons.app.core.proposition
 
+import android.content.Context
+import com.torchons.app.R
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
+import com.torchons.app.data.model.ObjectiveUpdate
+import com.torchons.app.data.model.PropositionCreate
 import com.torchons.app.data.model.PropositionView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,6 +40,7 @@ import javax.inject.Singleton
 class PropositionStateHolder @Inject constructor(
     private val apiService: ApiService,
     private val tokenManager: TokenManager,
+    @ApplicationContext private val context: Context,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -49,6 +56,24 @@ class PropositionStateHolder @Inject constructor(
     /** Set initial value apres creation par le proposer (retour synchrone de POST /create). */
     fun setCurrent(proposition: PropositionView?) {
         _currentProposition.value = proposition
+    }
+
+    /**
+     * Proposes a goal to the foyer (live flow). Shared by the home screen and the
+     * Foyer screen, so both "Propose to household" buttons run the same code. The
+     * proposition shows on the home tab (see FollowLiveProposition); failures land
+     * in [error].
+     */
+    fun propose(sliderValues: Map<String, Int>, unit: String) {
+        scope.launch {
+            runCatching {
+                // Save the member's display unit first, as the home flow always did.
+                apiService.updateObjective(ObjectiveUpdate(displayUnit = unit))
+                val resp = apiService.createProposition(PropositionCreate(sliderValues))
+                check(resp.isSuccessful) { "Erreur proposition (${resp.code()})" }
+                resp.body()?.let { _currentProposition.value = it }
+            }.onFailure { _error.value = it.message }
+        }
     }
 
     fun dismissError() { _error.value = null }
@@ -69,7 +94,7 @@ class PropositionStateHolder @Inject constructor(
                     }
                 } else if (resp.code() == 410) {
                     _currentProposition.value = null
-                    _error.value = "Proposition expiree"
+                    _error.value = context.getString(R.string.proposition_expired)
                 }
             }.onFailure { _error.value = it.message }
         }
@@ -82,6 +107,10 @@ class PropositionStateHolder @Inject constructor(
                 val resp = apiService.cancelProposition(propositionId)
                 if (resp.isSuccessful) {
                     _currentProposition.value = null
+                } else {
+                    // 409: it was already answered or expired. Show its real outcome
+                    // instead of leaving the waiting dialog stuck.
+                    refreshById(propositionId)
                 }
             }.onFailure { _error.value = it.message }
         }
@@ -106,7 +135,7 @@ class PropositionStateHolder @Inject constructor(
                 "objective_proposition_cancelled" -> {
                     // Le proposer a annule : tous les users ferment leur modal
                     _currentProposition.value = null
-                    _error.value = "Proposition annulee"
+                    _error.value = context.getString(R.string.proposition_cancelled)
                 }
                 "objective_proposition_accepted_all" -> {
                     if (propositionId != null) {
@@ -130,10 +159,39 @@ class PropositionStateHolder @Inject constructor(
             val resp = apiService.getPendingProposition()
             if (resp.isSuccessful) {
                 val body = resp.body()
+                val shown = _currentProposition.value
                 if (body != null) {
                     handleStatus(body)
+                } else if (shown != null) {
+                    // Nothing pending any more, yet a dialog is open: the proposition
+                    // was answered, declined or expired while we missed the push.
+                    // Fetch its final state (celebration, or the reason it ended).
+                    refreshById(shown.id)
                 }
             }
+        }
+    }
+
+    /**
+     * Polls the server while the app is visible (KeepLiveStateFresh runs it under
+     * repeatOnLifecycle(STARTED)). Push stays the fast path; this is what makes the
+     * flow work without it: a dialog follows its proposition every few seconds, and a
+     * new proposition from another member shows up within [IDLE_TICKS] ticks (16 s).
+     */
+    suspend fun pollWhileVisible() {
+        // One tick every LIVE_POLL_MS: a dialog opened mid-wait (the user just
+        // proposed) is followed from the next tick, not after a full idle wait.
+        var ticksSincePending = IDLE_TICKS
+        while (true) {
+            val shown = _currentProposition.value
+            if (shown != null) {
+                refreshById(shown.id)
+            } else if (ticksSincePending >= IDLE_TICKS) {
+                refreshFromPending()
+                ticksSincePending = 0
+            }
+            ticksSincePending++
+            delay(LIVE_POLL_MS)
         }
     }
 
@@ -160,16 +218,24 @@ class PropositionStateHolder @Inject constructor(
             }
             "declined" -> {
                 _currentProposition.value = null
-                _error.value = "Proposition refusee"
+                _error.value = context.getString(R.string.proposition_declined)
             }
             "expired" -> {
                 _currentProposition.value = null
-                _error.value = "Proposition expiree"
+                _error.value = context.getString(R.string.proposition_expired)
             }
             "cancelled" -> {
                 _currentProposition.value = null
-                _error.value = "Proposition annulee"
+                _error.value = context.getString(R.string.proposition_cancelled)
             }
         }
+    }
+
+    private companion object {
+        /** While a dialog is open: the 3-minute window needs a quick follow-up. */
+        const val LIVE_POLL_MS = 4_000L
+
+        /** Otherwise: one GET /pending every 4 ticks (16 s) while the app is in the foreground. */
+        const val IDLE_TICKS = 4
     }
 }

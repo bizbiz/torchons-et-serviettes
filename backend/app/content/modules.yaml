@@ -48,28 +48,36 @@ modules:
         Assigns tasks, accounts for what each person prefers doing, weights by
         effort, and tracks each member's share over the last 30 days.
     example:
-      fr: "L'un préfère l'aspirateur, l'autre la vaisselle : l'app en tient compte."
-      en: "One prefers vacuuming, the other the dishes: the app takes note."
+      fr: >-
+        J'aime arroser les plantes, mon colocataire déteste ça. L'app me les propose
+        en priorité, et lui en suggère d'autres : chacun fait ce qu'il préfère.
+      en: >-
+        I like watering the plants, my flatmate hates it. The app offers them to me
+        first and suggests other tasks to them: everyone does what they prefer.
     guide:
       why:
         fr: >-
-          Dès qu'on est deux, la question « qui s'en occupe ? » revient sans cesse.
-          Le module y répond une fois pour toutes, et rend visible un déséquilibre
-          avant qu'il ne devienne un reproche.
+          Pour ne plus avoir à se demander qui fait quoi. Torchons & Serviettes
+          propose à chacun les tâches en retard et, parmi elles, celles qu'il aime
+          faire. Et quand on a l'impression d'en faire plus que l'autre, l'app répond
+          par des faits : la part réelle de chacun, comparée à une part visée
+          équitable, pas forcément égale.
         en: >-
-          As soon as there are two of you, "who's doing it?" keeps coming back. The
-          module answers it once and for all, and shows an imbalance before it turns
-          into a grievance.
+          So you no longer have to work out who does what. Torchons & Serviettes
+          offers everyone the overdue tasks and, among them, the ones they enjoy.
+          And when you feel you do more than the other, the app answers with facts:
+          each person's real share, compared with a fair target share, not
+          necessarily an equal one.
       how:
         fr: >-
-          Attribuez les tâches récurrentes, notez celles que vous aimez ou détestez
-          quand l'app vous le demande, et réglez la pénibilité des plus lourdes.
-          Regardez la part de chacun de temps en temps : un écart n'est pas un échec,
-          c'est une conversation à avoir.
+          Notez les tâches que vous aimez ou détestez, et réglez leur pénibilité et
+          leur fréquence. De temps en temps, l'app vous présente une tâche à évaluer :
+          répondez au mieux, c'est ce qui affine les suggestions. Si vous passez, elle
+          vous en demandera moins souvent.
         en: >-
-          Assign the recurring tasks, rate the ones you like or dislike when the app
-          asks, and set the effort of the heaviest ones. Check everyone's share now
-          and then: a gap is not a failure, it is a conversation to have.
+          Rate the tasks you like or dislike, and set their effort and frequency.
+          Now and then the app shows you a task to rate: answer as best you can, it
+          is what sharpens the suggestions. If you skip, it will ask you less often.
     trigger:
       kind: signal
       key: second_member_joined
@@ -111,28 +119,36 @@ modules:
         milestones, the streak counts consecutive days, the leaderboard places
         everyone within the foyer.
     example:
-      fr: "À l'activation, les points déjà gagnés apparaissent : rien n'est perdu."
-      en: "On enabling, points already earned show up: nothing is lost."
+      fr: >-
+        Vider le lave-vaisselle prend cinq minutes et personne ne le remarque.
+        Validé chaque matin, il rapporte environ 150 points dans le mois. Et partir
+        trois jours ne casse pas votre série, si l'absence est posée.
+      en: >-
+        Emptying the dishwasher takes five minutes and nobody notices. Completed
+        every morning, it earns about 150 points in a month. And three days away do
+        not break your streak, as long as the absence is recorded.
     guide:
       why:
         fr: >-
-          Une tâche ménagère faite ne laisse aucune trace : le lendemain, tout est à
-          refaire. Les points et la série gardent la mémoire de ce qui a été fait, et
-          rendent visible l'effort de chacun.
+          Une tâche faite ne laisse aucune trace si vous êtes seul à l'avoir vue. Les
+          validations, les points et les séries gardent la mémoire de l'effort de
+          chacun. Quand on a l'impression d'en faire plus que l'autre, on peut
+          s'appuyer sur des faits plutôt que sur des impressions.
         en: >-
-          A finished chore leaves no trace: the next day, it all needs doing again.
-          Points and the streak keep a record of what was done, and make everyone's
-          effort visible.
+          A finished task leaves no trace if you are the only one who saw it.
+          Completions, points and streaks keep a record of everyone's effort. When
+          you feel you do more than the other, you can rely on facts rather than
+          impressions.
       how:
         fr: >-
-          Validez les tâches au moment où vous les faites, même les petites : c'est
-          là que la série se construit. Le classement sert à se situer, pas à se
-          comparer ; qui préfère ne pas le voir peut le masquer pour lui seul avec
-          « Ne pas me les afficher ».
+          Validez au moment où vous faites la tâche, même les petites : c'est là que
+          la série se construit. Le classement sert à se situer, pas à se comparer.
+          Qui préfère ne pas le voir peut le masquer pour lui seul avec « Ne pas me
+          les afficher ».
         en: >-
-          Complete tasks as you do them, even the small ones: that is how the streak
-          builds up. The leaderboard is there to see where you stand, not to compete;
-          anyone who would rather not see it can hide it just for themselves with
+          Complete a task as you do it, even the small ones: that is how the streak
+          builds up. The leaderboard is there to see where you stand, not to compete.
+          Anyone who would rather not see it can hide it just for themselves with
           "Do not show them to me".
     trigger:
       kind: usage
@@ -168,44 +184,57 @@ modules:
       fr: "Bonus et malus"
       en: "Bonus and penalty"
     pitch:
-      fr: "Fait en avance, ça rapporte plus. Très en retard, ça rapporte moins."
-      en: "Done early, worth more. Very late, worth less."
+      fr: "Fait en retard, ça rapporte plus. Refait trop tôt, ça rapporte moins."
+      en: "Done late, worth more. Redone too soon, worth less."
     details:
       fr: >-
-        Module les points selon l'écart à l'échéance, avec des seuils distincts
-        par tolérance de tâche et un plancher pour que le retard ne décourage pas.
+        Ajuste les points selon l'écart à l'échéance : un bonus quand une tâche est
+        faite en retard, un malus quand elle est refaite trop tôt, avec des seuils
+        propres à chaque tolérance.
       en: >-
-        Adjusts points by the gap to the due date, with separate thresholds per
-        task tolerance and a floor so lateness never becomes discouraging.
+        Adjusts points by the gap to the due date: a bonus when a task is done
+        late, a penalty when it is redone too soon, with thresholds of its own for
+        each tolerance.
+    example:
+      fr: >-
+        Les draps se changent chaque semaine. En Normal, changés avec deux jours de
+        retard, ils rapportent 50 % de points en plus ; en Strict, un jour suffit.
+        Le frigo, prévu tous les 30 jours, nettoyé au bout de 10 jours seulement
+        rapporte environ un quart de points en moins.
+      en: >-
+        The sheets get changed every week. On Normal, changed two days late, they
+        earn 50% more points; on Strict, one day is enough. The fridge, due every
+        30 days, cleaned after only 10 days earns about a quarter fewer points.
     guide:
       why:
         fr: >-
-          Avec les points seuls, une tâche faite avec trois semaines de retard vaut
-          autant qu'une tâche faite à temps. Le bonus et le malus récompensent
-          l'anticipation, sans faire du retard une punition.
+          Une tâche qui prend du retard est souvent une tâche que personne ne veut
+          faire : la récompenser davantage donne envie de s'y mettre. À l'inverse,
+          refaire trop tôt une tâche encore fraîche rapporte moins : les points vont
+          à ce qui en a vraiment besoin.
         en: >-
-          With points alone, a task done three weeks late is worth as much as one
-          done on time. The bonus and the penalty reward getting ahead, without
-          turning lateness into a punishment.
+          A task that falls behind is often one nobody wants to do: rewarding it
+          more makes someone want to take it on. The other way round, redoing a
+          task too soon earns less: the points go where they are really needed.
       how:
         fr: >-
-          Rien à faire au quotidien : le calcul se fait quand vous validez. Réglez la
-          tolérance de chaque tâche (Strict, Normal ou Souple) selon ce qui compte
-          vraiment pour vous : une tâche Souple reste peu pénalisée, même en retard.
+          Réglez au mieux la tolérance de chaque tâche (Strict, Normal ou Souple) et
+          sa fréquence : l'app se débrouille du reste. En Strict, le bonus et le
+          malus arrivent dès un petit écart ; en Souple, il en faut davantage.
         en: >-
-          Nothing to do day to day: the calculation happens when you complete a task.
-          Set each task's tolerance (Strict, Normal or Loose) to match what really
-          matters to you: a Loose task is barely penalised, even when late.
+          Set each task's tolerance (Strict, Normal or Loose) and its frequency as
+          well as you can: the app takes care of the rest. On Strict, the bonus and
+          the penalty kick in at a small gap; on Loose, it takes more.
     trigger:
       kind: usage
       key: after_motivation
     sub_options:
-      - key: early_bonus
+      - key: late_bonus
         scope: collective
-        title: { fr: "Bonus d'avance", en: "Early bonus" }
-      - key: late_malus
+        title: { fr: "Bonus de retard", en: "Late bonus" }
+      - key: early_malus
         scope: collective
-        title: { fr: "Malus de retard", en: "Late penalty" }
+        title: { fr: "Malus d'avance", en: "Early penalty" }
 
   - key: objectives
     scope: collective
@@ -226,26 +255,42 @@ modules:
         Quantifies the accumulated backlog, the real pace over the last 14 days,
         and the pace needed to hold it. Anyone can set a personal goal, or
         propose one to the foyer.
+    example:
+      fr: >-
+        Le foyer a 3 heures de retard, et le quotidien demande 30 minutes par jour.
+        À 20 minutes chacun, le retard disparaît en 18 jours ; à 30 minutes chacun,
+        en 6 jours.
+      en: >-
+        The foyer is 3 hours behind, and day-to-day upkeep takes 30 minutes a day.
+        At 20 minutes each, the backlog is gone in 18 days; at 30 minutes each, in
+        6 days.
     guide:
       why:
         fr: >-
-          Quand le retard s'accumule, on ne sait plus par où reprendre, et la liste
-          rouge décourage. Le module ramène ce retard à un chiffre simple : combien
-          de minutes par jour pour revenir à zéro.
+          Le retard accumulé décourage : on ne sait plus par où reprendre. Le module
+          le ramène à un chiffre simple : combien de minutes par jour pour rattraper
+          ce retard, et en combien de jours.
         en: >-
-          When the backlog piles up, it is hard to know where to start, and the red
-          list is discouraging. The module boils it down to one simple number: how
-          many minutes a day to get back to zero.
+          A growing backlog is discouraging: you no longer know where to start. The
+          module boils it down to one simple number: how many minutes a day to catch
+          up, and in how many days.
       how:
         fr: >-
-          Ouvrez le cockpit pour voir le retard et le rythme des 14 derniers jours,
-          puis essayez la simulation avant de vous engager. Fixez-vous un objectif
-          quotidien réaliste, ou proposez-en un au foyer : mieux vaut 15 minutes
+          Posez-vous ensemble, avec les membres du foyer, et décidez combien de temps
+          par jour vous accordez aux tâches. Touchez la carte « Moi » de l'accueil, ou
+          « Simuler le rattrapage du foyer » dans l'écran Foyer : la simulation
+          montre, pour chaque réglage, en combien de jours le retard
+          disparaît. Puis « Proposer au foyer » : chacun accepte sur son téléphone dans
+          les trois minutes, et l'objectif vous engage tous. Mieux vaut 15 minutes
           tenues qu'une heure abandonnée.
         en: >-
-          Open the cockpit to see the backlog and the pace of the last 14 days, then
-          try the simulation before committing. Set yourself a realistic daily goal,
-          or propose one to the foyer: 15 minutes kept beat an hour given up.
+          Sit down together with the members of the foyer and decide how much time a
+          day you give to the tasks. Tap the "Me" card on the home screen, or
+          "Simulate household catch-up" in the Foyer screen: the simulation
+          shows, for each setting, how many days it takes to clear the
+          backlog. Then "Propose to household": everyone accepts on their phone within
+          three minutes, and the goal commits you all. 15 minutes kept beat an hour
+          given up.
     trigger:
       kind: signal
       key: backlog_threshold_reached
@@ -272,38 +317,52 @@ modules:
       fr: "Absences et présence"
       en: "Absences and presence"
     pitch:
-      fr: "Personne à la maison ? Les tâches concernées se mettent en pause."
-      en: "Nobody home? The affected tasks pause on their own."
+      fr: "Personne à la maison ? Les tâches qui attendent votre retour se mettent en pause."
+      en: "Nobody home? The tasks that wait for your return pause on their own."
     details:
       fr: >-
-        Détecte les jours où le foyer est vide et gèle les tâches des catégories
-        qui exigent d'être sur place. Rien à rattraper au retour des vacances.
+        Repère les jours où le foyer est absent et met en pause les tâches à faire
+        sur place, sauf celles dont le besoin continue sans vous. Rien à rattraper
+        au retour.
       en: >-
-        Detects the days the foyer is empty and freezes tasks in categories that
-        require being there. Nothing to catch up on when you get back.
+        Spots the days the foyer is away and pauses the tasks that must be done on
+        site, except those whose need keeps growing without you. Nothing to catch
+        up on when you get back.
     example:
-      fr: "Quinze jours d'absence : pas besoin de changer les draps en rentrant."
-      en: "Fifteen days away: no need to change the sheets on your return."
+      fr: >-
+        Partis du vendredi au dimanche, vous marquez les trois jours en rouge. Les
+        draps et la poussière reprennent là où vous les aviez laissés ; la pelouse,
+        elle, a poussé et reste en retard.
+      en: >-
+        Away from Friday to Sunday, you mark the three days in red. The sheets and
+        the dusting pick up where you left them; the lawn, though, kept growing and
+        stays overdue.
     guide:
       why:
         fr: >-
-          Partir en week-end ou en vacances ne devrait pas laisser une liste de
-          tâches en retard au retour. Le module sait quand la maison est vide et met
-          en pause ce qui ne peut se faire que sur place.
+          Un week-end dehors ne doit pas laisser une liste rouge au retour. Personne
+          ne change les draps d'une maison vide : ces tâches attendent votre retour
+          au lieu de prendre du retard.
         en: >-
-          A weekend or a holiday away should not leave a list of overdue tasks
-          waiting for you. The module knows when the home is empty and pauses what
-          can only be done there.
+          A weekend away should not leave a red list waiting for you. Nobody changes
+          the sheets of an empty home: those tasks wait for your return instead of
+          falling behind.
       how:
         fr: >-
-          Répondez à la question de présence quand l'app la pose : c'est elle qui
-          déclenche la pause. Indiquez dans les contextes les tâches qui exigent
-          d'être à la maison, et renseignez le WiFi du foyer pour que l'app sache
-          quand vous y êtes.
+          Trois gestes, une fois pour toutes. Renseignez le WiFi de la maison dans
+          l'écran Foyer : chaque ouverture de l'app sur ce WiFi marque la journée
+          « présent ». Répondez à la question de présence quand elle apparaît : vert
+          pour les jours où vous étiez là, rouge pour ceux où vous étiez partis. Tant
+          qu'un jour reste sans réponse, il compte comme une absence. Enfin, dans les
+          contextes, indiquez ce qui exige d'être sur place, et ce qui continue sans
+          vous.
         en: >-
-          Answer the presence question when the app asks: that is what triggers the
-          pause. Mark in the contexts which tasks require being home, and enter the
-          foyer's WiFi so the app knows when you are there.
+          Three steps, once and for all. Enter the home WiFi in the Foyer screen:
+          each time the app opens on that WiFi, the day is marked "present". Answer
+          the presence question when it shows up: green for the days you were there,
+          red for the days you were away. As long as a day stays unanswered, it
+          counts as an absence. Finally, in the contexts, say what requires being on
+          site, and what keeps going without you.
     trigger:
       kind: signal
       key: absence_detected
@@ -314,7 +373,7 @@ modules:
         title: { fr: "Gel pendant les absences", en: "Freeze while away" }
       - key: category_freeze
         scope: collective
-        title: { fr: "Catégories concernées", en: "Affected categories" }
+        title: { fr: "Contextes concernés", en: "Affected contexts" }
       - key: home_wifi
         scope: personal
         state_field: user_settings.hide_home_tasks_off_wifi
@@ -332,12 +391,25 @@ modules:
       en: "A task always late? The app offers to revisit its settings."
     details:
       fr: >-
-        Repère les tâches systématiquement en retard ou en avance et propose
-        d'ajuster leur pénibilité ou leur fréquence. Chaque membre peut demander
-        l'avis des autres.
+        Repère les tâches systématiquement faites en retard et propose d'augmenter
+        leur pénibilité. Chaque membre peut aussi demander aux autres de revoter
+        la pénibilité ou la fréquence d'une tâche.
       en: >-
-        Spots tasks that are chronically late or early and offers to adjust their
-        effort or frequency. Any member can ask the others to weigh in.
+        Spots tasks that are chronically done late and offers to raise their
+        effort. Any member can also ask the others to re-vote a task's effort or
+        frequency.
+    example:
+      fr: >-
+        « Nettoyer le four » est faite en retard presque à chaque fois : l'app
+        propose d'augmenter sa pénibilité, pour qu'elle rapporte ce qu'elle coûte
+        vraiment. Vous trouvez qu'une fois par mois, c'est trop souvent : depuis la
+        fiche de la tâche, vous demandez à votre colocataire de revoter sa
+        fréquence.
+      en: >-
+        "Clean the oven" is done late almost every time: the app offers to raise
+        its effort, so it earns what it really costs. You think once a month is
+        too often: from the task's page, you ask your flatmate to re-vote its
+        frequency.
     guide:
       why:
         fr: >-
@@ -381,11 +453,20 @@ modules:
       en: "What you have done, as charts, plus the detail of every task."
     details:
       fr: >-
-        Courbes d'activité, répartition par catégorie et par pièce, et l'historique
-        enrichi de chaque tâche — modifications, votes, qui a changé quoi et quand.
+        Courbes d'activité, répartition par contexte, et l'historique enrichi de
+        chaque tâche — modifications, votes, qui a changé quoi et quand.
       en: >-
-        Activity charts, breakdown by category and by room, and the enriched
-        history of each task — edits, votes, who changed what and when.
+        Activity charts, breakdown by context, and the enriched history of each
+        task — edits, votes, who changed what and when.
+    example:
+      fr: >-
+        Vous ouvrez l'historique de « Détartrer la bouilloire » : elle n'a pas été
+        faite depuis quatre mois, et votre colocataire a espacé sa fréquence en
+        mars. Plus besoin de chercher qui a changé quoi.
+      en: >-
+        You open the history of "Descale the kettle": it has not been done for four
+        months, and your flatmate spaced out its frequency in March. No more
+        guessing who changed what.
     guide:
       why:
         fr: >-

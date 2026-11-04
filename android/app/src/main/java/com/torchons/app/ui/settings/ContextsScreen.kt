@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.InfoTooltip
 import com.torchons.app.data.model.ContextCreateRequest
 import com.torchons.app.data.model.ContextUpdateRequest
 import com.torchons.app.data.model.ContextView
@@ -130,11 +131,21 @@ fun ContextsScreen(
                 .padding(horizontal = 16.dp),
         ) {
             Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.contexts_help),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.contexts_help),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(4.dp))
+                // Explains the two flags and the pause rule, which the
+                // per-switch help lines cannot show as a whole.
+                InfoTooltip(
+                    title = stringResource(R.string.contexts_tooltip_title),
+                    description = stringResource(R.string.contexts_tooltip_description),
+                )
+            }
             if (nomPris) {
                 Spacer(Modifier.height(8.dp))
                 Text(

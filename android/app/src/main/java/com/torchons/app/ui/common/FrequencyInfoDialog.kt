@@ -65,7 +65,11 @@ fun FrequencyInfoDialog(
         state.myDaysPerMonth?.let { currentUserId?.let { id -> add(id) } }
         addAll(state.others.map { it.userId })
     }
-    val nonVoters = foyerMembers.filter { it.first !in voterIds }
+    // Without me: asking myself to vote is refused by the server (400 PROMPT_OWN_VOTE).
+    val nonVoters = foyerMembers.filter { it.first !in voterIds && it.first != currentUserId }
+    // A re-vote request becomes a VOTE_FREQUENCY prompt, which the server never
+    // serves while auto_adjust is off: the request would stay pending forever.
+    val canAskRevote = moduleEnabled(Modules.AUTO_ADJUST)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -78,7 +82,8 @@ fun FrequencyInfoDialog(
                     .verticalScroll(rememberScrollState()),
             ) {
                 Text(
-                    text = stringResource(R.string.frequency_info_message),
+                    text = stringResource(R.string.frequency_info_message) +
+                        if (canAskRevote) " " + stringResource(R.string.vote_info_ask_revote_hint) else "",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -118,7 +123,7 @@ fun FrequencyInfoDialog(
                         isExpanded = expanded[other.userId] ?: false,
                         onToggleExpand = { expanded[other.userId] = !(expanded[other.userId] ?: false) },
                         actionButton = {
-                            OutlinedButton(
+                            if (canAskRevote) OutlinedButton(
                                 onClick = { onAskRevote(other.userId) },
                                 enabled = !isPending,
                             ) {
@@ -157,7 +162,7 @@ fun FrequencyInfoDialog(
                             )
                             Box(modifier = Modifier.width(8.dp))
                             Spacer(modifier = Modifier.weight(1f))
-                            OutlinedButton(
+                            if (canAskRevote) OutlinedButton(
                                 onClick = { onAskRevote(uid) },
                                 enabled = !isPending,
                             ) {

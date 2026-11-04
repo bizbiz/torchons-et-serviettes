@@ -43,8 +43,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.torchons.app.R
 import com.torchons.app.data.model.ModuleView
+
+/**
+ * Stateful entry point, wired to the settings ViewModel. Each time the screen
+ * comes back (tab switch, app resumed), it reloads what a load made offline
+ * left missing: without this the section spun forever once opened offline.
+ */
+@Composable
+fun ModulesSection(viewModel: SettingsViewModel) {
+    val modules by viewModel.modules.collectAsState()
+    val loading by viewModel.loadingAll.collectAsState()
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshIfIncomplete()
+        onPauseOrDispose { }
+    }
+    ModulesSection(modules = modules, onToggle = viewModel::toggleModule, isLoading = loading)
+}
 
 /**
  * Bloc "Fonctionnalites" — le niveau 1 du registre des modules

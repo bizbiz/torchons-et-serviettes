@@ -143,9 +143,11 @@ from app.api.catalog import router as catalog_router
 from app.api.completions import router as completions_router
 from app.api.completion_edits import router as completion_edits_router
 from app.api.gamification import router as gamification_router
+from app.api.fair_share import router as fair_share_router
 from app.api.stats import router as stats_router
 from app.api.notifications import router as notifications_router
 from app.api.settings import router as settings_router
+from app.api.rating_prompt import router as rating_prompt_router
 from app.api.content import router as content_router
 from app.api.sync import router as sync_router
 from app.api.bonus_config import router as bonus_config_router
@@ -171,9 +173,11 @@ app.include_router(catalog_router)
 app.include_router(completions_router)
 app.include_router(completion_edits_router)
 app.include_router(gamification_router)
+app.include_router(fair_share_router)
 app.include_router(stats_router)
 app.include_router(notifications_router)
 app.include_router(settings_router)
+app.include_router(rating_prompt_router)
 app.include_router(content_router)
 app.include_router(sync_router)
 app.include_router(bonus_config_router)

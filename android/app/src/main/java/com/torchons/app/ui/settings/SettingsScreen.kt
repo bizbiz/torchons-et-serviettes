@@ -269,11 +269,7 @@ fun SettingsScreen(
 
         // P2 — le registre des modules. Niveau 1 de l'arbre : ce qui suit dans
         // l'ecran n'est que le niveau 2, revele module par module.
-        ModulesSection(
-            modules = modules,
-            onToggle = viewModel::toggleModule,
-            isLoading = !s.isLoaded,
-        )
+        ModulesSection(viewModel = viewModel)
 
         moduleError?.let { message ->
             Text(

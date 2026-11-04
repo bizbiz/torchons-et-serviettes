@@ -143,4 +143,16 @@ object AppModule {
     fun provideModuleGuideApi(retrofit: Retrofit): com.torchons.app.data.api.ModuleGuideApi {
         return retrofit.create(com.torchons.app.data.api.ModuleGuideApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideRatingPromptApi(retrofit: Retrofit): com.torchons.app.data.api.RatingPromptApi {
+        return retrofit.create(com.torchons.app.data.api.RatingPromptApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFairShareTargetApi(retrofit: Retrofit): com.torchons.app.data.api.FairShareTargetApi {
+        return retrofit.create(com.torchons.app.data.api.FairShareTargetApi::class.java)
+    }
 }

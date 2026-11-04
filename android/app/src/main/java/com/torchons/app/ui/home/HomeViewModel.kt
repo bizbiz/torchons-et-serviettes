@@ -6,14 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.core.proposition.PropositionStateHolder
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
-import com.torchons.app.data.model.AffinityRequest
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.MaintenanceRateResponse
 import com.torchons.app.data.model.ObjectiveUpdate
 import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.PromptResolveRequest
-import com.torchons.app.data.model.PropositionCreate
 import com.torchons.app.data.model.PropositionView
 import com.torchons.app.data.model.UserPrompt
 import com.torchons.app.data.model.RetardResponse
@@ -143,6 +141,7 @@ class HomeViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val taskRepository: TaskRepository,
     private val popupSessionGate: PopupSessionGate,
+    private val ratingCadence: RatingCadence,
     private val tokenManager: TokenManager,
     private val propositionStateHolder: PropositionStateHolder,
 ) : AndroidViewModel(application) {
@@ -236,6 +235,7 @@ class HomeViewModel @Inject constructor(
             }.collect { cached ->
                 val popupEnabled = (cached.settings?.get("affinity_popup_enabled") as? Boolean) ?: true
                 _affinityPopupEnabled.value = popupEnabled
+                ratingCadence.syncDue(cached.settings)
 
                 val firstPending = cached.pending?.firstOrNull()
                 val hasCache = cached.suggestions != null
@@ -322,10 +322,13 @@ class HomeViewModel @Inject constructor(
                 isLoading = false,
                 isRefreshing = false,
                 lastRefreshFailed = !allOk,
-                showAffinityPopup = pending != null
-                    && popupSessionGate.armed.value
-                    && popupEnabled
-                    && !promptAlreadyShown,  // le prompt unifie a priorite
+                showAffinityPopup = ratingCadence.resolveAuto(
+                    eligible = pending != null
+                        && popupSessionGate.armed.value
+                        && popupEnabled
+                        && !promptAlreadyShown,  // le prompt unifie a priorite
+                    wasShown = _uiState.value.showAffinityPopup,
+                ),
             )
         }
     }
@@ -405,23 +408,8 @@ class HomeViewModel @Inject constructor(
      * receveurs recoivent un modal accept/decline.
      */
     fun proposeToFoyer(sliderValues: Map<String, Int>, unit: String) {
-        viewModelScope.launch {
-            try {
-                // Sauve d'abord la preference d'unite perso
-                apiService.updateObjective(ObjectiveUpdate(displayUnit = unit))
-                val resp = apiService.createProposition(PropositionCreate(sliderValues))
-                if (resp.isSuccessful) {
-                    val body = resp.body()
-                    if (body != null) {
-                        propositionStateHolder.setCurrent(body)
-                    }
-                } else {
-                    _uiState.value = _uiState.value.copy(error = "Erreur proposition (${resp.code()})")
-                }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
-        }
+        // Moved to the shared holder: the Foyer screen proposes through it too.
+        propositionStateHolder.propose(sliderValues, unit)
     }
 
     fun respondToProposition(propositionId: String, accepted: Boolean) {
@@ -448,27 +436,13 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private suspend fun saveRatingData(
-        taskId: String,
-        affinity: Int,
-        effortPoints: Int,
-        recurrence: RatingRecurrence?,
-    ) {
-        apiService.setAffinity(taskId, AffinityRequest(affinity))
-        apiService.setEffort(taskId, mapOf("points" to effortPoints))
-        if (recurrence != null) {
-            // Vote de frequence individuel — le serveur recalcule le consensus
-            // (moyenne arrondie des votes) et met a jour tasks.recurrence_rule.
-            taskRepository.voteFrequency(taskId, recurrence.everyNDays)
-        }
-    }
-
     fun submitRating(taskId: String, affinity: Int, effortPoints: Int, recurrence: RatingRecurrence?) {
         viewModelScope.launch {
             try {
-                saveRatingData(taskId, affinity, effortPoints, recurrence)
+                saveRatingData(apiService, taskRepository, taskId, affinity, effortPoints, recurrence)
                 popupSessionGate.disarm()
                 _uiState.value = _uiState.value.copy(showAffinityPopup = false)
+                ratingCadence.onRated()
                 refresh()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
@@ -479,8 +453,9 @@ class HomeViewModel @Inject constructor(
     fun submitRatingAndNext(taskId: String, affinity: Int, effortPoints: Int, recurrence: RatingRecurrence?) {
         viewModelScope.launch {
             try {
-                saveRatingData(taskId, affinity, effortPoints, recurrence)
+                saveRatingData(apiService, taskRepository, taskId, affinity, effortPoints, recurrence)
                 _uiState.value = _uiState.value.copy(showAffinityPopup = false)
+                ratingCadence.onRated()
 
                 // Essayer d'abord les taches non-notees
                 homeRepository.refreshPendingAffinity(6)
@@ -509,6 +484,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun dismissAffinityPopup() {
+        ratingCadence.onDismissed()
         popupSessionGate.disarm()
         _uiState.value = _uiState.value.copy(showAffinityPopup = false)
     }
@@ -520,6 +496,7 @@ class HomeViewModel @Inject constructor(
                 val task = if (resp.isSuccessful) resp.body()?.firstOrNull() else null
                 if (task != null) {
                     popupSessionGate.arm()
+                    ratingCadence.onManualOpened()
                     _uiState.value = _uiState.value.copy(
                         pendingAffinity = task,
                         showAffinityPopup = true,

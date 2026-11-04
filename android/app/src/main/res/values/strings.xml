@@ -150,17 +150,17 @@
     <!-- (6) Présence & absences -->
     <string name="foyer_presence_section_title">Présence &amp; absences</string>
     <string name="foyer_presence_section_tooltip_title">Présence &amp; absences</string>
-    <string name="foyer_presence_section_tooltip_description">Quand aucun membre du foyer n\'est détecté au WiFi maison depuis plus de 24h, les tâches des catégories «&#160;à la maison&#160;» arrêtent de vieillir (mise en pause). Elles reprennent normalement au retour.\n\nLa détection automatique repose sur le(s) réseau(x) WiFi déclarés ci-dessous. Elle est facultative&#160;: sans WiFi configuré, toutes les tâches restent visibles en permanence.</string>
+    <string name="foyer_presence_section_tooltip_description">Les jours où le foyer est absent, les tâches à faire sur place arrêtent de vieillir, puis reprennent au retour. L\'app sait que tu es là quand tu l\'ouvres sur ton WiFi maison&#160;; pour les autres jours, elle te pose la question. Un jour resté sans réponse compte comme une absence.</string>
     <string name="foyer_presence_freeze_title">Mettre en pause si tout le monde est absent</string>
-    <string name="foyer_presence_freeze_subtitle">Les tâches «&#160;à la maison&#160;» arrêtent de vieillir quand personne n\'est détecté depuis 24h.</string>
+    <string name="foyer_presence_freeze_subtitle">Les tâches à faire sur place arrêtent de vieillir les jours où le foyer est absent.</string>
     <string name="foyer_presence_hide_off_wifi_section_title">Masquer hors WiFi</string>
     <string name="foyer_presence_hide_off_wifi_tooltip_title">Masquer hors WiFi</string>
     <string name="foyer_presence_hide_off_wifi_tooltip_description">S\'applique à TOI sur ce foyer (l\'autre membre a son propre réglage). Sans WiFi maison configuré ci-dessous, ce réglage n\'a aucun effet — tout reste visible.</string>
     <string name="foyer_presence_hide_off_wifi_switch_title">Masquer les tâches maison hors WiFi</string>
-    <string name="foyer_presence_hide_off_wifi_switch_subtitle">Les tâches «&#160;à la maison&#160;» sont cachées de la liste quand tu n\'es pas connecté à ton WiFi maison.</string>
+    <string name="foyer_presence_hide_off_wifi_switch_subtitle">Les tâches à faire sur place se cachent de ta liste quand tu n\'es pas sur ton WiFi maison.</string>
     <string name="foyer_presence_wifi_section_title">WiFi maison</string>
     <string name="foyer_presence_wifi_tooltip_title">WiFi maison</string>
-    <string name="foyer_presence_wifi_tooltip_description">Les tâches des catégories marquées «&#160;à la maison&#160;» ne seront suggérées que lorsque tu es connecté à un de ces réseaux WiFi.</string>
+    <string name="foyer_presence_wifi_tooltip_description">Ouvrir l\'app sur un de ces réseaux marque la journée «&#160;présent&#160;» pour tout le foyer, et affiche les tâches à faire sur place.</string>
     <string name="foyer_presence_wifi_empty">Aucun WiFi configuré — toutes les tâches sont visibles</string>
     <string name="foyer_presence_wifi_remove_cd">Supprimer</string>
     <string name="foyer_presence_wifi_add_button">Ajouter mon WiFi actuel</string>
@@ -701,7 +701,7 @@
     <!-- PropositionDialogs — Receiver -->
     <string name="proposition_receiver_title_format">%1$s propose un nouvel objectif</string>
     <string name="proposition_receiver_intro">Objectif minute/jour pour chaque membre du foyer&#160;:</string>
-    <string name="proposition_receiver_you_suffix"> (toi)</string>
+    <string name="proposition_receiver_you_suffix">" (toi)"</string>
     <string name="proposition_member_value_format">%1$d min/j</string>
     <string name="proposition_receiver_timeout_hint">Tu as 3 minutes pour répondre. Si vous acceptez tous les deux, ces objectifs seront sauvés pour chacun.</string>
     <string name="proposition_accept">Accepter</string>
@@ -712,6 +712,9 @@
     <string name="proposition_waiting_body">Tu as proposé un nouvel objectif au foyer. Les autres membres doivent accepter dans leur app (ouverte maintenant).</string>
     <string name="proposition_waiting_expire">Expire dans 3 min sinon</string>
     <string name="proposition_waiting_cancel">Annuler la proposition</string>
+    <string name="proposition_declined">Proposition refusée</string>
+    <string name="proposition_expired">Proposition expirée</string>
+    <string name="proposition_cancelled">Proposition annulée</string>
 
     <!-- PropositionDialogs — Celebration -->
     <string name="proposition_celebration_title">Objectifs validés&#160;!</string>
@@ -722,7 +725,7 @@
     <string name="proposition_celebration_easter_close">Non merci</string>
     <string name="proposition_celebration_chaos_title">Le chaos.</string>
     <string name="proposition_celebration_chaos_subtitle">Celui-là, c\'est pas pour nous.</string>
-    <string name="proposition_celebration_lets_go">Let\'s go&#160;!</string>
+    <string name="proposition_celebration_lets_go">C\'est parti&#160;!</string>
 
     <!-- ProjectionSimulationDialog -->
     <string name="simulation_loading_title">Chargement…</string>
@@ -754,7 +757,7 @@
     <string name="task_list_foyer_settings_cd">Réglages du foyer</string>
     <string name="task_list_off_home_banner_format">Pas à la maison — %1$d tâche(s) masquée(s)</string>
     <string name="task_list_off_home_tooltip_title">Pourquoi des tâches sont masquées&#160;?</string>
-    <string name="task_list_off_home_tooltip_description">Les tâches des catégories «&#160;à la maison&#160;» sont cachées parce que l\'app ne te détecte pas sur ton WiFi maison&#160;: soit tu es absent, soit aucun WiFi maison n\'est configuré / la permission de localisation nécessaire pour lire le nom du WiFi manque.\n\nTu peux quand même les afficher avec «&#160;Tout afficher&#160;», configurer ton WiFi maison dans les réglages du foyer, ou désactiver ce comportement là-bas.</string>
+    <string name="task_list_off_home_tooltip_description">Les tâches à faire sur place sont cachées parce que l\'app ne te détecte pas sur ton WiFi maison&#160;: soit tu es absent, soit aucun WiFi maison n\'est configuré / la permission de localisation nécessaire pour lire le nom du WiFi manque.\n\nTu peux quand même les afficher avec «&#160;Tout afficher&#160;», configurer ton WiFi maison dans les réglages du foyer, ou désactiver ce comportement là-bas.</string>
     <string name="task_list_show_all">Tout afficher</string>
     <string name="task_list_hide_home">Masquer</string>
 
@@ -847,7 +850,7 @@
     <string name="module_guide_section_why">Pourquoi</string>
     <string name="module_guide_section_how">Comment bien l\'utiliser</string>
     <string name="module_guide_understood">Compris</string>
-    <string name="module_guide_info_description">Voir le guide de %1$s</string>
+    <string name="module_guide_info_description">Voir le guide du module %1$s</string>
 
     <!-- Phrase expliquant une recurrence : le COMPORTEMENT, pas la valeur -->
     <string name="recurrence_sentence_one_shot">Tâche ponctuelle : elle ne reviendra pas une fois faite.</string>
@@ -1231,8 +1234,8 @@
 
     <!-- EffortInfoDialog (v0.29) -->
     <string name="effort_info_title">Effort : comment ça marche&#160;?</string>
-    <string name="effort_info_message_gamif">L\'effort est le temps moyen que prend la tâche, voté par chaque membre du foyer. Il sert à calculer les points gagnés quand la tâche est validée — ces points alimentent le partage équitable (fair-share) entre vous et le retard global du foyer. Plus il y a de votes, plus l\'estimation est juste. Tu peux ajuster ton vote ou demander à un autre membre de revoter.</string>
-    <string name="effort_info_message_no_gamif">L\'effort est le temps moyen que prend la tâche, voté par chaque membre du foyer. Il sert à mieux estimer le temps requis et à prioriser entre tâches courtes et longues. Plus il y a de votes, plus l\'estimation est juste. Tu peux ajuster ton vote ou demander à un autre membre de revoter.</string>
+    <string name="effort_info_message_gamif">L\'effort est le temps moyen que prend la tâche, voté par chaque membre du foyer. Il sert à calculer les points gagnés quand la tâche est validée — ces points alimentent le partage équitable (fair-share) entre vous et le retard global du foyer. Plus il y a de votes, plus l\'estimation est juste. Tu peux ajuster ton vote.</string>
+    <string name="effort_info_message_no_gamif">L\'effort est le temps moyen que prend la tâche, voté par chaque membre du foyer. Il sert à mieux estimer le temps requis et à prioriser entre tâches courtes et longues. Plus il y a de votes, plus l\'estimation est juste. Tu peux ajuster ton vote.</string>
 
     <!-- Votes communs (Effort + Frequency Info) -->
     <string name="vote_info_me_label">Toi</string>
@@ -1245,7 +1248,8 @@
 
     <!-- FrequencyInfoDialog (v0.28) -->
     <string name="frequency_info_title">Fréquence : comment ça marche&#160;?</string>
-    <string name="frequency_info_message">La fréquence affichée est la moyenne des votes de chaque membre du foyer. Plus il y a de votes, plus elle est représentative. Tu peux ajuster ton vote ou demander à un autre membre de revoter.</string>
+    <string name="vote_info_ask_revote_hint">Tu peux aussi demander à un autre membre de revoter.</string>
+    <string name="frequency_info_message">La fréquence affichée est la moyenne des votes de chaque membre du foyer. Plus il y a de votes, plus elle est représentative. Tu peux ajuster ton vote.</string>
     <string name="frequency_info_variable_label">variable selon le mois</string>
     <string name="frequency_info_interval_format">tous les %1$s</string>
     <string name="frequency_info_unknown">?</string>
@@ -1467,7 +1471,9 @@
     <string name="sync_details_server_status_format">%1$s, base %2$s</string>
     <!-- Contextes (remplacent pieces et categories) -->
     <string name="contexts_title">Contextes</string>
-    <string name="contexts_help">Pièces, animaux, extérieurs, situations&#160;: ce qui explique qu\'une tâche existe chez toi.</string>
+    <string name="contexts_help">Un contexte dit pourquoi une tâche existe chez toi&#160;: une pièce (Cuisine), un animal (Chat), un extérieur (Jardin), une situation (Bébé). Une tâche peut en avoir plusieurs.</string>
+    <string name="contexts_tooltip_title">Comment marchent les contextes</string>
+    <string name="contexts_tooltip_description">Chaque contexte porte deux réglages, qui servent quand tu n\'es pas à la maison.\n\n• Il faut être sur place&#160;: la tâche ne se fait qu\'à la maison. Passer l\'aspirateur, oui&#160;; payer une facture, non.\n• Ça continue sans nous&#160;: le besoin grandit même quand personne n\'est là. La pelouse pousse, les plantes ont soif.\n\nPendant une absence, une tâche se met en pause si elle demande d\'être sur place et que rien ne continue sans vous. Les draps se mettent en pause&#160;; la tonte, non. Si une tâche a plusieurs contextes, il suffit qu\'un seul coche un réglage pour qu\'il s\'applique.</string>
     <string name="contexts_empty">Aucun contexte pour l\'instant. Ajoute-en un pour organiser tes tâches.</string>
     <string name="contexts_dialog_new_title">Nouveau contexte</string>
     <string name="contexts_dialog_edit_title">Modifier le contexte</string>
@@ -1475,12 +1481,14 @@
     <string name="contexts_name_taken">Ce nom est déjà pris par un autre contexte.</string>
     <string name="contexts_unreachable">Pas de connexion au serveur&#160;: les contextes se gèrent en ligne. Réessaie une fois connecté.</string>
     <string name="context_requires_presence_label">Il faut être sur place</string>
-    <string name="context_requires_presence_help">Ces tâches se cachent quand tu n\'es pas à la maison.</string>
+    <string name="context_requires_presence_help">La tâche ne se fait qu\'à la maison. Hors de ton WiFi maison, elle peut se cacher de ta liste. Pendant une absence, elle se met en pause, sauf si «&#160;Ça continue sans nous&#160;» est aussi coché.</string>
     <string name="context_accrues_when_away_label">Ça continue sans nous</string>
-    <string name="context_accrues_when_away_help">La pelouse pousse et le calendrier tourne même pendant les vacances&#160;: ces tâches ne se mettent pas en pause.</string>
+    <string name="context_accrues_when_away_help">Le besoin grandit même sans vous&#160;: la pelouse pousse, le calendrier tourne. Ces tâches ne se mettent jamais en pause pendant une absence.</string>
     <string name="foyer_contexts_subtitle">Cuisine, Chat, Jardin, Administratif… + emoji et couleur</string>
     <string name="task_contexts_label">Contextes</string>
-    <string name="task_contexts_help">Le premier choisi décide de l\'endroit où la tâche s\'affiche.</string>
+    <string name="task_contexts_help">Coche tout ce qui concerne la tâche. Le premier coché (★) s\'affiche sur la carte de la tâche&#160;; tous comptent pour les filtres et les pauses d\'absence.</string>
+    <string name="task_contexts_tooltip_title">Pourquoi plusieurs contextes&#160;?</string>
+    <string name="task_contexts_tooltip_description">«&#160;Nettoyer la litière&#160;» concerne le Salon (où elle est), le Chat (pourquoi elle existe) et le Ménage (ce que c\'est). Coche les trois&#160;: elle apparaîtra dans chaque filtre.\n\nPour changer le ★, décoche puis recoche les contextes dans l\'ordre voulu.</string>
     <string name="task_contexts_none">Aucun contexte</string>
     <string name="task_list_filter_all_contexts">Tous</string>
     <string name="task_edit_catalog_header">Propositions pour ton foyer</string>
@@ -1510,4 +1518,22 @@
     <string name="mydevices_retry">Réessayer</string>
     <string name="mydevices_cancel">Annuler</string>
     <string name="mydevices_confirm">Confirmer</string>
+
+    <!-- Part visee de chacun (ecran Foyer, module repartition) -->
+    <string name="fair_share_target_title">Part visée de chacun</string>
+    <string name="fair_share_target_info_title">Équitable, pas forcément égal</string>
+    <string name="fair_share_target_info_text">Égal, c\'est 50/50. Équitable, c\'est une part qui tient compte de la vie de chacun. Si l\'un travaille 45 heures par semaine et l\'autre 25, ou si l\'un s\'occupe d\'un parent âgé, une charge que l\'app ne voit pas, partager les tâches à égalité n\'est pas juste. Fixez ensemble la part visée de chacun, par exemple 60/40 : l\'app compare la part réelle à cette cible, pas à 50/50.</string>
+    <string name="fair_share_target_total_format">Total&#160;: %1$d&#160;%%</string>
+    <string name="fair_share_target_save_total_format">Enregistrer (total&#160;: %1$d&#160;%%)</string>
+    <string name="fair_share_target_saved">Parts enregistrées.</string>
+    <string name="fair_share_target_rejected">Parts refusées. La liste des membres a peut-être changé&#160;: vérifiez les parts et réessayez.</string>
+    <string name="fair_share_target_offline_save">Enregistrement impossible hors connexion. Réessayez une fois connecté.</string>
+    <string name="fair_share_target_unavailable">Réglage indisponible hors connexion.</string>
+    <string name="fair_share_target_retry">Réessayer</string>
+    <string name="fair_share_target_history_button">Historique</string>
+    <string name="fair_share_target_history_title">Historique des parts</string>
+    <string name="fair_share_target_history_empty">Aucun changement pour l\'instant.</string>
+    <string name="fair_share_target_history_unavailable">Historique indisponible hors connexion.</string>
+    <string name="fair_share_target_history_line_format">%1$s, par %2$s</string>
+    <string name="fair_share_target_history_share_format">%1$s&#160;: %2$s → %3$s</string>
 </resources>

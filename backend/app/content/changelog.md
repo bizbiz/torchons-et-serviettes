@@ -1,5 +1,33 @@
 # Notes de version
 
+## v0.43.1 — 2026-11-04
+
+### Répartition
+- Dans Réglages, on peut fixer la part de chaque membre du foyer (parts égales par
+  défaut). Un ⓘ explique le calcul, et chaque changement reste dans l'historique.
+- La demande de notation d'une tâche s'espace quand on la ferme sans noter, et revient
+  plus souvent quand on note (entre 1 et 10 jours).
+
+### Propositions au foyer
+- Une proposition faite au foyer s'affiche chez les autres membres en quelques
+  secondes, et la fenêtre d'attente se ferme dès qu'ils répondent, même sans
+  notification.
+
+### Modules
+- À la connexion, l'app charge tout de suite les modules du foyer : un module éteint
+  n'apparaît plus le temps d'un passage dans Réglages.
+- Dans un nouveau foyer, activer un module pour tout le foyer n'allume plus les
+  modules personnels de chacun, comme Statistiques.
+- « Demander à voter » n'apparaît que si l'Ajustement automatique est activé, et plus
+  sur sa propre ligne.
+- Les guides des modules sont relus et ont chacun un exemple. « Contextes » y remplace
+  « pièces » et « catégories ».
+- Un ⓘ explique les contextes, sur leur écran et sur le champ Contextes d'une tâche.
+
+### Corrections
+- « Fonctionnalités » ne charge plus sans fin quand Réglages a été ouvert hors
+  connexion.
+
 ## v0.43.0 — 2026-11-03
 
 ### Modules
