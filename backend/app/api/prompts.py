@@ -311,30 +311,9 @@ async def resolve_prompt(
     return {"ok": True}
 
 
-@router.post("/prompts/request-revote")
-async def request_revote(
-    body: RequestRevoteBody,
-    session: AsyncSession = Depends(get_session),
-    current: dict = Depends(get_current_user),
-):
-    """Enqueue un VOTE_FREQUENCY / VOTE_EFFORT prompt pour `target_user_id`
-    sur `task_id`.
-
-    Idempotent : si un prompt actif (non resolved, non expired) du meme type
-    existe deja pour ce couple (user, task), on ne re-enqueue pas, on
-    retourne 409 avec l'existant. UI cote client (J1 du grilling) doit
-    desactiver le bouton "Demander revote" quand pending — le 409 est
-    une defense en profondeur.
-
-    Priority 6, expires None (decision M3 + N2 du grilling).
-    """
-    from uuid import UUID as _UUID
-    from app.models.task import Task
+async def _validate_revote(session, body, foyer_uuid, requester_id):
+    """Checks of request_revote; returns (task, prompt_type) or raises."""
     from app.models.user_foyer import UserFoyer
-    from app.models.user import User
-
-    foyer_uuid = current_foyer_uuid(current)
-    requester_id = _UUID(current["user_id"])
 
     # 1. Validation : tache existe + appartient au foyer.
     task_r = await session.execute(
@@ -363,11 +342,38 @@ async def request_revote(
     if body.kind == "frequency":
         if not is_votable(task.recurrence_rule):
             raise LocalizedHTTPException(status_code=409, error_code="GAMIF_RULE_NOT_VOTABLE")
-        prompt_type = PromptType.VOTE_FREQUENCY
-    elif body.kind == "effort":
-        prompt_type = PromptType.VOTE_EFFORT
-    else:
-        raise LocalizedHTTPException(status_code=400, error_code="PROMPT_INVALID_KIND")
+        return task, PromptType.VOTE_FREQUENCY
+    if body.kind == "effort":
+        return task, PromptType.VOTE_EFFORT
+    raise LocalizedHTTPException(status_code=400, error_code="PROMPT_INVALID_KIND")
+
+
+@router.post("/prompts/request-revote")
+async def request_revote(
+    body: RequestRevoteBody,
+    session: AsyncSession = Depends(get_session),
+    current: dict = Depends(get_current_user),
+):
+    """Enqueue un VOTE_FREQUENCY / VOTE_EFFORT prompt pour `target_user_id`
+    sur `task_id`.
+
+    Idempotent : si un prompt actif (non resolved, non expired) du meme type
+    existe deja pour ce couple (user, task), on ne re-enqueue pas, on
+    retourne 409 avec l'existant. UI cote client (J1 du grilling) doit
+    desactiver le bouton "Demander revote" quand pending — le 409 est
+    une defense en profondeur.
+
+    Priority 6, expires None (decision M3 + N2 du grilling).
+    """
+    from uuid import UUID as _UUID
+    from app.models.task import Task
+    from app.models.user_foyer import UserFoyer
+    from app.models.user import User
+
+    foyer_uuid = current_foyer_uuid(current)
+    requester_id = _UUID(current["user_id"])
+
+    task, prompt_type = await _validate_revote(session, body, foyer_uuid, requester_id)
 
     # 5. Idempotence : prompt actif du meme type (user, task) existant ?
     now = datetime.now(timezone.utc)
@@ -420,6 +426,13 @@ async def request_revote(
     session.add(new_prompt)
     await session.flush()
     await session.commit()
+
+    # After the commit: queued, then sent as one grouped notification (services/push.py).
+    from app.services.push import queue_revote_request
+
+    queue_revote_request(
+        foyer_uuid, requester_id, body.target_user_id, body.task_id, task.title, body.kind,
+    )
 
     return {
         "ok": True,

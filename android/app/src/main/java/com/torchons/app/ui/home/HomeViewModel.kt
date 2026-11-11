@@ -725,21 +725,20 @@ class HomeViewModel @Inject constructor(
             if (resp.isSuccessful && resp.body() != null) {
                 val prompt = resp.body()!!
 
-                // RESOLVE_PRESENCE (priority max) bypass la tolerance 2h —
-                // les jours incertains doivent etre resolus au plus vite.
+                // Never replace a prompt the user is already looking at (modal or vote dialog).
+                val open = _uiState.value
+                if (PromptPolicy.isPromptOpen(
+                        open.showPromptModal,
+                        open.pendingFrequencyVoteContext != null,
+                        open.pendingEffortVoteContext != null,
+                    )
+                ) return
                 val isPresencePrompt = prompt.type == "RESOLVE_PRESENCE"
-
-                if (!isPresencePrompt) {
-                    // Tolerance 2h pour les autres types de prompts
-                    val lastShown = tokenManager.lastPromptShownAtFlow.first()
-                    if (lastShown > 0 && System.currentTimeMillis() - lastShown < 2 * 3600 * 1000) {
-                        return  // trop recent
-                    }
-                }
-
-                // Mark shown
+                // Presence and member-requested re-votes bypass the 2 h tolerance.
+                val lastShown = tokenManager.lastPromptShownAtFlow.first()
+                if (PromptPolicy.isHeldBackByTolerance(prompt.type, lastShown, System.currentTimeMillis())) return
                 apiService.markPromptShown(prompt.id)
-                if (!isPresencePrompt) {
+                if (!PromptPolicy.bypassesTolerance(prompt.type)) {
                     tokenManager.setLastPromptShownAt(System.currentTimeMillis())
                 }
                 _uiState.value = _uiState.value.copy(
@@ -885,10 +884,8 @@ class HomeViewModel @Inject constructor(
             try {
                 apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("DISMISSED"))
             } catch (_: Exception) {}
-            _uiState.value = _uiState.value.copy(
-                pendingFrequencyVoteContext = null,
-                currentPrompt = null,
-            )
+            _uiState.value = _uiState.value.copy(pendingFrequencyVoteContext = null, currentPrompt = null)
+            refresh() // chain to the next queued re-vote, as a submit does
         }
     }
 
@@ -898,10 +895,8 @@ class HomeViewModel @Inject constructor(
             try {
                 apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("DISMISSED"))
             } catch (_: Exception) {}
-            _uiState.value = _uiState.value.copy(
-                pendingEffortVoteContext = null,
-                currentPrompt = null,
-            )
+            _uiState.value = _uiState.value.copy(pendingEffortVoteContext = null, currentPrompt = null)
+            refresh() // chain to the next queued re-vote, as a submit does
         }
     }
 

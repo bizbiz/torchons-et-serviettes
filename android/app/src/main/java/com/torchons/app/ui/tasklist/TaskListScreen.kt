@@ -514,9 +514,9 @@ fun TaskListScreen(
                     }
                     // A widget button lands here (WidgetLaunch): same dialog as the card's.
                     val widgetRequest by com.torchons.app.widget.WidgetLaunch.request.collectAsState()
-                    LaunchedEffect(widgetRequest, users.isNotEmpty()) {
-                        val req = widgetRequest ?: return@LaunchedEffect
-                        if (users.isEmpty()) return@LaunchedEffect
+                    LaunchedEffect(widgetRequest, users.isNotEmpty(), uiState.tasks.isNotEmpty()) {
+                        val req = widgetRequest ?: return@LaunchedEffect // tasks too: title source
+                        if (users.isEmpty() || uiState.tasks.isEmpty()) return@LaunchedEffect
                         com.torchons.app.widget.WidgetLaunch.consume()
                         if (req.together) onCardFaitEnsemble(req.taskId) else onCardHistorical(req.taskId)
                     }

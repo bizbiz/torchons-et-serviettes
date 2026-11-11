@@ -1,5 +1,17 @@
 # Notes de version
 
+## v0.44.1 — 2026-11-11
+
+### Revote
+- Quand un membre redemande l'avis du foyer sur une tâche, tu reçois une notification,
+  même app fermée.
+- Les demandes de revote ne sont plus retenues deux heures : elles s'enchaînent dès
+  que tu réponds à la précédente, ou que tu la fermes.
+
+### Widget
+- Toucher le widget ne lance plus l'appli une seconde fois quand elle est déjà ouverte.
+- La fenêtre « Déjà fait » ouverte depuis le widget affiche toujours le nom de la tâche.
+
 ## v0.44.0 — 2026-11-11
 
 ### Notifications
