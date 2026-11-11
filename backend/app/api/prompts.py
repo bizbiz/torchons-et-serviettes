@@ -427,11 +427,11 @@ async def request_revote(
     await session.flush()
     await session.commit()
 
-    # After the commit: queued, then sent as one grouped notification (services/push.py).
-    from app.services.push import queue_revote_request
+    # After the commit: the target is notified at once (services/push.py).
+    from app.services.push import send_revote_request
 
-    queue_revote_request(
-        foyer_uuid, requester_id, body.target_user_id, body.task_id, task.title, body.kind,
+    await send_revote_request(
+        session, requester_id, body.target_user_id, body.task_id, task.title, body.kind,
     )
 
     return {

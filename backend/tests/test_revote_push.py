@@ -1,23 +1,18 @@
-"""A re-vote request reaches the target: queued, then ONE grouped notification.
+"""A re-vote request notifies its target at once.
 
-POST /prompts/request-revote used to send nothing. Now it queues per (household, requester,
-target) and `flush_idle_completions` sends one notification to the TARGET only once
-SYNC_QUIET_WINDOW has passed. Firebase is stubbed; the window is crossed by passing a later
-`now`, never by sleeping.
+POST /prompts/request-revote used to send nothing. It now sends one notification to the TARGET
+as soon as the request is committed, with no grouping window (Quentin, 2026-11-11: a re-vote
+request must be immediate). Firebase is stubbed.
 
-Paths: (1) one request: single text, target only; (2) three requests: ONE grouped text;
-(3) before the window: nothing; (4) a solo task of the requester hidden from the target:
-never named; (5) more than five titles: cut with an ellipsis.
-Not covered: a restart inside the window (the in-memory queue is lost, documented in
-push.py); the Android side (bypass of the 2 h tolerance, fetch on resume).
-The clock only enters through the flush `now` argument, shifted past the window.
+Paths: (1) one request: sent before the route returns, target only; (2) two requests: two
+notifications; (3) a solo task of the requester, hidden from the target: never named.
+Not covered: the Android side (bypass of the 2 h tolerance, refresh after a dismissal).
 """
 
 from __future__ import annotations
 
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -42,9 +37,7 @@ def sent(monkeypatch):
 
     monkeypatch.setattr(firebase_admin, "_apps", {"[DEFAULT]": object()})
     monkeypatch.setattr(messaging, "send_each_for_multicast", fake_send)
-    push._pending_revotes.clear()
     yield captured
-    push._pending_revotes.clear()
 
 
 @asynccontextmanager
@@ -94,13 +87,6 @@ async def _ask(client, h, task_id, kind):
     assert r.status_code == 200, r.text
 
 
-async def _flush(after_window=True):
-    now = datetime.now(timezone.utc)
-    if after_window:
-        now += push.SYNC_QUIET_WINDOW + timedelta(seconds=1)
-    return await push.flush_idle_completions(now=now)
-
-
 async def _tokens_of(h, member):
     from sqlalchemy import select
 
@@ -114,41 +100,33 @@ async def _tokens_of(h, member):
         return [t for (t,) in rows.all()]
 
 
-async def test_single_request_notifies_the_target_only(client, sent):
+async def test_single_request_notifies_the_target_at_once(client, sent):
     async with listening_house() as h:
         await _ask(client, h, h.task_id, "effort")
-        assert sent == []  # queued, not sent at commit time
-        await _flush(after_window=False)
-        assert sent == []  # window not over
-        await _flush()
-        assert len(sent) == 1
+        assert len(sent) == 1  # sent before the route returned: no window, no scheduler
         tokens, title, body = sent[0]
         assert tokens == await _tokens_of(h, 1)
+        assert title == "Demande de revote"
         assert body == "M0 te demande de revoter la pénibilité de cn task"
 
 
-async def test_three_requests_make_one_grouped_notification(client, sent):
+async def test_two_requests_make_two_notifications(client, sent):
     async with listening_house() as h:
-        a, b = await _task(h, "Aspirateur"), await _task(h, "Vitres")
+        a = await _task(h, "Aspirateur")
         await _ask(client, h, a, "frequency")
-        await _ask(client, h, b, "frequency")
         await _ask(client, h, h.task_id, "effort")
-        await _flush()
-        assert len(sent) == 1
-        assert sent[0][2] == "M0 te demande 3 revotes : Aspirateur, Vitres, cn task"
+        assert [b for _, _, b in sent] == [
+            "M0 te demande de revoter la fréquence de Aspirateur",
+            "M0 te demande de revoter la pénibilité de cn task",
+        ]
 
 
 async def test_requester_solo_task_is_never_named(client, sent):
     async with listening_house() as h:
         solo = await _task(h, "Secret", solo_of=0)
-        await _ask(client, h, solo, "effort")
-        await _ask(client, h, h.task_id, "effort")
-        await _flush()
-        assert len(sent) == 1
-        assert "Secret" not in sent[0][2]
-        assert sent[0][2] == "M0 te demande de revoter la pénibilité de cn task"
-
-
-def test_body_cuts_after_five_titles():
-    body = push.build_revote_body("Q", [("effort", f"T{i}") for i in range(7)])
-    assert body == "Q te demande 7 revotes : T0, T1, T2, T3, T4…"
+        r = await client.post(
+            "/api/prompts/request-revote",
+            json={"target_user_id": str(h.user_ids[1]), "task_id": str(solo), "kind": "effort"},
+            headers=h.headers(0),
+        )
+        assert all("Secret" not in b for _, _, b in sent), (r.status_code, sent)

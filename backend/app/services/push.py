@@ -329,14 +329,10 @@ async def send_sync_completions(
 
 
 async def flush_idle_completions(now: datetime | None = None) -> int:
-    """Send every group quiet for SYNC_QUIET_WINDOW; returns the number of groups flushed.
-
-    Also flushes the re-vote requests (same window, same scheduler job).
-    """
+    """Send every group quiet for SYNC_QUIET_WINDOW; returns the number of groups flushed."""
     from app.database import async_session
 
     now = now or datetime.now(timezone.utc)
-    flushed_revotes = await _flush_idle_revotes(now)
     due = [k for k, g in _pending.items() if now - g["last"] >= SYNC_QUIET_WINDOW]
     for key in due:
         group = _pending.pop(key, None)
@@ -348,90 +344,44 @@ async def flush_idle_completions(now: datetime | None = None) -> int:
                 await _send_sync_completions(session, group["ids"], recorder, foyer)
         except Exception as e:
             logger.warning("push_failed", kind="sync_completion", error=type(e).__name__)
-    return len(due) + flushed_revotes
+    return len(due)
 
 
 # --- Re-vote requests --------------------------------------------------------------------
 #
 # POST /prompts/request-revote used to send nothing: the target only learned of the request
-# when the app next fetched its prompt queue. A member asking for several re-votes in a row
-# would otherwise ring the target's phone once per request, so they are queued per
-# (household, requester, target) and leave as ONE notification after SYNC_QUIET_WINDOW,
-# flushed by the same scheduler job as the completions. Same in-memory caveats as above.
+# when the app next fetched its prompt queue. It now notifies the target AT ONCE, one
+# notification per request: Quentin, 2026-11-11, « une demande de revote doit être
+# immédiate ». A v0.44.1 build grouped them behind SYNC_QUIET_WINDOW; that wait was refused.
 # No settings toggle: it is a direct request from a member.
 
 _REVOTE_KIND_TEXT = {"frequency": "la fréquence", "effort": "la pénibilité"}
 
-# (household, requester, target) -> {"items": [(task id, title, kind)], "last": enqueue time}
-_pending_revotes: dict[tuple[UUID, UUID, UUID], dict] = {}
+
+def build_revote_body(requester_name: str, kind: str, title: str) -> str:
+    """« Q te demande de revoter la fréquence de X »."""
+    return f"{requester_name} te demande de revoter {_REVOTE_KIND_TEXT.get(kind, 'le vote')} de {title}"
 
 
-def build_revote_body(requester_name: str, items: list[tuple[str, str]]) -> str:
-    """« Q te demande de revoter la fréquence de X », or « Q te demande 3 revotes : X, Y, Z ».
-
-    `items` is a list of (kind, title); at most five titles are listed, then «…».
-    """
-    if len(items) == 1:
-        kind, title = items[0]
-        return f"{requester_name} te demande de revoter {_REVOTE_KIND_TEXT.get(kind, 'le vote')} de {title}"
-    shown = ", ".join(title for _, title in items[:_SYNC_TITLES_SHOWN])
-    more = "…" if len(items) > _SYNC_TITLES_SHOWN else ""
-    return f"{requester_name} te demande {len(items)} revotes : {shown}{more}"
-
-
-def queue_revote_request(
-    foyer_id: UUID, requester_id: UUID, target_id: UUID, task_id: UUID, title: str, kind: str,
-    now: datetime | None = None,
+async def send_revote_request(
+    session: AsyncSession, requester_id: UUID, target_id: UUID, task_id: UUID, title: str, kind: str,
 ) -> None:
-    """Queue one re-vote request; nothing is sent here. Never raises."""
+    """Notify the target of one re-vote request, now. Never raises."""
     try:
         if not firebase_admin._apps:
             logger.info("push_skipped", kind="revote", reason="firebase_not_initialized")
             return
-        stamp = now or datetime.now(timezone.utc)
-        group = _pending_revotes.setdefault(
-            (UUID(str(foyer_id)), UUID(str(requester_id)), UUID(str(target_id))),
-            {"items": [], "last": stamp},
+        if str(task_id) in await hidden_among(session, target_id, {UUID(str(task_id))}):
+            logger.info("push_skipped", kind="revote", reason="no_visible_task")
+            return
+        name = (
+            await session.execute(select(User.display_name).where(User.id == requester_id))
+        ).scalar() or "?"
+        await _send_to_users(
+            session, "revote", [(target_id, "Demande de revote", build_revote_body(name, kind, title))]
         )
-        group["items"].append((UUID(str(task_id)), title, kind))
-        group["last"] = stamp
-        logger.info("push_queued", kind="revote")
     except Exception as e:
         logger.warning("push_failed", kind="revote", error=type(e).__name__)
-
-
-async def _flush_idle_revotes(now: datetime) -> int:
-    from app.database import async_session
-
-    due = [k for k, g in _pending_revotes.items() if now - g["last"] >= SYNC_QUIET_WINDOW]
-    for key in due:
-        group = _pending_revotes.pop(key, None)
-        if group is None:
-            continue
-        _foyer, requester, target = key
-        try:
-            async with async_session() as session:
-                await _send_revotes(session, requester, target, group["items"])
-        except Exception as e:
-            logger.warning("push_failed", kind="revote", error=type(e).__name__)
-    return len(due)
-
-
-async def _send_revotes(session: AsyncSession, requester_id: UUID, target_id: UUID, items: list) -> None:
-    hidden = await hidden_among(session, target_id, {tid for tid, _, _ in items})
-    seen: set = set()
-    visible: list[tuple[str, str]] = []
-    for tid, title, kind in items:  # the same task and kind asked twice is announced once
-        if str(tid) in hidden or (tid, kind) in seen:
-            continue
-        seen.add((tid, kind))
-        visible.append((kind, title))
-    if not visible:
-        logger.info("push_skipped", kind="revote", reason="no_visible_task")
-        return
-    name = (await session.execute(select(User.display_name).where(User.id == requester_id))).scalar() or "?"
-    title = "Demande de revote" if len(visible) == 1 else "Demandes de revote"
-    await _send_to_users(session, "revote", [(target_id, title, build_revote_body(name, visible))])
 
 
 def _label(title: str, completed_at: datetime, today) -> str:
