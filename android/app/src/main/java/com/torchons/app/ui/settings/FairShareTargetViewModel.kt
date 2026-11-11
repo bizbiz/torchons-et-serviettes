@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.R
 import com.torchons.app.data.api.FairShareSaveResult
 import com.torchons.app.data.api.FairShareTargetApi
+import com.torchons.app.data.local.TokenManager
+import com.torchons.app.worker.cacheMyTargetRatio
 import com.torchons.app.data.api.loadHistorySafe
 import com.torchons.app.data.api.loadTargetsSafe
 import com.torchons.app.data.api.saveTargetsSafe
@@ -49,6 +51,7 @@ data class FairShareHistoryUiState(
 @HiltViewModel
 class FairShareTargetViewModel @Inject constructor(
     private val api: FairShareTargetApi,
+    private val tokenManager: TokenManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(FairShareTargetUiState())
@@ -74,6 +77,8 @@ class FairShareTargetViewModel @Inject constructor(
                     if (it.load == FairShareLoad.READY) it else it.copy(load = FairShareLoad.UNAVAILABLE)
                 }
             } else {
+                // The daily reminder reads my share offline: refresh its cache.
+                tokenManager.cacheMyTargetRatio(statuses)
                 _state.update { it.copy(load = FairShareLoad.READY, members = membersOf(statuses)) }
             }
         }

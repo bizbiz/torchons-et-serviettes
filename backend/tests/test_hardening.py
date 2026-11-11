@@ -1,4 +1,6 @@
-"""Hardening points of todo « Durcissements backend avant lecture publique du code ».
+"""Hardening points of the former todo item « Durcissements backend avant lecture publique du
+code », closed 2026-11-10 (its text: `git log -S "Durcissements backend" -- todo.md`). These
+tests and todo-checks/durcissements-backend.sh stay as regression guards.
 
 Paths, and what covers each:
 - j. a scoped token (the 5-minute restore token) used as a session — refused 401;

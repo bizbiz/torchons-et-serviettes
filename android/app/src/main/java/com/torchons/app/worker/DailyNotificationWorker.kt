@@ -1,53 +1,23 @@
 package com.torchons.app.worker
 
-import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.torchons.app.MainActivity
 import com.torchons.app.R
-import com.torchons.app.data.api.ApiService
-import com.torchons.app.data.local.TokenManager
-import com.torchons.app.data.model.Suggestion
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.first
-import java.util.concurrent.TimeUnit
 
 /**
- * Worker pour envoyer une notification locale quotidienne
- * avec le resume des taches a faire.
- *
- * Utilise ApiService (authentifie via AuthInterceptor) plutot qu'un
- * HttpURLConnection brut. Sans token JWT, l'endpoint /api/suggestions
- * renvoyait 401 et le worker echouait silencieusement (emptyList ->
- * Result.success sans notif) — c'etait le bug historique.
+ * Daily local notification: how many overdue tasks are mine today,
+ * N = round_half_up(red tasks x my target share). Computed offline from the
+ * Room cache (see [loadStatePairs]); N == 0 means no notification.
  */
 class DailyNotificationWorker(
     appContext: Context,
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
-
-    @EntryPoint
-    @InstallIn(SingletonComponent::class)
-    interface WorkerEntryPoint {
-        fun apiService(): ApiService
-        fun tokenManager(): TokenManager
-    }
 
     companion object {
         const val CHANNEL_ID = "torchons_daily"
@@ -55,135 +25,45 @@ class DailyNotificationWorker(
         const val WORK_NAME = "daily_notification"
 
         /**
-         * Planifie la notification quotidienne a l'heure choisie (0..23).
-         *
-         * - `enabled` = false -> annule, aucune notif prevue.
-         * - `replace` = true -> CANCEL_AND_REENQUEUE : annule l'ancienne planif
-         *   et en cree une fraiche avec le nouveau `setInitialDelay`. C'est le
-         *   seul moyen de deplacer le prochain tir apres un changement d'heure
-         *   depuis le slider Reglages. UPDATE preserve `lastEnqueueTime` et
-         *   `setInitialDelay` ne s'applique qu'au 1er run d'un PeriodicWork :
-         *   apres le 1er tir, UPDATE laisse le worker coince sur l'ancien
-         *   creneau malgre le nouveau spec.
-         * - `replace` = false -> KEEP : si une instance existe deja, on ne
-         *   touche pas (appel idempotent depuis Application.onCreate).
-         *
-         * WorkManager respecte une fenetre de flex de ~10min pour la batterie :
-         * la notif peut tomber jusqu'a 10min autour de l'heure cible.
+         * Schedules the daily notification at [hourOfDay]; `enabled` = false cancels.
+         * See [scheduleDailyWorker] for the `replace` semantics.
          */
         fun schedule(
             context: Context,
             hourOfDay: Int = 9,
             enabled: Boolean = true,
             replace: Boolean = false,
-        ) {
-            if (!enabled) {
-                cancel(context)
-                return
-            }
+        ) = scheduleDailyWorker<DailyNotificationWorker>(context, WORK_NAME, hourOfDay, enabled, replace)
 
-            val hour = hourOfDay.coerceIn(0, 23)
-            val now = java.time.LocalDateTime.now()
-            var target = now.withHour(hour).withMinute(0).withSecond(0).withNano(0)
-            if (!target.isAfter(now)) {
-                target = target.plusDays(1)
-            }
-            val initialDelayMs = java.time.Duration.between(now, target).toMillis()
-
-            val request = PeriodicWorkRequestBuilder<DailyNotificationWorker>(
-                1, TimeUnit.DAYS
-            )
-                .setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
-                .build()
-
-            val policy = if (replace) {
-                ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE
-            } else {
-                ExistingPeriodicWorkPolicy.KEEP
-            }
-
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORK_NAME,
-                policy,
-                request,
-            )
-        }
-
-        /** Annule la notification quotidienne. */
         fun cancel(context: Context) {
             WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
         }
     }
 
     override suspend fun doWork(): Result {
-        createNotificationChannel()
+        val ep = EntryPointAccessors.fromApplication(applicationContext, ReminderEntryPoint::class.java)
+        val tokens = ep.tokenManager()
+        val repo = ep.taskRepository()
 
-        val ep = EntryPointAccessors.fromApplication(
-            applicationContext, WorkerEntryPoint::class.java
+        // Signed out: nothing to show; the work keeps its schedule.
+        if (tokens.tokenFlow.first().isNullOrBlank()) return Result.success()
+
+        val states = loadStatePairs(repo, tokens, applicationContext.resources)
+        val count = dailyReminderCount(states.count { it.isRedToday() }, myTargetRatio(repo, tokens))
+        if (count == 0) {
+            // Silent day: also withdraw yesterday's count, which would otherwise stay on screen.
+            NotificationManagerCompat.from(applicationContext).cancel(NOTIFICATION_ID)
+            return Result.success()
+        }
+
+        postReminder(
+            context = applicationContext,
+            channelId = CHANNEL_ID,
+            channelName = applicationContext.getString(R.string.notif_daily_channel_name),
+            notificationId = NOTIFICATION_ID,
+            title = applicationContext.getString(R.string.app_name),
+            text = applicationContext.resources.getQuantityString(R.plurals.notif_daily_overdue_text, count, count),
         )
-
-        // Pas connecte : rien a afficher. On laisse le worker se replanifier
-        // normalement, il reessayera demain (eventuellement apres login).
-        val token = try { ep.tokenManager().tokenFlow.first() } catch (_: Exception) { null }
-        if (token.isNullOrBlank()) return Result.success()
-
-        // Appel authentifie via ApiService (Retrofit + AuthInterceptor).
-        // v0.16+ : /suggestions retourne un wrapper SuggestionsResponse — on
-        // extrait juste la liste (le worker n'a pas de notion de dismiss list).
-        val suggestions: List<Suggestion> = try {
-            val resp = ep.apiService().getSuggestions()
-            if (resp.isSuccessful) resp.body()?.suggestions ?: emptyList() else emptyList()
-        } catch (_: Exception) {
-            emptyList()
-        }
-
-        if (suggestions.isEmpty()) return Result.success()
-
-        val urgentCount = suggestions.count { it.reason == "urgent" }
-        val title = "Torchons & Serviettes"
-        val text = if (urgentCount > 0) {
-            "Tu as $urgentCount tache(s) urgente(s) a faire !"
-        } else {
-            "Des taches t'attendent aujourd'hui."
-        }
-
-        val intent = Intent(applicationContext, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            applicationContext, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setColor(ContextCompat.getColor(applicationContext, R.color.primary))
-            .setContentTitle(title)
-            .setContentText(text)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .build()
-
-        if (ActivityCompat.checkSelfPermission(
-                applicationContext, Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            NotificationManagerCompat.from(applicationContext).notify(NOTIFICATION_ID, notification)
-        }
-
         return Result.success()
-    }
-
-    private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Resume quotidien",
-            NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-            description = "Resume quotidien des taches a faire"
-        }
-        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.createNotificationChannel(channel)
     }
 }

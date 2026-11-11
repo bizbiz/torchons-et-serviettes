@@ -20,6 +20,7 @@ import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.core.proposition.PropositionStateHolder
 import com.torchons.app.worker.DailyNotificationWorker
+import com.torchons.app.worker.OverdueNotificationWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,31 +31,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-data class UserSettingsState(
-    val notifDaily: Boolean = true,
-    val notifUrgent: Boolean = true,
-    // Trois flags pour les completions, par defaut opt-in (false).
-    val notifSolo: Boolean = false,
-    val notifCollectiveWithMe: Boolean = false,
-    val notifCollectiveWithoutMe: Boolean = false,
-    val notifHour: Int = 9,
-    val affinityPopup: Boolean = true,
-    val affinityExpiry: Int = 6,
-    val fairShareTolerance: Int = 30,
-    val homeSsids: List<String> = emptyList(),
-    // Nb de membres du foyer actif : utilise pour cacher le toggle
-    // "without_me" quand <= 2.
-    val foyerMemberCount: Int = 2,
-    // v0.32 : toggle gamification user-level (global, s'applique a tous
-    // les foyers de l'user). Combine en OR avec foyer-level cote UI.
-    val gamificationEnabled: Boolean = true,
-    // Masquer les taches maison de la liste quand pas sur WiFi maison.
-    // Defaut true = comportement historique (avant ce reglage etait
-    // implicite et toujours actif).
-    val hideHomeTasksOffWifi: Boolean = true,
-    val isLoaded: Boolean = false
-)
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -170,6 +146,7 @@ class SettingsViewModel @Inject constructor(
                         notifCollectiveWithMe = data["notif_collective_with_me"] as? Boolean ?: false,
                         notifCollectiveWithoutMe = data["notif_collective_without_me"] as? Boolean ?: false,
                         notifHour = (data["notif_hour"] as? Double)?.toInt() ?: 9,
+                        notifOverdueHour = (data["notif_overdue_hour"] as? Number)?.toInt() ?: 8,
                         affinityPopup = data["affinity_popup_enabled"] as? Boolean ?: true,
                         affinityExpiry = (data["affinity_expiry_months"] as? Double)?.toInt() ?: 6,
                         fairShareTolerance = (data["fair_share_tolerance_percent"] as? Double)?.toInt() ?: 30,
@@ -258,6 +235,7 @@ class SettingsViewModel @Inject constructor(
         tokenManager.setNotifDaily(s.notifDaily)
         tokenManager.setNotifUrgent(s.notifUrgent)
         tokenManager.setNotifHour(s.notifHour)
+        tokenManager.setNotifOverdueHour(s.notifOverdueHour)
         tokenManager.setAffinityPopup(s.affinityPopup)
         tokenManager.setAffinityExpiry(s.affinityExpiry)
         // home_ssids : remplacer entierement (clear + re-add)
@@ -332,7 +310,27 @@ class SettingsViewModel @Inject constructor(
 
     fun dismissModuleError() { _moduleError.value = null }
 
-    fun setNotifUrgent(v: Boolean) { _settings.value = _settings.value.copy(notifUrgent = v); updateSetting("notif_urgent", v) }
+    fun setNotifUrgent(v: Boolean) {
+        _settings.value = _settings.value.copy(notifUrgent = v)
+        updateSetting("notif_urgent", v)
+        rescheduleOverdueNotif()
+    }
+    fun setNotifOverdueHour(v: Int) {
+        _settings.value = _settings.value.copy(notifOverdueHour = v)
+        updateSetting("notif_overdue_hour", v)
+        rescheduleOverdueNotif()
+    }
+
+    /** Re-plans the overdue notification from the toggle and its hour (replace: moves the next run). */
+    private fun rescheduleOverdueNotif() {
+        val s = _settings.value
+        OverdueNotificationWorker.schedule(
+            context = appContext,
+            hourOfDay = s.notifOverdueHour,
+            enabled = s.notifUrgent,
+            replace = true,
+        )
+    }
     fun setNotifSolo(v: Boolean) { _settings.value = _settings.value.copy(notifSolo = v); updateSetting("notif_solo", v) }
     fun setNotifCollectiveWithMe(v: Boolean) { _settings.value = _settings.value.copy(notifCollectiveWithMe = v); updateSetting("notif_collective_with_me", v) }
     fun setNotifCollectiveWithoutMe(v: Boolean) { _settings.value = _settings.value.copy(notifCollectiveWithoutMe = v); updateSetting("notif_collective_without_me", v) }

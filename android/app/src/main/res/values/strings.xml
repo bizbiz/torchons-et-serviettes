@@ -904,12 +904,12 @@
     <string name="settings_notif_daily_title">Résumé quotidien</string>
     <string name="settings_notif_daily_subtitle">Recevoir un résumé de tes tâches chaque jour</string>
     <string name="settings_notif_hour_format">Heure&#160;: %1$dh00</string>
-    <string name="settings_notif_urgent_title">Tâches urgentes</string>
+    <string name="settings_notif_urgent_title">Tâches passées en retard</string>
     <string name="settings_notif_urgent_subtitle">Notification quand une tâche passe en rouge</string>
     <string name="settings_notif_solo_title">Quand quelqu\'un fait une tâche seul</string>
     <string name="settings_notif_solo_subtitle">Notification quand l\'autre fait une tâche solo</string>
-    <string name="settings_notif_collective_with_me_title">Quand on fait une tâche ensemble (avec moi)</string>
-    <string name="settings_notif_collective_with_me_subtitle">Notification quand quelqu\'un enregistre un collectif qui t\'inclut</string>
+    <string name="settings_notif_collective_with_me_title">Quand un membre m\'inclut dans une tâche</string>
+    <string name="settings_notif_collective_with_me_subtitle">Fait avec moi, ou coché à mon nom</string>
     <string name="settings_notif_collective_without_me_title">Quand une tâche est faite à plusieurs sans moi</string>
     <string name="settings_notif_collective_without_me_subtitle">Notification quand un collectif te laisse de côté</string>
 
@@ -1536,4 +1536,13 @@
     <string name="fair_share_target_history_unavailable">Historique indisponible hors connexion.</string>
     <string name="fair_share_target_history_line_format">%1$s, par %2$s</string>
     <string name="fair_share_target_history_share_format">%1$s&#160;: %2$s → %3$s</string>
+
+    <!-- Rappels calculés sur le téléphone -->
+    <string name="notif_daily_channel_name">Résumé quotidien</string>
+    <plurals name="notif_daily_overdue_text">
+        <item quantity="one">%d tâche en retard pour toi aujourd\'hui</item>
+        <item quantity="other">%d tâches en retard pour toi aujourd\'hui</item>
+    </plurals>
+    <string name="notif_overdue_channel_name">Tâches passées en retard</string>
+    <string name="notif_overdue_title">Passées en retard</string>
 </resources>

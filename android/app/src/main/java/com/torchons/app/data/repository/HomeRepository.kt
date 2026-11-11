@@ -10,6 +10,7 @@ import com.torchons.app.data.model.DismissRequest
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.Suggestion
+import com.torchons.app.worker.cacheMyTargetRatio
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -118,6 +119,8 @@ class HomeRepository @Inject constructor(
             val response = apiService.getFairShareStatus()
             if (response.isSuccessful) {
                 val data = response.body() ?: emptyList()
+                // The daily reminder reads my share offline: refresh its cache.
+                tokenManager.cacheMyTargetRatio(data)
                 snapshotDao.upsert(
                     ViewSnapshotEntity(
                         key = ViewSnapshotEntity.KEY_HOME_FAIR_SHARE,

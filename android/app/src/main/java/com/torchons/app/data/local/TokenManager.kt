@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -44,6 +45,11 @@ class TokenManager @Inject constructor(
         private val NOTIF_DAILY_KEY = booleanPreferencesKey("notif_daily")
         private val NOTIF_URGENT_KEY = booleanPreferencesKey("notif_urgent")
         private val NOTIF_HOUR_KEY = intPreferencesKey("notif_hour")
+        private val NOTIF_OVERDUE_HOUR_KEY = intPreferencesKey("notif_overdue_hour")
+        // My own fair-share target (0..1) and the household it was read for,
+        // cached so the daily reminder is computed offline.
+        private val MY_TARGET_RATIO_KEY = doublePreferencesKey("my_target_ratio")
+        private val MY_TARGET_RATIO_FOYER_KEY = stringPreferencesKey("my_target_ratio_foyer")
         // Reglages affinite
         private val AFFINITY_POPUP_KEY = booleanPreferencesKey("affinity_popup_enabled")
         // SSIDs WiFi maison (separes par |)
@@ -110,11 +116,29 @@ class TokenManager @Inject constructor(
     val notifDailyFlow: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_DAILY_KEY] ?: true }
     val notifUrgentFlow: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_URGENT_KEY] ?: true }
     val notifHourFlow: Flow<Int> = context.dataStore.data.map { it[NOTIF_HOUR_KEY] ?: 9 }
+    val notifOverdueHourFlow: Flow<Int> = context.dataStore.data.map { it[NOTIF_OVERDUE_HOUR_KEY] ?: 8 }
     val affinityPopupFlow: Flow<Boolean> = context.dataStore.data.map { it[AFFINITY_POPUP_KEY] ?: true }
 
     suspend fun setNotifDaily(enabled: Boolean) { context.dataStore.edit { it[NOTIF_DAILY_KEY] = enabled } }
     suspend fun setNotifUrgent(enabled: Boolean) { context.dataStore.edit { it[NOTIF_URGENT_KEY] = enabled } }
     suspend fun setNotifHour(hour: Int) { context.dataStore.edit { it[NOTIF_HOUR_KEY] = hour } }
+    suspend fun setNotifOverdueHour(hour: Int) { context.dataStore.edit { it[NOTIF_OVERDUE_HOUR_KEY] = hour } }
+
+    /** Caches my target share for the open household (refreshed at each fetch and sync). */
+    suspend fun setMyTargetRatio(ratio: Double, foyerId: String?) {
+        context.dataStore.edit {
+            it[MY_TARGET_RATIO_KEY] = ratio
+            if (foyerId != null) it[MY_TARGET_RATIO_FOYER_KEY] = foyerId else it.remove(MY_TARGET_RATIO_FOYER_KEY)
+        }
+    }
+
+    /** Cached target share, or null when none is known for the CURRENT household. */
+    suspend fun cachedMyTargetRatio(): Double? {
+        val prefs = context.dataStore.data.first()
+        val ratio = prefs[MY_TARGET_RATIO_KEY] ?: return null
+        return if (prefs[MY_TARGET_RATIO_FOYER_KEY] == prefs[FOYER_ID_KEY]) ratio else null
+    }
+
     suspend fun setAffinityPopup(enabled: Boolean) { context.dataStore.edit { it[AFFINITY_POPUP_KEY] = enabled } }
 
     val homeSsidsFlow: Flow<Set<String>> = context.dataStore.data.map { prefs ->

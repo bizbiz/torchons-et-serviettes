@@ -896,12 +896,12 @@
     <string name="settings_notif_daily_title">Daily summary</string>
     <string name="settings_notif_daily_subtitle">Receive a daily summary of your tasks</string>
     <string name="settings_notif_hour_format">Time: %1$d:00</string>
-    <string name="settings_notif_urgent_title">Urgent tasks</string>
+    <string name="settings_notif_urgent_title">Tasks that became overdue</string>
     <string name="settings_notif_urgent_subtitle">Notify when a task turns red</string>
     <string name="settings_notif_solo_title">When someone does a task alone</string>
     <string name="settings_notif_solo_subtitle">Notify when someone else completes a solo task</string>
-    <string name="settings_notif_collective_with_me_title">When we do a task together (including me)</string>
-    <string name="settings_notif_collective_with_me_subtitle">Notify when someone logs a group task that includes you</string>
+    <string name="settings_notif_collective_with_me_title">When a member includes me in a task</string>
+    <string name="settings_notif_collective_with_me_subtitle">Done with me, or ticked in my name</string>
     <string name="settings_notif_collective_without_me_title">When a task is done together without me</string>
     <string name="settings_notif_collective_without_me_subtitle">Notify when a group task leaves you out</string>
 
@@ -1525,4 +1525,13 @@
     <string name="fair_share_target_history_unavailable">History unavailable offline.</string>
     <string name="fair_share_target_history_line_format">%1$s, by %2$s</string>
     <string name="fair_share_target_history_share_format">%1$s: %2$s → %3$s</string>
+
+    <!-- Reminders computed on the phone -->
+    <string name="notif_daily_channel_name">Daily summary</string>
+    <plurals name="notif_daily_overdue_text">
+        <item quantity="one">%d overdue task for you today</item>
+        <item quantity="other">%d overdue tasks for you today</item>
+    </plurals>
+    <string name="notif_overdue_channel_name">Tasks that became overdue</string>
+    <string name="notif_overdue_title">Now overdue</string>
 </resources>

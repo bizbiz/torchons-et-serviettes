@@ -20,4 +20,8 @@
   data, but it stays on the current screen and shows connection errors until it is relaunched.
   It would instead show a screen right away that explains the access was cut and offers "Recover
   my household".
+- **Notifications from all your households**: a member of several households is only notified
+  for the household open in the app. Overdue tasks and completions from another household only
+  reach them once they switch to it. They would be notified for each of their households, every
+  notification naming its own.
 - **Extended family mode**: multiple linked households (parents + grandparents who see each other's tasks), pro version for airbnb / long-term coloc.

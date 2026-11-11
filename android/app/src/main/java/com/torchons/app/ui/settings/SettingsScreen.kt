@@ -427,43 +427,7 @@ fun SettingsScreen(
 
                 // Heure du resume
                 if (notifDaily) {
-                    // Etat local qui suit le pouce pendant le drag. On ne
-                    // pousse la valeur au VM (backend + reschedule worker)
-                    // qu'au release, sinon le drag spamme 15+ POST et
-                    // cancel/reenqueue WorkManager. La cle `remember(notifHour)`
-                    // re-seed quand la valeur backend arrive apres loadAll.
-                    var pendingNotifHour by remember(notifHour) { mutableStateOf(notifHour) }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.settings_notif_hour_format, pendingNotifHour),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Slider(
-                        value = pendingNotifHour.toFloat(),
-                        onValueChange = { pendingNotifHour = it.toInt() },
-                        onValueChangeFinished = {
-                            if (pendingNotifHour != notifHour) {
-                                viewModel.setNotifHour(pendingNotifHour)
-                            }
-                        },
-                        valueRange = 6f..22f,
-                        steps = 15,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    NotifHourPicker(hour = notifHour, onCommit = viewModel::setNotifHour)
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -475,6 +439,10 @@ fun SettingsScreen(
                     checked = notifUrgent,
                     onCheckedChange = { enabled -> onNotifToggle(enabled, viewModel::setNotifUrgent) }
                 )
+
+                if (notifUrgent) {
+                    NotifHourPicker(hour = s.notifOverdueHour, onCommit = viewModel::setNotifOverdueHour)
+                }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 

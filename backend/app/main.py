@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -17,6 +18,7 @@ from app.database import engine
 from app.services.archiving import daily_archive_job
 from app.services.cleanup import daily_cleanup_job
 from app.services.module_usage_triggers import daily_usage_triggers_job
+from app.services.push import flush_idle_completions
 from app.services.retard_history import daily_retard_job
 
 logger = structlog.get_logger()
@@ -68,6 +70,15 @@ async def lifespan(app: FastAPI):
         id="daily_usage_triggers",
         replace_existing=True,
     )
+    # Completions recorded through /sync are queued, not sent (app/services/push.py): this
+    # flushes the groups quiet for 5 minutes. 30 s granularity = at most 30 s past the window.
+    _scheduler.add_job(
+        flush_idle_completions,
+        IntervalTrigger(seconds=30),
+        id="flush_sync_completions",
+        replace_existing=True,
+        max_instances=1,
+    )
     _scheduler.start()
     logger.info(
         "scheduler_started",
@@ -76,6 +87,7 @@ async def lifespan(app: FastAPI):
             "daily_retard_snapshot@03:15 UTC",
             "daily_cleanup@03:30 UTC",
             "daily_usage_triggers@03:45 UTC",
+            "flush_sync_completions@every 30 s",
         ],
     )
 

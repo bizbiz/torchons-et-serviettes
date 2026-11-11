@@ -22,6 +22,7 @@ import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.SyncConflict
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.widget.TaskWidget
+import com.torchons.app.worker.cacheMyTargetRatio
 import androidx.glance.appwidget.updateAll
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -64,6 +65,20 @@ internal suspend fun <T> sendInBatches(
         if (!sendBatch(batch)) return false
     }
     return true
+}
+
+/**
+ * After a successful sync, refreshes my cached target share (best effort: the
+ * daily reminder reads it offline). Cancellation still propagates.
+ */
+private suspend fun refreshMyTargetRatio(apiService: ApiService, tokenManager: TokenManager) {
+    try {
+        apiService.getFairShareStatus().body()?.let { tokenManager.cacheMyTargetRatio(it) }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        // Offline or refused: the previous cached share stays.
+    }
 }
 
 class SyncWorker(
@@ -173,6 +188,7 @@ class SyncWorker(
         // The widget skips its server refresh while ops are queued (it would wipe
         // their optimistic rows): once they are sent, it redraws from fresh data.
         if (allSent) runCatching { TaskWidget().updateAll(applicationContext) }
+        if (allSent) refreshMyTargetRatio(apiService, tokenManager)
         return if (allSent) Result.success() else Result.retry()
     }
 

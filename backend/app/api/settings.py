@@ -29,6 +29,7 @@ class SettingsResponse(BaseModel):
     notif_collective_with_me: bool
     notif_collective_without_me: bool
     notif_hour: int
+    notif_overdue_hour: int
     affinity_popup_enabled: bool
     affinity_expiry_months: int
     fair_share_tolerance_percent: int
@@ -52,6 +53,7 @@ class SettingsUpdate(BaseModel):
     notif_collective_with_me: bool | None = None
     notif_collective_without_me: bool | None = None
     notif_hour: int | None = Field(default=None, ge=0, le=23)
+    notif_overdue_hour: int | None = Field(default=None, ge=0, le=23)
     affinity_popup_enabled: bool | None = None
     affinity_expiry_months: int | None = Field(default=None, ge=1, le=24)
     fair_share_tolerance_percent: int | None = Field(default=None, ge=0, le=100)
@@ -116,6 +118,7 @@ async def get_settings(
         notif_collective_with_me=settings.notif_collective_with_me,
         notif_collective_without_me=settings.notif_collective_without_me,
         notif_hour=settings.notif_hour,
+        notif_overdue_hour=settings.notif_overdue_hour,
         affinity_popup_enabled=settings.affinity_popup_enabled,
         affinity_expiry_months=settings.affinity_expiry_months,
         fair_share_tolerance_percent=settings.fair_share_tolerance_percent,
@@ -171,6 +174,7 @@ async def update_settings(
         notif_collective_with_me=settings.notif_collective_with_me,
         notif_collective_without_me=settings.notif_collective_without_me,
         notif_hour=settings.notif_hour,
+        notif_overdue_hour=settings.notif_overdue_hour,
         affinity_popup_enabled=settings.affinity_popup_enabled,
         affinity_expiry_months=settings.affinity_expiry_months,
         fair_share_tolerance_percent=settings.fair_share_tolerance_percent,

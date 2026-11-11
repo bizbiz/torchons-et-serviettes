@@ -33,6 +33,10 @@ class UserSettings(Base):
         Boolean, default=False, nullable=False
     )
     notif_hour: Mapped[int] = mapped_column(Integer, default=9)
+    # Hour of the « tasks that turned overdue » notification (toggle: notif_urgent).
+    notif_overdue_hour: Mapped[int] = mapped_column(
+        Integer, default=8, server_default="8", nullable=False
+    )
     # Affinite
     affinity_popup_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     affinity_expiry_months: Mapped[int] = mapped_column(Integer, default=6)

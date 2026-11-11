@@ -255,28 +255,52 @@ async def _send_to_users(session: AsyncSession, kind: str, allowed: list[tuple[U
 # --- Completions arriving through /sync -------------------------------------------------
 #
 # The app records a completion offline-first, through /sync, and until 2026-10-18 that path
-# sent nothing: only the REST routes notified, so a plain completion never reached anyone.
-# A queue replayed on reconnection can carry many completions at once, hence ONE notification
-# per member who did them, per /sync call; and a completion dated more than a day back is
-# old news, it notifies nobody.
+# sent nothing. Every online tick on the phone is its own /sync call, so a burst of twelve ticks
+# is twelve calls: nothing is sent at commit time any more. The completions are QUEUED per
+# (household, recorder) and one notification per (recipient, kind, author) leaves once the
+# group has been quiet for SYNC_QUIET_WINDOW, flushed by a scheduler job (app/main.py).
+#
+# The queue lives in memory. A restart inside the window drops the pending group (those
+# completions are never announced), and several uvicorn workers would each hold their own
+# queue and split a burst: the API runs ONE worker, keep it that way or move this to the DB.
+# No age limit: whatever the completion date, it notifies; a date other than today is shown.
 
-SYNC_NOTIFY_MAX_AGE = timedelta(days=1)
+SYNC_QUIET_WINDOW = timedelta(minutes=5)  # tests shrink it (monkeypatch)
 _SYNC_TITLES_SHOWN = 5
+_DISPLAY_TZ = "Europe/Paris"
+
+# (household, recorder) -> {"ids": completion ids, "last": time of the latest enqueue}
+_pending: dict[tuple[UUID, UUID], dict] = {}
 
 
-def build_sync_completions_body(completer_name: str, titles: list[str]) -> str:
-    """« Lo a fait : X », or « Lo a fait 3 tâches : X, Y, Z » (at most five titles)."""
+def _local_date(moment: datetime):
+    try:
+        from zoneinfo import ZoneInfo
+
+        return moment.astimezone(ZoneInfo(_DISPLAY_TZ)).date()
+    except Exception:  # tzdata missing: UTC is a fair fallback for a day label
+        return moment.astimezone(timezone.utc).date()
+
+
+def build_sync_completions_body(author_name: str, titles: list[str], noted_for_you: bool = False) -> str:
+    """« Lo a fait : X », or « Lo a fait 3 tâches : X, Y, Z » (at most five titles, then «…»).
+
+    `noted_for_you`: the text for the completer, « Lo a noté que tu as fait : X ».
+    """
+    lead = f"{author_name} a noté que tu as fait" if noted_for_you else f"{author_name} a fait"
     if len(titles) == 1:
-        return f"{completer_name} a fait : {titles[0]}"
+        return f"{lead} : {titles[0]}"
     shown = ", ".join(titles[:_SYNC_TITLES_SHOWN])
     more = "…" if len(titles) > _SYNC_TITLES_SHOWN else ""
-    return f"{completer_name} a fait {len(titles)} tâches : {shown}{more}"
+    return f"{lead} {len(titles)} tâches : {shown}{more}"
 
 
-async def send_sync_completions(session: AsyncSession, completion_ids: list, recorder_id) -> None:
-    """Notify the household of the completions a /sync call has just inserted.
+async def send_sync_completions(
+    session: AsyncSession, completion_ids: list, recorder_id, now: datetime | None = None,
+) -> None:
+    """Queue the completions a /sync call has just inserted; nothing is sent here.
 
-    Called after the commit: a failure here is logged, never raised, the ops are applied.
+    Called after the commit: a failure is logged, never raised, the ops are applied.
     """
     if not completion_ids:
         return
@@ -284,50 +308,110 @@ async def send_sync_completions(session: AsyncSession, completion_ids: list, rec
         logger.info("push_skipped", kind="sync_completion", reason="firebase_not_initialized")
         return
     try:
-        await _send_sync_completions(session, completion_ids, UUID(str(recorder_id)))
+        from app.models.completion import TaskCompletion
+
+        recorder = UUID(str(recorder_id))
+        rows = await session.execute(
+            select(TaskCompletion.id, Task.foyer_id)
+            .join(Task, Task.id == TaskCompletion.task_id)
+            .where(TaskCompletion.id.in_(completion_ids))
+        )
+        stamp = now or datetime.now(timezone.utc)
+        queued = 0
+        for cid, foyer in rows.all():
+            group = _pending.setdefault((foyer, recorder), {"ids": [], "last": stamp})
+            group["ids"].append(cid)
+            group["last"] = stamp
+            queued += 1
+        logger.info("push_queued", kind="sync_completion", completions=queued)
     except Exception as e:
         logger.warning("push_failed", kind="sync_completion", error=type(e).__name__)
 
 
-async def _send_sync_completions(session: AsyncSession, completion_ids: list, recorder_id: UUID) -> None:
+async def flush_idle_completions(now: datetime | None = None) -> int:
+    """Send every group quiet for SYNC_QUIET_WINDOW; returns the number of groups flushed."""
+    from app.database import async_session
+
+    now = now or datetime.now(timezone.utc)
+    due = [k for k, g in _pending.items() if now - g["last"] >= SYNC_QUIET_WINDOW]
+    for key in due:
+        group = _pending.pop(key, None)
+        if group is None:
+            continue
+        foyer, recorder = key
+        try:
+            async with async_session() as session:
+                await _send_sync_completions(session, group["ids"], recorder, foyer)
+        except Exception as e:
+            logger.warning("push_failed", kind="sync_completion", error=type(e).__name__)
+    return len(due)
+
+
+def _label(title: str, completed_at: datetime, today) -> str:
+    day = _local_date(completed_at)
+    return title if day == today else f"{title} ({day:%d/%m})"
+
+
+async def _group_context(session: AsyncSession, foyer_id: UUID, named: set[UUID]):
+    """Active members, their settings by user id, and the display names of `named`."""
+    members = await session.execute(
+        select(UserFoyer.user_id).where(UserFoyer.foyer_id == foyer_id, UserFoyer.left_at.is_(None))
+    )
+    member_ids = [m for (m,) in members.all()]
+    settings_rows = await session.execute(select(UserSettings).where(UserSettings.user_id.in_(member_ids)))
+    names_rows = await session.execute(select(User.id, User.display_name).where(User.id.in_(named)))
+    return member_ids, {s.user_id: s for s in settings_rows.scalars().all()}, dict(names_rows.all())
+
+
+async def _send_sync_completions(
+    session: AsyncSession, completion_ids: list, recorder_id: UUID, foyer_id: UUID,
+) -> None:
     from app.models.completion import TaskCompletion
 
     rows = await session.execute(
-        select(TaskCompletion.completed_by, Task.foyer_id, Task.id, Task.title)
+        select(TaskCompletion.completed_by, Task.id, Task.title, TaskCompletion.completed_at)
         .join(Task, Task.id == TaskCompletion.task_id)
         .where(
             TaskCompletion.id.in_(completion_ids),
             TaskCompletion.deleted_at.is_(None),
-            TaskCompletion.completed_at >= datetime.now(timezone.utc) - SYNC_NOTIFY_MAX_AGE,
             Task.deleted_at.is_(None),
+            Task.foyer_id == foyer_id,
         )
         .order_by(TaskCompletion.completed_at)
     )
-    # (household, completer) -> {task id: title}, in completion order.
-    done: dict[tuple[UUID, UUID], dict[UUID, str]] = {}
-    for completer, foyer, task_id, title in rows.all():
-        done.setdefault((foyer, completer), {})[task_id] = title
+    today = _local_date(datetime.now(timezone.utc))
+    # completer -> {(task id, day): (task id, label)}, in completion order.
+    done: dict[UUID, dict] = {}
+    for completer, task_id, title, at in rows.all():
+        done.setdefault(completer, {})[(task_id, _local_date(at))] = (task_id, _label(title, at, today))
+
+    member_ids, settings, names = await _group_context(session, foyer_id, set(done) | {recorder_id})
+
+    async def visible_labels(recipient: UUID, tasks: dict) -> list[str]:
+        # Each recipient hears only of the tasks they may see (app/utils/scoping.py).
+        hidden = await hidden_among(session, recipient, {tid for tid, _ in tasks.values()})
+        return [label for tid, label in tasks.values() if str(tid) not in hidden]
 
     allowed: list[tuple[UUID, str, str]] = []
-    for (foyer, completer), tasks in done.items():
-        members = await session.execute(
-            select(UserFoyer.user_id).where(UserFoyer.foyer_id == foyer, UserFoyer.left_at.is_(None))
-        )
-        # Neither the one who did it nor the one who recorded it on their behalf.
-        candidates = [m for (m,) in members.all() if m not in (completer, recorder_id)]
-        settings = await session.execute(
-            select(UserSettings.user_id).where(
-                UserSettings.user_id.in_(candidates), UserSettings.notif_solo.is_(True),
-            )
-        )
-        name = (await session.execute(select(User.display_name).where(User.id == completer))).scalar()
-        for recipient in [s for (s,) in settings.all()]:
-            # Each recipient hears only of the tasks they may see (app/utils/scoping.py).
-            hidden = await hidden_among(session, recipient, set(tasks))
-            titles = [t for tid, t in tasks.items() if str(tid) not in hidden]
+    for completer, tasks in done.items():
+        for recipient in member_ids:
+            s = settings.get(recipient)
+            if s is None or recipient == recorder_id:
+                # The recorder knows what they ticked (and, ticking for themselves, did it).
+                continue
+            if recipient == completer:
+                # Ticked in my name: « R a noté que tu as fait … ».
+                if not s.notif_collective_with_me:
+                    continue
+                author, noted = names.get(recorder_id, "?"), True
+            else:
+                if not s.notif_solo:
+                    continue
+                author, noted = names.get(completer, "?"), False
+            titles = await visible_labels(recipient, tasks)
             if titles:
-                title = "Tache completee !" if len(titles) == 1 else "Taches completees !"
-                allowed.append((recipient, title, build_sync_completions_body(name or "?", titles)))
+                title = "Tâche complétée !" if len(titles) == 1 else "Tâches complétées !"
+                allowed.append((recipient, title, build_sync_completions_body(author, titles, noted)))
 
     if not allowed:
         logger.info("push_skipped", kind="sync_completion", reason="no_recipient", groups=len(done))

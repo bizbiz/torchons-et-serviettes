@@ -1,5 +1,20 @@
 # Notes de version
 
+## v0.44.0 — 2026-11-11
+
+### Notifications
+- Une notification le matin liste les tâches passées en retard depuis la veille.
+  Elle a son interrupteur et son heure dans Réglages (8 h par défaut).
+- Le rappel quotidien donne ta part des tâches en retard : leur nombre multiplié
+  par ta part dans la répartition. Il n'est plus bloqué à 5, se tait quand il n'y
+  a rien, et marche sans réseau.
+- Quand un membre coche une tâche à ton nom, tu es prévenu. Le réglage « Fait
+  ensemble avec moi » devient « Quand un membre m'inclut dans une tâche ».
+- Une tâche cochée plusieurs jours après coup prévient quand même les autres
+  membres, avec sa date.
+- Plusieurs tâches cochées à la suite donnent une seule notification, envoyée
+  5 minutes après la dernière.
+
 ## v0.43.1 — 2026-11-04
 
 ### Répartition

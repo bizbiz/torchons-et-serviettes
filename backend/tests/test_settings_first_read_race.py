@@ -82,3 +82,16 @@ async def test_first_read_and_first_sync_together_both_succeed(client):
     assert b.json()["conflicts"] == [], b.text
     after = await client.get("/api/settings", headers=headers)
     assert after.json()["notif_hour"] == 8, after.text
+
+
+@pytest.mark.asyncio
+async def test_overdue_hour_defaults_to_8_roundtrips_and_unknown_keys_are_ignored(client):
+    headers = await _fresh_member_headers()
+    first = await client.get("/api/settings", headers=headers)
+    assert first.json()["notif_overdue_hour"] == 8, first.text
+    # An old APK never sends the key; a new one may talk to an old server: unknown keys.
+    put = await client.put("/api/settings", headers=headers,
+                           json={"notif_overdue_hour": 17, "not_a_setting": 1})
+    assert put.status_code == 200 and put.json()["notif_overdue_hour"] == 17, put.text
+    bad = await client.put("/api/settings", headers=headers, json={"notif_overdue_hour": 24})
+    assert bad.status_code == 422

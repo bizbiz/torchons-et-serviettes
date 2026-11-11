@@ -7,6 +7,7 @@ import com.torchons.app.core.sync.SyncTrigger
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.local.dao.ViewSnapshotDao
 import com.torchons.app.worker.DailyNotificationWorker
+import com.torchons.app.worker.OverdueNotificationWorker
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -80,6 +81,16 @@ class TorchonsApp : Application() {
             context = this,
             hourOfDay = notifHour,
             enabled = notifDaily,
+            replace = versionChanged,
+        )
+        // Overdue notification: same mechanics, from notif_urgent / notif_overdue_hour.
+        val (notifOverdue, overdueHour) = runBlocking(Dispatchers.IO) {
+            tokenManager.notifUrgentFlow.first() to tokenManager.notifOverdueHourFlow.first()
+        }
+        OverdueNotificationWorker.schedule(
+            context = this,
+            hourOfDay = overdueHour,
+            enabled = notifOverdue,
             replace = versionChanged,
         )
         syncTrigger.schedulePeriodic()

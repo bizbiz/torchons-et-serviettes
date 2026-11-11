@@ -25,4 +25,8 @@
   automatiquement ne bougeraient plus. Aujourd'hui, des vacances font croire à l'app que la
   vaisselle se fait tous les 44 jours. On regardera aussi ce qui doit se mettre en pause avec
   elles. Au retour du premier membre, un message d'accueil l'aiderait à reprendre.
+- **Notifications de tous ses foyers** : un membre de plusieurs foyers n'est prévenu que pour
+  le foyer ouvert dans l'app. Les tâches en retard et les validations d'un autre foyer ne lui
+  arrivent qu'une fois qu'il y a basculé. Il serait prévenu pour chacun de ses foyers, chaque
+  notification nommant le sien.
 - **Mode "famille etendue"** : plusieurs foyers relies (parents + grands-parents qui se voient les taches), version pro pour airbnb / colocation longue.
