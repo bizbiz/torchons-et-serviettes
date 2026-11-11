@@ -512,13 +512,16 @@ fun TaskListScreen(
                             }
                         }
                     }
-                    // A widget button lands here (WidgetLaunch): same dialog as the card's.
+                    // A widget button lands here (WidgetLaunch): same dialog as the card's, its task
+                    // read from the whole cache, which the tab's filters do not narrow.
                     val widgetRequest by com.torchons.app.widget.WidgetLaunch.request.collectAsState()
-                    LaunchedEffect(widgetRequest, users.isNotEmpty(), uiState.tasks.isNotEmpty()) {
-                        val req = widgetRequest ?: return@LaunchedEffect // tasks too: title source
-                        if (users.isEmpty() || uiState.tasks.isEmpty()) return@LaunchedEffect
+                    val appContext = androidx.compose.ui.platform.LocalContext.current
+                    LaunchedEffect(widgetRequest, users.isNotEmpty()) {
+                        val req = widgetRequest?.takeIf { users.isNotEmpty() } ?: return@LaunchedEffect
+                        val task = findWidgetTask(appContext, req.taskId)
                         com.torchons.app.widget.WidgetLaunch.consume()
-                        if (req.together) onCardFaitEnsemble(req.taskId) else onCardHistorical(req.taskId)
+                        if (req.together && users.size == 2) twoPersonFaitEnsembleTaskId = req.taskId
+                        else dialogState = widgetCompletionDialog(req, task)
                     }
 
                     // Liste des taches avec pull-to-refresh
@@ -573,14 +576,6 @@ fun TaskListScreen(
     }
     } // fin du Box outer (celebration overlay layer)
 }
-
-/** Etat du dialog partage "Deja fait" / "Fait ensemble" sur la tasklist. */
-private data class TaskListCompletionDialogState(
-    val mode: CompletionDialogMode,
-    val taskId: String,
-    val taskTitle: String,
-    val assignedIds: Set<String>,
-)
 
 /**
  * Chip texte tri-state pour les filtres de la liste (v0.26).

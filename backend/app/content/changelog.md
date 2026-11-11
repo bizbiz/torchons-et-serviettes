@@ -1,5 +1,21 @@
 # Notes de version
 
+## v0.44.2 — 2026-11-11
+
+### Revote
+- La demande de revote arrive tout de suite en notification, une par demande.
+- La fenêtre de vote et la notification donnent les contextes de la tâche
+  (« Salon · Ménage ») : on sait de quel aspirateur on parle.
+
+### Widget
+- Le widget ne montre plus que les tâches à faire. Une tâche validée en sort
+  aussitôt, ce qui évite de la valider deux fois.
+- « Déjà fait » depuis le widget affiche toujours le nom de la tâche.
+
+### Validations
+- Une même tâche validée deux fois de suite par la même personne ne compte plus
+  qu'une fois (dans l'heure, ou dans la journée pour une tâche hebdomadaire).
+
 ## v0.44.1 — 2026-11-11
 
 ### Revote

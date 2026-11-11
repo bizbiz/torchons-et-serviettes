@@ -358,9 +358,27 @@ async def flush_idle_completions(now: datetime | None = None) -> int:
 _REVOTE_KIND_TEXT = {"frequency": "la fréquence", "effort": "la pénibilité"}
 
 
-def build_revote_body(requester_name: str, kind: str, title: str) -> str:
-    """« Q te demande de revoter la fréquence de X »."""
-    return f"{requester_name} te demande de revoter {_REVOTE_KIND_TEXT.get(kind, 'le vote')} de {title}"
+def build_revote_body(requester_name: str, kind: str, title: str, contexts: list[str] = ()) -> str:
+    """« Q te demande de revoter la fréquence de X (Salon, Ménage) ».
+
+    The contexts tell apart two tasks of the same title, « Passer l'aspirateur » in two rooms
+    (Quentin, 2026-11-11); none, no parentheses.
+    """
+    where = f" ({', '.join(contexts)})" if contexts else ""
+    return f"{requester_name} te demande de revoter {_REVOTE_KIND_TEXT.get(kind, 'le vote')} de {title}{where}"
+
+
+async def _context_names(session: AsyncSession, task_id: UUID) -> list[str]:
+    """The task's live contexts, main one first."""
+    from app.models.context import Context, TaskContext
+
+    rows = await session.execute(
+        select(Context.name)
+        .join(TaskContext, TaskContext.context_id == Context.id)
+        .where(TaskContext.task_id == task_id, Context.deleted_at.is_(None))
+        .order_by(TaskContext.position)
+    )
+    return [n for (n,) in rows.all()]
 
 
 async def send_revote_request(
@@ -377,9 +395,8 @@ async def send_revote_request(
         name = (
             await session.execute(select(User.display_name).where(User.id == requester_id))
         ).scalar() or "?"
-        await _send_to_users(
-            session, "revote", [(target_id, "Demande de revote", build_revote_body(name, kind, title))]
-        )
+        body = build_revote_body(name, kind, title, await _context_names(session, UUID(str(task_id))))
+        await _send_to_users(session, "revote", [(target_id, "Demande de revote", body)])
     except Exception as e:
         logger.warning("push_failed", kind="revote", error=type(e).__name__)
 

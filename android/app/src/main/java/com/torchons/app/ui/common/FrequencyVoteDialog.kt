@@ -91,7 +91,7 @@ private enum class VoteMode { SIMPLE, VARIABLE }
  */
 @Composable
 fun FrequencyVoteDialog(
-    taskTitle: String,
+    header: VoteTaskHeader,
     state: FrequencyVotesState,
     onSubmit: (FrequencyRequest) -> Unit,
     onDismiss: () -> Unit,
@@ -126,10 +126,11 @@ fun FrequencyVoteDialog(
                     Spacer(Modifier.height(8.dp))
                 }
                 Text(
-                    text = taskTitle,
+                    text = header.title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontStyle = FontStyle.Italic,
                 )
+                TaskContextsLine(header.contextsLine)
                 Spacer(Modifier.height(12.dp))
 
                 // Toggle Reguliere / Selon le mois

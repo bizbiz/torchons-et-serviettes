@@ -327,7 +327,7 @@ fun HomeScreen(
     uiState.pendingFrequencyVoteContext?.let { ctx ->
         ctx.frequencyState?.let { state ->
             com.torchons.app.ui.common.FrequencyVoteDialog(
-                taskTitle = ctx.taskTitle,
+                header = ctx.header,
                 state = state,
                 requesterName = ctx.requesterName,
                 onSubmit = { request -> viewModel.submitPromptFrequencyVote(request) },
@@ -338,7 +338,7 @@ fun HomeScreen(
     uiState.pendingEffortVoteContext?.let { ctx ->
         ctx.effortState?.let { state ->
             com.torchons.app.ui.common.EffortVoteDialog(
-                taskTitle = ctx.taskTitle,
+                header = ctx.header,
                 state = state,
                 requesterName = ctx.requesterName,
                 onSubmit = { points -> viewModel.submitPromptEffortVote(points) },

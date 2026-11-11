@@ -728,14 +728,7 @@ class TaskListViewModel @Inject constructor(
         if (applyUiFilters) {
             when (filters.filterTodo) {
                 FilterState.HIGH -> {
-                    tasksWithUrgency = tasksWithUrgency.filter { t ->
-                        when {
-                            t.isUncertain -> true
-                            t.group == RecurrenceGroup.CADENCE ->
-                                t.state != TaskUrgencyCalculator.State.GREEN
-                            else -> t.lastCompletedAt == null
-                        }
-                    }
+                    tasksWithUrgency = tasksWithUrgency.filter(::isToDo) // TaskUrgencyList.kt
                 }
                 FilterState.LOW -> {
                     tasksWithUrgency = tasksWithUrgency.filter { t ->

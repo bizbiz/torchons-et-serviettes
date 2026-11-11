@@ -43,7 +43,7 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun EffortVoteDialog(
-    taskTitle: String,
+    header: VoteTaskHeader,
     state: EffortVotesState,
     requesterName: String? = null,
     onSubmit: (points: Int) -> Unit,
@@ -67,10 +67,11 @@ fun EffortVoteDialog(
                     Spacer(Modifier.height(8.dp))
                 }
                 Text(
-                    text = taskTitle,
+                    text = header.title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontStyle = FontStyle.Italic,
                 )
+                TaskContextsLine(header.contextsLine)
                 Spacer(Modifier.height(12.dp))
 
                 Text(

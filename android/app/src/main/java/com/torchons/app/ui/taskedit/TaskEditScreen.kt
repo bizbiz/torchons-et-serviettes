@@ -138,7 +138,7 @@ fun TaskEditScreen(
     val freqVotes = uiState.frequencyVotes
     if (uiState.showFrequencyVoteDialog && taskId != null && freqVotes != null) {
         FrequencyVoteDialog(
-            taskTitle = uiState.title,
+            header = com.torchons.app.ui.common.VoteTaskHeader(uiState.title),
             state = freqVotes,
             onSubmit = { request -> viewModel.submitFrequencyVote(taskId, request) },
             onDismiss = { viewModel.dismissFrequencyVoteDialog() },

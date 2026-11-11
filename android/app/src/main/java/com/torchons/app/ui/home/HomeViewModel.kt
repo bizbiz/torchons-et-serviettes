@@ -56,7 +56,7 @@ import javax.inject.Inject
 data class PromptVoteContext(
     val promptId: String,
     val taskId: String,
-    val taskTitle: String,
+    val header: com.torchons.app.ui.common.VoteTaskHeader,
     val requesterName: String,
     val frequencyState: com.torchons.app.data.model.FrequencyVotesState? = null,
     val effortState: com.torchons.app.data.model.EffortVotesState? = null,
@@ -809,7 +809,7 @@ class HomeViewModel @Inject constructor(
                             pendingFrequencyVoteContext = PromptVoteContext(
                                 promptId = prompt.id,
                                 taskId = taskId,
-                                taskTitle = task.title,
+                                header = com.torchons.app.ui.common.voteHeader(task),
                                 requesterName = requesterName,
                                 frequencyState = state,
                             ),
@@ -836,7 +836,7 @@ class HomeViewModel @Inject constructor(
                             pendingEffortVoteContext = PromptVoteContext(
                                 promptId = prompt.id,
                                 taskId = taskId,
-                                taskTitle = task.title,
+                                header = com.torchons.app.ui.common.voteHeader(task),
                                 requesterName = requesterName,
                                 effortState = state,
                             ),

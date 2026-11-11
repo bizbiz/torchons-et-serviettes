@@ -36,6 +36,7 @@ from app.services.bonus_malus import (
 )
 from app.api.completions import recompute_interval_of_task
 from app.api.tasks import replace_task_contexts
+from app.services.completion_guard import duplicates_recent_completion
 from app.services.push import send_sync_completions
 from app.services.recurrence import checked_recurrence_rule
 from app.utils.changelog import record_change
@@ -406,8 +407,8 @@ async def _handle_task(
 
 async def _insert_completion(
     session: AsyncSession, op: SyncOperation, data: dict, user_id: str,
-) -> uuid.UUID:
-    """/sync INSERT on task_completions (see _handle_completion)."""
+) -> uuid.UUID | None:
+    """/sync INSERT on task_completions (see _handle_completion); None for a duplicate."""
     # Charger la tache pour calculer le multiplicateur.
     task_id = uuid.UUID(data["task_id"]) if data.get("task_id") else op.row_id
     # The task must belong to a household the caller is a member of. Not
@@ -442,6 +443,8 @@ async def _insert_completion(
     multiplier = 1.0
     reason = CompletionReason.NEUTRAL
 
+    if task is not None and await duplicates_recent_completion(session, task, completed_by, completed_at_eff):
+        return None  # acknowledged, not written: services/completion_guard.py
     if task is not None:
         base_points = await compute_base_points_for_task(session, task)
         mult_result = await compute_bonus_malus_for_completion(

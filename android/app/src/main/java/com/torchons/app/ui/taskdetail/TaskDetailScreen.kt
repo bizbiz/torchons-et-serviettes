@@ -359,7 +359,7 @@ fun TaskDetailScreen(
     }
     if (uiState.showFrequencyVoteDialog && uiState.frequencyVotes != null && uiState.task != null) {
         com.torchons.app.ui.common.FrequencyVoteDialog(
-            taskTitle = uiState.task!!.title,
+            header = com.torchons.app.ui.common.voteHeader(uiState.task!!),
             state = uiState.frequencyVotes!!,
             onSubmit = { req -> viewModel.submitFrequencyVote(req) },
             onDismiss = { viewModel.dismissFrequencyVoteDialog() },
@@ -367,7 +367,7 @@ fun TaskDetailScreen(
     }
     if (uiState.showEffortVoteDialog && uiState.effortVotes != null && uiState.task != null) {
         com.torchons.app.ui.common.EffortVoteDialog(
-            taskTitle = uiState.task!!.title,
+            header = com.torchons.app.ui.common.voteHeader(uiState.task!!),
             state = uiState.effortVotes!!,
             onSubmit = { points -> viewModel.submitEffortVote(points) },
             onDismiss = { viewModel.dismissEffortVoteDialog() },

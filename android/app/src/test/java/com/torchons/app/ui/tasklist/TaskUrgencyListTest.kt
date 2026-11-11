@@ -61,4 +61,26 @@ class TaskUrgencyListTest {
             sortForTaskList(shuffled).map { it.task.id },
         )
     }
+
+    /**
+     * The widget lists « À faire » only (Quentin, 2026-11-11): a ticked task, now green, leaves
+     * it; an uncertain task, kept by « À faire », leaves for the day it was done.
+     */
+    @Test
+    fun `the widget keeps only what is to do`() {
+        val today = java.time.LocalDate.of(2026, 11, 11)
+        val tasks = listOf(
+            item("red", State.RED),
+            item("orange", State.ORANGE),
+            item("green-just-ticked", State.GREEN),
+            item("never-done", group = RecurrenceGroup.SANS_CADENCE),
+            item("done-once", group = RecurrenceGroup.SANS_CADENCE, lastDone = "2026-10-01T10:00:00Z"),
+            item("uncertain-yesterday", lastDone = "2026-11-09T12:00:00Z").copy(isUncertain = true),
+            item("uncertain-today", lastDone = "2026-11-11T12:00:00Z").copy(isUncertain = true),
+        )
+        assertEquals(
+            listOf("red", "orange", "never-done", "uncertain-yesterday"),
+            tasks.filter { onWidget(it, today) }.map { it.task.id },
+        )
+    }
 }

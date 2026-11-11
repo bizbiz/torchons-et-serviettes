@@ -121,6 +121,27 @@ async def test_two_requests_make_two_notifications(client, sent):
         ]
 
 
+async def test_the_notification_names_the_task_contexts(client, sent):
+    """Two « Passer l'aspirateur » are told apart by their contexts, main one first."""
+    from app.database import async_session
+    from app.models.context import Context, TaskContext
+
+    async with listening_house() as h:
+        task_id = await _task(h, "Passer l'aspirateur")
+        async with async_session() as session:
+            salon = Context(foyer_id=h.foyer_id, name="Salon")
+            menage = Context(foyer_id=h.foyer_id, name="Ménage")
+            session.add_all([salon, menage])
+            await session.flush()
+            session.add_all([
+                TaskContext(task_id=task_id, context_id=menage.id, position=1),
+                TaskContext(task_id=task_id, context_id=salon.id, position=0),
+            ])
+            await session.commit()
+        await _ask(client, h, task_id, "frequency")
+        assert sent[0][2] == "M0 te demande de revoter la fréquence de Passer l'aspirateur (Salon, Ménage)"
+
+
 async def test_requester_solo_task_is_never_named(client, sent):
     async with listening_house() as h:
         solo = await _task(h, "Secret", solo_of=0)

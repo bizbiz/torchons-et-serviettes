@@ -50,6 +50,7 @@ import com.torchons.app.data.model.Task
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.util.WifiHelper
 import com.torchons.app.ui.tasklist.computeTasksWithUrgency
+import com.torchons.app.ui.tasklist.onWidget
 import com.torchons.app.ui.tasklist.sortForTaskList
 import com.torchons.app.util.TaskUrgencyCalculator
 import dagger.hilt.EntryPoint
@@ -172,8 +173,10 @@ class TaskWidget : GlanceAppWidget() {
                 val hidePresence = tokens.hideHomeTasksOffWifiFlow.first() &&
                     !WifiHelper.isAtHome(context, tokens.homeSsidsFlow.first())
                 val visible = visibleOnWidget(tasks, tokens.userIdFlow.first(), hidePresence)
+                val today = LocalDate.now()
                 val ranked = sortForTaskList(
-                    computeTasksWithUrgency(visible, completions, LocalDate.now(), context.resources),
+                    computeTasksWithUrgency(visible, completions, today, context.resources)
+                        .filter { onWidget(it, today) },
                 )
                 WidgetLoad.Loaded(ranked.map { WidgetTask(it.task.id, it.task.title, it.state, it.countdownLabel) })
             }

@@ -231,6 +231,42 @@ async def test_ticked_in_my_name_reaches_the_completer_only_when_flag_is_on(clie
     assert sent == []
 
     await _set_c_flags(solo=False, with_me=True)
+    task = await _new_task(client, "Salle de bain", [C_ID, D_ID])  # same task again = a duplicate
     await _sync(client, [_completion(task, by=C_ID)])
     await _flush_after_window()
     assert sent == [([C_TOKEN], "Tâche complétée !", "push-d a noté que tu as fait : Salle de bain")]
+
+
+# --- Anti-duplicate (services/completion_guard.py) -------------------------------------------
+# Same task, same member, inside min_completion_gap_seconds: acknowledged, not written. Seen on
+# 2026-11-11: three widget ✓ in 6 s gave three completions.
+
+
+async def _live_completions(task_id):
+    from app.database import async_session
+    from app.models.completion import TaskCompletion
+
+    async with async_session() as session:
+        rows = await session.execute(
+            select(TaskCompletion.completed_by).where(
+                TaskCompletion.task_id == uuid.UUID(task_id), TaskCompletion.deleted_at.is_(None)
+            )
+        )
+        return sorted(str(by) for (by,) in rows.all())
+
+
+@pytest.mark.asyncio
+async def test_three_quick_ticks_make_one_completion(client, sent):
+    task = await _new_task(client, "Eau du chat", [C_ID, D_ID])
+    await _sync(client, [_completion(task), _completion(task)])  # one call, conflict-free
+    r = await _sync(client, [_completion(task)])  # a later call: still acknowledged
+    assert len(r.json()["applied"]) == 1
+    assert await _live_completions(task) == [D_ID]
+
+
+@pytest.mark.asyncio
+async def test_another_member_or_another_day_is_not_a_duplicate(client, sent):
+    task = await _new_task(client, "Poubelles", [C_ID, D_ID])
+    two_days_ago = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+    await _sync(client, [_completion(task), _completion(task, by=C_ID), _completion(task, two_days_ago)])
+    assert await _live_completions(task) == sorted([C_ID, D_ID, D_ID])
