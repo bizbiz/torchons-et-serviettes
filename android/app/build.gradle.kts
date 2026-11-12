@@ -264,9 +264,10 @@ dependencies {
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 
-    // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
-    implementation("com.google.firebase:firebase-messaging-ktx")
+    // Firebase. 25.1+ registers with the Firebase Installation ID (onRegistered) instead of the
+    // deprecated FCM token (getToken / onNewToken) — backend services/push.py sends by `fids`.
+    // Only messaging is used: pinned directly, the BoM and the -ktx artifact are gone.
+    implementation("com.google.firebase:firebase-messaging:25.1.1")
 
     // Widget Glance
     implementation("androidx.glance:glance-appwidget:1.1.1")

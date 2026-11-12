@@ -17,7 +17,11 @@ class NotificationToken(Base, UUIDMixin):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
+    # The push target. Despite its name, it carries an FCM registration token (`kind` = "token",
+    # APKs before 2026-11-12) OR a Firebase Installation ID (`kind` = "fid", the app since):
+    # FCM deprecated the token for the FID (migration f3b8d5c2e9a1, services/push.py).
     fcm_token: Mapped[str] = mapped_column(String(500), nullable=False)
+    kind: Mapped[str] = mapped_column(String(8), nullable=False, server_default="token")
     device_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     # Quel APPAREIL detient ce jeton FCM. Nullable : les lignes creees avant
     # cette colonne n'en ont pas, et un jeton legacy sans claim `device_id`

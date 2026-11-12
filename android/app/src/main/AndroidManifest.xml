@@ -55,6 +55,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- FCM registers with the Firebase Installation ID (firebase-messaging 25.1+): the FID
+             arrives in TorchonsMessagingService.onRegistered and is sent as `fid`. -->
+        <meta-data
+            android:name="firebase_messaging_installation_id_enabled"
+            android:value="true" />
+
         <!-- Service Firebase Cloud Messaging -->
         <service
             android:name=".service.TorchonsMessagingService"

@@ -39,13 +39,17 @@ class TorchonsMessagingService : FirebaseMessagingService() {
         private var notifId = 2000
     }
 
-    override fun onNewToken(token: String) {
-        super.onNewToken(token)
-        // Le token sera enregistre au prochain lancement de l'app
-        // via le TokenRegistrar
+    /**
+     * The Firebase Installation ID registered with FCM, new or changed (restore, reinstall, data
+     * cleared). Replaces the deprecated onNewToken (firebase-messaging 25.1). Remembered here and
+     * sent by TokenRegistrar at the next start, as onNewToken did: a service is no place for a
+     * network call that must survive the process.
+     */
+    override fun onRegistered(installationId: String) {
+        super.onRegistered(installationId)
         getSharedPreferences("fcm", Context.MODE_PRIVATE)
             .edit()
-            .putString("fcm_token", token)
+            .putString("fid", installationId)
             .putBoolean("token_needs_sync", true)
             .apply()
     }

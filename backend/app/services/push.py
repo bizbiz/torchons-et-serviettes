@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID
@@ -29,6 +30,16 @@ if _firebase_key.exists() and not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
 
+def _multicast(targets: list[tuple[str, str]], **content) -> messaging.MulticastMessage:
+    """A message to (kind, value) targets: FIDs through `fids`, legacy FCM tokens through the
+    deprecated `tokens` (APKs before 2026-11-12, NotificationToken.kind)."""
+    fids = [v for k, v in targets if k == "fid"]
+    tokens = [v for k, v in targets if k != "fid"]
+    with warnings.catch_warnings():  # `tokens` warns; it stays until no APK sends a token
+        warnings.simplefilter("ignore", DeprecationWarning)
+        return messaging.MulticastMessage(tokens=tokens or None, fids=fids or None, **content)
+
+
 def _send_multicast(kind: str, message: messaging.MulticastMessage) -> list[str]:
     """Send and log the outcome: counts and error classes only, never titles or tokens.
 
@@ -43,9 +54,11 @@ def _send_multicast(kind: str, message: messaging.MulticastMessage) -> list[str]
     errors = sorted({type(r.exception).__name__ for r in resp.responses if r.exception})
     log = logger.warning if resp.failure_count else logger.info
     log("push_sent", kind=kind, ok=resp.success_count, failed=resp.failure_count, errors=errors)
-    # Responses come back in the order of message.tokens.
+    # Responses come back tokens first, then fids (messaging._get_messages_from_multicast).
+    # UnregisteredError covers a dead FID as well as a dead token.
+    sent = (message.tokens or []) + (message.fids or [])
     return [
-        tok for tok, r in zip(message.tokens, resp.responses)
+        tok for tok, r in zip(sent, resp.responses)
         if isinstance(r.exception, messaging.UnregisteredError)
     ]
 
@@ -225,17 +238,17 @@ async def _send_to_users(session: AsyncSession, kind: str, allowed: list[tuple[U
     """Send each (user_id, title, body) to every token of its user."""
     # 5. Tokens FCM des destinataires retenus.
     tokens_result = await session.execute(
-        select(NotificationToken.user_id, NotificationToken.fcm_token)
+        select(NotificationToken.user_id, NotificationToken.kind, NotificationToken.fcm_token)
         .where(NotificationToken.user_id.in_([r[0] for r in allowed]))
     )
-    tokens_by_user: dict[UUID, list[str]] = {}
-    for uid, tok in tokens_result.all():
-        tokens_by_user.setdefault(uid, []).append(tok)
+    tokens_by_user: dict[UUID, list[tuple[str, str]]] = {}
+    for uid, kind_, tok in tokens_result.all():
+        tokens_by_user.setdefault(uid, []).append((kind_, tok))
 
     # 6. Coalescer par (titre, body) — le bucket without_me partage souvent
     # le meme body, donc 1 multicast suffit. Le bucket with_me personnalise
     # via "toi" donc chaque destinataire a son propre bucket.
-    grouped: dict[tuple[str, str], list[str]] = {}
+    grouped: dict[tuple[str, str], list[tuple[str, str]]] = {}
     for uid, title, body in allowed:
         for tok in tokens_by_user.get(uid, []):
             grouped.setdefault((title, body), []).append(tok)
@@ -244,11 +257,8 @@ async def _send_to_users(session: AsyncSession, kind: str, allowed: list[tuple[U
         logger.info("push_skipped", kind=kind, reason="no_token", recipients=len(allowed))
         return
 
-    for (title, body), tokens in grouped.items():
-        message = messaging.MulticastMessage(
-            notification=messaging.Notification(title=title, body=body),
-            tokens=tokens,
-        )
+    for (title, body), targets in grouped.items():
+        message = _multicast(targets, notification=messaging.Notification(title=title, body=body))
         await _send_and_prune(kind, message)
 
 
@@ -490,17 +500,14 @@ async def send_data_message_to_users(
         return
 
     tokens_result = await session.execute(
-        select(NotificationToken.fcm_token).where(
+        select(NotificationToken.kind, NotificationToken.fcm_token).where(
             NotificationToken.user_id.in_(user_ids)
         )
     )
-    tokens = [row[0] for row in tokens_result.all()]
-    if not tokens:
+    targets = [(row[0], row[1]) for row in tokens_result.all()]
+    if not targets:
         return
 
-    message = messaging.MulticastMessage(
-        data=data,
-        tokens=tokens,
-    )
+    message = _multicast(targets, data=data)
     # Not critical: the polling fallback takes over. Logged so a failure is visible.
     await _send_and_prune("data", message)
