@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
@@ -42,6 +43,7 @@ internal fun HistoryEventCard(event: TaskHistoryEvent) {
         TaskHistoryEventType.VOTE_EFFORT -> Icons.Default.Timer
         TaskHistoryEventType.VOTE_FREQUENCY -> Icons.Default.Schedule
         TaskHistoryEventType.TASK_UPDATE -> Icons.Default.Edit
+        TaskHistoryEventType.TASK_CREATE -> Icons.Default.Add
         TaskHistoryEventType.MEMBER_LEFT -> Icons.AutoMirrored.Filled.Logout
         TaskHistoryEventType.UNKNOWN -> Icons.Default.History
     }
@@ -143,6 +145,7 @@ private fun formatHistoryEvent(event: TaskHistoryEvent): String {
                 else -> stringResource(R.string.task_history_update_many_format, actor, fields.size)
             }
         }
+        TaskHistoryEventType.TASK_CREATE -> stringResource(R.string.task_history_create_format, actor)
         TaskHistoryEventType.MEMBER_LEFT -> stringResource(R.string.task_history_member_left_format, actor)
         TaskHistoryEventType.UNKNOWN -> stringResource(R.string.task_history_update_unknown_format, actor)
     }

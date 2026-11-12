@@ -102,6 +102,7 @@ class WeeklySummaryViewModel @Inject constructor(
  */
 @Composable
 fun WeeklySummaryCard(
+    gamificationVisible: Boolean = true,
     viewModel: WeeklySummaryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -169,14 +170,14 @@ fun WeeklySummaryCard(
                     )
                 }
 
-                state.data != null -> SummaryBody(state.data!!)
+                state.data != null -> SummaryBody(state.data!!, gamificationVisible)
             }
         }
     }
 }
 
 @Composable
-private fun SummaryBody(data: WeeklySummaryResponse) {
+private fun SummaryBody(data: WeeklySummaryResponse, gamificationVisible: Boolean) {
     // Totaux foyer
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -186,10 +187,12 @@ private fun SummaryBody(data: WeeklySummaryResponse) {
             value = data.foyerTotalCompletions.toString(),
             label = stringResource(R.string.weekly_summary_stat_tasks),
         )
-        StatBig(
-            value = data.foyerTotalPoints.toString(),
-            label = stringResource(R.string.weekly_summary_stat_points),
-        )
+        if (gamificationVisible) {
+            StatBig(
+                value = data.foyerTotalPoints.toString(),
+                label = stringResource(R.string.weekly_summary_stat_points),
+            )
+        }
     }
 
     if (data.perUser.isEmpty() || data.foyerTotalCompletions == 0) {
@@ -212,17 +215,27 @@ private fun SummaryBody(data: WeeklySummaryResponse) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = if (index == 0 && user.completionsCount > 0) "🏆 ${user.displayName}"
+                text = if (gamificationVisible && index == 0 && user.completionsCount > 0)
+                    "🏆 ${user.displayName}"
                 else user.displayName,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal,
                 modifier = Modifier.weight(1f),
             )
+            val tasksText = pluralStringResource(
+                R.plurals.weekly_summary_tasks_count,
+                user.completionsCount,
+                user.completionsCount,
+            )
             Text(
-                text = stringResource(
+                text = if (!gamificationVisible) tasksText else stringResource(
                     R.string.weekly_summary_per_user_format,
-                    user.completionsCount,
-                    user.pointsEarned,
+                    tasksText,
+                    pluralStringResource(
+                        R.plurals.weekly_summary_points_count,
+                        user.pointsEarned,
+                        user.pointsEarned,
+                    ),
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

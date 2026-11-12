@@ -1,5 +1,7 @@
 package com.torchons.app.ui.common
 
+import androidx.compose.ui.res.stringResource
+import com.torchons.app.R
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -212,7 +214,7 @@ private fun MonthHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         IconButton(onClick = onPrev) {
-            Icon(Icons.Default.ChevronLeft, contentDescription = "Mois precedent")
+            Icon(Icons.Default.ChevronLeft, contentDescription = stringResource(R.string.presence_prev_month))
         }
         Text(
             text = title,
@@ -220,7 +222,7 @@ private fun MonthHeader(
             fontWeight = FontWeight.Bold,
         )
         IconButton(onClick = onNext) {
-            Icon(Icons.Default.ChevronRight, contentDescription = "Mois suivant")
+            Icon(Icons.Default.ChevronRight, contentDescription = stringResource(R.string.presence_next_month))
         }
     }
 }
@@ -307,7 +309,7 @@ private fun DayCell(
         if (showStar) {
             Icon(
                 imageVector = Icons.Default.Star,
-                contentDescription = "Activite ce jour",
+                contentDescription = stringResource(R.string.presence_day_activity),
                 tint = STREAK_STAR_COLOR,
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -338,70 +340,32 @@ private fun PresenceLegend(showStreak: Boolean = false) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "Legende",
+                text = stringResource(R.string.presence_legend_title),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             )
-            // (i) detaillee. La partie streak n'est ajoutee qu'en mode streak
-            // (modal Stats) — l'editeur de presence P2 garde son texte exact.
-            val streakInfo = if (showStreak) {
-                "\n\n— Series —\n" +
-                    "L'etoile = ce membre a fait au moins une tache ce " +
-                    "jour-la. Le liseré OR entoure les jours de la " +
-                    "MEILLEURE serie (record) ; le liseré INDIGO ceux de " +
-                    "la serie EN COURS. Une serie PASSE AU TRAVERS des " +
-                    "jours confirmes absents (regle v0.17 : absence " +
-                    "legitime) et SE CASSE sur un jour incertain ou un jour " +
-                    "present sans aucune tache. Calcul sur TOUT l'historique " +
-                    "cote serveur (le record n'est plus tronque par le mois " +
-                    "affiche)."
-            } else {
-                ""
-            }
+            // (i) detaillee. La partie streak n'est ajoutee qu'en mode streak (modal Stats).
+            val streakInfo = if (showStreak) stringResource(R.string.presence_help_streak) else ""
             InfoTooltip(
-                title = if (showStreak) {
-                    "Calendrier de presence & series"
-                } else {
-                    "Calendrier de presence"
-                },
-                description =
-                    "Ce calendrier dit a l'app quels jours quelqu'un etait au " +
-                        "foyer. Il sert au gel des taches \"a la maison\" : " +
-                        "pendant une absence, ces taches arretent de vieillir.\n\n" +
-                        "• Vert = present : journee confirmee a la maison.\n" +
-                        "• Rouge doux = absent : journee confirmee hors du foyer " +
-                        "(les taches maison sont gelees ce jour-la).\n" +
-                        "• Gris = non renseigne : AUCUNE info pour ce jour. Par " +
-                        "defaut, un jour non renseigne est COMPTE COMME ABSENT " +
-                        "(le foyer reste gele). C'est ce qui pouvait donner des " +
-                        "surprises type \"Aspirateur dans 6 j\" : pose " +
-                        "explicitement les jours presents pour corriger.\n\n" +
-                        "Sources : l'icone Wi-Fi marque un jour detecte " +
-                        "automatiquement ; l'icone main un jour pose " +
-                        "manuellement. Priorite : manuel > auto Wi-Fi — un " +
-                        "jour pose a la main n'est jamais ecrase par la " +
-                        "detection auto.\n\n" +
-                        "La detection automatique est facultative : elle " +
-                        "s'appuie sur le(s) WiFi maison declares juste " +
-                        "au-dessus, dans ce meme ecran (section Presence & " +
-                        "absences). Sans WiFi configure, renseigne les jours " +
-                        "a la main ici." +
-                        streakInfo,
+                title = stringResource(
+                    if (showStreak) R.string.presence_help_title_streak else R.string.presence_help_title
+                ),
+                description = stringResource(R.string.presence_help_body) + streakInfo,
             )
         }
         Spacer(Modifier.height(6.dp))
         LegendChip(
             color = Color(0xFF10B981),
-            label = "Present",
+            label = stringResource(R.string.presence_legend_present),
         )
         LegendChip(
             color = MaterialTheme.colorScheme.errorContainer,
-            label = "Absent (taches maison gelees ce jour)",
+            label = stringResource(R.string.presence_legend_absent),
         )
         LegendChip(
             color = MaterialTheme.colorScheme.surfaceVariant,
-            label = "Non renseigne (compte absent par defaut)",
+            label = stringResource(R.string.presence_legend_unknown),
         )
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -413,7 +377,7 @@ private fun PresenceLegend(showStreak: Boolean = false) {
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                "Detecte automatiquement (WiFi maison)",
+                stringResource(R.string.presence_legend_auto),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -428,7 +392,7 @@ private fun PresenceLegend(showStreak: Boolean = false) {
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                "Renseigne manuellement",
+                stringResource(R.string.presence_legend_manual),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -445,7 +409,7 @@ private fun PresenceLegend(showStreak: Boolean = false) {
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Tache faite ce jour-la",
+                    stringResource(R.string.presence_legend_task_done),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -453,11 +417,11 @@ private fun PresenceLegend(showStreak: Boolean = false) {
             Spacer(Modifier.height(2.dp))
             LegendBorderChip(
                 color = STREAK_RECORD_COLOR,
-                label = "Liseré or = meilleure serie (record)",
+                label = stringResource(R.string.presence_legend_record),
             )
             LegendBorderChip(
                 color = STREAK_CURRENT_COLOR,
-                label = "Liseré indigo = serie en cours",
+                label = stringResource(R.string.presence_legend_current),
             )
         }
     }

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -87,13 +88,16 @@ data class StatsUiState(
     val retardPeriod: RetardPeriod = RetardPeriod.ALL,
     val isRetardLoading: Boolean = false,
     val selectedTab: Int = 0,
-    val error: String? = null
+    val error: String? = null,
+    // False = gamification off for this user: the gamification data below is
+    // never fetched and stays empty/null, and the screen hides its sections.
+    val gamificationVisible: Boolean = true,
 )
 
 @HiltViewModel
 class StatsViewModel @Inject constructor(
     private val apiService: ApiService,
-    tokenManager: TokenManager,
+    private val tokenManager: TokenManager,
 ) : ViewModel() {
 
     val userId: StateFlow<String?> = tokenManager.userIdFlow
@@ -113,17 +117,19 @@ class StatsViewModel @Inject constructor(
                 isRefreshing = isRefresh
             )
             try {
+                val gamification = tokenManager.gamificationVisibleFlow.first()
                 val statsResp = apiService.getStats()
-                val weekResp = apiService.getLeaderboard("week")
-                val monthResp = apiService.getLeaderboard("month")
-                val allResp = apiService.getLeaderboard("all")
-                val streaksResp = apiService.getStreaks()
-                val badgesResp = apiService.getBadges()
+                // Gamification off: skip the calls, the data stays empty/null.
+                val weekResp = if (gamification) apiService.getLeaderboard("week") else null
+                val monthResp = if (gamification) apiService.getLeaderboard("month") else null
+                val allResp = if (gamification) apiService.getLeaderboard("all") else null
+                val streaksResp = if (gamification) apiService.getStreaks() else null
+                val badgesResp = if (gamification) apiService.getBadges() else null
                 val historyResp = apiService.getHistory()
                 val fairShareResp = apiService.getFairShareStatus()
-                val ptsWeekResp = apiService.getPointsTimeline("week")
-                val ptsMonthResp = apiService.getPointsTimeline("month")
-                val ptsAllResp = apiService.getPointsTimeline("all")
+                val ptsWeekResp = if (gamification) apiService.getPointsTimeline("week") else null
+                val ptsMonthResp = if (gamification) apiService.getPointsTimeline("month") else null
+                val ptsAllResp = if (gamification) apiService.getPointsTimeline("all") else null
                 val weekdayResp = apiService.getWeekdayFrequency("all")
                 val categoryResp = apiService.getCategoryFrequency("all")
                 val weekdayThisWeekResp = apiService.getWeekdayFrequency("week")
@@ -134,16 +140,19 @@ class StatsViewModel @Inject constructor(
                     isLoading = false,
                     isRefreshing = false,
                     stats = if (statsResp.isSuccessful) statsResp.body() ?: emptyList() else emptyList(),
-                    leaderboardWeek = if (weekResp.isSuccessful) weekResp.body() ?: emptyList() else emptyList(),
-                    leaderboardMonth = if (monthResp.isSuccessful) monthResp.body() ?: emptyList() else emptyList(),
-                    leaderboardAll = if (allResp.isSuccessful) allResp.body() ?: emptyList() else emptyList(),
-                    streaks = if (streaksResp.isSuccessful) streaksResp.body() ?: emptyList() else emptyList(),
-                    badges = if (badgesResp.isSuccessful) badgesResp.body() ?: emptyList() else emptyList(),
-                    history = if (historyResp.isSuccessful) historyResp.body() ?: emptyList() else emptyList(),
+                    gamificationVisible = gamification,
+                    leaderboardWeek = weekResp?.takeIf { it.isSuccessful }?.body() ?: emptyList(),
+                    leaderboardMonth = monthResp?.takeIf { it.isSuccessful }?.body() ?: emptyList(),
+                    leaderboardAll = allResp?.takeIf { it.isSuccessful }?.body() ?: emptyList(),
+                    streaks = streaksResp?.takeIf { it.isSuccessful }?.body() ?: emptyList(),
+                    badges = badgesResp?.takeIf { it.isSuccessful }?.body() ?: emptyList(),
+                    history = withoutPoints(
+                        historyResp.body().takeIf { historyResp.isSuccessful }.orEmpty(), gamification,
+                    ),
                     fairShare = if (fairShareResp.isSuccessful) fairShareResp.body() ?: emptyList() else emptyList(),
-                    pointsWeek = if (ptsWeekResp.isSuccessful) ptsWeekResp.body() else null,
-                    pointsMonth = if (ptsMonthResp.isSuccessful) ptsMonthResp.body() else null,
-                    pointsAll = if (ptsAllResp.isSuccessful) ptsAllResp.body() else null,
+                    pointsWeek = ptsWeekResp?.takeIf { it.isSuccessful }?.body(),
+                    pointsMonth = ptsMonthResp?.takeIf { it.isSuccessful }?.body(),
+                    pointsAll = ptsAllResp?.takeIf { it.isSuccessful }?.body(),
                     weekdayFrequency = if (weekdayResp.isSuccessful) weekdayResp.body() else null,
                     categoryFrequency = if (categoryResp.isSuccessful) categoryResp.body() else null,
                     weekdayThisWeek = if (weekdayThisWeekResp.isSuccessful) weekdayThisWeekResp.body() else null,
@@ -287,7 +296,8 @@ class StatsViewModel @Inject constructor(
                     q = filters.query.ifBlank { null },
                 )
                 val body = if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
-                _uiState.value = _uiState.value.copy(history = body, isHistoryLoading = false)
+                val history = withoutPoints(body, _uiState.value.gamificationVisible)
+                _uiState.value = _uiState.value.copy(history = history, isHistoryLoading = false)
             } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(isHistoryLoading = false)
             }

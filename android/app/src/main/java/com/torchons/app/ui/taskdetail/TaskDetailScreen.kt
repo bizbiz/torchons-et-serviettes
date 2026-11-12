@@ -72,7 +72,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -92,11 +91,9 @@ import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.CompletionDialog
 import com.torchons.app.ui.common.CompletionDialogMode
 import com.torchons.app.ui.common.RatingDialog
-import com.torchons.app.ui.common.anniversaryPeriodLabel
 import com.torchons.app.ui.common.randomCelebration
 import com.torchons.app.ui.user.UserProfileDialog
 import com.torchons.app.ui.user.UserProfileRequest
-import com.torchons.app.util.DurationFormat
 import com.torchons.app.util.TaskUrgencyCalculator
 import java.time.Instant
 import java.time.ZoneId
@@ -586,7 +583,7 @@ fun TaskDetailScreen(
                                     )
                                 }
                                 // Pastille bonus/malus a cote du label urgence
-                                uiState.bonusPreview?.let { preview ->
+                                uiState.bonusPreview?.takeIf { gamificationVisible }?.let { preview ->
                                     if (preview.reason == "BONUS_RETARD") {
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -858,7 +855,7 @@ fun TaskDetailScreen(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = formatRecurrence(task.recurrenceRule),
+                                        text = formatRecurrence(task.recurrenceRule, task.inferredIntervalDays),
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                     // v0.28 — sous-texte adaptatif des votes + lien "+ d'info".
@@ -1068,7 +1065,7 @@ fun TaskDetailScreen(
                             CompletionCard(
                                 group = group,
                                 userNames = uiState.userNames,
-                                formerMembers = uiState.formerMembers,
+                                formerMembers = uiState.formerMembers, showPoints = gamificationVisible,
                                 onDeleteOne = { viewModel.deleteCompletion(group.head.id) },
                                 onDeleteCollective = {
                                     viewModel.deleteCollective(group.rows.map { it.id })
@@ -1169,25 +1166,6 @@ private fun joinFr(names: List<String>): String = when {
     names.isEmpty() -> ""
     names.size == 1 -> names[0]
     else -> names.dropLast(1).joinToString(", ") + " & " + names.last()
-}
-
-/**
- * Formate la regle de recurrence en texte lisible (v0.27 — 3 types
- * supportes : interval, monthly_variable, uncertain).
- */
-@Composable
-private fun formatRecurrence(rule: com.torchons.app.data.model.RecurrenceRule): String {
-    val res = LocalContext.current.resources
-    return when (rule.type) {
-        "interval" -> rule.everyNDays?.let {
-            stringResource(R.string.task_recurrence_every_n_days_format, DurationFormat.formatDaysHuman(res, it, long = true))
-        } ?: stringResource(R.string.task_recurrence_every_unknown)
-        "monthly_variable" -> stringResource(R.string.task_recurrence_monthly_variable)
-        "uncertain" -> stringResource(R.string.task_recurrence_uncertain)
-        "calendar" -> stringResource(R.string.task_edit_recurrence_calendar)
-        "anniversary" -> anniversaryPeriodLabel(rule.everyNMonths ?: 12)
-        else -> rule.type
-    }
 }
 
 /** Formate la tolerance en texte lisible. */

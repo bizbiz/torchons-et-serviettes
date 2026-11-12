@@ -515,6 +515,7 @@
     <string name="task_history_vote_eff_format">%1$s a voté %2$s effort</string>
     <string name="task_history_vote_eff_consensus_format">%1$s a voté %2$s effort → consensus %3$s</string>
     <string name="task_history_vote_eff_no_value_format">%1$s a voté un effort</string>
+    <string name="task_history_create_format">%1$s a créé la tâche</string>
     <string name="task_history_update_one_format">%1$s a modifié %2$s</string>
     <string name="task_history_update_many_format">%1$s a modifié %2$d champs</string>
     <string name="task_history_update_unknown_format">%1$s a modifié la tâche</string>
@@ -536,6 +537,8 @@
     <string name="task_recurrence_every_unknown">Tous les ? jours</string>
     <string name="task_recurrence_monthly_variable">Variable selon le mois</string>
     <string name="task_recurrence_uncertain">Irrégulière</string>
+    <string name="task_recurrence_monthly_range_format">Tous les %1$d à %2$d jours selon le mois</string>
+    <string name="task_recurrence_uncertain_learned_format">Irrégulière : environ tous les %1$d jours</string>
     <string name="task_tolerance_strict">Strict</string>
     <string name="task_tolerance_normal">Normal</string>
     <string name="task_tolerance_souple">Souple</string>
@@ -1112,6 +1115,23 @@
     <string name="common_info_cd">Info</string>
 
     <!-- CompletionDialog -->
+    <!-- PresenceCalendarGrid : légende et aide du calendrier de présence -->
+    <string name="presence_prev_month">Mois précédent</string>
+    <string name="presence_next_month">Mois suivant</string>
+    <string name="presence_day_activity">Activité ce jour</string>
+    <string name="presence_legend_title">Légende</string>
+    <string name="presence_legend_present">Présent</string>
+    <string name="presence_legend_absent">Absent (tâches de la maison en pause ce jour)</string>
+    <string name="presence_legend_unknown">Non renseigné (compté absent par défaut)</string>
+    <string name="presence_legend_auto">Détecté automatiquement (WiFi maison)</string>
+    <string name="presence_legend_manual">Renseigné à la main</string>
+    <string name="presence_legend_task_done">Tâche faite ce jour-là</string>
+    <string name="presence_legend_record">Liseré or = meilleure série (record)</string>
+    <string name="presence_legend_current">Liseré indigo = série en cours</string>
+    <string name="presence_help_title">Calendrier de présence</string>
+    <string name="presence_help_title_streak">Calendrier de présence et séries</string>
+    <string name="presence_help_body">Ce calendrier dit à l’app quels jours quelqu’un était à la maison. Pendant une absence, les tâches à faire sur place arrêtent de vieillir.\n\n• Vert = présent : journée confirmée à la maison.\n• Rouge doux = absent : journée confirmée hors de la maison (les tâches de la maison sont en pause ce jour-là).\n• Gris = non renseigné : aucune information pour ce jour. Un jour non renseigné compte comme absent ; pose les jours présents pour corriger.\n\nL’icône WiFi marque un jour détecté automatiquement, l’icône main un jour posé à la main. Un jour posé à la main n’est jamais écrasé par la détection.\n\nLa détection automatique est facultative : elle s’appuie sur le WiFi maison déclaré dans ce même écran (section Présence et absences). Sans WiFi déclaré, renseigne les jours à la main ici.</string>
+    <string name="presence_help_streak">\n\n— Séries —\nL’étoile : ce membre a fait au moins une tâche ce jour-là. Le liseré or entoure les jours de la meilleure série (record), le liseré indigo ceux de la série en cours. Une série continue à travers les jours d’absence confirmés, et s’interrompt sur un jour non renseigné ou un jour présent sans aucune tâche.</string>
     <string name="completion_duplicate_today">Déjà validée à %1$s : elle ne compte qu’une fois.</string>
     <string name="completion_duplicate_day">Déjà validée le %1$s à %2$s : elle ne compte qu’une fois.</string>
     <string name="completion_title_single">Déjà fait</string>
@@ -1151,7 +1171,15 @@
     <string name="weekly_summary_stat_tasks">tâches</string>
     <string name="weekly_summary_stat_points">points</string>
     <string name="weekly_summary_empty">Pas encore de tâche cette semaine. Allez&#160;!</string>
-    <string name="weekly_summary_per_user_format">%1$d tâches · %2$d pts</string>
+    <string name="weekly_summary_per_user_format">%1$s · %2$s</string>
+    <plurals name="weekly_summary_tasks_count">
+        <item quantity="one">%d tâche</item>
+        <item quantity="other">%d tâches</item>
+    </plurals>
+    <plurals name="weekly_summary_points_count">
+        <item quantity="one">%d pt</item>
+        <item quantity="other">%d pts</item>
+    </plurals>
     <string name="weekly_summary_top_tasks">Top tâches</string>
 
     <!-- LongTermCard ("Répartition par pièces" sur Stats) -->

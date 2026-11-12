@@ -39,6 +39,8 @@ fun durationSpan(from: LocalDate, to: LocalDate): DurationSpan {
             val halves = Math.round(days / 3.5).toInt()
             DurationSpan.Weeks(halves / 2, halves % 2 == 1)
         }
+        // « 1 mois et 30 jours » reads badly (seen on 2026-11-12): a few days short of a month, round up.
+        p.days >= 27 && months + 1 <= 3 -> DurationSpan.MonthsDays(months + 1, 0)
         months < 3 || (months < 12 && p.days == 0) -> DurationSpan.MonthsDays(months, p.days)
         months < 12 ->
             if (p.days <= 15) DurationSpan.MoreThanMonths(months) else DurationSpan.LessThanMonths(months + 1)

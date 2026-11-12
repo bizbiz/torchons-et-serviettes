@@ -426,8 +426,12 @@ _HISTORY_TABLES = (
 )
 
 
-def _event_type(table_name: str, old_data: dict) -> str:
+def _event_type(table_name: str, old_data: dict, operation: str | None = None) -> str:
     """Mappe une ligne change_log vers un type d'evenement d'historique."""
+    if table_name == "tasks" and operation == "INSERT":
+        # The creation, not an edit: shown « X a créé la tâche » (it read « X a modifié 6 champs »,
+        # 2026-11-12). An older app maps an unknown type to « a modifié la tâche ».
+        return "task_create"
     if table_name == "tasks" and old_data.get("reason") == MEMBER_LEFT_REASON:
         return "member_left"  # services/task_departure.py; older apps show it as unknown
     if table_name == "task_affinities":
@@ -514,7 +518,7 @@ async def get_task_history(
 
         new_data = r.new_data or {}
         old_data = r.old_data or {}
-        evt_type = _event_type(r.table_name, old_data)
+        evt_type = _event_type(r.table_name, old_data, r.operation)
 
         details: dict = {
             "operation": r.operation,

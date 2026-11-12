@@ -508,6 +508,7 @@
     <string name="task_history_vote_eff_format">%1$s voted %2$s effort</string>
     <string name="task_history_vote_eff_consensus_format">%1$s voted %2$s effort → consensus %3$s</string>
     <string name="task_history_vote_eff_no_value_format">%1$s voted an effort</string>
+    <string name="task_history_create_format">%1$s created the task</string>
     <string name="task_history_update_one_format">%1$s edited %2$s</string>
     <string name="task_history_update_many_format">%1$s edited %2$d fields</string>
     <string name="task_history_update_unknown_format">%1$s edited the task</string>
@@ -529,6 +530,8 @@
     <string name="task_recurrence_every_unknown">Every ? days</string>
     <string name="task_recurrence_monthly_variable">Varies by month</string>
     <string name="task_recurrence_uncertain">Irregular</string>
+    <string name="task_recurrence_monthly_range_format">Every %1$d to %2$d days depending on the month</string>
+    <string name="task_recurrence_uncertain_learned_format">Irregular: about every %1$d days</string>
     <string name="task_tolerance_strict">Strict</string>
     <string name="task_tolerance_normal">Normal</string>
     <string name="task_tolerance_souple">Loose</string>
@@ -1100,6 +1103,22 @@
     <string name="common_info_cd">Info</string>
 
     <!-- CompletionDialog -->
+    <string name="presence_prev_month">Previous month</string>
+    <string name="presence_next_month">Next month</string>
+    <string name="presence_day_activity">Activity on this day</string>
+    <string name="presence_legend_title">Legend</string>
+    <string name="presence_legend_present">Home</string>
+    <string name="presence_legend_absent">Away (home tasks paused that day)</string>
+    <string name="presence_legend_unknown">Not set (counted as away by default)</string>
+    <string name="presence_legend_auto">Detected automatically (home WiFi)</string>
+    <string name="presence_legend_manual">Set by hand</string>
+    <string name="presence_legend_task_done">Task done that day</string>
+    <string name="presence_legend_record">Gold outline = best streak (record)</string>
+    <string name="presence_legend_current">Indigo outline = current streak</string>
+    <string name="presence_help_title">Presence calendar</string>
+    <string name="presence_help_title_streak">Presence calendar and streaks</string>
+    <string name="presence_help_body">This calendar tells the app which days someone was home. While everyone is away, tasks that must be done on site stop ageing.\n\n• Green = home: a confirmed day at home.\n• Soft red = away: a confirmed day away (home tasks are paused that day).\n• Grey = not set: no information for that day. A day that is not set counts as away; mark the days you were home to correct it.\n\nThe WiFi icon marks a day detected automatically, the hand icon a day set by hand. A day set by hand is never overwritten by detection.\n\nAutomatic detection is optional: it relies on the home WiFi declared on this same screen (Presence and absences). Without a home WiFi, set the days by hand here.</string>
+    <string name="presence_help_streak">\n\n— Streaks —\nThe star: this member did at least one task that day. The gold outline marks the days of the best streak (record), the indigo outline those of the current streak. A streak carries on through confirmed days away, and breaks on a day that is not set or a day at home without any task.</string>
     <string name="completion_duplicate_today">Already done at %1$s: it only counts once.</string>
     <string name="completion_duplicate_day">Already done on %1$s at %2$s: it only counts once.</string>
     <string name="completion_title_single">Already done</string>
@@ -1139,7 +1158,15 @@
     <string name="weekly_summary_stat_tasks">tasks</string>
     <string name="weekly_summary_stat_points">points</string>
     <string name="weekly_summary_empty">No tasks yet this week. Come on!</string>
-    <string name="weekly_summary_per_user_format">%1$d tasks · %2$d pts</string>
+    <string name="weekly_summary_per_user_format">%1$s · %2$s</string>
+    <plurals name="weekly_summary_tasks_count">
+        <item quantity="one">%d task</item>
+        <item quantity="other">%d tasks</item>
+    </plurals>
+    <plurals name="weekly_summary_points_count">
+        <item quantity="one">%d pt</item>
+        <item quantity="other">%d pts</item>
+    </plurals>
     <string name="weekly_summary_top_tasks">Top tasks</string>
 
     <!-- LongTermCard -->

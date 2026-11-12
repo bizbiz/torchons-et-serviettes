@@ -161,6 +161,8 @@ internal fun CompletionCard(
     onDeleteCollective: () -> Unit,
     onEdit: () -> Unit = {},
     onUserClick: (String) -> Unit = {},
+    /** False when the household (or the user) turned gamification off: no « +1 pt ». */
+    showPoints: Boolean = true,
 ) {
     val isCollective = group.collectiveId != null && group.rows.size >= 2
     val head = group.head
@@ -316,7 +318,7 @@ internal fun CompletionCard(
             }
 
             // Points gagnes : "+X pt" solo / "+X pt chacun" collectif.
-            Text(
+            if (showPoints) Text(
                 text = if (isCollective)
                     pluralStringResource(R.plurals.task_detail_points_collective, head.pointsEarned, head.pointsEarned)
                 else pluralStringResource(R.plurals.task_detail_points_solo, head.pointsEarned, head.pointsEarned),

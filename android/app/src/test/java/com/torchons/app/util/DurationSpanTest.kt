@@ -43,6 +43,7 @@ class DurationSpanTest {
         assertEquals(MonthsDays(1, 0), span(30))     // 11/12
         assertEquals(MonthsDays(1, 10), span(40))    // 21/12
         assertEquals(MonthsDays(2, 9), span(70))     // 20/01, December has 31 days
+        assertEquals(MonthsDays(2, 0), span(60))     // 10/01 : 1 month 30 days, rounded up
     }
 
     @Test

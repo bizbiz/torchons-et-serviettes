@@ -91,6 +91,7 @@ class LongTermStatsViewModel @Inject constructor(
  */
 @Composable
 fun LongTermCard(
+    gamificationVisible: Boolean = true,
     viewModel: LongTermStatsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -191,6 +192,7 @@ fun LongTermCard(
                                 roomName = room.roomName,
                                 completions = room.completions,
                                 points = room.points,
+                                showPoints = gamificationVisible,
                                 minutes = room.estimatedMinutes,
                                 fraction = room.completions.toFloat() / maxCompletions,
                             )
@@ -208,6 +210,7 @@ private fun RoomBar(
     roomName: String,
     completions: Int,
     points: Int,
+    showPoints: Boolean,
     minutes: Int,
     fraction: Float,
 ) {
@@ -226,6 +229,10 @@ private fun RoomBar(
                     R.string.longterm_room_minutes_format,
                     completions,
                     formatMinutes(minutes),
+                ) else if (!showPoints) pluralStringResource(
+                    R.plurals.longterm_total_tasks_format,
+                    completions,
+                    completions,
                 ) else stringResource(
                     R.string.longterm_room_points_format,
                     completions,

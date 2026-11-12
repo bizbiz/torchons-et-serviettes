@@ -6,6 +6,8 @@ enum class TaskHistoryEventType {
     VOTE_EFFORT,
     VOTE_FREQUENCY,
     TASK_UPDATE,
+    /** The task's creation (server type `task_create`, since 2026-11-13). */
+    TASK_CREATE,
     /** A member left the household: the server removed them from this task. */
     MEMBER_LEFT,
     UNKNOWN,

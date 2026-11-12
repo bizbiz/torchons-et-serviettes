@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -108,10 +110,13 @@ fun TaskCard(
             )
             return@Card
         }
+        // At least 72dp, taller when the title takes two lines: a fixed 72dp pushed the
+        // « en retard de … » line out of the card (seen on 2026-11-12).
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp),
+                .height(IntrinsicSize.Min)
+                .heightIn(min = 72.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Bordure verticale gauche coloree (etat d'urgence) — info
