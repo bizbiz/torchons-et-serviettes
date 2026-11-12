@@ -5,6 +5,11 @@
 
     <!-- Legacy strings (pre-E3 i18n chantier). Will migrate as each screen
          is converted to stringResource (cf docs/audit-i18n-user-facing-surfaces.md). -->
+    <!-- Barre de navigation du bas (NavGraph.bottomNavItems) -->
+    <string name="nav_home">Accueil</string>
+    <string name="nav_tasks">Tâches</string>
+    <string name="nav_stats">Stats</string>
+    <string name="nav_settings">Réglages</string>
     <string name="login_loading">Connexion en cours…</string>
     <string name="login_error">Erreur de connexion</string>
     <string name="task_list_title">Mes tâches</string>

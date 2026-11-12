@@ -97,15 +97,15 @@ object Routes {
  */
 data class BottomNavItem(
     val route: String,
-    val label: String,
+    @androidx.annotation.StringRes val labelRes: Int,
     val icon: ImageVector
 )
 
 val bottomNavItems = listOf(
-    BottomNavItem(Routes.HOME, "Accueil", Icons.Default.Home),
-    BottomNavItem(Routes.TASK_LIST, "Taches", Icons.Default.CheckCircle),
-    BottomNavItem(Routes.STATS, "Stats", Icons.Default.BarChart),
-    BottomNavItem(Routes.SETTINGS, "Reglages", Icons.Default.Settings),
+    BottomNavItem(Routes.HOME, com.torchons.app.R.string.nav_home, Icons.Default.Home),
+    BottomNavItem(Routes.TASK_LIST, com.torchons.app.R.string.nav_tasks, Icons.Default.CheckCircle),
+    BottomNavItem(Routes.STATS, com.torchons.app.R.string.nav_stats, Icons.Default.BarChart),
+    BottomNavItem(Routes.SETTINGS, com.torchons.app.R.string.nav_settings, Icons.Default.Settings),
 )
 
 /**
@@ -451,8 +451,8 @@ fun MainScreen(
                                 }
                             }
                         },
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) }
+                        icon = { Icon(item.icon, contentDescription = null) }, // the label below says it
+                        label = { Text(androidx.compose.ui.res.stringResource(item.labelRes)) }
                     )
                 }
             }
