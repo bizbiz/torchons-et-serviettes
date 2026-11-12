@@ -182,13 +182,22 @@ ERROR_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "Trop de tentatives. Réessaie dans une minute.",
         "en": "Too many attempts. Try again in a minute.",
     },
+    # Names, never ids (scoping.outsider_refusal) ; _UNNAMED : no user carries the id.
     "USERS_OUTSIDE_FOYER_FORMAT": {
-        "fr": "Utilisateurs hors du foyer : {invalid}",
-        "en": "Users outside the household: {invalid}",
+        "fr": "Plus dans le foyer : {names}",
+        "en": "No longer in the household: {names}",
+    },
+    "USERS_OUTSIDE_FOYER_FORMAT_UNNAMED": {
+        "fr": "Un membre choisi n'est pas dans le foyer.",
+        "en": "A chosen member is not in the household.",
     },
     "COMPLETION_PARTICIPANTS_OUTSIDE_FOYER": {
-        "fr": "Participants hors du foyer : {invalid}",
-        "en": "Participants outside the household: {invalid}",
+        "fr": "Plus dans le foyer : {names}",
+        "en": "No longer in the household: {names}",
+    },
+    "COMPLETION_PARTICIPANTS_OUTSIDE_FOYER_UNNAMED": {
+        "fr": "Un participant n'est pas dans le foyer.",
+        "en": "A participant is not in the household.",
     },
     # ============================================================
     # Lot 3 i18n (post-launch) — reste des HTTPException backend.

@@ -68,11 +68,25 @@ async def assert_active_members(session, foyer_uuid: uuid.UUID, user_ids) -> Non
         return
     outside = wanted - await active_member_ids(session, foyer_uuid)
     if outside:
-        raise LocalizedHTTPException(
-            status_code=400,
-            error_code="USERS_OUTSIDE_FOYER_FORMAT",
-            format_args={"invalid": sorted(str(u) for u in outside)},
-        )
+        raise await outsider_refusal(session, outside, "USERS_OUTSIDE_FOYER_FORMAT")
+
+
+async def outsider_refusal(session, outside: set[uuid.UUID], error_code: str):
+    """The 400 refusing [outside] users: their NAMES, never their ids. The app shows the message
+    as is under « Refusé par le serveur », where ts-test-runner saw on 2026-11-02 « Utilisateurs
+    hors du foyer : ['b25bdd0d-…'] ». An id no user carries (forged, deleted account) has no
+    name: `<error_code>_UNNAMED` then, a sentence without names.
+    """
+    from app.models.user import User
+    from app.utils.errors import LocalizedHTTPException
+
+    rows = await session.execute(select(User.display_name).where(User.id.in_(list(outside))))
+    names = sorted({name for (name,) in rows.all() if name})
+    if not names:
+        return LocalizedHTTPException(status_code=400, error_code=f"{error_code}_UNNAMED")
+    return LocalizedHTTPException(
+        status_code=400, error_code=error_code, format_args={"names": ", ".join(names)},
+    )
 
 
 async def user_foyer_ids(session, user_uuid: uuid.UUID) -> set[uuid.UUID]:

@@ -40,7 +40,9 @@ from app.services.recurrence import (
 from app.services.task_flags import NO_FLAGS, resolve_flags_for_tasks
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
-from app.utils.scoping import assert_active_members, current_foyer_uuid, visible_tasks, visible_to
+from app.utils.scoping import (
+    assert_active_members, current_foyer_uuid, outsider_refusal, visible_tasks, visible_to,
+)
 
 router = APIRouter(tags=["completions"])
 
@@ -316,11 +318,7 @@ async def complete_task_collective(
     valid_ids = {row[0] for row in members_result.all()}
     invalid = [p for p in participants if p not in valid_ids]
     if invalid:
-        raise LocalizedHTTPException(
-            status_code=400,
-            error_code="COMPLETION_PARTICIPANTS_OUTSIDE_FOYER",
-            format_args={"invalid": [str(i) for i in invalid]},
-        )
+        raise await outsider_refusal(session, set(invalid), "COMPLETION_PARTICIPANTS_OUTSIDE_FOYER")
 
     # 3. Anti-doublon atomique : pour chaque participant, verifier qu'aucune
     # completion active n'existe dans la fenetre derivee de la recurrence.

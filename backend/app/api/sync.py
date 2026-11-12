@@ -75,7 +75,7 @@ async def _op_foyer(session: AsyncSession, op: SyncOperation, user_id: str, toke
 # Everything else stays `op_error`, replayed: an unknown table, operation or
 # recurrence type is a server OLDER than the app (CLAUDE.md § Sync ordering),
 # and passes once the server is deployed -- dropping it would lose the op.
-DEFINITIVE_REFUSALS = frozenset({"USERS_OUTSIDE_FOYER_FORMAT"})
+DEFINITIVE_REFUSALS = frozenset({"USERS_OUTSIDE_FOYER_FORMAT", "USERS_OUTSIDE_FOYER_FORMAT_UNNAMED"})
 
 
 def _is_definitive_refusal(e: Exception) -> bool:
