@@ -88,6 +88,7 @@ async def bring_back(session: AsyncSession, user: User) -> uuid.UUID | None:
     if foyer_id is None:
         return None
     membership = (await session.execute(select(UserFoyer).where(
+        # Any left_at, on purpose: this is the departure being undone (tested just below).
         UserFoyer.user_id == user.id, UserFoyer.foyer_id == foyer_id,
     ))).scalar_one_or_none()
     if membership is None:

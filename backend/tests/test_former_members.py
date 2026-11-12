@@ -11,6 +11,9 @@ Paths, and what covers each:
 Not covered by behaviour: the 13 other filtered queries (stats screens, fair-share, pace,
 propositions, revote target, collective participants, member count, admin check), which got the
 same one-line filter and are held by the guard.
+Not covered by the guard: a membership read WITHOUT the UserFoyer model — raw SQL on
+user_foyers, a relationship such as `Foyer.members`, a view. None existed on 2026-11-12
+(not proved by an exhaustive sweep); a new one must filter left_at like the others.
 """
 
 from __future__ import annotations
@@ -71,18 +74,45 @@ async def household():
     yield
 
 
+# Every way a query READS user_foyers: a compared column (any column, not only foyer_id), an
+# `in_`, a join, a select of the model. Until 2026-11-12 only `UserFoyer.foyer_id ==` was seen:
+# a join or a filter on `UserFoyer.user_id` forgetting left_at passed in silence (there were
+# 122 reading lines then, all filtering or saying why; 22 of them seen by the old pattern).
+_READS = re.compile(r"UserFoyer\.\w+\s*(==|!=|\.in_\()|join\(\s*UserFoyer\b|select\(\s*UserFoyer\b")
+
+
+def _statement(lines: list[str], i: int) -> str:
+    """The whole query around line i: back to its `execute(` or else its `select(` (40 lines at
+    most), forward while a parenthesis is open or the next line chains a `.where(…)` / `.join(…)`.
+    A ±6-line window missed a left_at filter 25 lines below its join (stats.py, weekly summary);
+    stopping at the first balanced line missed `select(Foyer, UserFoyer.role)` + `.where(…)`."""
+    back = range(i, max(-1, i - 41), -1)
+    start = next((j for j in back if "execute(" in lines[j]), None)
+    if start is None:
+        start = next((j for j in back if "select(" in lines[j]), max(0, i - 6))
+    depth, end = 0, start
+    for end in range(start, min(len(lines), start + 80)):
+        depth += lines[end].count("(") - lines[end].count(")")
+        chained = end + 1 < len(lines) and lines[end + 1].lstrip().startswith(".")
+        if end >= i and depth <= 0 and not chained:
+            break
+    return "\n".join(lines[start:end + 1])
+
+
 def test_every_membership_query_says_something_about_left_at():
     root = pathlib.Path(__file__).resolve().parents[1] / "app"
-    silent = []
-    files = sorted(root.rglob("*.py"))
+    silent, seen = [], 0
+    files = sorted(p for p in root.rglob("*.py") if "models" not in p.parts)
     for path in files:
         lines = path.read_text(encoding="utf-8").split("\n")
         for i, line in enumerate(lines):
-            if re.search(r"UserFoyer\.foyer_id\s*==", line):
-                window = "\n".join(lines[max(0, i - 6):i + 5])
-                if "left_at" not in window:
-                    silent.append(f"{path.relative_to(root)}:{i + 1}")
+            if line.lstrip().startswith("#") or not _READS.search(line):
+                continue
+            seen += 1
+            if "left_at" not in _statement(lines, i):
+                silent.append(f"{path.relative_to(root)}:{i + 1}")
     assert len(files) > 50, files  # the scan really read the app
+    assert seen > 100, seen  # and really matched the reads (122 on 2026-11-12)
     assert silent == [], (
         "membership queries that neither filter left_at nor say why they keep former members: "
         f"{silent}"
