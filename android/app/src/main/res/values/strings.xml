@@ -1107,6 +1107,8 @@
     <string name="common_info_cd">Info</string>
 
     <!-- CompletionDialog -->
+    <string name="completion_duplicate_today">Déjà validée à %1$s : elle ne compte qu’une fois.</string>
+    <string name="completion_duplicate_day">Déjà validée le %1$s à %2$s : elle ne compte qu’une fois.</string>
     <string name="completion_title_single">Déjà fait</string>
     <string name="completion_title_multi">Fait ensemble</string>
     <string name="completion_picker_who_single">Qui a fait&#160;?</string>
@@ -1162,16 +1164,42 @@
     <string name="longterm_room_points_format">%1$d tâches · %2$d pts</string>
 
     <!-- TaskUrgencyCalculator — countdown labels (Home suggestions, TaskList, TaskDetail) -->
-    <string name="countdown_in_days_format">dans %1$d j</string>
+    <string name="countdown_in_format">dans %1$s</string>
     <string name="countdown_tomorrow">demain</string>
     <string name="countdown_today">à faire aujourd\'hui</string>
-    <string name="countdown_one_day_late">en retard d\'1 j</string>
-    <string name="countdown_days_late_format">en retard de %1$d j</string>
+    <string name="countdown_one_day_late">en retard d\'un jour</string>
+    <string name="countdown_late_format">en retard de %1$s</string>
+    <!-- DurationText.kt : une durée dite comme on la dit (« 1 semaine et demie », « moins de 6 mois ») -->
+    <plurals name="duration_days">
+        <item quantity="one">%d jour</item>
+        <item quantity="other">%d jours</item>
+    </plurals>
+    <plurals name="duration_weeks">
+        <item quantity="one">%d semaine</item>
+        <item quantity="other">%d semaines</item>
+    </plurals>
+    <plurals name="duration_weeks_half">
+        <item quantity="one">%d semaine et demie</item>
+        <item quantity="other">%d semaines et demie</item>
+    </plurals>
+    <plurals name="duration_months">
+        <item quantity="one">%d mois</item>
+        <item quantity="other">%d mois</item>
+    </plurals>
+    <plurals name="duration_years">
+        <item quantity="one">%d an</item>
+        <item quantity="other">%d ans</item>
+    </plurals>
+    <string name="duration_and_format">%1$s et %2$s</string>
+    <string name="duration_more_than_format">plus de %1$s</string>
+    <string name="duration_less_than_format">moins de %1$s</string>
+    <string name="duration_more_than_one_year">plus d\'un an</string>
+    <string name="duration_less_than_one_year">moins d\'un an</string>
     <!-- Uncertain (sans cadence v0.14) countdown — section "Sans cadence" home -->
     <string name="uncertain_not_done">Pas encore faite</string>
     <string name="uncertain_done_today">Fait aujourd\'hui</string>
     <string name="uncertain_done_yesterday">Fait hier</string>
-    <string name="uncertain_done_days_ago_format">Fait il y a %1$d j</string>
+    <string name="uncertain_done_ago_format">Fait il y a %1$s</string>
 
     <!-- ============================================================
          Lot 2 i18n (post-launch) — Reste des dialogs/écrans secondaires.

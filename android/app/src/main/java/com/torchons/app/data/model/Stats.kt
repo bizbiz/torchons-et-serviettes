@@ -151,10 +151,13 @@ data class RetardTimelineResponse(
     @SerializedName("points") val points: List<RetardTimelinePoint> = emptyList(),
 )
 
-/** Frequence par categorie : top N categories avec breakdown per-user. */
+/**
+ * Completions per primary context (the route is still called category-frequency). Read under the
+ * current names since 2026-11-12: `contexts` / `context_name` (backend `schemas/stats_frequency.py`).
+ * The server must serve them BEFORE this APK reads them, or the chart comes back empty.
+ */
 data class CategoryFrequencyEntry(
-    @SerializedName("category_id") val categoryId: String?,
-    @SerializedName("category_name") val categoryName: String,
+    @SerializedName("context_name") val categoryName: String,
     @SerializedName("counts") val counts: List<Int> = emptyList(),
     @SerializedName("total") val total: Int = 0,
 )
@@ -166,5 +169,5 @@ data class CategoryFrequencyUser(
 
 data class CategoryFrequencyResponse(
     @SerializedName("users") val users: List<CategoryFrequencyUser> = emptyList(),
-    @SerializedName("categories") val categories: List<CategoryFrequencyEntry> = emptyList(),
+    @SerializedName("contexts") val categories: List<CategoryFrequencyEntry> = emptyList(),
 )

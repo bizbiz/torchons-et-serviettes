@@ -11,6 +11,7 @@ import com.torchons.app.data.model.TaskContextRef
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
+import com.torchons.app.data.repository.CompletionChecks
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.util.CompletionDateLabels
 import com.torchons.app.util.TaskUrgencyCalculator
@@ -173,6 +174,7 @@ private data class FilteredResult(
 @HiltViewModel
 class TaskListViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
+    private val completionChecks: CompletionChecks,
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
     private val apiService: ApiService,
@@ -309,7 +311,7 @@ class TaskListViewModel @Inject constructor(
      * "fait" ✓). On recupere le preview des points (J-0, solo) pour que la
      * celebration affiche "+N pts" attribues a "Moi" — parite avec l'Accueil.
      */
-    fun completeTask(taskId: String) {
+    fun completeTask(taskId: String) = unlessDuplicate(taskId) {
         celebrate(
             taskId = taskId,
             resolve = {
@@ -348,7 +350,7 @@ class TaskListViewModel @Inject constructor(
         completedBy: String? = null,
         previewPoints: Int? = null,
         previewReason: String? = null,
-    ) {
+    ) = unlessDuplicate(taskId, isoDate, completedBy?.let(::listOf)) {
         celebrate(
             taskId = taskId,
             resolve = {
@@ -374,7 +376,7 @@ class TaskListViewModel @Inject constructor(
         isoDate: String? = null,
         previewPoints: Int? = null,
         previewReason: String? = null,
-    ) {
+    ) = unlessDuplicate(taskId, isoDate, participantUserIds) {
         celebrate(
             taskId = taskId,
             resolve = {
@@ -507,19 +509,17 @@ class TaskListViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null)
     }
 
-    /** Preview bonus/malus pour le dialog de completion. null = offline/erreur. */
-    suspend fun fetchCompletionPreview(
-        taskId: String,
-        isoDate: String,
-        numParticipants: Int,
-    ): com.torchons.app.data.model.CompletionPreview? {
-        return try {
-            val resp = apiService.getCompletionPreview(taskId, isoDate, numParticipants)
-            if (resp.isSuccessful) resp.body() else null
-        } catch (_: Exception) {
-            null
+    /** Refuses a duplicate completion BEFORE the celebration (CompletionChecks.refusal); [by] null = me. */
+    private fun unlessDuplicate(taskId: String, at: String? = null, by: List<String>? = null, go: () -> Unit) {
+        viewModelScope.launch {
+            val refusal = completionChecks.refusal(taskId, at, by)
+            if (refusal == null) go() else _uiState.value = _uiState.value.copy(error = refusal)
         }
     }
+
+    /** Preview bonus/malus pour le dialog de completion. null = offline/erreur. */
+    suspend fun fetchCompletionPreview(taskId: String, isoDate: String, numParticipants: Int) =
+        completionChecks.preview(taskId, isoDate, numParticipants)
 
     fun toggleFilterTodo() {
         filtersFlow.value = filtersFlow.value.copy(

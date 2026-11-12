@@ -20,6 +20,7 @@ import com.torchons.app.data.model.ContextView
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.UserPace
 import com.torchons.app.data.repository.AuthRepository
+import com.torchons.app.data.repository.CompletionChecks
 import com.torchons.app.data.repository.HomeRepository
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.ui.common.RatingRecurrence
@@ -140,6 +141,7 @@ class HomeViewModel @Inject constructor(
     private val homeRepository: HomeRepository,
     private val authRepository: AuthRepository,
     private val taskRepository: TaskRepository,
+    private val completionChecks: CompletionChecks,
     private val popupSessionGate: PopupSessionGate,
     private val ratingCadence: RatingCadence,
     private val tokenManager: TokenManager,
@@ -511,7 +513,8 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun completeTask(taskId: String, previewPoints: Int? = null, previewReason: String? = null) {
+    fun completeTask(taskId: String, previewPoints: Int? = null, previewReason: String? = null) =
+        unlessDuplicate(taskId) {
         celebrateThen(taskId, previewPoints, previewReason, earnedByFor(null, previewPoints)) {
             taskRepository.completeTask(taskId).fold(
                 onSuccess = { refresh() },
@@ -592,7 +595,7 @@ class HomeViewModel @Inject constructor(
         completedBy: String? = null,
         previewPoints: Int? = null,
         previewReason: String? = null,
-    ) {
+    ) = unlessDuplicate(taskId, isoDate, completedBy?.let(::listOf)) {
         celebrateThen(taskId, previewPoints, previewReason, earnedByFor(completedBy, previewPoints)) {
             taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
                 onSuccess = { refresh() },
@@ -608,7 +611,7 @@ class HomeViewModel @Inject constructor(
         isoDate: String? = null,
         previewPoints: Int? = null,
         previewReason: String? = null,
-    ) {
+    ) = unlessDuplicate(taskId, isoDate, participantUserIds) {
         celebrateThen(taskId, previewPoints, previewReason) {
             taskRepository.completeTaskCollective(
                 taskId = taskId,
@@ -692,24 +695,17 @@ class HomeViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null)
     }
 
-    /**
-     * Server-side points preview for an upcoming completion (bonus/malus
-     * depending on the completion date and participant count). Returns null
-     * when offline or on error — the UI falls back to the /suggestions
-     * predicted values.
-     */
-    suspend fun fetchCompletionPreview(
-        taskId: String,
-        isoDate: String,
-        numParticipants: Int,
-    ): com.torchons.app.data.model.CompletionPreview? {
-        return try {
-            val resp = apiService.getCompletionPreview(taskId, isoDate, numParticipants)
-            if (resp.isSuccessful) resp.body() else null
-        } catch (_: Exception) {
-            null
+    /** Refuses a duplicate completion BEFORE the celebration (CompletionChecks.refusal); [by] null = me. */
+    private fun unlessDuplicate(taskId: String, at: String? = null, by: List<String>? = null, go: () -> Unit) {
+        viewModelScope.launch {
+            val refusal = completionChecks.refusal(taskId, at, by)
+            if (refusal == null) go() else _uiState.value = _uiState.value.copy(error = refusal)
         }
     }
+
+    /** Points preview of a completion; null offline or on error (the UI falls back to /suggestions values). */
+    suspend fun fetchCompletionPreview(taskId: String, isoDate: String, numParticipants: Int) =
+        completionChecks.preview(taskId, isoDate, numParticipants)
 
     // --- Queue unifiee des prompts (BUMP_EFFORT / VOTE_RATING) ---
 

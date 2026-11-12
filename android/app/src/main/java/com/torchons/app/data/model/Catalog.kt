@@ -12,11 +12,14 @@ import com.google.gson.annotations.SerializedName
 
 // --- Import flow ---
 
-/** Body POST /api/catalog/import/resolve. */
+/**
+ * Body POST /api/catalog/import/resolve. Context keys travel as `context_keys` since 2026-11-12;
+ * `room_keys` / `category_keys`, the v0.37 names, are only still accepted by the server for the
+ * APKs that emit them (todo : « Renommer les champs d'API qui parlent encore de pièces »).
+ */
 data class ImportResolveRequest(
     @SerializedName("task_keys") val taskKeys: List<String> = emptyList(),
-    @SerializedName("room_keys") val roomKeys: List<String> = emptyList(),
-    @SerializedName("category_keys") val categoryKeys: List<String> = emptyList(),
+    @SerializedName("context_keys") val contextKeys: List<String> = emptyList(),
 )
 
 /**
@@ -34,8 +37,7 @@ data class ResolvedItem(
 
 @Immutable
 data class ImportResolveResponse(
-    @SerializedName("rooms") val rooms: List<ResolvedItem> = emptyList(),
-    @SerializedName("categories") val categories: List<ResolvedItem> = emptyList(),
+    @SerializedName("contexts") val contexts: List<ResolvedItem> = emptyList(),
     @SerializedName("tasks") val tasks: List<ResolvedItem> = emptyList(),
 )
 
@@ -50,10 +52,7 @@ data class ImportDecision(
 data class ImportApplyRequest(
     @SerializedName("task_keys") val taskKeys: List<String> = emptyList(),
     @SerializedName("context_keys") val contextKeys: List<String> = emptyList(),
-    @SerializedName("room_decisions") val roomDecisions: List<ImportDecision> = emptyList(),
-    @SerializedName("category_decisions") val categoryDecisions: List<ImportDecision> = emptyList(),
-    @SerializedName("room_keys") val roomKeys: List<String> = emptyList(),
-    @SerializedName("category_keys") val categoryKeys: List<String> = emptyList(),
+    @SerializedName("context_decisions") val contextDecisions: List<ImportDecision> = emptyList(),
 )
 
 @Immutable

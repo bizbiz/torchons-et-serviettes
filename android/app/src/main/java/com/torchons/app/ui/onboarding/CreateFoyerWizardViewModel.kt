@@ -330,8 +330,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
                 val resolveResp = apiService.resolveCatalogImport(
                     ImportResolveRequest(
                         taskKeys = s.selectedTaskKeys.toList(),
-                        roomKeys = s.selectedContextKeys.toList(),
-                        categoryKeys = emptyList(),
+                        contextKeys = s.selectedContextKeys.toList(),
                     )
                 )
                 val resolved = resolveResp.body()
@@ -344,19 +343,14 @@ class CreateFoyerWizardViewModel @Inject constructor(
                     }
                     return
                 }
-                val roomDecisions = resolved.rooms.map {
-                    ImportDecision(it.templateKey, "create", null)
-                }
-                val catDecisions = resolved.categories.map {
+                val contextDecisions = resolved.contexts.map {
                     ImportDecision(it.templateKey, "create", null)
                 }
                 val applyResp = apiService.applyCatalogImport(
                     ImportApplyRequest(
                         taskKeys = s.selectedTaskKeys.toList(),
-                        roomDecisions = roomDecisions,
-                        categoryDecisions = catDecisions,
-                        roomKeys = s.selectedContextKeys.toList(),
-                        categoryKeys = emptyList(),
+                        contextKeys = s.selectedContextKeys.toList(),
+                        contextDecisions = contextDecisions,
                     )
                 )
                 if (!applyResp.isSuccessful) {
@@ -460,25 +454,19 @@ class CreateFoyerWizardViewModel @Inject constructor(
                         val resolveResp = apiService.resolveCatalogImport(
                             ImportResolveRequest(
                                 taskKeys = s.selectedTaskKeys.toList(),
-                                roomKeys = s.selectedContextKeys.toList(),
-                                categoryKeys = emptyList(),
+                                contextKeys = s.selectedContextKeys.toList(),
                             )
                         )
                         val resolved = resolveResp.body()
                         if (resolveResp.isSuccessful && resolved != null) {
-                            val roomDecisions = resolved.rooms.map {
-                                ImportDecision(it.templateKey, "create", null)
-                            }
-                            val catDecisions = resolved.categories.map {
+                            val contextDecisions = resolved.contexts.map {
                                 ImportDecision(it.templateKey, "create", null)
                             }
                             apiService.applyCatalogImport(
                                 ImportApplyRequest(
                                     taskKeys = s.selectedTaskKeys.toList(),
-                                    roomDecisions = roomDecisions,
-                                    categoryDecisions = catDecisions,
-                                    roomKeys = s.selectedContextKeys.toList(),
-                                    categoryKeys = emptyList(),
+                                    contextKeys = s.selectedContextKeys.toList(),
+                                    contextDecisions = contextDecisions,
                                 )
                             )
                         }

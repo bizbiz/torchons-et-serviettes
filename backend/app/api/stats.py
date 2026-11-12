@@ -20,6 +20,7 @@ from app.models.foyer import Foyer
 from app.models.streak import Streak
 from app.models.task import Task
 from app.models.user import User
+from app.schemas.stats_frequency import CategoryFrequencyEntry, CategoryFrequencyResponse, CategoryFrequencyUser
 from app.services.presence import get_absent_dates
 from app.services.recurrence import min_completion_gap_seconds
 from app.utils.scoping import current_foyer_uuid, visible_history, visible_to
@@ -814,21 +815,7 @@ async def get_weekday_frequency(
 
 # --- Frequence par categorie ---
 
-class CategoryFrequencyEntry(BaseModel):
-    category_id: UUID | None  # None = sans categorie
-    category_name: str
-    counts: list[int]  # parallele a `users` (meme ordre)
-    total: int
-
-
-class CategoryFrequencyUser(BaseModel):
-    user_id: UUID
-    display_name: str
-
-
-class CategoryFrequencyResponse(BaseModel):
-    users: list[CategoryFrequencyUser]
-    categories: list[CategoryFrequencyEntry]  # top 8, triees par total desc
+# Models in app/schemas/stats_frequency.py (old names + `contexts`).
 
 
 @router.get("/stats/category-frequency", response_model=CategoryFrequencyResponse)

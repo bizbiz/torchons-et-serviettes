@@ -481,7 +481,7 @@ fun HomeScreen(
                     celebrationReason = if (uiState.celebratingTaskId == suggestion.taskId) uiState.celebrationReason else null,
                     gamificationVisible = gamificationVisible,
                     celebrationEarnedBy = if (uiState.celebratingTaskId == suggestion.taskId && gamificationVisible) uiState.celebrationEarnedBy else null,
-                    members = members,
+                    members = if (task?.assignedToIds?.size == 1) emptyList() else members, // solo: nobody else
                     currentUserId = userId.orEmpty(),
                     previewProvider = { iso, n ->
                         viewModel.fetchCompletionPreview(suggestion.taskId, iso, n)
@@ -949,7 +949,7 @@ private fun SuggestionCard(
                     },
                     filled = false,
                     chevronContentDescription = stringResource(R.string.home_participants_chevron_cd),
-                    onChevronClick = { showParticipantsMenu = true },
+                    onChevronClick = if (members.size > 1) ({ showParticipantsMenu = true }) else null,
                     chevronMenu = {
                         ParticipantsMenu(
                             expanded = showParticipantsMenu,

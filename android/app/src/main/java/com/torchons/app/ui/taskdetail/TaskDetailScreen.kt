@@ -165,7 +165,7 @@ fun TaskDetailScreen(
                 }
                 completionDialogMode = null
             },
-            onSwitchToMulti = if (mode == CompletionDialogMode.Single) {
+            onSwitchToMulti = if (mode == CompletionDialogMode.Single && task?.assignedToIds?.size != 1) {
                 { completionDialogMode = CompletionDialogMode.Multi }
             } else null,
             previewProvider = task?.let { t ->
@@ -1001,7 +1001,7 @@ fun TaskDetailScreen(
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(stringResource(R.string.suggestion_action_already_done))
                                     }
-                                    OutlinedButton(
+                                    if (uiState.task?.assignedToIds?.size != 1) OutlinedButton( // not for a solo task
                                         onClick = {
                                             if (uiState.userNames.size == 2) {
                                                 showTwoPersonFaitEnsembleDate = true

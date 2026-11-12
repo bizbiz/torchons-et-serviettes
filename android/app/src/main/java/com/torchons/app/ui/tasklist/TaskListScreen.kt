@@ -130,7 +130,7 @@ fun TaskListScreen(
                 }
                 dialogState = null
             },
-            onSwitchToMulti = if (ds.mode == CompletionDialogMode.Single) {
+            onSwitchToMulti = if (ds.mode == CompletionDialogMode.Single && ds.assignedIds.size != 1) {
                 { dialogState = ds.copy(mode = CompletionDialogMode.Multi) }
             } else null,
             previewProvider = { isoDate, numParticipants ->
@@ -520,7 +520,7 @@ fun TaskListScreen(
                         val req = widgetRequest?.takeIf { users.isNotEmpty() } ?: return@LaunchedEffect
                         val task = findWidgetTask(appContext, req.taskId)
                         com.torchons.app.widget.WidgetLaunch.consume()
-                        if (req.together && users.size == 2) twoPersonFaitEnsembleTaskId = req.taskId
+                        if (req.togetherFor(task) && users.size == 2) twoPersonFaitEnsembleTaskId = req.taskId
                         else dialogState = widgetCompletionDialog(req, task)
                     }
 

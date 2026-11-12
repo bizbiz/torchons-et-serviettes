@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -36,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +49,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
 import com.torchons.app.data.model.CompletionPreview
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -127,7 +131,9 @@ fun CompletionDialog(
 
     // Liste des membres visibles dans le picker selon mode + extension.
     val visibleMembers = when (mode) {
-        CompletionDialogMode.Single -> allMembers
+        // A solo task (one assignee) can only have been done by that member (Quentin, 2026-11-12).
+        CompletionDialogMode.Single ->
+            if (assignedMemberIds.size == 1) allMembers.filter { it.first in assignedMemberIds } else allMembers
         CompletionDialogMode.Multi ->
             if (showAllMembers) allMembers
             else allMembers.filter { (id, _) -> assignedMemberIds.contains(id) }
@@ -167,6 +173,12 @@ fun CompletionDialog(
     }
 
     val res = LocalContext.current.resources
+
+    // A solo task leaves only « when » to choose: straight to the calendar.
+    if (mode == CompletionDialogMode.Single && assignedMemberIds.size == 1 && visibleMembers.size == 1) {
+        SoloCompletionDatePicker(taskTitle, visibleMembers.first().first, onDismiss, onConfirm, previewProvider)
+        return
+    }
 
     // Sub-modal DatePicker.
     if (showDatePickerSub) {
@@ -316,6 +328,66 @@ fun CompletionDialog(
         },
         dismissButton = {},
     )
+}
+
+/**
+ * « Déjà fait » on a solo task (one assignee): nobody to choose, so no « Qui a fait ? » dialog
+ * (Quentin, 2026-11-12) — the calendar opens at once, past dates only, and « Valider » completes.
+ * The points preview is read for the chosen date at that moment, for the celebration, but never
+ * waited on for more than 1.5 s (offline it would time out much later).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SoloCompletionDatePicker(
+    taskTitle: String,
+    memberId: String,
+    onDismiss: () -> Unit,
+    onConfirm: (participantIds: List<String>, isoDate: String, preview: CompletionPreview?) -> Unit,
+    previewProvider: (suspend (isoDate: String, numParticipants: Int) -> CompletionPreview?)?,
+) {
+    val now = remember { System.currentTimeMillis() }
+    val state = rememberDatePickerState(
+        initialSelectedDateMillis = now,
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= now
+        },
+    )
+    val scope = rememberCoroutineScope()
+    var sent by remember { mutableStateOf(false) }
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(enabled = !sent, onClick = {
+                sent = true
+                val iso = millisToIsoNoonUtc(state.selectedDateMillis ?: now)
+                scope.launch {
+                    val preview = withTimeoutOrNull(1500) {
+                        runCatching { previewProvider?.invoke(iso, 1) }.getOrNull()
+                    }
+                    onConfirm(listOf(memberId), iso, preview)
+                }
+            }) { Text(stringResource(R.string.common_validate)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
+    ) {
+        DatePicker(
+            state = state,
+            title = {
+                Column(modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 16.dp)) {
+                    Text(
+                        text = stringResource(R.string.completion_title_single),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = taskTitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+        )
+    }
 }
 
 /**

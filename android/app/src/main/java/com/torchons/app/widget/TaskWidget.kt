@@ -78,6 +78,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 @InstallIn(SingletonComponent::class)
 interface TaskWidgetEntryPoint {
     fun taskRepository(): TaskRepository
+    fun completionChecks(): com.torchons.app.data.repository.CompletionChecks
     fun pendingOperationDao(): PendingOperationDao
     fun tokenManager(): TokenManager
 }
@@ -105,6 +106,8 @@ private data class WidgetTask(
     val title: String,
     val state: TaskUrgencyCalculator.State,
     val countdownLabel: String,
+    /** One assignee: seen and done by that member alone, so no « together » button. */
+    val solo: Boolean,
 )
 
 /**
@@ -178,7 +181,9 @@ class TaskWidget : GlanceAppWidget() {
                     computeTasksWithUrgency(visible, completions, today, context.resources)
                         .filter { onWidget(it, today) },
                 )
-                WidgetLoad.Loaded(ranked.map { WidgetTask(it.task.id, it.task.title, it.state, it.countdownLabel) })
+                WidgetLoad.Loaded(ranked.map {
+                    WidgetTask(it.task.id, it.task.title, it.state, it.countdownLabel, it.task.assignedToIds.size == 1)
+                })
             }
         }
             .catch { e -> emit(WidgetLoad.Failed(e.javaClass.simpleName)) }
@@ -280,14 +285,16 @@ private fun WidgetTaskRow(task: WidgetTask) {
                 actionParametersOf(WidgetLaunch.taskIdKey to task.taskId, WidgetLaunch.togetherKey to false),
             ),
         )
-        WidgetButton(
-            icon = R.drawable.ic_widget_together,
-            description = context.getString(R.string.suggestion_action_together),
-            background = Color(0xFFEEF0FF),
-            action = actionStartActivity<MainActivity>(
-                actionParametersOf(WidgetLaunch.taskIdKey to task.taskId, WidgetLaunch.togetherKey to true),
-            ),
-        )
+        if (!task.solo) {
+            WidgetButton(
+                icon = R.drawable.ic_widget_together,
+                description = context.getString(R.string.suggestion_action_together),
+                background = Color(0xFFEEF0FF),
+                action = actionStartActivity<MainActivity>(
+                    actionParametersOf(WidgetLaunch.taskIdKey to task.taskId, WidgetLaunch.togetherKey to true),
+                ),
+            )
+        }
         WidgetButton(
             icon = R.drawable.ic_widget_done,
             description = context.getString(R.string.suggestion_action_done),
@@ -340,7 +347,10 @@ class CompleteTaskAction : ActionCallback {
     ) {
         val taskId = parameters[taskIdParam] ?: return
         withContext(Dispatchers.IO) {
-            widgetDeps(context).taskRepository().completeTask(taskId)
+            // A second tap before the row leaves would be dropped by the server anyway
+            // (CompletionChecks): not written, so the cache never shows it either.
+            val deps = widgetDeps(context)
+            if (deps.completionChecks().refusal(taskId) == null) deps.taskRepository().completeTask(taskId)
         }
         TaskWidget().update(context, glanceId)
     }

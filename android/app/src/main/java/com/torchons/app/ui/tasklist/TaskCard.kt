@@ -170,20 +170,23 @@ fun TaskCard(
                     modifier = Modifier.size(20.dp),
                 )
             }
-            Spacer(modifier = Modifier.width(6.dp))
-            FilledIconButton(
-                onClick = { onFaitEnsemble(taskId) },
-                modifier = Modifier.size(40.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Groups,
-                    contentDescription = stringResource(R.string.suggestion_action_together),
-                    modifier = Modifier.size(20.dp),
-                )
+            // A solo task (one assignee) is seen and done by that member alone: no « together ».
+            if (task.assignedToIds.size != 1) {
+                Spacer(modifier = Modifier.width(6.dp))
+                FilledIconButton(
+                    onClick = { onFaitEnsemble(taskId) },
+                    modifier = Modifier.size(40.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Groups,
+                        contentDescription = stringResource(R.string.suggestion_action_together),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(6.dp))
             FilledIconButton(

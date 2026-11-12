@@ -349,7 +349,7 @@ class TaskRepository @Inject constructor(
         val payload = mapOf<String, Any?>(
             "task_id" to taskId,
             "completed_by" to effectiveCompletedBy,
-            "completed_at" to completedAt,
+            "completed_at" to now, // the tap's time, not the sync's: an offline ✓ keeps its date
             "notes" to notes,
         )
         enqueue(clientOpId, "task_completions", "INSERT", rowId, payload)

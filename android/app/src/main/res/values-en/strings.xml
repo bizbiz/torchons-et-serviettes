@@ -1096,6 +1096,8 @@
     <string name="common_info_cd">Info</string>
 
     <!-- CompletionDialog -->
+    <string name="completion_duplicate_today">Already done at %1$s: it only counts once.</string>
+    <string name="completion_duplicate_day">Already done on %1$s at %2$s: it only counts once.</string>
     <string name="completion_title_single">Already done</string>
     <string name="completion_title_multi">Done together</string>
     <string name="completion_picker_who_single">Who did it?</string>
@@ -1151,16 +1153,41 @@
     <string name="longterm_room_points_format">%1$d tasks · %2$d pts</string>
 
     <!-- TaskUrgencyCalculator — countdown labels -->
-    <string name="countdown_in_days_format">in %1$dd</string>
+    <string name="countdown_in_format">in %1$s</string>
     <string name="countdown_tomorrow">tomorrow</string>
     <string name="countdown_today">to do today</string>
-    <string name="countdown_one_day_late">1d late</string>
-    <string name="countdown_days_late_format">%1$dd late</string>
+    <string name="countdown_one_day_late">a day late</string>
+    <string name="countdown_late_format">%1$s late</string>
+    <plurals name="duration_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <plurals name="duration_weeks">
+        <item quantity="one">%d week</item>
+        <item quantity="other">%d weeks</item>
+    </plurals>
+    <plurals name="duration_weeks_half">
+        <item quantity="one">a week and a half</item>
+        <item quantity="other">%d and a half weeks</item>
+    </plurals>
+    <plurals name="duration_months">
+        <item quantity="one">%d month</item>
+        <item quantity="other">%d months</item>
+    </plurals>
+    <plurals name="duration_years">
+        <item quantity="one">%d year</item>
+        <item quantity="other">%d years</item>
+    </plurals>
+    <string name="duration_and_format">%1$s and %2$s</string>
+    <string name="duration_more_than_format">more than %1$s</string>
+    <string name="duration_less_than_format">less than %1$s</string>
+    <string name="duration_more_than_one_year">more than a year</string>
+    <string name="duration_less_than_one_year">less than a year</string>
     <!-- Uncertain (no cadence) countdown -->
     <string name="uncertain_not_done">Not done yet</string>
     <string name="uncertain_done_today">Done today</string>
     <string name="uncertain_done_yesterday">Done yesterday</string>
-    <string name="uncertain_done_days_ago_format">Done %1$dd ago</string>
+    <string name="uncertain_done_ago_format">Done %1$s ago</string>
 
     <!-- ============================================================
          Lot 2 i18n (post-launch) — Remaining dialogs / secondary screens.

@@ -15,6 +15,7 @@ import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.FormerMember
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
+import com.torchons.app.data.repository.CompletionChecks
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.ui.common.RatingRecurrence
 import com.torchons.app.util.CompletionDateLabels
@@ -104,6 +105,7 @@ data class TaskDetailUiState(
 @HiltViewModel
 class TaskDetailViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
+    private val completionChecks: CompletionChecks,
     private val apiService: ApiService,
     authRepository: AuthRepository,
     tokenManager: com.torchons.app.data.local.TokenManager,
@@ -278,7 +280,7 @@ class TaskDetailViewModel @Inject constructor(
         }
     }
 
-    fun completeTask() {
+    fun completeTask() = unlessDuplicate {
         celebrate(
             resolve = {
                 val preview = fetchCompletionPreview(
@@ -311,7 +313,7 @@ class TaskDetailViewModel @Inject constructor(
         completedBy: String? = null,
         previewPoints: Int? = null,
         previewReason: String? = null,
-    ) {
+    ) = unlessDuplicate(isoDate, completedBy?.let(::listOf)) {
         celebrate(
             resolve = {
                 CelebrationContent(previewPoints, previewReason, earnedByFor(completedBy, previewPoints))
@@ -335,7 +337,7 @@ class TaskDetailViewModel @Inject constructor(
         isoDate: String? = null,
         previewPoints: Int? = null,
         previewReason: String? = null,
-    ) {
+    ) = unlessDuplicate(isoDate, participantUserIds) {
         celebrate(
             resolve = {
                 // Points par personne : preview du dialog, ou fetch (chemin
@@ -713,17 +715,15 @@ class TaskDetailViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null)
     }
 
-    /** Preview bonus/malus pour le dialog de completion. null = offline/erreur. */
-    suspend fun fetchCompletionPreview(
-        taskId: String,
-        isoDate: String,
-        numParticipants: Int,
-    ): com.torchons.app.data.model.CompletionPreview? {
-        return try {
-            val resp = apiService.getCompletionPreview(taskId, isoDate, numParticipants)
-            if (resp.isSuccessful) resp.body() else null
-        } catch (_: Exception) {
-            null
+    /** Refuses a duplicate completion BEFORE the celebration (CompletionChecks.refusal); [by] null = me. */
+    private fun unlessDuplicate(at: String? = null, by: List<String>? = null, go: () -> Unit) {
+        viewModelScope.launch {
+            val refusal = completionChecks.refusal(taskId, at, by)
+            if (refusal == null) go() else _uiState.value = _uiState.value.copy(error = refusal)
         }
     }
+
+    /** Preview bonus/malus pour le dialog de completion. null = offline/erreur. */
+    suspend fun fetchCompletionPreview(taskId: String, isoDate: String, numParticipants: Int) =
+        completionChecks.preview(taskId, isoDate, numParticipants)
 }

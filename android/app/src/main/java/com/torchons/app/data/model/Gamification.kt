@@ -6,7 +6,6 @@ import com.google.gson.annotations.SerializedName
 data class Suggestion(
     @SerializedName("task_id") val taskId: String,
     @SerializedName("title") val title: String,
-    @SerializedName("category_id") val categoryId: String? = null,
     @SerializedName("weight") val weight: Int = 1,
     /** Etat d'urgence : "GREEN" / "ORANGE" / "RED". */
     @SerializedName("state") val state: String = "GREEN",

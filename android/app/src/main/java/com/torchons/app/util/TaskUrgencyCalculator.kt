@@ -245,11 +245,11 @@ object TaskUrgencyCalculator {
 
     /** Variante prenant directement le delta en jours (utile pour SuggestionCard). */
     fun countdownLabelFromDays(res: Resources, daysUntilDue: Int): String = when {
-        daysUntilDue > 1 -> res.getString(R.string.countdown_in_days_format, daysUntilDue)
+        daysUntilDue > 1 -> res.getString(R.string.countdown_in_format, durationText(res, daysUntilDue))
         daysUntilDue == 1 -> res.getString(R.string.countdown_tomorrow)
         daysUntilDue == 0 -> res.getString(R.string.countdown_today)
         daysUntilDue == -1 -> res.getString(R.string.countdown_one_day_late)
-        else -> res.getString(R.string.countdown_days_late_format, -daysUntilDue)
+        else -> res.getString(R.string.countdown_late_format, durationText(res, daysUntilDue))
     }
 
     /**
@@ -274,7 +274,7 @@ object TaskUrgencyCalculator {
         return when {
             delta <= 0 -> res.getString(R.string.uncertain_done_today)
             delta == 1 -> res.getString(R.string.uncertain_done_yesterday)
-            else -> res.getString(R.string.uncertain_done_days_ago_format, delta)
+            else -> res.getString(R.string.uncertain_done_ago_format, durationText(res, delta, lastDate))
         }
     }
 
