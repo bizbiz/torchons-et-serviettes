@@ -18,13 +18,19 @@ covered paths; /stats/weekly-summary counting a member's completions in their OT
 which needs a user in two households — fixed by reading, not tested; PUT /bonus-config by a
 non-admin member, which is a role question, not an isolation one.
 
-`client_timestamp` is `now`: it only feeds the stale-update check, which no test here exercises.
+`client_timestamp` is a minute AHEAD: it only feeds the stale-update check, which no test here
+exercises, and `now` made it depend on two clocks. `updated_at` is stamped by the DATABASE
+(func.now(), <beta-host>), `client_timestamp` by the PC running pytest: on 2026-11-12 the base was
+58 ms ahead (20 readings, 57.6 to 58.9 ms), so an UPDATE sent less than 58 ms after its INSERT
+looked older than the row and was refused as stale. Intermittent, faster in the full suite
+(warm connections): « 'Injected' == 'Injected, renamed' » in the cannot_move test, the same text
+as an UPDATE forced 2 s in the past.
 """
 
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 import pytest_asyncio
@@ -45,7 +51,7 @@ def _op(table, operation, row_id=None, data=None):
         "operation": operation,
         "row_id": row_id or str(uuid.uuid4()),
         "data": data,
-        "client_timestamp": datetime.now(timezone.utc).isoformat(),
+        "client_timestamp": (datetime.now(timezone.utc) + timedelta(minutes=1)).isoformat(),
     }
 
 
