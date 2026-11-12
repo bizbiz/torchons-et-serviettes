@@ -7,10 +7,11 @@
 # en local hors Docker via la .venv (cf. CODING_CONVENTIONS.md) — cette image ne sert
 # QUE pour le deploiement Scaleway public.
 #
-# Les deps sont extraites dynamiquement de pyproject.toml (pas de lockfile
-# dans le repo) : zero duplication, zero drift. Le projet n'est PAS installe
-# comme package (layout flat app/ + tests/ + alembic/ + seeds/), uvicorn
-# tourne depuis les sources copiees dans /app.
+# Les deps sont les versions RESOLUES de requirements.lock (depuis le 2026-11-12) :
+# avant, les `>=` de pyproject.toml etaient installes a la date du build, et un
+# rebuild pouvait tirer une version jamais testee (SQLAlchemy 2.1.3 le 2026-10-05).
+# Le projet n'est PAS installe comme package (layout flat app/ + tests/ + alembic/
+# + seeds/), uvicorn tourne depuis les sources copiees dans /app.
 
 FROM python:3.12-slim AS base
 
@@ -20,10 +21,9 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# 1. Deps uniquement (cache Docker invalide seulement si pyproject change).
-COPY pyproject.toml ./
-RUN python -c "import tomllib, pathlib; print('\n'.join(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['dependencies']))" > /tmp/requirements.txt \
- && pip install --no-cache-dir -r /tmp/requirements.txt
+# 1. Deps uniquement (cache Docker invalide seulement si le lock change).
+COPY requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock
 
 # 2. Code applicatif (cf. .dockerignore pour ce qui est exclu).
 COPY . .
