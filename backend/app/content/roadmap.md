@@ -29,4 +29,9 @@
   le foyer ouvert dans l'app. Les tâches en retard et les validations d'un autre foyer ne lui
   arrivent qu'une fois qu'il y a basculé. Il serait prévenu pour chacun de ses foyers, chaque
   notification nommant le sien.
+- **Régler chaque widget** : une roue dentée dans l'en-tête du widget ouvrirait ses propres
+  réglages. On pourrait y choisir d'afficher seulement les tâches à faire ou toutes, de masquer
+  ou non les tâches « sur place » hors du WiFi de la maison, de trier par urgence ou selon ses
+  préférences, de limiter le nombre de tâches (3, 5 ou 10) et de ne garder que certains
+  contextes. Un mode compact ne laisserait que le bouton ✓.
 - **Mode "famille etendue"** : plusieurs foyers relies (parents + grands-parents qui se voient les taches), version pro pour airbnb / colocation longue.

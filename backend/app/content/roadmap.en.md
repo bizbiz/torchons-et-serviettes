@@ -24,4 +24,9 @@
   for the household open in the app. Overdue tasks and completions from another household only
   reach them once they switch to it. They would be notified for each of their households, every
   notification naming its own.
+- **Settings for each widget**: a gear in the widget header would open its own settings. You
+  could choose to show only the tasks to do or all of them, to hide or not the "on site" tasks
+  away from the home WiFi, to sort by urgency or by your preferences, to limit the number of
+  tasks (3, 5 or 10) and to keep only some contexts. A compact mode would leave only the ✓
+  button.
 - **Extended family mode**: multiple linked households (parents + grandparents who see each other's tasks), pro version for airbnb / long-term coloc.
