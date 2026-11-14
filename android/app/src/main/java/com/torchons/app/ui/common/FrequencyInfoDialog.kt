@@ -56,6 +56,8 @@ fun FrequencyInfoDialog(
     onAskRevote: (targetUserId: String) -> Unit,
     onEditMyVote: () -> Unit,
     onDismiss: () -> Unit,
+    /** Status of the re-vote request just made (or pending), shown under the member's row. */
+    revoteNotice: RevoteNotice? = null,
 ) {
     // Etat local : quels votes "Selon le mois" sont deplies (cle = user_id).
     val expanded = remember { mutableStateMapOf<String, Boolean>() }
@@ -135,6 +137,7 @@ fun FrequencyInfoDialog(
                             }
                         },
                     )
+                    RevoteStatusLine(revoteNotice, other.userId)
                     Spacer(Modifier.height(6.dp))
                 }
 
@@ -173,6 +176,7 @@ fun FrequencyInfoDialog(
                                 )
                             }
                         }
+                        RevoteStatusLine(revoteNotice, uid)
                     }
                 }
             }

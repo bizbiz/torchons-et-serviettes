@@ -24,4 +24,16 @@ data class UserPrompt(
 data class PromptResolveRequest(
     @SerializedName("resolution") val resolution: String,
     @SerializedName("payload") val payload: Map<String, Any?>? = null,
-)
+) {
+    companion object {
+        /** An answered re-vote carries the new vote: the server tells the requester from it
+         *  (a frequency vote may still sit in the offline queue when the prompt resolves). */
+        fun effortAnswer(points: Int) = PromptResolveRequest("ANSWERED", mapOf("points" to points))
+
+        fun frequencyAnswer(request: FrequencyRequest): PromptResolveRequest {
+            val days = request.daysPerMonth
+                ?: request.everyNDays?.let { n -> (1..12).associate { it.toString() to n } }
+            return PromptResolveRequest("ANSWERED", mapOf("days_per_month" to days))
+        }
+    }
+}

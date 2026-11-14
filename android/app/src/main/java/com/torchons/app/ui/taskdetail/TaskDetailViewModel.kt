@@ -8,7 +8,6 @@ import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.EffortVotesState
 import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.PendingAffinity
-import com.torchons.app.data.model.RequestRevoteBody
 import com.torchons.app.data.model.TaskContextRef
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskHistoryEvent
@@ -644,31 +643,13 @@ class TaskDetailViewModel @Inject constructor(
         }
     }
 
-    /** Demande a un autre membre de revoter (frequence ou effort). */
-    fun requestRevote(targetUserId: String, kind: String) {
-        viewModelScope.launch {
-            try {
-                val resp = apiService.requestRevote(
-                    RequestRevoteBody(targetUserId = targetUserId, taskId = taskId, kind = kind)
-                )
-                if (resp.isSuccessful || resp.code() == 409) {
-                    // 409 = deja en pending, on traite comme succes (idempotent).
-                    _uiState.value = _uiState.value.copy(
-                        completionMessage = "Demande envoyee",
-                    )
-                    if (kind == "frequency") refreshFrequencyVotes()
-                    else if (kind == "effort") refreshEffortVotes()
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        error = "Erreur ${resp.code()}",
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = e.message ?: "Erreur reseau",
-                )
-            }
-        }
+    /** Refetches both vote states (a re-vote request or its answer changes who is pending). */
+    fun refreshVotes() {
+        viewModelScope.launch { refreshFrequencyVotes(); refreshEffortVotes() }
+    }
+
+    fun showMessage(message: String) {
+        _uiState.value = _uiState.value.copy(completionMessage = message)
     }
 
     private suspend fun refreshFrequencyVotes() {

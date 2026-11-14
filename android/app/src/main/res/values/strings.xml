@@ -1606,4 +1606,17 @@
     </plurals>
     <string name="notif_overdue_channel_name">Tâches passées en retard</string>
     <string name="notif_overdue_title">Passées en retard</string>
+
+    <!-- Re-vote feedback for the requester -->
+    <string name="revote_request_sent">Demande envoyée</string>
+    <string name="revote_status_notified">Notification envoyée à %1$s. Tu peux fermer cette fenêtre ou attendre ici sa réponse.</string>
+    <string name="revote_status_not_notified">%1$s verra ta demande à sa prochaine ouverture de l\'app.</string>
+    <string name="revote_status_failed">Demande non envoyée. Réessaie plus tard.</string>
+    <string name="revote_kind_effort">pénibilité</string>
+    <string name="revote_kind_frequency">fréquence</string>
+    <string name="revote_answer_changed">%1$s a répondu : son vote de %2$s passe de %3$s à %4$s ! Bravo, des tâches bien réglées, c\'est un pas vers une répartition plus juste.</string>
+    <string name="revote_answer_first">%1$s a répondu : son vote de %2$s est maintenant %3$s ! Bravo, des tâches bien réglées, c\'est un pas vers une répartition plus juste.</string>
+    <string name="revote_answer_confirmed">%1$s a répondu : vote confirmé, %2$s. Bravo, des tâches bien réglées, c\'est un pas vers une répartition plus juste.</string>
+    <string name="revote_answer_nothing">%1$s a répondu à ta demande. Bravo, des tâches bien réglées, c\'est un pas vers une répartition plus juste.</string>
+    <string name="revote_answer_dismissed">%1$s a fermé ta demande sans changer son vote.</string>
 </resources>

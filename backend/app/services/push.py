@@ -40,39 +40,42 @@ def _multicast(targets: list[tuple[str, str]], **content) -> messaging.Multicast
         return messaging.MulticastMessage(tokens=tokens or None, fids=fids or None, **content)
 
 
-def _send_multicast(kind: str, message: messaging.MulticastMessage) -> list[str]:
+def _send_multicast(kind: str, message: messaging.MulticastMessage) -> tuple[list[str], int]:
     """Send and log the outcome: counts and error classes only, never titles or tokens.
 
     Until 2026-10-17 every failure was swallowed, so a notification that never left
-    looked exactly like one that did. Returns the tokens FCM declared unregistered.
+    looked exactly like one that did. Returns the tokens FCM declared unregistered and the
+    number of messages FCM accepted.
     """
     try:
         resp = messaging.send_each_for_multicast(message)
     except Exception as e:
         logger.warning("push_failed", kind=kind, error=type(e).__name__)
-        return []
+        return [], 0
     errors = sorted({type(r.exception).__name__ for r in resp.responses if r.exception})
     log = logger.warning if resp.failure_count else logger.info
     log("push_sent", kind=kind, ok=resp.success_count, failed=resp.failure_count, errors=errors)
     # Responses come back tokens first, then fids (messaging._get_messages_from_multicast).
     # UnregisteredError covers a dead FID as well as a dead token.
     sent = (message.tokens or []) + (message.fids or [])
-    return [
+    dead = [
         tok for tok, r in zip(sent, resp.responses)
         if isinstance(r.exception, messaging.UnregisteredError)
     ]
+    return dead, resp.success_count
 
 
-async def _send_and_prune(kind: str, message: messaging.MulticastMessage) -> None:
+async def _send_and_prune(kind: str, message: messaging.MulticastMessage) -> int:
     """Send, then delete the tokens FCM answered `UnregisteredError` for.
 
     Such a token belongs to an uninstalled app or a reset phone: it is refused on
     every send, forever. Only that error prunes: any other one can be transient.
     The delete runs in its OWN session, so it never commits the caller's transaction.
+    Returns the number of messages FCM accepted.
     """
-    dead = _send_multicast(kind, message)
+    dead, accepted = _send_multicast(kind, message)
     if not dead:
-        return
+        return accepted
     from app.database import async_session
 
     try:
@@ -84,6 +87,7 @@ async def _send_and_prune(kind: str, message: messaging.MulticastMessage) -> Non
         logger.info("push_pruned", kind=kind, tokens=len(dead))
     except Exception as e:
         logger.warning("push_prune_failed", kind=kind, error=type(e).__name__)
+    return accepted
 
 
 # --- Helper centralise pour construire titre + corps + bucket de pref ---
@@ -234,8 +238,12 @@ async def send_completion_event(
     await _send_to_users(session, "completion", allowed)
 
 
-async def _send_to_users(session: AsyncSession, kind: str, allowed: list[tuple[UUID, str, str]]) -> None:
-    """Send each (user_id, title, body) to every token of its user."""
+async def _send_to_users(
+    session: AsyncSession, kind: str, allowed: list[tuple[UUID, str, str]],
+    data: dict[str, str] | None = None,
+) -> int:
+    """Send each (user_id, title, body) to every token of its user, with the optional `data`
+    payload on every message. Returns the number of messages FCM accepted."""
     # 5. Tokens FCM des destinataires retenus.
     tokens_result = await session.execute(
         select(NotificationToken.user_id, NotificationToken.kind, NotificationToken.fcm_token)
@@ -255,11 +263,15 @@ async def _send_to_users(session: AsyncSession, kind: str, allowed: list[tuple[U
 
     if not grouped:
         logger.info("push_skipped", kind=kind, reason="no_token", recipients=len(allowed))
-        return
+        return 0
 
+    accepted = 0
     for (title, body), targets in grouped.items():
-        message = _multicast(targets, notification=messaging.Notification(title=title, body=body))
-        await _send_and_prune(kind, message)
+        message = _multicast(
+            targets, notification=messaging.Notification(title=title, body=body), data=data,
+        )
+        accepted += await _send_and_prune(kind, message)
+    return accepted
 
 
 # --- Completions arriving through /sync -------------------------------------------------
@@ -355,60 +367,6 @@ async def flush_idle_completions(now: datetime | None = None) -> int:
         except Exception as e:
             logger.warning("push_failed", kind="sync_completion", error=type(e).__name__)
     return len(due)
-
-
-# --- Re-vote requests --------------------------------------------------------------------
-#
-# POST /prompts/request-revote used to send nothing: the target only learned of the request
-# when the app next fetched its prompt queue. It now notifies the target AT ONCE, one
-# notification per request: Quentin, 2026-11-11, « une demande de revote doit être
-# immédiate ». A v0.44.1 build grouped them behind SYNC_QUIET_WINDOW; that wait was refused.
-# No settings toggle: it is a direct request from a member.
-
-_REVOTE_KIND_TEXT = {"frequency": "la fréquence", "effort": "la pénibilité"}
-
-
-def build_revote_body(requester_name: str, kind: str, title: str, contexts: list[str] = ()) -> str:
-    """« Q te demande de revoter la fréquence de X (Salon, Ménage) ».
-
-    The contexts tell apart two tasks of the same title, « Passer l'aspirateur » in two rooms
-    (Quentin, 2026-11-11); none, no parentheses.
-    """
-    where = f" ({', '.join(contexts)})" if contexts else ""
-    return f"{requester_name} te demande de revoter {_REVOTE_KIND_TEXT.get(kind, 'le vote')} de {title}{where}"
-
-
-async def _context_names(session: AsyncSession, task_id: UUID) -> list[str]:
-    """The task's live contexts, main one first."""
-    from app.models.context import Context, TaskContext
-
-    rows = await session.execute(
-        select(Context.name)
-        .join(TaskContext, TaskContext.context_id == Context.id)
-        .where(TaskContext.task_id == task_id, Context.deleted_at.is_(None))
-        .order_by(TaskContext.position)
-    )
-    return [n for (n,) in rows.all()]
-
-
-async def send_revote_request(
-    session: AsyncSession, requester_id: UUID, target_id: UUID, task_id: UUID, title: str, kind: str,
-) -> None:
-    """Notify the target of one re-vote request, now. Never raises."""
-    try:
-        if not firebase_admin._apps:
-            logger.info("push_skipped", kind="revote", reason="firebase_not_initialized")
-            return
-        if str(task_id) in await hidden_among(session, target_id, {UUID(str(task_id))}):
-            logger.info("push_skipped", kind="revote", reason="no_visible_task")
-            return
-        name = (
-            await session.execute(select(User.display_name).where(User.id == requester_id))
-        ).scalar() or "?"
-        body = build_revote_body(name, kind, title, await _context_names(session, UUID(str(task_id))))
-        await _send_to_users(session, "revote", [(target_id, "Demande de revote", body)])
-    except Exception as e:
-        logger.warning("push_failed", kind="revote", error=type(e).__name__)
 
 
 def _label(title: str, completed_at: datetime, today) -> str:

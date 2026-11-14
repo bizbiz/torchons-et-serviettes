@@ -849,7 +849,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             taskRepository.voteFrequency(ctx.taskId, request)
             try {
-                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("ANSWERED"))
+                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest.frequencyAnswer(request))
             } catch (_: Exception) {}
             _uiState.value = _uiState.value.copy(
                 pendingFrequencyVoteContext = null,
@@ -864,7 +864,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 apiService.setEffort(ctx.taskId, mapOf("points" to points))
-                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("ANSWERED"))
+                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest.effortAnswer(points))
             } catch (_: Exception) {}
             _uiState.value = _uiState.value.copy(
                 pendingEffortVoteContext = null,

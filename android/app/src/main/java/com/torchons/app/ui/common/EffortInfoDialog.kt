@@ -52,6 +52,8 @@ fun EffortInfoDialog(
     onAskRevote: (targetUserId: String) -> Unit,
     onEditMyVote: () -> Unit,
     onDismiss: () -> Unit,
+    /** Status of the re-vote request just made (or pending), shown under the member's row. */
+    revoteNotice: RevoteNotice? = null,
     /** v0.32 : si false (gamif desactivee user OU foyer), retire les mentions
      *  de points / fair-share du texte pedago — focus sur "temps moyen". */
     gamificationVisible: Boolean = true,
@@ -129,6 +131,7 @@ fun EffortInfoDialog(
                             }
                         },
                     )
+                    RevoteStatusLine(revoteNotice, other.userId)
                     Spacer(Modifier.height(6.dp))
                 }
 
@@ -167,6 +170,7 @@ fun EffortInfoDialog(
                                 )
                             }
                         }
+                        RevoteStatusLine(revoteNotice, uid)
                     }
                 }
             }

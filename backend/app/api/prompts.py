@@ -35,6 +35,7 @@ from app.services.modules import (
     resolve_states,
     unmet_requirements,
 )
+from app.services.revote_votes import revote_answer_args
 from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api", tags=["prompts"])
@@ -262,53 +263,64 @@ async def resolve_prompt(
             prompt.context = ctx
 
     elif prompt.type == PromptType.DISCOVER_MODULE and resolution == "ANSWERED":
-        # Accepter une proposition ACTIVE le module, ici et non par un second
-        # appel du client : deux allers-retours pour un seul geste, c'est un
-        # etat intermediaire ou le prompt est resolu et le module toujours
-        # eteint, avec un reseau qui peut tomber entre les deux.
-        module_key = prompt.context.get("module_key")
-        module = get_registry().by_key(module_key) if module_key else None
-        if module is not None:
-            states = await resolve_states(session, foyer_uuid, user_id)
-            # Les dependances restent souveraines : une proposition ne doit
-            # pas etre un chemin detourne pour allumer ce que PUT /modules
-            # refuserait.
-            if not unmet_requirements(module, states):
-                row_user_id = None if module.is_collective else user_id
-                existing = await session.execute(
-                    select(ModuleState).where(
-                        ModuleState.foyer_id == foyer_uuid,
-                        ModuleState.module_key == module.key,
-                        ModuleState.user_id.is_(None)
-                        if row_user_id is None
-                        else ModuleState.user_id == row_user_id,
+        await _accept_module_proposal(session, prompt, foyer_uuid, user_id)
+
+    # A re-vote answered or closed: the requester hears of it (read before the commit, sent after).
+    revote = await revote_answer_args(session, prompt, user_id, resolution, payload)
+    await session.commit()
+    if revote:
+        from app.services.push_revote import send_revote_answer
+
+        await send_revote_answer(session, **revote)
+    return {"ok": True}
+
+
+async def _accept_module_proposal(session, prompt, foyer_uuid, user_id) -> None:
+    """DISCOVER_MODULE answered: switch the proposed module on."""
+    # Accepter une proposition ACTIVE le module, ici et non par un second
+    # appel du client : deux allers-retours pour un seul geste, c'est un
+    # etat intermediaire ou le prompt est resolu et le module toujours
+    # eteint, avec un reseau qui peut tomber entre les deux.
+    module_key = prompt.context.get("module_key")
+    module = get_registry().by_key(module_key) if module_key else None
+    if module is not None:
+        states = await resolve_states(session, foyer_uuid, user_id)
+        # Les dependances restent souveraines : une proposition ne doit
+        # pas etre un chemin detourne pour allumer ce que PUT /modules
+        # refuserait.
+        if not unmet_requirements(module, states):
+            row_user_id = None if module.is_collective else user_id
+            existing = await session.execute(
+                select(ModuleState).where(
+                    ModuleState.foyer_id == foyer_uuid,
+                    ModuleState.module_key == module.key,
+                    ModuleState.user_id.is_(None)
+                    if row_user_id is None
+                    else ModuleState.user_id == row_user_id,
+                )
+            )
+            state = existing.scalar_one_or_none()
+            now = datetime.now(timezone.utc)
+            if state is None:
+                session.add(
+                    ModuleState(
+                        foyer_id=foyer_uuid,
+                        user_id=row_user_id,
+                        module_key=module.key,
+                        enabled=True,
+                        enabled_at=now,
+                        updated_by_user_id=user_id,
                     )
                 )
-                state = existing.scalar_one_or_none()
-                now = datetime.now(timezone.utc)
-                if state is None:
-                    session.add(
-                        ModuleState(
-                            foyer_id=foyer_uuid,
-                            user_id=row_user_id,
-                            module_key=module.key,
-                            enabled=True,
-                            enabled_at=now,
-                            updated_by_user_id=user_id,
-                        )
-                    )
-                else:
-                    state.enabled = True
-                    state.enabled_at = now
-                    state.updated_by_user_id = user_id
-                # Miroir legacy, tant que l'APK diffuse lit encore la colonne.
-                if module.key == "motivation":
-                    foyer = await session.get(Foyer, foyer_uuid)
-                    if foyer is not None:
-                        foyer.gamification_enabled = True
-
-    await session.commit()
-    return {"ok": True}
+            else:
+                state.enabled = True
+                state.enabled_at = now
+                state.updated_by_user_id = user_id
+            # Miroir legacy, tant que l'APK diffuse lit encore la colonne.
+            if module.key == "motivation":
+                foyer = await session.get(Foyer, foyer_uuid)
+                if foyer is not None:
+                    foyer.gamification_enabled = True
 
 
 async def _validate_revote(session, body, foyer_uuid, requester_id):
@@ -405,6 +417,10 @@ async def request_revote(
     current_value: dict = {}
     if prompt_type == PromptType.VOTE_FREQUENCY:
         current_value = {"recurrence_rule": task.recurrence_rule}
+    from app.services.revote_votes import SNAPSHOT_KEY, current_vote
+
+    # The target's own vote now (None if none): the answer is compared with it.
+    current_value[SNAPSHOT_KEY] = await current_vote(session, body.task_id, body.target_user_id, body.kind)
 
     context = {
         "task_id": str(body.task_id),
@@ -428,14 +444,15 @@ async def request_revote(
     await session.commit()
 
     # After the commit: the target is notified at once (services/push.py).
-    from app.services.push import send_revote_request
+    from app.services.push_revote import send_revote_request
 
-    await send_revote_request(
+    notified = await send_revote_request(
         session, requester_id, body.target_user_id, body.task_id, task.title, body.kind,
     )
 
     return {
         "ok": True,
+        "notified": notified,
         "prompt_id": str(new_prompt.id),
         "type": prompt_type.value,
     }

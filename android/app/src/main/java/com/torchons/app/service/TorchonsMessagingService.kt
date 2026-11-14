@@ -16,6 +16,7 @@ import com.google.firebase.messaging.RemoteMessage
 import com.torchons.app.MainActivity
 import com.torchons.app.R
 import com.torchons.app.core.proposition.PropositionStateHolder
+import com.torchons.app.core.revote.RevoteAnswerRegistry
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -25,6 +26,7 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 interface TorchonsMessagingEntryPoint {
     fun propositionStateHolder(): PropositionStateHolder
+    fun revoteAnswerRegistry(): RevoteAnswerRegistry
 }
 
 /**
@@ -68,6 +70,15 @@ class TorchonsMessagingService : FirebaseMessagingService() {
                 propositionId = message.data["proposition_id"],
             )
             return
+        }
+
+        // The answer to a re-vote request: when the re-vote dialog waits for it, it shows the
+        // answer itself and the notification is skipped. Otherwise it shows as any push.
+        if (dataType == "revote_answered") {
+            val registry = EntryPointAccessors.fromApplication(
+                applicationContext, TorchonsMessagingEntryPoint::class.java
+            ).revoteAnswerRegistry()
+            if (registry.consume(message.data)) return
         }
 
         // v0.22+ : le filtrage par categorie (solo / collective_with_me /

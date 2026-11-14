@@ -299,41 +299,7 @@ fun TaskDetailScreen(
 
     // v0.28 — Modaux "+ d'info" frequence / affinite, FrequencyVoteDialog
     // et EffortVoteDialog ouverts depuis le bandeau ou les sous-textes.
-    if (uiState.showFrequencyInfo && uiState.frequencyVotes != null && uiState.task != null) {
-        val task = uiState.task!!
-        val members = task.assignedToIds.map { uid ->
-            uid to (uiState.userNames[uid] ?: "?")
-        }
-        com.torchons.app.ui.common.FrequencyInfoDialog(
-            state = uiState.frequencyVotes!!,
-            foyerMembers = members,
-            currentUserId = currentUserId,
-            onAskRevote = { uid -> viewModel.requestRevote(uid, "frequency") },
-            onEditMyVote = {
-                viewModel.dismissFrequencyInfo()
-                viewModel.openFrequencyVoteDialog()
-            },
-            onDismiss = { viewModel.dismissFrequencyInfo() },
-        )
-    }
-    if (uiState.showEffortInfo && uiState.effortVotes != null && uiState.task != null) {
-        val task = uiState.task!!
-        val members = task.assignedToIds.map { uid ->
-            uid to (uiState.userNames[uid] ?: "?")
-        }
-        com.torchons.app.ui.common.EffortInfoDialog(
-            state = uiState.effortVotes!!,
-            foyerMembers = members,
-            currentUserId = currentUserId,
-            onAskRevote = { uid -> viewModel.requestRevote(uid, "effort") },
-            onEditMyVote = {
-                viewModel.dismissEffortInfo()
-                viewModel.openEffortVoteDialog()
-            },
-            onDismiss = { viewModel.dismissEffortInfo() },
-            gamificationVisible = gamificationVisible,
-        )
-    }
+    VoteInfoDialogs(uiState, currentUserId, gamificationVisible, viewModel)
     if (uiState.showAffinityInfo) {
         val rows = uiState.ratings.mapNotNull { r ->
             r.userId?.let {
