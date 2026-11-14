@@ -1,5 +1,8 @@
 package com.torchons.app.ui.taskedit
 
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
+import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.model.CreateTaskRequest
@@ -146,8 +149,8 @@ fun TaskEditUiState.previewRecurrenceRule(): RecurrenceRule? = when (recurrenceT
 class TaskEditViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val authRepository: AuthRepository,
-    private val apiService: ApiService
-
+    private val apiService: ApiService,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TaskEditUiState())
@@ -334,7 +337,7 @@ class TaskEditViewModel @Inject constructor(
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
-                        isLoading = false, error = "Tache introuvable"
+                        isLoading = false, error = context.getString(R.string.task_detail_not_found)
                     )
                 }
             } else if (cloneFromId != null) {
@@ -405,7 +408,7 @@ class TaskEditViewModel @Inject constructor(
         if (source == null) {
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
-                error = "Tache source introuvable",
+                error = context.getString(R.string.task_edit_source_not_found),
                 contexts = contexts,
                 users = users,
                 assignedToIds = if (_uiState.value.assignedToIds.isEmpty()) users.map { it.id } else _uiState.value.assignedToIds,
@@ -529,7 +532,7 @@ class TaskEditViewModel @Inject constructor(
     fun save(taskId: String?) {
         val state = _uiState.value
         if (state.title.isBlank()) {
-            _uiState.value = state.copy(error = "Le titre est obligatoire")
+            _uiState.value = state.copy(error = context.getString(R.string.task_edit_title_required))
             return
         }
 
@@ -597,7 +600,7 @@ class TaskEditViewModel @Inject constructor(
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
                         isSaving = false,
-                        error = error.message ?: "Erreur lors de la sauvegarde"
+                        error = error.message ?: context.getString(R.string.task_edit_save_error)
                     )
                 }
             )
@@ -616,7 +619,7 @@ class TaskEditViewModel @Inject constructor(
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
                         isSaving = false,
-                        error = error.message ?: "Erreur lors de la suppression"
+                        error = error.message ?: context.getString(R.string.common_error_delete)
                     )
                 }
             )
@@ -666,7 +669,7 @@ class TaskEditViewModel @Inject constructor(
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
                         showFrequencyVoteDialog = false,
-                        error = error.message ?: "Erreur lors du vote",
+                        error = error.message ?: context.getString(R.string.common_error_vote),
                     )
                 },
             )

@@ -1609,4 +1609,47 @@
     <string name="revote_answer_confirmed">%1$s answered: vote confirmed, %2$s. Well done, well-tuned tasks are a step towards a fairer split.</string>
     <string name="revote_answer_nothing">%1$s answered your request. Well done, well-tuned tasks are a step towards a fairer split.</string>
     <string name="revote_answer_dismissed">%1$s closed your request without changing their vote.</string>
+
+    <!-- ViewModel messages shown to the user (i18n sweep) -->
+    <string name="common_empty_response">Empty response</string>
+    <string name="common_error_http_format">HTTP %1$d</string>
+    <string name="common_task_completed">Task completed!</string>
+    <plurals name="common_task_completed_by_count">
+        <item quantity="one">Task completed by %1$d person!</item>
+        <item quantity="other">Task completed by %1$d people!</item>
+    </plurals>
+    <string name="common_collective_conflict">Not possible: task was already completed recently by a participant</string>
+    <string name="common_error_complete">Error while completing the task</string>
+    <string name="common_error_delete">Error while deleting</string>
+    <string name="common_error_vote">Error while voting</string>
+    <string name="home_all_rated">All tasks have already been rated!</string>
+    <string name="home_recycle_urgent">No more urgent suggestions — showing skipped tasks again</string>
+    <string name="home_recycle_affinity">No more affinity suggestions — showing skipped tasks again</string>
+    <string name="home_recycle_uncertain">No more suggestions without a cadence — showing skipped tasks again</string>
+    <string name="home_recycle_other">Showing skipped tasks again</string>
+    <string name="home_collective_conflict">Cannot validate: task was already completed recently by a participant</string>
+    <string name="onboarding_default_foyer_name_format">%1$s\'s household</string>
+    <string name="onboarding_error_create_foyer_format">Error creating the household (%1$d)</string>
+    <string name="onboarding_error_switch_foyer">Household created but switching to it failed</string>
+    <string name="onboarding_error_import_resolve_format">Import failed (resolve %1$d)</string>
+    <string name="onboarding_error_import_apply_format">Import failed (apply %1$d)</string>
+    <string name="onboarding_error_import_failed_format">Import failed: %1$s</string>
+    <string name="onboarding_error_name_required">Enter your first name</string>
+    <string name="onboarding_error_invite_invalid">Invalid invitation code</string>
+    <string name="onboarding_error_invite_used">Invitation code already used</string>
+    <string name="onboarding_error_invite_expired">Invitation code expired</string>
+    <string name="onboarding_error_data_invalid">Missing or invalid data</string>
+    <string name="onboarding_error_code_not_found">Code not found. Check that you typed it correctly.</string>
+    <string name="onboarding_error_code_expired">The code has expired, start over.</string>
+    <string name="settings_leave_no_active_foyer">No active household</string>
+    <string name="task_detail_completion_deleted">Completion deleted</string>
+    <string name="task_detail_collective_deleted">Group completion deleted</string>
+    <string name="task_detail_collective_delete_error">Error while deleting the group completion</string>
+    <string name="task_detail_completion_edited">Completion updated</string>
+    <string name="task_detail_edit_error">Error while updating</string>
+    <string name="task_detail_vote_saved">Vote saved</string>
+    <string name="task_detail_notes_saved">Notes saved</string>
+    <string name="task_edit_source_not_found">Source task not found</string>
+    <string name="task_edit_title_required">The title is required</string>
+    <string name="task_edit_save_error">Error while saving</string>
 </resources>

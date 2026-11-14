@@ -1,5 +1,6 @@
 package com.torchons.app.ui.tasklist
 
+import com.torchons.app.R
 import android.content.Context
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
@@ -327,11 +328,13 @@ class TaskListViewModel @Inject constructor(
             write = {
                 taskRepository.completeTask(taskId).fold(
                     onSuccess = {
-                        _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
+                        _uiState.value = _uiState.value.copy(
+                            completionMessage = context.getString(R.string.common_task_completed),
+                        )
                     },
                     onFailure = { error ->
                         _uiState.value = _uiState.value.copy(
-                            error = error.message ?: "Erreur lors de la completion",
+                            error = error.message ?: context.getString(R.string.common_error_complete),
                         )
                     },
                 )
@@ -359,7 +362,9 @@ class TaskListViewModel @Inject constructor(
             write = {
                 taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
                     onSuccess = {
-                        _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
+                        _uiState.value = _uiState.value.copy(
+                            completionMessage = context.getString(R.string.common_task_completed),
+                        )
                     },
                     onFailure = { error ->
                         _uiState.value = _uiState.value.copy(error = error.message)
@@ -404,16 +409,20 @@ class TaskListViewModel @Inject constructor(
                 ).fold(
                     onSuccess = {
                         _uiState.value = _uiState.value.copy(
-                            completionMessage = "Tache completee a ${participantUserIds.size} !",
+                            completionMessage = context.resources.getQuantityString(
+                                R.plurals.common_task_completed_by_count,
+                                participantUserIds.size,
+                                participantUserIds.size,
+                            ),
                         )
                     },
                     onFailure = { err ->
                         val msg = when (err) {
                             is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
-                                409 -> "Impossible : tache deja completee recemment par un participant"
-                                else -> "Erreur ${err.httpCode}"
+                                409 -> context.getString(R.string.common_collective_conflict)
+                                else -> context.getString(R.string.common_error_code_format, err.httpCode)
                             }
-                            else -> err.message ?: "Erreur reseau"
+                            else -> err.message ?: context.getString(R.string.common_error_network)
                         }
                         _uiState.value = _uiState.value.copy(error = msg)
                     },

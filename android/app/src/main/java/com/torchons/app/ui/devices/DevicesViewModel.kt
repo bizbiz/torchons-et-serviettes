@@ -1,5 +1,8 @@
 package com.torchons.app.ui.devices
 
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
+import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.core.network.DeviceRevocationMonitor
@@ -34,6 +37,7 @@ data class DevicesUiState(
 class DevicesViewModel @Inject constructor(
     private val api: ApiService,
     private val revocationMonitor: DeviceRevocationMonitor,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DevicesUiState())
@@ -54,7 +58,7 @@ class DevicesViewModel @Inject constructor(
                 } else {
                     _uiState.value = _uiState.value.copy(
                         loading = false,
-                        error = "HTTP ${response.code()}",
+                        error = context.getString(R.string.common_error_http_format, response.code()),
                     )
                 }
             } catch (e: Exception) {
@@ -72,7 +76,9 @@ class DevicesViewModel @Inject constructor(
             try {
                 val response = api.revokeDevice(deviceId)
                 if (response.isSuccessful) refresh()
-                else _uiState.value = _uiState.value.copy(error = "HTTP ${response.code()}")
+                else _uiState.value = _uiState.value.copy(
+                    error = context.getString(R.string.common_error_http_format, response.code()),
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.javaClass.simpleName)
             }

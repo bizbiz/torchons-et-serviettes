@@ -1,5 +1,6 @@
 package com.torchons.app.ui.taskdetail
 
+import com.torchons.app.R
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -192,7 +193,7 @@ class TaskDetailViewModel @Inject constructor(
                     hasCachedData = hasCache,
                     isLoading = if (hasCache) false else _uiState.value.isLoading,
                     error = if (!hasCache && !_uiState.value.isLoading && _uiState.value.lastRefreshFailed)
-                        "Tache introuvable" else _uiState.value.error,
+                        appContext.getString(R.string.task_detail_not_found) else _uiState.value.error,
                 )
             }
         }
@@ -294,11 +295,13 @@ class TaskDetailViewModel @Inject constructor(
             write = {
                 taskRepository.completeTask(taskId).fold(
                     onSuccess = {
-                        _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
+                        _uiState.value = _uiState.value.copy(
+                            completionMessage = appContext.getString(R.string.common_task_completed),
+                        )
                     },
                     onFailure = { error ->
                         _uiState.value = _uiState.value.copy(
-                            error = error.message ?: "Erreur lors de la completion",
+                            error = error.message ?: appContext.getString(R.string.common_error_complete),
                         )
                     },
                 )
@@ -320,7 +323,9 @@ class TaskDetailViewModel @Inject constructor(
             write = {
                 taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
                     onSuccess = {
-                        _uiState.value = _uiState.value.copy(completionMessage = "Tache completee !")
+                        _uiState.value = _uiState.value.copy(
+                            completionMessage = appContext.getString(R.string.common_task_completed),
+                        )
                     },
                     onFailure = { error ->
                         _uiState.value = _uiState.value.copy(error = error.message)
@@ -362,16 +367,20 @@ class TaskDetailViewModel @Inject constructor(
                 ).fold(
                     onSuccess = {
                         _uiState.value = _uiState.value.copy(
-                            completionMessage = "Tache completee a ${participantUserIds.size} !",
+                            completionMessage = appContext.resources.getQuantityString(
+                                R.plurals.common_task_completed_by_count,
+                                participantUserIds.size,
+                                participantUserIds.size,
+                            ),
                         )
                     },
                     onFailure = { err ->
                         val msg = when (err) {
                             is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
-                                409 -> "Impossible : tache deja completee recemment par un participant"
-                                else -> "Erreur ${err.httpCode}"
+                                409 -> appContext.getString(R.string.common_collective_conflict)
+                                else -> appContext.getString(R.string.common_error_code_format, err.httpCode)
                             }
-                            else -> err.message ?: "Erreur reseau"
+                            else -> err.message ?: appContext.getString(R.string.common_error_network)
                         }
                         _uiState.value = _uiState.value.copy(error = msg)
                     },
@@ -463,9 +472,9 @@ class TaskDetailViewModel @Inject constructor(
             // depuis le cache. Cf docs/cache-conventions.md.
             val res = taskRepository.deleteCompletion(completionId)
             _uiState.value = if (res.isSuccess) {
-                _uiState.value.copy(completionMessage = "Completion supprimee")
+                _uiState.value.copy(completionMessage = appContext.getString(R.string.task_detail_completion_deleted))
             } else {
-                _uiState.value.copy(error = "Erreur lors de la suppression")
+                _uiState.value.copy(error = appContext.getString(R.string.common_error_delete))
             }
         }
     }
@@ -480,9 +489,9 @@ class TaskDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val res = taskRepository.deleteCollectiveCompletion(rowIds)
             _uiState.value = if (res.isSuccess) {
-                _uiState.value.copy(completionMessage = "Collectif supprime")
+                _uiState.value.copy(completionMessage = appContext.getString(R.string.task_detail_collective_deleted))
             } else {
-                _uiState.value.copy(error = "Erreur lors de la suppression du collectif")
+                _uiState.value.copy(error = appContext.getString(R.string.task_detail_collective_delete_error))
             }
         }
     }
@@ -504,9 +513,12 @@ class TaskDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val res = taskRepository.updateCompletion(completionId, completedBy, completedAt)
             _uiState.value = if (res.isSuccess) {
-                _uiState.value.copy(editingCompletion = null, completionMessage = "Completion modifiee")
+                _uiState.value.copy(
+                    editingCompletion = null,
+                    completionMessage = appContext.getString(R.string.task_detail_completion_edited),
+                )
             } else {
-                _uiState.value.copy(error = "Erreur lors de la modification")
+                _uiState.value.copy(error = appContext.getString(R.string.task_detail_edit_error))
             }
         }
     }
@@ -601,7 +613,7 @@ class TaskDetailViewModel @Inject constructor(
                 onSuccess = {
                     _uiState.value = _uiState.value.copy(
                         showFrequencyVoteDialog = false,
-                        completionMessage = "Vote enregistre",
+                        completionMessage = appContext.getString(R.string.task_detail_vote_saved),
                     )
                     // Refetch pour rafraichir le sous-texte et le modal "+ d'info".
                     refreshFrequencyVotes()
@@ -609,7 +621,7 @@ class TaskDetailViewModel @Inject constructor(
                 onFailure = { e ->
                     _uiState.value = _uiState.value.copy(
                         showFrequencyVoteDialog = false,
-                        error = e.message ?: "Erreur lors du vote",
+                        error = e.message ?: appContext.getString(R.string.common_error_vote),
                     )
                 },
             )
@@ -624,20 +636,20 @@ class TaskDetailViewModel @Inject constructor(
                 if (resp.isSuccessful) {
                     _uiState.value = _uiState.value.copy(
                         showEffortVoteDialog = false,
-                        completionMessage = "Vote enregistre",
+                        completionMessage = appContext.getString(R.string.task_detail_vote_saved),
                     )
                     refreshEffortVotes()
                     refresh()  // pour les ratings + scorePoints recalcule
                 } else {
                     _uiState.value = _uiState.value.copy(
                         showEffortVoteDialog = false,
-                        error = "Erreur ${resp.code()}",
+                        error = appContext.getString(R.string.common_error_code_format, resp.code()),
                     )
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     showEffortVoteDialog = false,
-                    error = e.message ?: "Erreur reseau",
+                    error = e.message ?: appContext.getString(R.string.common_error_network),
                 )
             }
         }
@@ -679,7 +691,7 @@ class TaskDetailViewModel @Inject constructor(
                 }
                 _uiState.value = _uiState.value.copy(
                     ratingContext = null,
-                    completionMessage = "Notes enregistrees",
+                    completionMessage = appContext.getString(R.string.task_detail_notes_saved),
                 )
                 refresh()
             } catch (e: Exception) {

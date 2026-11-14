@@ -1,5 +1,8 @@
 package com.torchons.app.ui.onboarding
 
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
+import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
@@ -50,6 +53,7 @@ class RestoreFoyerViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
     private val tokenRegistrar: TokenRegistrar,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RestoreState())
@@ -72,15 +76,15 @@ class RestoreFoyerViewModel @Inject constructor(
                 val resp = apiService.recoveryRestore(RecoveryRestoreRequest(code.trim()))
                 if (!resp.isSuccessful) {
                     val msg = if (resp.code() == 404) {
-                        "Code introuvable. Verifie qu'il est bien tape."
-                    } else "Erreur ${resp.code()}"
+                        context.getString(R.string.onboarding_error_code_not_found)
+                    } else context.getString(R.string.common_error_code_format, resp.code())
                     _uiState.update { it.copy(isSubmitting = false, error = msg) }
                     return@launch
                 }
                 val body = resp.body()
                 if (body == null) {
                     _uiState.update {
-                        it.copy(isSubmitting = false, error = "Reponse vide")
+                        it.copy(isSubmitting = false, error = context.getString(R.string.common_empty_response))
                     }
                     return@launch
                 }
@@ -99,7 +103,7 @@ class RestoreFoyerViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isSubmitting = false, error = e.message ?: "Erreur reseau")
+                    it.copy(isSubmitting = false, error = e.message ?: context.getString(R.string.common_error_network))
                 }
             }
         }
@@ -120,15 +124,15 @@ class RestoreFoyerViewModel @Inject constructor(
                 )
                 if (!resp.isSuccessful) {
                     val msg = if (resp.code() == 401) {
-                        "Le code a expire, recommence."
-                    } else "Erreur ${resp.code()}"
+                        context.getString(R.string.onboarding_error_code_expired)
+                    } else context.getString(R.string.common_error_code_format, resp.code())
                     _uiState.update { it.copy(isSubmitting = false, error = msg) }
                     return@launch
                 }
                 val body = resp.body()
                 if (body == null) {
                     _uiState.update {
-                        it.copy(isSubmitting = false, error = "Reponse vide")
+                        it.copy(isSubmitting = false, error = context.getString(R.string.common_empty_response))
                     }
                     return@launch
                 }
@@ -143,7 +147,7 @@ class RestoreFoyerViewModel @Inject constructor(
                 _uiState.update { it.copy(isSubmitting = false, done = true) }
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isSubmitting = false, error = e.message ?: "Erreur reseau")
+                    it.copy(isSubmitting = false, error = e.message ?: context.getString(R.string.common_error_network))
                 }
             }
         }

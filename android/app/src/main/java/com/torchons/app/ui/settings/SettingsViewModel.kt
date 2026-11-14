@@ -1,5 +1,6 @@
 package com.torchons.app.ui.settings
 
+import com.torchons.app.R
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -295,7 +296,7 @@ class SettingsViewModel @Inject constructor(
                     val detail = raw
                         ?.let { Regex(""""detail"\s*:\s*"([^"]*)""").find(it)?.groupValues?.get(1) }
                         ?.takeIf { it.isNotBlank() }
-                    _moduleError.value = detail ?: "HTTP ${resp.code()}"
+                    _moduleError.value = detail ?: appContext.getString(R.string.common_error_http_format, resp.code())
                     Log.w("SettingsViewModel", "toggleModule $key refuse: ${resp.code()} $raw")
                 }
             } catch (e: Exception) {
@@ -640,15 +641,16 @@ class SettingsViewModel @Inject constructor(
                     if (body != null) {
                         _regenerateState.value = RegenerateState.Success(body.recoveryCode)
                     } else {
-                        _regenerateState.value = RegenerateState.Error("Reponse vide")
+                        _regenerateState.value =
+                            RegenerateState.Error(appContext.getString(R.string.common_empty_response))
                     }
                 } else {
                     _regenerateState.value =
-                        RegenerateState.Error("Erreur ${resp.code()}")
+                        RegenerateState.Error(appContext.getString(R.string.common_error_code_format, resp.code()))
                 }
             } catch (e: Exception) {
                 _regenerateState.value =
-                    RegenerateState.Error(e.message ?: "Erreur reseau")
+                    RegenerateState.Error(e.message ?: appContext.getString(R.string.common_error_network))
             }
         }
     }
@@ -681,7 +683,7 @@ class SettingsViewModel @Inject constructor(
             try {
                 val foyerId = authRepository.foyerIdFlow.first()
                 if (foyerId.isNullOrEmpty()) {
-                    _leaveState.value = LeaveState.Error("Aucun foyer actif")
+                    _leaveState.value = LeaveState.Error(appContext.getString(R.string.settings_leave_no_active_foyer))
                     return@launch
                 }
                 val resp = apiService.leaveFoyer(foyerId)
@@ -702,12 +704,13 @@ class SettingsViewModel @Inject constructor(
                     return@launch
                 }
                 if (!resp.isSuccessful) {
-                    _leaveState.value = LeaveState.Error("Erreur ${resp.code()}")
+                    _leaveState.value =
+                        LeaveState.Error(appContext.getString(R.string.common_error_code_format, resp.code()))
                     return@launch
                 }
                 val body = resp.body()
                 if (body == null) {
-                    _leaveState.value = LeaveState.Error("Reponse vide")
+                    _leaveState.value = LeaveState.Error(appContext.getString(R.string.common_empty_response))
                     return@launch
                 }
                 // P4a.1 Bug B : retrait OPTIMISTE immediat du foyer quitte
@@ -730,7 +733,7 @@ class SettingsViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _leaveState.value =
-                    LeaveState.Error(e.message ?: "Erreur reseau")
+                    LeaveState.Error(e.message ?: appContext.getString(R.string.common_error_network))
             }
         }
     }

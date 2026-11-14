@@ -1,5 +1,8 @@
 package com.torchons.app.ui.onboarding
 
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
+import com.torchons.app.R
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -39,6 +42,7 @@ data class InviteQrState(
 class InviteQrViewModel @Inject constructor(
     private val apiService: ApiService,
     savedStateHandle: SavedStateHandle,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     /**
@@ -66,7 +70,7 @@ class InviteQrViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = "Erreur ${resp.code()}",
+                            error = context.getString(R.string.common_error_code_format, resp.code()),
                         )
                     }
                     return@launch
@@ -74,7 +78,7 @@ class InviteQrViewModel @Inject constructor(
                 val body = resp.body()
                 if (body == null) {
                     _uiState.update {
-                        it.copy(isLoading = false, error = "Reponse vide")
+                        it.copy(isLoading = false, error = context.getString(R.string.common_empty_response))
                     }
                     return@launch
                 }
@@ -89,7 +93,7 @@ class InviteQrViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isLoading = false, error = e.message ?: "Erreur reseau")
+                    it.copy(isLoading = false, error = e.message ?: context.getString(R.string.common_error_network))
                 }
             }
         }

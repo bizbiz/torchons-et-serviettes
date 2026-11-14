@@ -1,5 +1,6 @@
 package com.torchons.app.ui.home
 
+import com.torchons.app.R
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -476,7 +477,7 @@ class HomeViewModel @Inject constructor(
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
-                        error = "Toutes les taches sont deja notees !",
+                        error = getApplication<Application>().getString(R.string.home_all_rated),
                     )
                 }
             } catch (e: Exception) {
@@ -505,7 +506,7 @@ class HomeViewModel @Inject constructor(
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
-                        error = "Toutes les taches sont deja notees !",
+                        error = getApplication<Application>().getString(R.string.home_all_rated),
                     )
                 }
             } catch (_: Exception) {
@@ -583,10 +584,10 @@ class HomeViewModel @Inject constructor(
 
     /** Message Snackbar tier-aware pour le recycle dismiss. */
     private fun recycleMessage(tier: String): String = when (tier) {
-        "urgent" -> "Plus de suggestions urgentes — reaffichage des taches ignorees"
-        "affinity" -> "Plus de suggestions affinite — reaffichage des taches ignorees"
-        "uncertain" -> "Plus de suggestions sans cadence — reaffichage des taches ignorees"
-        else -> "Reaffichage des taches ignorees"
+        "urgent" -> getApplication<Application>().getString(R.string.home_recycle_urgent)
+        "affinity" -> getApplication<Application>().getString(R.string.home_recycle_affinity)
+        "uncertain" -> getApplication<Application>().getString(R.string.home_recycle_uncertain)
+        else -> getApplication<Application>().getString(R.string.home_recycle_other)
     }
 
     fun completeTaskAtDate(
@@ -640,10 +641,11 @@ class HomeViewModel @Inject constructor(
                 onFailure = { err ->
                     val msg = when (err) {
                         is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
-                            409 -> "Impossible de valider : tache deja completee recemment par un participant"
-                            else -> "Erreur ${err.httpCode}"
+                            409 -> getApplication<Application>().getString(R.string.home_collective_conflict)
+                            else -> getApplication<Application>()
+                                .getString(R.string.common_error_code_format, err.httpCode)
                         }
-                        else -> err.message ?: "Erreur reseau"
+                        else -> err.message ?: getApplication<Application>().getString(R.string.common_error_network)
                     }
                     _uiState.value = _uiState.value.copy(error = msg)
                 },

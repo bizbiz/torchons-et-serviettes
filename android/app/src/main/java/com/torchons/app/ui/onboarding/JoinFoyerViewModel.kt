@@ -1,5 +1,8 @@
 package com.torchons.app.ui.onboarding
 
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
+import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
@@ -47,6 +50,7 @@ class JoinFoyerViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
     private val tokenRegistrar: TokenRegistrar,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(JoinState())
@@ -64,10 +68,10 @@ class JoinFoyerViewModel @Inject constructor(
                 val resp = apiService.pairingInfo(mapOf("invite_token" to token))
                 if (!resp.isSuccessful) {
                     val msg = when (resp.code()) {
-                        404 -> "Code d'invitation invalide"
-                        409 -> "Code d'invitation deja utilise"
-                        410 -> "Code d'invitation expire"
-                        else -> "Erreur ${resp.code()}"
+                        404 -> context.getString(R.string.onboarding_error_invite_invalid)
+                        409 -> context.getString(R.string.onboarding_error_invite_used)
+                        410 -> context.getString(R.string.onboarding_error_invite_expired)
+                        else -> context.getString(R.string.common_error_code_format, resp.code())
                     }
                     _uiState.update {
                         it.copy(error = msg, inviteToken = null)
@@ -105,7 +109,7 @@ class JoinFoyerViewModel @Inject constructor(
         // Pour foyer_join : display_name requis ; pour add_device : pas requis.
         val isAddDevice = s.kind == "add_device"
         if (!isAddDevice && s.displayName.isBlank()) {
-            _uiState.update { it.copy(error = "Renseigne ton prenom") }
+            _uiState.update { it.copy(error = context.getString(R.string.onboarding_error_name_required)) }
             return
         }
         _uiState.update { it.copy(isSubmitting = true, error = null) }
@@ -121,11 +125,11 @@ class JoinFoyerViewModel @Inject constructor(
                 )
                 if (!resp.isSuccessful) {
                     val msg = when (resp.code()) {
-                        400 -> "Donnees manquantes ou invalides"
-                        404 -> "Code d'invitation invalide"
-                        409 -> "Code d'invitation deja utilise"
-                        410 -> "Code d'invitation expire"
-                        else -> "Erreur ${resp.code()}"
+                        400 -> context.getString(R.string.onboarding_error_data_invalid)
+                        404 -> context.getString(R.string.onboarding_error_invite_invalid)
+                        409 -> context.getString(R.string.onboarding_error_invite_used)
+                        410 -> context.getString(R.string.onboarding_error_invite_expired)
+                        else -> context.getString(R.string.common_error_code_format, resp.code())
                     }
                     _uiState.update { it.copy(isSubmitting = false, error = msg) }
                     return@launch
@@ -133,7 +137,7 @@ class JoinFoyerViewModel @Inject constructor(
                 val body = resp.body()
                 if (body == null) {
                     _uiState.update {
-                        it.copy(isSubmitting = false, error = "Reponse vide")
+                        it.copy(isSubmitting = false, error = context.getString(R.string.common_empty_response))
                     }
                     return@launch
                 }
@@ -160,7 +164,7 @@ class JoinFoyerViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isSubmitting = false, error = e.message ?: "Erreur reseau")
+                    it.copy(isSubmitting = false, error = e.message ?: context.getString(R.string.common_error_network))
                 }
             }
         }

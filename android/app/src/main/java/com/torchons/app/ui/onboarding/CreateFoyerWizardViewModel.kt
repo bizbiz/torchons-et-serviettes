@@ -1,5 +1,8 @@
 package com.torchons.app.ui.onboarding
 
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
+import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
@@ -84,6 +87,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
     private val tokenManager: TokenManager,
     private val tokenRegistrar: TokenRegistrar,
     private val taskRepository: TaskRepository,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WizardState())
@@ -254,7 +258,11 @@ class CreateFoyerWizardViewModel @Inject constructor(
             // Step 1 : default value si vide
             val newDisplay = if (s == 1 && it.displayName.isBlank()) "Moi" else it.displayName
             val newFoyer = if ((s == 1 || s == 2) && it.foyerName.isBlank())
-                if (newDisplay.isNotBlank()) "Chez $newDisplay" else "Mon foyer"
+                if (newDisplay.isNotBlank()) {
+                    context.getString(R.string.onboarding_default_foyer_name_format, newDisplay)
+                } else {
+                    context.getString(R.string.settings_foyer_default_name)
+                }
             else it.foyerName
             it.copy(
                 // L'etape 2 (nom du foyer seul) ne subsiste que pour le mode
@@ -291,14 +299,14 @@ class CreateFoyerWizardViewModel @Inject constructor(
      */
     private suspend fun submitAddFoyer(s: WizardState) {
         val createResp = apiService.createFoyer(
-            FoyerCreateRequest(s.foyerName.ifBlank { "Mon foyer" }),
+            FoyerCreateRequest(s.foyerName.ifBlank { context.getString(R.string.settings_foyer_default_name) }),
         )
         val created = createResp.body()
         if (!createResp.isSuccessful || created == null) {
             _uiState.update {
                 it.copy(
                     isSubmitting = false,
-                    error = "Erreur creation foyer (${createResp.code()})",
+                    error = context.getString(R.string.onboarding_error_create_foyer_format, createResp.code()),
                 )
             }
             return
@@ -308,7 +316,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isSubmitting = false,
-                    error = "Foyer créé mais bascule impossible",
+                    error = context.getString(R.string.onboarding_error_switch_foyer),
                 )
             }
             return
@@ -338,7 +346,10 @@ class CreateFoyerWizardViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isSubmitting = false,
-                            error = "Import échoué (resolve ${resolveResp.code()})",
+                            error = context.getString(
+                                R.string.onboarding_error_import_resolve_format,
+                                resolveResp.code(),
+                            ),
                         )
                     }
                     return
@@ -357,7 +368,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isSubmitting = false,
-                            error = "Import échoué (apply ${applyResp.code()})",
+                            error = context.getString(R.string.onboarding_error_import_apply_format, applyResp.code()),
                         )
                     }
                     return
@@ -366,7 +377,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        error = "Import échoué : ${e.message}",
+                        error = context.getString(R.string.onboarding_error_import_failed_format, e.message ?: ""),
                     )
                 }
                 return
@@ -404,7 +415,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
                 val createResp = apiService.onboardingCreateFoyer(
                     OnboardingCreateFoyerRequest(
                         displayName = s.displayName.ifBlank { "Moi" },
-                        foyerName = s.foyerName.ifBlank { "Mon foyer" },
+                        foyerName = s.foyerName.ifBlank { context.getString(R.string.settings_foyer_default_name) },
                         deviceId = deviceId,
                     )
                 )
@@ -412,7 +423,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isSubmitting = false,
-                            error = "Erreur creation foyer (${createResp.code()})",
+                            error = context.getString(R.string.onboarding_error_create_foyer_format, createResp.code()),
                         )
                     }
                     return@launch
@@ -420,7 +431,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
                 val createBody = createResp.body()
                 if (createBody == null) {
                     _uiState.update {
-                        it.copy(isSubmitting = false, error = "Reponse vide")
+                        it.copy(isSubmitting = false, error = context.getString(R.string.common_empty_response))
                     }
                     return@launch
                 }
@@ -486,7 +497,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        error = e.message ?: "Erreur reseau",
+                        error = e.message ?: context.getString(R.string.common_error_network),
                     )
                 }
             }
