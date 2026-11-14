@@ -41,7 +41,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
+import androidx.compose.runtime.collectAsState
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.CoupleTotalsResponse
 import com.torchons.app.data.model.LeaderboardEntry
 import dagger.hilt.EntryPoint
@@ -61,6 +63,8 @@ import kotlinx.coroutines.withContext
 @InstallIn(SingletonComponent::class)
 interface UserProfileApiEntryPoint {
     fun apiService(): ApiService
+    // With gamification off, points and streaks are hidden from the profile.
+    fun tokenManager(): TokenManager
 }
 
 /**
@@ -86,12 +90,16 @@ fun UserProfileDialog(
     onOpenStreakCalendar: (() -> Unit)? = null,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val apiService = remember {
+    val entryPoint = remember {
         EntryPointAccessors.fromApplication(
             context.applicationContext,
             UserProfileApiEntryPoint::class.java
-        ).apiService()
+        )
     }
+    val apiService = remember { entryPoint.apiService() }
+    // Starts hidden: a foyer with gamification off must never flash points or streaks.
+    val gamificationVisible by entryPoint.tokenManager().gamificationVisibleFlow
+        .collectAsState(initial = false)
 
     var loading by remember { mutableStateOf(true) }
     var history by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
@@ -184,13 +192,18 @@ fun UserProfileDialog(
                 ) {
                     StatPill(label = stringResource(R.string.user_profile_stat_actions), value = history.size.toString())
                     StatPill(label = stringResource(R.string.user_profile_stat_completions), value = completionsCount.toString())
-                    StatPill(label = stringResource(R.string.user_profile_stat_points), value = stringResource(R.string.user_profile_stat_points_value_format, totalPoints))
+                    if (gamificationVisible) {
+                        StatPill(
+                            label = stringResource(R.string.user_profile_stat_points),
+                            value = stringResource(R.string.user_profile_stat_points_value_format, totalPoints),
+                        )
+                    }
                 }
 
                 // P3 (decision 10) : lien vers le calendrier des series de ce
                 // membre (modal lecture seule). Affiche seulement si l'hote
                 // a cable le callback (Stats).
-                if (onOpenStreakCalendar != null) {
+                if (onOpenStreakCalendar != null && gamificationVisible) {
                     Spacer(Modifier.height(4.dp))
                     TextButton(
                         onClick = onOpenStreakCalendar,
@@ -204,7 +217,7 @@ fun UserProfileDialog(
                 // streak couple. Item roadmap "Stats globales du couple".
                 coupleTotals?.let { totals ->
                     Spacer(Modifier.height(12.dp))
-                    CoupleTotalsCard(totals = totals)
+                    CoupleTotalsCard(totals = totals, showGamification = gamificationVisible)
                 }
 
                 // Section "Stats du couple" : repartition entre les 2 membres
@@ -223,6 +236,7 @@ fun UserProfileDialog(
                             label = stringResource(R.string.user_profile_split_week),
                             entries = leaderboardWeek,
                             highlightedUserId = request.userId,
+                            showPoints = gamificationVisible,
                         )
                     }
                     if (leaderboardAll.size >= 2) {
@@ -231,6 +245,7 @@ fun UserProfileDialog(
                             label = stringResource(R.string.user_profile_split_total),
                             entries = leaderboardAll,
                             highlightedUserId = request.userId,
+                            showPoints = gamificationVisible,
                         )
                     }
                 }
@@ -306,6 +321,8 @@ private fun FoyerSplitBar(
     label: String,
     entries: List<LeaderboardEntry>,
     highlightedUserId: String,
+    // Off with gamification: the split stays (it is the fair share), the raw points go.
+    showPoints: Boolean,
 ) {
     // On ordonne stable (par display_name) plutot que par rang pour eviter
     // que la barre change de couleurs entre semaine/total.
@@ -321,7 +338,10 @@ private fun FoyerSplitBar(
         Spacer(Modifier.height(4.dp))
         if (total <= 0) {
             Text(
-                text = stringResource(R.string.user_profile_split_zero_points),
+                text = stringResource(
+                    if (showPoints) R.string.user_profile_split_zero_points
+                    else R.string.user_profile_split_nothing_done
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -356,7 +376,11 @@ private fun FoyerSplitBar(
                 val pct = (e.points * 100.0 / total).toInt()
                 val isMe = e.userId == highlightedUserId
                 Text(
-                    text = stringResource(R.string.user_profile_split_legend_format, e.displayName, pct, e.points),
+                    text = if (showPoints) {
+                        stringResource(R.string.user_profile_split_legend_format, e.displayName, pct, e.points)
+                    } else {
+                        stringResource(R.string.user_profile_split_legend_no_points_format, e.displayName, pct)
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = FoyerPalette[i % FoyerPalette.size],
                     fontWeight = if (isMe) FontWeight.Bold else FontWeight.Normal,
@@ -450,7 +474,10 @@ private fun HistoryRow(
  * completion par n'importe qui).
  */
 @Composable
-private fun CoupleTotalsCard(totals: com.torchons.app.data.model.CoupleTotalsResponse) {
+private fun CoupleTotalsCard(
+    totals: com.torchons.app.data.model.CoupleTotalsResponse,
+    showGamification: Boolean,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -467,7 +494,7 @@ private fun CoupleTotalsCard(totals: com.torchons.app.data.model.CoupleTotalsRes
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
-                if (totals.coupleStreakDays > 0) {
+                if (showGamification && totals.coupleStreakDays > 0) {
                     Text(
                         text = stringResource(R.string.user_profile_couple_streak_format, totals.coupleStreakDays),
                         style = MaterialTheme.typography.labelMedium,
@@ -484,17 +511,17 @@ private fun CoupleTotalsCard(totals: com.torchons.app.data.model.CoupleTotalsRes
                 CoupleStatColumn(
                     title = stringResource(R.string.user_profile_couple_week),
                     completions = totals.foyerWeekCompletions,
-                    points = totals.foyerWeekPoints,
+                    points = totals.foyerWeekPoints.takeIf { showGamification },
                 )
                 CoupleStatColumn(
                     title = stringResource(R.string.user_profile_couple_month),
                     completions = totals.foyerMonthCompletions,
-                    points = totals.foyerMonthPoints,
+                    points = totals.foyerMonthPoints.takeIf { showGamification },
                 )
                 CoupleStatColumn(
                     title = stringResource(R.string.user_profile_couple_total),
                     completions = totals.foyerTotalCompletions,
-                    points = totals.foyerTotalPoints,
+                    points = totals.foyerTotalPoints.takeIf { showGamification },
                 )
             }
         }
@@ -502,7 +529,7 @@ private fun CoupleTotalsCard(totals: com.torchons.app.data.model.CoupleTotalsRes
 }
 
 @Composable
-private fun CoupleStatColumn(title: String, completions: Int, points: Int) {
+private fun CoupleStatColumn(title: String, completions: Int, points: Int?) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = title,
@@ -516,11 +543,13 @@ private fun CoupleStatColumn(title: String, completions: Int, points: Int) {
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
         )
-        Text(
-            text = stringResource(R.string.user_profile_couple_points_format, points),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (points != null) {
+            Text(
+                text = stringResource(R.string.user_profile_couple_points_format, points),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

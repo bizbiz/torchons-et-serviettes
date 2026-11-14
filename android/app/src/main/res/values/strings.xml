@@ -169,7 +169,7 @@
     <string name="foyer_presence_wifi_empty">Aucun WiFi configuré — toutes les tâches sont visibles</string>
     <string name="foyer_presence_wifi_remove_cd">Supprimer</string>
     <string name="foyer_presence_wifi_add_button">Ajouter mon WiFi actuel</string>
-    <string name="foyer_presence_open_calendar_button">Ouvrir l\'agenda de présence &amp; séries</string>
+    <string name="foyer_presence_open_calendar_button">Ouvrir l\'agenda de présence</string>
 
     <!-- (7) Gamification du foyer -->
     <string name="foyer_gamif_section_title">Gamification de ce foyer</string>
@@ -1421,6 +1421,10 @@
     <string name="user_profile_couple_points_format">%1$d pts</string>
     <string name="user_profile_split_legend_format">%1$s %2$d%% (%3$d pts)</string>
     <string name="user_profile_split_zero_points">0 point</string>
+    <string name="user_profile_split_legend_no_points_format">%1$s %2$d%%</string>
+    <string name="user_profile_split_nothing_done">Rien de fait pour l\'instant</string>
+    <string name="presence_calendar_title">Présence</string>
+    <string name="presence_calendar_title_streak">Présence &amp; séries</string>
     <string name="user_profile_unknown_initial">?</string>
 
     <!-- StatsCharts (charts Stats + chips période + toggles) -->

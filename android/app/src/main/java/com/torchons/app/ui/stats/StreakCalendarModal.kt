@@ -39,7 +39,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.res.stringResource
+import com.torchons.app.R
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.PresenceCellState
 import com.torchons.app.data.model.PresenceDayPut
 import com.torchons.app.data.model.PresenceSource
@@ -66,6 +70,8 @@ interface StreakCalendarApiEntryPoint {
     // P4b : le modal edite la presence -> il doit aussi recalculer l'etat
     // derive (home-freeze/urgence + serie/record) cf cache-conventions.
     fun taskRepository(): TaskRepository
+    // With gamification off, the streak layer (stars, record and current borders) is hidden.
+    fun tokenManager(): TokenManager
 }
 
 /** Un membre du foyer affichable dans le selecteur d'user du modal. */
@@ -102,6 +108,9 @@ fun StreakCalendarModal(
     }
     val apiService = remember { entryPoint.apiService() }
     val taskRepository = remember { entryPoint.taskRepository() }
+    // Starts hidden: a foyer with gamification off must never flash its streaks.
+    val gamificationVisible by entryPoint.tokenManager().gamificationVisibleFlow
+        .collectAsState(initial = false)
     // Incremente a chaque edition reussie -> re-trigger le GET presence
     // (la serie se recalcule sur la nouvelle presence).
     var refreshTrigger by remember { mutableStateOf(0) }
@@ -244,13 +253,16 @@ fun StreakCalendarModal(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Présence & séries",
+                        text = stringResource(
+                            if (gamificationVisible) R.string.presence_calendar_title_streak
+                            else R.string.presence_calendar_title
+                        ),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Fermer")
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close))
                     }
                 }
                 Spacer(Modifier.height(4.dp))
@@ -316,7 +328,7 @@ fun StreakCalendarModal(
                         editable = true,
                         showLegend = true,
                         activityDays = activityDays,
-                        showStreak = true,
+                        showStreak = gamificationVisible,
                         recordRunDays = recordRunDays,
                         currentRunDays = currentRunDays,
                     )

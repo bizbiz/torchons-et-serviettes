@@ -163,7 +163,7 @@
     <string name="foyer_presence_wifi_empty">No WiFi configured — all tasks are visible</string>
     <string name="foyer_presence_wifi_remove_cd">Remove</string>
     <string name="foyer_presence_wifi_add_button">Add my current WiFi</string>
-    <string name="foyer_presence_open_calendar_button">Open presence &amp; streaks calendar</string>
+    <string name="foyer_presence_open_calendar_button">Open presence calendar</string>
 
     <!-- (7) Household gamification -->
     <string name="foyer_gamif_section_title">Gamification for this household</string>
@@ -1407,6 +1407,10 @@
     <string name="user_profile_couple_points_format">%1$d pts</string>
     <string name="user_profile_split_legend_format">%1$s %2$d%% (%3$d pts)</string>
     <string name="user_profile_split_zero_points">0 points</string>
+    <string name="user_profile_split_legend_no_points_format">%1$s %2$d%%</string>
+    <string name="user_profile_split_nothing_done">Nothing done yet</string>
+    <string name="presence_calendar_title">Presence</string>
+    <string name="presence_calendar_title_streak">Presence &amp; streaks</string>
     <string name="user_profile_unknown_initial">?</string>
 
     <!-- StatsCharts -->
