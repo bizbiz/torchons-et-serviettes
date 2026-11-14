@@ -1170,7 +1170,7 @@
     <string name="weekly_summary_top_tasks">Top tasks</string>
 
     <!-- LongTermCard -->
-    <string name="longterm_title">Split by room</string>
+    <string name="longterm_title">Split by context</string>
     <string name="longterm_period_month">Month</string>
     <string name="longterm_period_quarter">Quarter</string>
     <string name="longterm_period_year">Year</string>

@@ -1183,7 +1183,7 @@
     <string name="weekly_summary_top_tasks">Top tâches</string>
 
     <!-- LongTermCard ("Répartition par pièces" sur Stats) -->
-    <string name="longterm_title">Répartition par pièces</string>
+    <string name="longterm_title">Répartition par contexte</string>
     <string name="longterm_period_month">Mois</string>
     <string name="longterm_period_quarter">Trimestre</string>
     <string name="longterm_period_year">Année</string>
