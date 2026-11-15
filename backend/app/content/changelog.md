@@ -1,5 +1,37 @@
 # Notes de version
 
+## v0.44.3 — 2026-11-15
+
+### Validations
+- Une tâche déjà validée est refusée avant les confettis, avec
+  l'heure de la première validation, même hors ligne.
+- Un ✓ fait hors ligne garde l'heure où tu l'as touché,
+  et non celle de la synchronisation.
+- Une tâche solo n'affiche plus « à plusieurs ».
+- Un refus « hors du foyer » nomme le membre par son prénom.
+
+### Revote
+- Celui qui demande un revote voit que la notification est
+  partie, et il est prévenu quand l'autre répond, avec
+  l'ancien et le nouveau vote.
+
+### Gamification coupée
+- Plus aucun point, série ni classement affiché : agenda,
+  profil, stats, historique et fiche de tâche.
+
+### Écrans
+- Un foyer sans tâche est invité à en ajouter, et le widget
+  dit « Aucune tâche pour l'instant ».
+- L'historique d'une tâche montre sa création.
+- Les durées longues s'arrondissent au mois (« 2 mois »).
+- Stats : « Répartition par contexte ».
+- Libellés accentués partout, et traduits en anglais.
+
+### Compte
+- Réglages › Supprimer mon compte.
+- Le code de récupération copié est masqué dans l'aperçu
+  du presse-papiers.
+
 ## v0.44.2 — 2026-11-11
 
 ### Revote

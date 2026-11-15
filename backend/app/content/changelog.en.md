@@ -1,5 +1,34 @@
 # Release notes
 
+## v0.44.3 — 2026-11-15
+
+### Completions
+- A chore that was already completed is refused before the confetti, with
+  the time of the first completion, even offline.
+- A ✓ made offline keeps the time you tapped it, not the time it synced.
+- A solo chore no longer shows "together".
+- An "outside the household" refusal names the member by their first name.
+
+### Re-vote
+- Whoever asks for a re-vote sees that the notification went out, and is
+  told when the other member answers, with the old and the new vote.
+
+### Gamification off
+- No more points, streaks or rankings shown: calendar, profile, stats,
+  history and chore page.
+
+### Screens
+- A household with no chores is invited to add some, and the widget says
+  "No tasks yet".
+- A chore's history shows its creation.
+- Long durations round to the month ("2 months").
+- Stats: "Split by context".
+- Labels are accented everywhere, and translated into English.
+
+### Account
+- Settings › Delete my account.
+- A copied recovery code is hidden from the clipboard preview.
+
 ## v0.44.2 — 2026-11-11
 
 ### Re-vote
