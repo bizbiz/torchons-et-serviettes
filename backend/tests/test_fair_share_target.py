@@ -258,14 +258,18 @@ async def test_history_gives_the_author_and_the_shares_before_and_after(client):
     history = await _history(client, foyer, users[0])
     newest, oldest = history[0], history[1]
 
-    def shares(entry):
-        return {s["user_id"]: (s["before"], s["after"]) for s in entry["shares"]}
+    def assert_shares(entry, expected):
+        # pytest >= 9.2 refuses approx() on a dict of tuples: compare key by key.
+        got = {s["user_id"]: (s["before"], s["after"]) for s in entry["shares"]}
+        assert got.keys() == expected.keys(), entry
+        for user_id, pair in expected.items():
+            assert got[user_id] == pytest.approx(pair), entry
 
     assert oldest["changed_by"] == users[1], oldest
     # Before the first change nobody had a row: the shares in force were the 1/N default.
-    assert shares(oldest) == pytest.approx({users[0]: (0.5, 0.6), users[1]: (0.5, 0.4)}), oldest
+    assert_shares(oldest, {users[0]: (0.5, 0.6), users[1]: (0.5, 0.4)})
     assert newest["changed_by"] == users[0], newest
-    assert shares(newest) == pytest.approx({users[0]: (0.6, 0.45), users[1]: (0.4, 0.55)}), newest
+    assert_shares(newest, {users[0]: (0.6, 0.45), users[1]: (0.4, 0.55)})
     assert oldest["changed_by_name"].startswith("Member 1"), oldest
 
 
