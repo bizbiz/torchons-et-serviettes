@@ -118,9 +118,6 @@ unambiguous names**. "Perso", "Maison" or "Hygiène" stay `false` — the false
 negative is the right side of the error here, since `false` = we freeze = the
 current behaviour, so nobody sees their app change without asking.
 
-Rehearsed on a production dump (18 households, 101 tasks): 28 contexts, 0
-duplicates, 136 attachments, 54 multi-context tasks.
-
 ## Suggesting tasks: `GET /api/catalog/suggestions`
 
 The catalogue holds 181 tasks. Showing them all is a list people close. The
@@ -151,6 +148,18 @@ field, which filters them as you type. Picking one fills the title, contexts,
 frequency, effort and tolerance at once — all still editable. There is no
 separate "catalogue" screen any more.
 
+## Local cache migration
+
+`AppDatabase` goes from version 10 to 12: 10→11 creates the `contexts` table
+and adds `tasks.contexts`, 11→12 drops `categories` and `rooms` and recreates
+`tasks` without its two legacy columns (SQLite cannot remove a column).
+
+No `fallbackToDestructiveMigration`: the migrations are declared and played.
+Proven on 2026-08-23 on a real device whose database dated back to April,
+taken from Room 10 to 12 in one go, with no crash and no loss (the
+authentication token survived, the app resynchronised on its own). Since then,
+12→13 adds `tasks.firstCompletedAt` (see Anniversary).
+
 ## Calendar recurrence
 
 The `calendar` type anchors the due date on the **calendar** rather than on the
@@ -165,12 +174,89 @@ shift the following year's due date.
   skips an occurrence.
 - `grace_days`: delay after the due date before **red**. This is what expresses
   "May–August": one occurrence on 1 May tolerated until end of August. Orange
-  still lands on the due date — the task is flagged on time, only the alarm is
-  pushed back.
+  is not pushed back: the task is flagged before its due date, only red waits
+  for the end of the tolerance.
+- **Which due date is honoured**: the last past occurrence stays due as long as
+  no completion honours it. A completion honours an occurrence as soon as its
+  orange window is open, as for the anniversary: done on 10 May for the 15th,
+  the task aims at the following 15 May and does not turn red on the 16th
+  (defect fixed on 2026-10-01). Done before the window, it does not count.
 
-The three legacy types `weekdays`, `monthly` and `custom` are converted to an
-equivalent `interval` at normalisation time (`_legacy_interval`), so no task is
-silently inert any more. Rejecting them on input is still to do (`todo.md`).
+**Orange window: 10 % of the gap between two occurrences, capped at 7 days**
+(decided on 2026-09-30). The gap is 365 / number of months; without a cap, a
+yearly vaccine turned orange **36 days** before its due date, too early to be
+useful. A monthly calendar rule keeps its 3 days: the cap bounds, it does not
+widen. Only the window is capped; the nominal interval, which feeds the
+overdue ratio, stays whole. Implemented twice, to keep aligned:
+`orange_window_cap_of` (`recurrence.py`) and `orangeWindowCapOf`
+(`TaskUrgencyCalculator.kt`).
+
+**No frequency vote.** Consensus always writes an `interval` or a
+`monthly_variable`: a vote would replace the fixed date and bring drift back.
+`PUT /tasks/{id}/frequency` and the revote request return 409
+`GAMIF_RULE_NOT_VOTABLE` outside `VOTABLE_RULE_TYPES`. It is an **allow** list:
+the anniversary form is excluded without anyone having had to think of it.
+
+### Anniversary: one year after the first time
+
+```json
+{"type": "anniversary", "every_n_months": 12}
+```
+
+For vaccines and servicing: the due date starts from the **first** completion,
+not the last. Occurrences are `first + k × every_n_months` (k ≥ 1), each
+computed from the anchor (`plusMonths` / `add_months` clamp to the last day of
+the month: a monthly 31 January gives 29 February, then 31 March, without
+wearing down to the 28th). The period is in **months** so that "every 2 years"
+lands on the same calendar day; the editor takes it in years or months.
+
+- **Due date**: the oldest occurrence that the LAST completion has not
+  honoured. A completion honours an occurrence as soon as its orange window is
+  open: done in orange or red, it counts; done two months early, it does not.
+  Done late, it does not move the next one: no drift.
+- **Never done**: due date = `created_at`, like every other type. This is what
+  prompts recording the first time; for a vaccine already received, enter the
+  completion at its real date (the date picker already exists).
+- **"First"** = the oldest **live** completion (`deleted_at IS NULL`). Deleting
+  it moves the anchor to the next one; backdating a completion before the
+  anchor moves it. Nothing is stored in the rule: the anchor is derived on
+  every read, so there is no hidden write and no stale anchor.
+- **Where it comes from**: `TaskResponse.first_completed_at` (server,
+  authoritative online), persisted in Room (`tasks.firstCompletedAt`, Room
+  version 13), reconciled by `earliestCompletedAt` = min(server, local cache)
+  offline. Server side, `first_completions_by_task`
+  (`services/completion_anchor.py`) queries only the anniversary tasks. A
+  caller that does not supply it falls back to the last completion (one period
+  after the last time), never to "no due date".
+- **Orange window**: 10 %, capped at 7 days, like `calendar`.
+- **No vote**: outside `VOTABLE_RULE_TYPES`.
+
+Implemented twice, to keep aligned: `next_anniversary_due` (`recurrence.py`)
+and `nextAnniversaryDue` (`TaskUrgencyCalculator.kt`), held by the same cases
+(`test_anniversary_recurrence.py`, `AnniversaryDueTest.kt`).
+
+**The type lists.** `LIVING_RULE_TYPES` is the reference: the REST schema reads
+it (it rejected `calendar` with a 422 until 2026-10-01 while `/sync` accepted
+it), `tests/test_recurrence_type_lists.py` proves that each type is accepted
+over REST and compares `LIVING` / `VOTABLE` with the Kotlin source
+(`RecurrenceTypes.kt`), and `RecurrenceTypesTest.kt` proves that the calculator
+gives a due date to every living type.
+
+The three legacy types are converted at normalisation: `weekdays` and `custom`
+into an equivalent `interval` (`_legacy_interval`), `monthly` into a `calendar`
+over the twelve months, same day. A fixed date converted into a 30-day interval
+would drift, and drift is what `calendar` removes (decided on 2026-09-30).
+
+The conversion only acted on write: a task stored before it kept its dead
+type, and no read path knows it, so it had no due date and stayed green
+forever. One was left in production on 30/09 (a `monthly` on the 1st, silent
+since 29/07). Migration `d4ec241658ca` converts those rows and logs them in
+`change_log`, so that phones receive them through `/sync`.
+
+`/sync`, which bypasses Pydantic, now rejects any type outside
+`LIVING_RULE_TYPES` (`checked_recurrence_rule`, `recurrence.py`). The rejected
+op becomes an `op_error` conflict: it no longer blocks the phone's queue and no
+longer cancels the earlier ops of the batch (one SAVEPOINT per op).
 
 **Explanatory sentences.** `RecurrenceSentence.kt` renders each rule in French
 or English as the user configures it. The example deliberately uses a **late**

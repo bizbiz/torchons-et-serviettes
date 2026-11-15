@@ -38,7 +38,7 @@ distincts : ils répondent à deux menaces différentes.
 `versionCode` est comparé, jamais `versionName` : c'est un entier monotone,
 alors que `"0.9.0"` est supérieur à `"0.10.0"` en comparaison de chaînes.
 
-Chaque canal a déjà son backend (prod sur Scaleway, beta sur son propre hôte), donc le
+Chaque canal (prod, beta) a déjà son propre backend, donc le
 seuil est par déploiement — aucun canal n'a besoin d'être nommé dans le header.
 
 ### Trois décisions qui ne sont pas des détails
@@ -77,19 +77,19 @@ le `versionCode` installé rattrape le seuil mémorisé.
 
 ```bash
 # doit rendre le seuil qu'on vient de poser
-curl -s https://api.torchonsetserviettes.app/api/health
+curl -s https://<api-host>/api/health
 
 # un client sous le seuil doit recevoir 426
 curl -s -o /dev/null -w '%{http_code}\n' \
-  -H 'X-App-Version-Code: 1' https://api.torchonsetserviettes.app/api/tasks
+  -H 'X-App-Version-Code: 1' https://<api-host>/api/tasks
 
 # et /api/health doit RESTER joignable pour ce même client, sinon un seuil
 # mal posé devient une panne muette qu'on ne peut plus diagnostiquer
 curl -s -o /dev/null -w '%{http_code}\n' \
-  -H 'X-App-Version-Code: 1' https://api.torchonsetserviettes.app/api/health
+  -H 'X-App-Version-Code: 1' https://<api-host>/api/health
 ```
 
-Mesuré sur la beta le 2026-09-02, seuil à 999 : client v95 sur `/api/tasks`
+Mesuré sur un déploiement de test le 2026-09-02, seuil à 999 : client v95 sur `/api/tasks`
 → `426` avec le corps complet ; client v999 → `401` (passe le gate, refusé par
 l'auth) ; sans header → `401` (laissé passer) ; client v95 sur `/api/health`
 → `200`.

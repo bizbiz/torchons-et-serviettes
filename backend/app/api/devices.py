@@ -1,9 +1,9 @@
 """Endpoints devices — see and cut off the devices holding your session.
 
-Scope: a user sees and revokes their OWN devices only. `UserFoyer.role`
-exists but is deliberately not consulted -- the product has no asymmetric
-power between household members today, and device revocation is not the
-feature that should introduce one.
+Scope: a user sees and revokes their OWN devices only. `UserFoyer.role` is
+deliberately not consulted here: admin gates household settings and premium,
+but no member has power over another member's session, and device revocation
+is not the feature that should introduce one.
 
 The silent transition (`/register`) is the piece that makes this work
 without bothering anyone. On Android the `device_id` lives in a DataStore

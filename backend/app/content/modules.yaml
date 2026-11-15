@@ -21,7 +21,8 @@
 #                  | none (no proposal, on from day one).
 #   trigger.key    identifier the proposal generator dispatches on. Thresholds
 #                  for `usage` triggers are deliberately unset — no data exists
-#                  yet to calibrate them, see the doc's closing section.
+#                  yet to calibrate them, see docs/module-registry.md § Usage
+#                  thresholds.
 #   sub_options[].state_field
 #                  where the sub-option state already lives today. Absent means
 #                  the sub-option has no independent state (it follows its

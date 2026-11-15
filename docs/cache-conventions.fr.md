@@ -71,8 +71,9 @@ réconcilier.
 
 ### Typage des champs numériques JSONB (recurrence_rule)
 
-Le client Android (Gson) parse `every_n_days` (et `day_of_month`,
-`every_n_weeks`, `days[]`) comme des **Int stricts**. Un float persisté en
+Le client Android (Gson) parse les champs numériques de la règle (`every_n_days`,
+`every_n_months`, `months`, `day`, `grace_days`) comme des **Int stricts**. Les types vivants
+sont listés dans [`architecture.fr.md`](architecture.fr.md) § Récurrence. Un float persisté en
 JSONB (`7.0`) casse le parsing → recurrence ignorée → urgence fausse
 (« dans 6j » au lieu de Rouge). Le chemin REST passe par Pydantic
 (`every_n_days: int`, coercé), **mais `/sync` bypass Pydantic** et stocke
@@ -88,10 +89,12 @@ ou garantir des int.
 
 ### État dérivé
 
-- `lastCompletedAt` n'est **pas** stocké sur `TaskEntity` : il est dérivé
-  du cache des complétions à chaque émission de flow. Donc toute
-  correction d'urgence passe par la **justesse du cache des complétions**,
-  pas par un champ dénormalisé.
+- `TaskEntity.lastCompletedAt` ne stocke que la valeur **calculée par le serveur**, rafraîchie
+  à chaque `GET /api/tasks`. La date effective utilisée pour l'urgence n'est stockée nulle
+  part : elle est dérivée à chaque émission de flow par `latestCompletedAt(serveur, cache)`,
+  c'est-à-dire le `max()` de cette valeur et du cache des complétions. Donc toute correction
+  d'urgence passe par la **justesse du cache des complétions** (c'est lui qui porte la
+  complétion optimiste hors ligne), pas par un champ dénormalisé.
 - Les écrans *live* (Home `/api/suggestions`, `/api/retard`, Stats) sont
   calculés serveur et ne dépendent pas du cache Room. Les écrans
   offline-first (liste des tâches, détail) dépendent du cache → ce sont

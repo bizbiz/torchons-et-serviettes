@@ -100,10 +100,9 @@ sha256 des fichiers `.py` exécutés, calculé au démarrage
 chaque environnement.
 
 **Déployer** : la prod se déploie par `gh workflow run deploy.yml -f confirm=deploy` (code de
-`main`, se propose sans s'exécuter seul) ; la beta par le script du mainteneur, hors du dépôt
-(il envoie l'arbre de travail, donc le non commité s'exécute). Les deux transports, leurs
-raisons, les chemins de
-retour et les pièges : [`deploiement.fr.md`](deploiement.fr.md).
+`main`, se propose sans s'exécuter seul) ; un environnement de test peut recevoir l'arbre de
+travail, donc du non commité. Vérifier ce qui tourne, les pièges mesurés et la lecture d'une
+trace de l'APK minifié : [`self-hosting.fr.md`](self-hosting.fr.md).
 
 ## Appareils
 

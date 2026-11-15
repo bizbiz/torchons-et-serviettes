@@ -57,9 +57,12 @@ with nothing to report it.
 token, preferences, home WiFi and the Room database keep being restored. Without it, two
 handsets share one identity and cutting either cuts both.
 
-**2. Everyone sees only THEIR devices.** `UserFoyer.role` (`admin`/`member`) exists in the
-schema but is consulted nowhere in the product. Letting one member sign another one out would
-be the app's first asymmetric power; device revocation is not the feature that should
+**2. Everyone sees only THEIR devices.** `UserFoyer.role` (`admin`/`member`) is read in two
+places only: `update_foyer` (`backend/app/api/foyers.py`, household settings) and
+`verify_purchase` (`backend/app/api/billing.py`, activating premium for the whole household);
+both require `admin`. The device routes (`backend/app/api/devices.py`) deliberately ignore it.
+No power of one member over another member's session or data exists today: letting one member
+sign another one out would be the first, and device revocation is not the feature that should
 introduce it.
 
 **3. Revoking also erases local data.** The app is offline-first: cutting server access
@@ -191,7 +194,7 @@ These two paths are enumerated in the header of `backend/tests/test_devices.py`,
 with the covered ones — the inventory lives next to the tests, not only here.
 
 **The screen does not follow the wipe (seen on 2026-11-02, a "Later" item of the roadmap).**
-When prod's `JWT_SECRET` was rotated, Quentin's phone did not go back to the welcome screen. The
+When prod's `JWT_SECRET` was rotated, a phone did not go back to the welcome screen. The
 open app showed "server unreachable" errors and stayed there. Only after killing and relaunching
 it did the phone land on the welcome screen, then "Recover my household".
 

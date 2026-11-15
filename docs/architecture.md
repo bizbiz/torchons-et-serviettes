@@ -94,11 +94,10 @@ the executed `.py` files, computed at boot (`backend/app/utils/code_fingerprint.
 recomputable from a git ref with `scripts/fingerprint_of_ref.py`.
 `bash scripts/deployed_versions.sh` compares the two for each environment.
 
-**Deploying**: prod is deployed with `gh workflow run deploy.yml -f confirm=deploy` (code from
-`main`, proposed, never run on its own); beta with the maintainer's own script, kept outside
-the repository (it sends the working tree, so uncommitted code runs). Both transports, their
-reasons, the way back and the
-pitfalls: [`deploiement.md`](deploiement.md).
+**Deploying**: production is deployed with `gh workflow run deploy.yml -f confirm=deploy` (code
+of `main`, proposed, never run on its own); a test environment may receive the working tree, so
+uncommitted code runs. Verifying what runs, measured pitfalls and reading a trace from the
+minified APK: [`self-hosting.md`](self-hosting.md).
 
 ## Devices
 

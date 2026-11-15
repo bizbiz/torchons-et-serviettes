@@ -68,8 +68,9 @@ re-add the row (the server still has it). Let sync reconcile.
 
 ### Typing of numeric JSONB fields (recurrence_rule)
 
-The Android client (Gson) parses `every_n_days` (and `day_of_month`,
-`every_n_weeks`, `days[]`) as **strict Ints**. A float persisted in JSONB
+The Android client (Gson) parses the numeric fields of the rule (`every_n_days`,
+`every_n_months`, `months`, `day`, `grace_days`) as **strict Ints**. The living types are
+listed in [`architecture.md`](architecture.md) § Recurrence. A float persisted in JSONB
 (`7.0`) breaks parsing → recurrence ignored → wrong urgency ("due in 6d"
 instead of Red). The REST path goes through Pydantic
 (`every_n_days: int`, coerced), **but `/sync` bypasses Pydantic** and
@@ -85,10 +86,11 @@ write path (catalog import, migration, script) that sets a
 
 ### Derived state
 
-- `lastCompletedAt` is **not** stored on `TaskEntity`: it is derived from
-  the completions cache on every flow emission. So any urgency fix goes
-  through the **correctness of the completions cache**, not a
-  denormalized field.
+- `TaskEntity.lastCompletedAt` stores only the **server-computed** value, refreshed on every
+  `GET /api/tasks`. The effective date used for urgency is stored nowhere: it is derived on
+  every flow emission by `latestCompletedAt(server, cache)`, that is the `max()` of that value
+  and the completions cache. So any urgency fix goes through the **correctness of the
+  completions cache** (it carries the optimistic offline completion), not a denormalized field.
 - *Live* screens (Home `/api/suggestions`, `/api/retard`, Stats) are
   computed server-side and do not depend on the Room cache. Offline-first
   screens (task list, detail) depend on the cache → they are the ones

@@ -121,9 +121,6 @@ de noms sans ambiguïté**. « Perso », « Maison » ou « Hygiène » restent 
 gèle = le comportement actuel, donc personne ne voit son app changer sans
 l'avoir demandé.
 
-Répétée sur un dump de production (18 foyers, 101 tâches) : 28 contextes, 0
-doublon, 136 rattachements, 54 tâches multi-contextes.
-
 ## Proposer des tâches : `GET /api/catalog/suggestions`
 
 Le catalogue compte 181 tâches. Les présenter toutes, c'est une liste qu'on
@@ -163,9 +160,10 @@ et ajoute `tasks.contexts`, 11→12 supprime `categories`, `rooms` et recrée
 colonne).
 
 Aucun `fallbackToDestructiveMigration` : les migrations sont déclarées et
-jouées. Éprouvé le 2026-08-23 sur un appareil réel — un Pixel 7 dont la base
-vivait depuis avril, passé de Room 10 à 12 d'un coup, sans crash et sans perte
-(le jeton d'authentification a survécu, l'app a resynchronisé seule).
+jouées. Éprouvé le 2026-08-23 sur un appareil réel dont la base vivait depuis avril,
+passé de Room 10 à 12 d'un coup, sans crash et sans perte (le jeton
+d'authentification a survécu, l'app a resynchronisé seule). Depuis, 12→13 ajoute
+`tasks.firstCompletedAt` (voir Anniversaire).
 
 ## Récurrence calendaire
 
@@ -257,13 +255,13 @@ dériverait, et c'est la dérive que `calendar` supprime (décidé le 30/09/2026
 
 La conversion n'agissait qu'à l'écriture : une tâche stockée avant elle restait
 avec son type mort, et aucune lecture ne le connaît, donc sans échéance et verte
-pour toujours. Il en restait une en prod le 30/09 (« Submit my work hours »,
-`monthly` le 1er, muette depuis le 29/07). La migration `d4ec241658ca` convertit
+pour toujours. Il en restait une en prod le 30/09 (un `monthly` le 1er, muet
+depuis le 29/07). La migration `d4ec241658ca` convertit
 ces lignes et les journalise dans `change_log`, pour que les téléphones les
 reçoivent par `/sync`.
 
 `/sync`, qui contourne Pydantic, refuse désormais tout type hors de
-`LIVING_RULE_TYPES` (`recurrence.py`). L'op refusée devient un conflit
+`LIVING_RULE_TYPES` (`checked_recurrence_rule`, `recurrence.py`). L'op refusée devient un conflit
 `op_error` : elle ne bloque pas la file du téléphone et n'annule plus les ops
 précédentes du lot (un SAVEPOINT par op).
 

@@ -59,10 +59,13 @@ Backup, et faux depuis, sans que rien ne le signale.
 exclusion : jeton, préférences, WiFi maison et base Room continuent d'être restaurés. Sans
 elle, deux téléphones partagent une identité et couper l'un coupe l'autre.
 
-**2. Chacun ne voit que SES appareils.** Le champ `UserFoyer.role` (`admin`/`member`) existe
-en base mais n'est consulté nulle part dans le produit. Donner à un membre le pouvoir de
-déconnecter un autre membre serait le premier pouvoir asymétrique de l'app ; la révocation
-d'appareil n'est pas la fonctionnalité qui doit l'introduire.
+**2. Chacun ne voit que SES appareils.** Le champ `UserFoyer.role` (`admin`/`member`) est lu à
+deux endroits seulement : `update_foyer` (`backend/app/api/foyers.py`, réglages du foyer) et
+`verify_purchase` (`backend/app/api/billing.py`, activation du premium pour tout le foyer) ;
+les deux exigent `admin`. Les routes d'appareils (`backend/app/api/devices.py`) l'ignorent
+volontairement. Aucun pouvoir d'un membre sur la session ou les données d'un autre n'existe
+aujourd'hui : donner à un membre le pouvoir de déconnecter un autre membre serait le premier,
+et la révocation d'appareil n'est pas la fonctionnalité qui doit l'introduire.
 
 **3. Révoquer efface aussi les données locales.** L'app est offline-first : couper l'accès
 serveur laisse **sept tables Room** lisibles — tâches, complétions, historique, contextes,
@@ -200,7 +203,7 @@ Ces deux chemins sont énumérés dans l'en-tête de `backend/tests/test_devices
 qui sont couverts — l'inventaire vit à côté des tests, pas seulement ici.
 
 **L'écran ne suit pas l'effacement (constaté le 2026-11-02, piste « Plus tard » de la
-roadmap).** Lors de la rotation du `JWT_SECRET` de prod, le téléphone de Quentin n'est pas revenu
+roadmap).** Lors de la rotation du `JWT_SECRET` de prod, un téléphone n'est pas revenu
 à l'accueil : l'app ouverte affichait des erreurs « serveur injoignable » et y restait. Il a fallu
 la tuer et la relancer pour retomber sur l'écran d'accueil, puis « Retrouver mon foyer ».
 

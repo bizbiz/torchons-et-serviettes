@@ -37,7 +37,7 @@ two different threats.
 `versionCode` is compared, never `versionName`: it is a monotonic integer,
 whereas `"0.9.0"` sorts above `"0.10.0"` as a string.
 
-Each channel already has its own backend (prod on Scaleway, beta on its own host), so
+Each channel (prod, beta) already has its own backend, so
 the threshold is per-deployment and no channel needs naming in the header.
 
 ### Three decisions that are not details
@@ -76,19 +76,19 @@ threshold.
 
 ```bash
 # must return the threshold just set
-curl -s https://api.torchonsetserviettes.app/api/health
+curl -s https://<api-host>/api/health
 
 # a client below the threshold must get 426
 curl -s -o /dev/null -w '%{http_code}\n' \
-  -H 'X-App-Version-Code: 1' https://api.torchonsetserviettes.app/api/tasks
+  -H 'X-App-Version-Code: 1' https://<api-host>/api/tasks
 
 # and /api/health must STAY reachable for that same client, otherwise a badly
 # chosen threshold becomes a silent outage nobody can diagnose
 curl -s -o /dev/null -w '%{http_code}\n' \
-  -H 'X-App-Version-Code: 1' https://api.torchonsetserviettes.app/api/health
+  -H 'X-App-Version-Code: 1' https://<api-host>/api/health
 ```
 
-Measured on beta 2026-09-02 with the threshold at 999: client v95 on `/api/tasks`
+Measured on a test deployment 2026-09-02 with the threshold at 999: client v95 on `/api/tasks`
 → `426` with the full body; client v999 → `401` (passes the gate, refused by
 auth); no header → `401` (let through); client v95 on `/api/health` → `200`.
 
