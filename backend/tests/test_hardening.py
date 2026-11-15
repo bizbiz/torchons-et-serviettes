@@ -1,13 +1,12 @@
-"""Hardening points of the former todo item « Durcissements backend avant lecture publique du
-code », closed 2026-11-10 (its text: `git log -S "Durcissements backend" -- todo.md`). These
-tests and todo-checks/durcissements-backend.sh stay as regression guards.
+"""Hardening points reviewed before the code went public (checklist closed 2026-11-10). These
+tests, and the maintainer's local check script, stay as regression guards.
 
 Paths, and what covers each:
 - j. a scoped token (the 5-minute restore token) used as a session — refused 401;
 - h. a task title a spreadsheet would run as a formula — exported with a leading apostrophe;
 - a. a placeholder or short JWT_SECRET — the app refuses to start;
 - the Play Billing stubs (/verify grants premium on any token, /rtdn unauthenticated) — 404.
-Not covered by a test (read, and checked by todo-checks/durcissements-backend.sh): b. CORS
+Not covered by a test (read, and checked by the local script): b. CORS
 without credentials, c. docs off when EXPOSE_API_DOCS=false (the flag is read at import),
 d. /api/health without exception text, e. USER in the Dockerfile, f. python-jose floor,
 g. dev Postgres on loopback, i. op_error detail reduced to the class for unexpected errors.

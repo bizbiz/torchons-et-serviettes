@@ -72,3 +72,5 @@ backend/seeds/personal/
 
 # Working todo list: holds prod measurements and host details, kept local (2026-11-15)
 /todo.md
+# Checks of the local todo list, kept with it (2026-11-15)
+/todo-checks/
