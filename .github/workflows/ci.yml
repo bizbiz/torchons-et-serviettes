@@ -51,6 +51,10 @@ jobs:
         run: |
           pip install -r requirements.lock
           pip install "pytest>=8.0" "pytest-asyncio>=0.24"
+      # docker-compose mounts db/init.sql into docker-entrypoint-initdb.d; a service container
+      # cannot, so it is played here (it creates the uuid-ossp extension the migrations need).
+      - name: Initialize the database
+        run: psql "$DATABASE_URL_SYNC" -v ON_ERROR_STOP=1 -f ../db/init.sql
       - name: Apply migrations
         run: python -m alembic upgrade head
       - name: Run tests
