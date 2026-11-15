@@ -1,0 +1,5 @@
+# gitleaks false positives, reviewed 2026-11-15.
+# A fake invite token used as a test fixture.
+abbe28509a6a5110d2044105586764a23c706f49:android/app/src/test/java/com/torchons/app/ui/onboarding/InviteTokenExtractTest.kt:generic-api-key:21
+# A task key of the catalog (faire_ramoner_le_conduit_...), not a credential.
+9b48fa2abbfe4c5e3d5f182cf5110af87d644d85:backend/app/content/catalog.yaml:generic-api-key:1295
