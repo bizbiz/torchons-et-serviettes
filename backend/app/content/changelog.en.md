@@ -1,5 +1,238 @@
 # Release notes
 
+## v0.44.2 — 2026-11-11
+
+### Re-vote
+- A re-vote request arrives right away as a notification, one per request.
+- The voting window and the notification show the chore's contexts
+  ("Living room · Cleaning"): you know which vacuuming is meant.
+
+### Widget
+- The widget now shows only the chores to do. A chore you complete leaves it
+  at once, so it can't be completed twice.
+- "Already done" from the widget always shows the chore's name.
+
+### Completions
+- The same chore completed twice in a row by the same person now counts only
+  once (within the hour, or within the day for a weekly chore).
+
+## v0.44.1 — 2026-11-11
+
+### Re-vote
+- When a member asks the household for its opinion on a chore again, you get a
+  notification, even with the app closed.
+- Re-vote requests are no longer held back for two hours: they follow one
+  another as soon as you answer the previous one, or close it.
+
+### Widget
+- Tapping the widget no longer launches the app a second time when it is
+  already open.
+- The "Already done" window opened from the widget always shows the chore's
+  name.
+
+## v0.44.0 — 2026-11-11
+
+### Notifications
+- A morning notification lists the chores that became overdue since the day
+  before. It has its own switch and time in Settings (8 am by default).
+- The daily reminder gives your share of the overdue chores: their number
+  multiplied by your share in the split. It is no longer capped at 5, stays
+  quiet when there is nothing, and works offline.
+- When a member ticks a chore in your name, you are notified. The "Done
+  together with me" setting becomes "When a member includes me in a task".
+- A chore ticked several days after the fact still notifies the other members,
+  with its date.
+- Several chores ticked in a row produce a single notification, sent 5 minutes
+  after the last one.
+
+## v0.43.1 — 2026-11-04
+
+### Split
+- In Settings, you can set each household member's share (equal shares by
+  default). An ⓘ explains the calculation, and every change stays in the
+  history.
+- The request to rate a chore spaces out when you close it without rating, and
+  comes back more often when you rate (between 1 and 10 days).
+
+### Household proposals
+- A proposal made to the household shows up for the other members within a few
+  seconds, and the waiting window closes as soon as they answer, even without
+  a notification.
+
+### Modules
+- On sign-in, the app loads the household's modules right away: a switched-off
+  module no longer appears for a moment while passing through Settings.
+- In a new household, enabling a module for the whole household no longer
+  switches on everyone's personal modules, such as Stats.
+- "Ask to vote" appears only when Automatic adjustment is on, and no longer on
+  its own line.
+- The module guides have been reread and each has an example. "Contexts"
+  replaces "rooms" and "categories" there.
+- An ⓘ explains contexts, on their screen and on a chore's Contexts field.
+
+### Fixes
+- "Features" no longer loads forever when Settings was opened offline.
+
+## v0.43.0 — 2026-11-03
+
+### Modules
+- Each module has its own explanation page: what it is for, why, and how to
+  use it well. In Settings, an ⓘ next to its switch reopens it at any time.
+- The page is shown once, when the app suggests the module or when you enable
+  it yourself. When someone enables a module for the whole household, the
+  other members see it the next time they open the app.
+- Motivation, Bonuses and penalties, Goals and Stats are now suggested when
+  the household is a good fit, instead of staying hidden in Settings.
+- Two suggestions are spaced at least 5 days apart.
+
+### Fixes
+- Offline, the Contexts screen shows a message instead of closing the app.
+
+## v0.42.1 — 2026-11-03
+
+### Leaving the household
+- A member who comes back to the household also gets back the chores they
+  shared when they left, except those deleted in the meantime.
+
+### Widget
+- The widget no longer hides the on-site chores when you are at home.
+
+## v0.42.0 — 2026-11-02
+
+### Leaving the household
+- A member who leaves the household is removed from the chores they shared;
+  chores that were theirs alone are paused and come back if they return.
+- For 30 days, a member who left can get their household back with their
+  recovery code; after that, their account is anonymised.
+- Their completions stay: their name appears struck through, then "Former
+  member".
+- A chore's history says "X left the household".
+
+### Fixes
+- Offline, "Edit" now opens the chore instead of an empty form.
+- The frequency votes line shows "you haven't voted" instead of a garbled
+  sentence, with the missing space.
+
+## v0.41.5 — 2026-10-18
+
+### Notifications
+- Completing a chore notifies the other household members who enabled the
+  notification again: until now, only "done together" notified them.
+- Several chores completed offline arrive as a single notification on
+  reconnection.
+- A completion recorded with a date more than a day old notifies nobody.
+
+### Privacy
+- Chores assigned to a single person also no longer appear in the other
+  members' calendar, and the history no longer stops too early when it
+  contained some.
+
+## v0.41.4 — 2026-10-18
+
+### Privacy
+- A chore assigned to a single person is visible only to them, no matter who
+  created it: it no longer appears for the other household members, nor in the
+  history, the week summary or the exports.
+- Completing it no longer sends a notification to the other members.
+
+## v0.41.3 — 2026-10-18
+
+### Widget
+- A chore completed from the widget turns green right away, without waiting.
+- The widget shows only your chores: those assigned to you and the
+  household's.
+- Away from your home WiFi, it hides the on-site chores, like the Chores tab.
+
+## v0.41.2 — 2026-10-18
+
+### Widget
+- The widget shows all the chores, in the same order as the Chores tab, and
+  scrolls when they don't all fit.
+- Each chore has the list's three buttons: "Done", "Already done" and "Done
+  together". The last two open the app on the matching window.
+- The widget works offline, with the phone's latest data, and a chore marked
+  "Done" is sent as soon as the network returns.
+
+## v0.41.1 — 2026-10-17
+
+### Widget
+- The widget no longer says "All fresh!" when it could not load the chores: it
+  shows "Could not load the tasks", and tapping it opens the app.
+- The widget updates as soon as you leave the app.
+
+### Sync
+- A change the server refuses for good, for example a chore assigned to
+  someone who left the household, leaves the queue by itself. The sync window
+  shows it under "Refused by the server".
+
+### Fixes
+- The rhythm of an "uncertain" chore counts a chore done together once, not
+  once per participant.
+
+## v0.41.0 — 2026-10-16
+
+### Inviting remotely
+- The "Invite someone" screen offers "Share" and "Copy code": no need to be
+  side by side to scan the QR code.
+- "Join a household" accepts a pasted code, on its own or with the whole
+  message.
+
+### Sync
+- A chore marked done offline, for example for the other member, no longer
+  disappears from the history while waiting to be sent.
+- After an outage, changes resume at the next edit, instead of sometimes
+  waiting several hours.
+- When sending fails, the sync icon says so instead of spinning as if nothing
+  had happened.
+- The sync window lists what is waiting to be sent, since when and why, and
+  lets you give up on a change the server refuses.
+- When all is well, it shows the last exchange with the server, the last
+  upload, and the app and server versions.
+
+## v0.40.0 — 2026-10-01
+
+### A year after the first time
+- New "anniversary" recurrence, for vaccines, servicing or the car inspection:
+  the due date starts from the first time the chore was done, and comes back
+  every year (or every N months) on the same date, even if you do it late.
+- For a chore done before it was created in the app, just record the first
+  time at its real date.
+
+### Fixes
+- When the other household member edited a chore, it could appear empty on
+  your phone (no title, nobody assigned) until the next refresh.
+- A fixed-date chore done early, in the week before its due date, no longer
+  turns red the next day: it counts for that due date, and the next one is
+  targeted.
+- The chore catalogue offered when creating a household is translated into
+  English for phones set to English.
+
+## v0.39.0 — 2026-09-30
+
+### Fixed dates keep their word
+- A fixed-date chore (taxes, boiler, vaccine) finally shows its due date and
+  its colour in the list and on its page: it used to stay green whatever
+  happened.
+- It warns one week before the due date, no longer one month: an annual
+  vaccine turned orange 36 days ahead.
+- The frequency of a fixed date can no longer be voted on: the vote replaced
+  it with an interval, and it started drifting again.
+- A monthly chore created with an old format had not shown up since July: it
+  comes back every month, on its date.
+
+### My devices
+- Settings → My devices: see the phones connected to your account, and cut
+  off the access of one you no longer use. It also stops receiving
+  notifications.
+
+### Fixes
+- Offline sync could stay stuck, or even lose a change, when the server
+  refused a single operation in a batch.
+- Questions that have become pointless (deleted chore, days already
+  confirmed) close by themselves.
+- The overdue curve in the stats stopped loading when absence freezing was
+  active.
+
 ## v0.38.0 — 2026-08-20
 
 ### Contexts everywhere

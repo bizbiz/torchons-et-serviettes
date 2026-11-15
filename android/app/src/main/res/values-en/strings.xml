@@ -1655,4 +1655,9 @@
     <string name="task_edit_source_not_found">Source task not found</string>
     <string name="task_edit_title_required">The title is required</string>
     <string name="task_edit_save_error">Error while saving</string>
+    <string name="delete_account_button">Delete my account</string>
+    <string name="delete_account_dialog_title">Delete your account?</string>
+    <string name="delete_account_dialog_message">You\'ll leave all your households, your account will be deleted and every phone signed in to it will be signed out. For 30 days, your recovery code lets you get your household back. After that, your account is anonymized: your name disappears, your recovery code is erased and your personal tasks are deleted. The tasks you completed stay in the household history, under the name \"Former member\".</string>
+    <string name="delete_account_confirm">Delete</string>
+    <string name="delete_account_error">Could not delete. Check your connection and try again. Nothing was deleted.</string>
 </resources>

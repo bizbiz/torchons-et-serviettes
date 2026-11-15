@@ -1669,4 +1669,9 @@
     <string name="task_edit_source_not_found">Tâche source introuvable</string>
     <string name="task_edit_title_required">Le titre est obligatoire</string>
     <string name="task_edit_save_error">Erreur lors de la sauvegarde</string>
+    <string name="delete_account_button">Supprimer mon compte</string>
+    <string name="delete_account_dialog_title">Supprimer ton compte&#160;?</string>
+    <string name="delete_account_dialog_message">Tu quittes tous tes foyers, ton compte est supprimé et tous les téléphones connectés à ce compte sont déconnectés. Pendant 30 jours, ton code de récupération te permet de retrouver ton foyer. Passé ce délai, ton compte est anonymisé&#160;: ton nom disparaît, ton code de récupération est effacé et tes tâches personnelles sont supprimées. Les tâches que tu as accomplies restent dans l\'historique du foyer, sous le nom «&#160;Ancien membre&#160;».</string>
+    <string name="delete_account_confirm">Supprimer</string>
+    <string name="delete_account_error">Suppression impossible. Vérifie ta connexion et réessaie. Rien n\'a été supprimé.</string>
 </resources>

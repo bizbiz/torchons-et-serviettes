@@ -26,7 +26,7 @@
 <main>
   <div class="wrap">
     <h1>Politique de confidentialité</h1>
-    <p class="meta">Dernière mise à jour : 15 mai 2026</p>
+    <p class="meta">Dernière mise à jour : 15 novembre 2026</p>
     <p class="lead">
       Torchons &amp; Serviettes est conçue pour collecter le strict minimum.
       Pas d'e-mail, pas de mot de passe, pas de numéro de téléphone, pas de
@@ -85,12 +85,67 @@
           <td>Permettre de retrouver son foyer en cas de perte du téléphone</td>
           <td>Stocké sous forme de hachage <code>argon2id</code> ; jamais en clair</td>
         </tr>
+        <tr>
+          <td>Nom de votre WiFi maison (SSID), si vous l'indiquez</td>
+          <td>Saisi par l'utilisateur dans les réglages du foyer</td>
+          <td>Détecter la présence au foyer, pour mettre en pause les tâches pendant les absences</td>
+          <td>Tant que le foyer existe : le nom reste associé à votre appartenance
+            au foyer, même après suppression du compte, jusqu'à la purge du foyer
+            (section 6)</td>
+        </tr>
+        <tr>
+          <td>Calendrier de présence et d'absence du foyer (un statut par jour)</td>
+          <td>Détecté via le WiFi maison au lancement de l'app, ou saisi à la main</td>
+          <td>Ne pas compter les jours d'absence dans le retard des tâches</td>
+          <td>Tant que le foyer existe (purge du foyer : section 6)</td>
+        </tr>
+        <tr>
+          <td>Appareils connectés : nom du modèle (par exemple « Pixel 7 »),
+            plateforme, date de première et de dernière connexion</td>
+          <td>Transmis par l'application</td>
+          <td>Vous montrer vos appareils et en couper l'accès</td>
+          <td>Effacés à l'anonymisation du compte (section 6)</td>
+        </tr>
+        <tr>
+          <td>Adresse IP et horodatage des requêtes, dans les journaux techniques du serveur</td>
+          <td>Reçus à chaque connexion de l'application au serveur</td>
+          <td>Exploitation, diagnostic de pannes, limitation du nombre de requêtes par adresse</td>
+          <td>Dans les journaux d'exploitation seulement, jamais dans la base de
+            données ; durée de rotation de ces journaux non fixée par
+            l'application</td>
+        </tr>
+        <tr>
+          <td>Adresse IP, dans les journaux d'hébergement de ce site</td>
+          <td>Reçue lors de la visite du site</td>
+          <td>Acheminer et protéger le site (Cloudflare)</td>
+          <td>Selon les règles de Cloudflare</td>
+        </tr>
+        <tr>
+          <td>Sauvegarde automatique Android de l'application (compte Google de l'utilisateur)</td>
+          <td>Réalisée par Android, si elle est activée sur le téléphone</td>
+          <td>Retrouver ses données en changeant de téléphone</td>
+          <td>Selon les règles de Google. Tout est sauvegardé (session,
+            préférences, nom du WiFi maison, copie locale des tâches)
+            <strong>sauf</strong> l'identifiant d'appareil, qui en est exclu
+            pour distinguer deux téléphones issus d'une même sauvegarde</td>
+        </tr>
       </tbody>
     </table>
     <p>
+      Deux échanges avec Google ne passent pas par notre serveur. Quand
+      l'application est hors ligne et que vous ouvrez son diagnostic de
+      connexion, elle teste Internet en appelant
+      <code>connectivitycheck.gstatic.com</code> (Google voit alors l'adresse
+      IP du téléphone ; rien d'autre n'est envoyé). Par ailleurs, l'application
+      embarque le composant Google Play Billing ; il est préparé pour une
+      éventuelle option payante, qui n'existe pas aujourd'hui : aucun achat
+      n'est proposé et aucune donnée de paiement n'est collectée.
+    </p>
+    <p>
       <strong>Ne sont pas collectés :</strong> e-mail, mot de passe, numéro
-      de téléphone, géolocalisation, photos, carnet de contacts, données
-      bancaires ou de paiement.
+      de téléphone, position géographique (GPS ou réseau mobile), photos,
+      carnet de contacts, données bancaires ou de paiement. Le nom du WiFi
+      maison n'est utilisé que pour reconnaître que vous êtes chez vous.
     </p>
 
     <h2>3. Absence de pistage et de cookies</h2>
@@ -120,6 +175,8 @@
       <tbody>
         <tr><td>Scaleway</td><td>Hébergement du serveur et de la base de données</td><td>France (Union européenne)</td></tr>
         <tr><td>Google (Firebase Cloud Messaging)</td><td>Acheminement des notifications push</td><td>États-Unis</td></tr>
+        <tr><td>Cloudflare</td><td>Hébergement et diffusion de ce site web (pas de l'application)</td>
+          <td>Réseau mondial (société américaine)</td></tr>
       </tbody>
     </table>
     <p>
@@ -131,21 +188,55 @@
 
     <h2>5. Transferts hors Union européenne</h2>
     <p>
-      L'hébergement des données reste en France (Scaleway). Le seul
+      Les données de l'application sont hébergées en France (Scaleway). Un
       transfert hors UE concerne l'acheminement des notifications push via
       Google Firebase Cloud Messaging (États-Unis). Ce transfert est
       encadré par les Clauses Contractuelles Types de la Commission
       européenne. Le contenu transmis se limite au strict nécessaire à
-      l'affichage d'une notification.
+      l'affichage d'une notification. Ce site web est diffusé par
+      Cloudflare (société américaine), et la sauvegarde Android ainsi que le
+      test de connexion décrits en section 2 relèvent de Google : ils
+      dépendent de leurs propres politiques.
     </p>
 
     <h2>6. Durée de conservation et suppression</h2>
     <p>
       Vous pouvez supprimer votre compte directement depuis l'application
-      (Réglages → Sécurité du foyer). La suppression entraîne un effacement
-      logique immédiat, puis une purge définitive des données associées
-      sous <strong>30 jours</strong>. Un foyer laissé totalement inactif est
-      archivé après 90 jours d'inactivité, puis purgé après 365 jours.
+      (<strong>Réglages › Supprimer mon compte</strong>). Voici ce qui se
+      passe, tel que le serveur le fait :
+    </p>
+    <ul>
+      <li>
+        <strong>Tout de suite</strong> : vous quittez tous vos foyers, le
+        compte est marqué supprimé, et tous les téléphones connectés à ce
+        compte sont déconnectés et effacent leurs données locales à leur
+        prochain appel au serveur.
+      </li>
+      <li>
+        <strong>Pendant 30 jours</strong> : votre code de récupération
+        (« Retrouver mon foyer ») permet de revenir et de tout rétablir.
+      </li>
+      <li>
+        <strong>Après 30 jours</strong> (tâche nocturne) : le compte est
+        <em>anonymisé</em>, pas supprimé de la base. Votre nom devient
+        « Ancien membre », le code de récupération est effacé (plus aucun
+        retour possible), et sont supprimés vos appareils, vos jetons de
+        notification, vos réglages personnels, vos séries et vos tâches
+        personnelles. Les tâches que vous avez accomplies restent dans
+        l'historique du foyer, sous le nom « Ancien membre ».
+      </li>
+      <li>
+        <strong>Foyers</strong> : un foyer qui n'a plus aucun membre actif
+        est archivé lors de la tâche nocturne suivante, puis supprimé
+        définitivement 365 jours plus tard, avec ses tâches, son historique,
+        son calendrier de présence et les noms de WiFi maison associés. Tant
+        que le foyer existe, ces deux dernières données ne sont pas effacées
+        par la seule suppression d'un compte.
+      </li>
+    </ul>
+    <p>
+      Les journaux techniques du serveur (adresses IP) ne sont pas liés à
+      un compte et ne sont pas concernés par la suppression du compte.
     </p>
 
     <h2>7. Vos droits</h2>
@@ -156,8 +247,9 @@
     </p>
     <ul>
       <li>
-        <strong>Effacement</strong> : réalisable immédiatement et de
-        manière autonome depuis l'application (suppression du compte).
+        <strong>Effacement</strong> : réalisable de manière autonome depuis
+        l'application (Réglages › Supprimer mon compte) ; les effets exacts,
+        dont l'anonymisation après 30 jours, sont décrits en section 6.
       </li>
       <li>
         <strong>Autres droits</strong> : exercez-les en écrivant à
@@ -199,19 +291,18 @@
       Pour toute question relative à cette politique ou à vos données :
       <a href="mailto:contact@torchonsetserviettes.app">contact@torchonsetserviettes.app</a>.
     </p>
-  </div>
 
-    <h2>Vos appareils connectés</h2>
+    <h2>12. Vos appareils connectés</h2>
     <p>
       Vous pouvez voir à tout moment quels appareils détiennent une session
       sur votre compte, et couper l'accès de l'un d'eux :
-      <strong>Réglages → Foyer → Mes appareils</strong>. L'appareil coupé est
+      <strong>Réglages › Foyer › Mes appareils</strong>. L'appareil coupé est
       déconnecté et ses données locales sont effacées à sa prochaine
       connexion. Un appareil qui ne se reconnecte jamais conserve ce qu'il a
       déjà en mémoire : aucune application ne peut effacer un téléphone resté
       hors ligne, et nous préférons l'écrire que le laisser supposer.
     </p>
-
+  </div>
 </main>
 
 <footer class="site">

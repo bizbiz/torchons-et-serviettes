@@ -627,7 +627,7 @@ fun SettingsScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        DeleteAccountSection(viewModel = viewModel, onDeleted = onLogout) // last section (privacy policy)
     }
 
     // P4a.2 — l'ancien dialog "nom seul" est remplacé par le wizard

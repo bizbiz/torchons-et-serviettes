@@ -37,7 +37,7 @@
     <p class="lead">Les dernières évolutions de l'application, version par version. Même contenu que l'écran « Nouveautés » de l'app.</p>
     <p class="meta">Généré automatiquement depuis la même source que
       l'application — aucun décalage entre les versions.
-      <small>(mise à jour : 2026-11-11)</small></p>
+      <small>(mise à jour : 2026-11-15)</small></p>
 <h2>v0.44.2 — 2026-11-11</h2>
 <h3>Revote</h3>
 <ul>
@@ -292,7 +292,7 @@
 <h3>i18n — correctif countdown + nom d&#x27;app</h3>
 <ul>
 <li>Le countdown des cartes sur l&#x27;Accueil («&amp;#160;en retard de 3 j&amp;#160;», «&amp;#160;dans 5 j&amp;#160;», «&amp;#160;Fait il y a 2 j&amp;#160;»…) suit désormais la langue du téléphone — il était resté FR-only par oubli dans le Lot 1.</li>
-<li>Le <strong>nom d&#x27;app</strong> affiché sur le launcher Android (« Torchons &amp; Serviettes » prod, « T&amp;S Beta » beta) ne contient plus l&#x27;artefact «&amp;#160;<code>&amp;amp;</code>&amp;#160;» visible depuis le ship 0.35.16 (double- escape de l&#x27;esperluette dans <code>build.gradle.kts</code>).</li>
+<li>Le <strong>nom d&#x27;app</strong> affiché sur le launcher Android (« Torchons &amp; Serviettes » prod, « T&amp;S Beta » beta) ne contient plus l&#x27;artefact « <code>&amp;</code> » visible depuis le ship 0.35.16 (double- escape de l&#x27;esperluette dans <code>build.gradle.kts</code>).</li>
 </ul>
 <h2>v0.35.16 — 2026-05-21</h2>
 <h3>Popup d\&#x27;absence unifiée avec le modal Présence &amp; séries</h3>
@@ -329,7 +329,7 @@
 <h2>v0.35.12 — 2026-05-21</h2>
 <h3>Traduction EN — Détail &amp; édition de tâche</h3>
 <ul>
-<li>L&#x27;écran <strong>Détail d&#x27;une tâche</strong> est désormais bilingue : état d&#x27;urgence, bandeau «&amp;#160;Pour…&amp;#160;», bandeau «&amp;#160;tu n&#x27;as pas voté&amp;#160;», card Effort &amp;amp; Affinité avec liens «&amp;#160;+ d&#x27;info&amp;#160;», fréquence, tolérance, historique des complétions (cartes individuelles et collectives) et historique des modifications (votes + édits) avec les noms de champs traduits.</li>
+<li>L&#x27;écran <strong>Détail d&#x27;une tâche</strong> est désormais bilingue : état d&#x27;urgence, bandeau «&amp;#160;Pour…&amp;#160;», bandeau «&amp;#160;tu n&#x27;as pas voté&amp;#160;», card Effort &amp; Affinité avec liens « + d&#x27;info », fréquence, tolérance, historique des complétions (cartes individuelles et collectives) et historique des modifications (votes + édits) avec les noms de champs traduits.</li>
 <li>L&#x27;écran <strong>Édition / Création de tâche</strong> est bilingue : titre, chip «&amp;#160;Dupliqué de…&amp;#160;», suggestions, dropdowns catégorie / pièce / fréquence, champ «&amp;#160;tous les combien&amp;#160;», breakdown smart, consensus avec pluriels, tableau 12 mois (noms de mois localisés), tolérance et effort.</li>
 <li>L&#x27;app est maintenant traduite à environ 95&amp;#160;%. Reste à traduire : écrans d&#x27;onboarding (Welcome / Login / création de foyer / scan QR), catalogue de templates et site web.</li>
 </ul>
@@ -429,116 +429,116 @@
 <li>Modifier un jour de présence recalcule aussitôt le retard des tâches maison et la série.</li>
 </ul>
 <h2>v0.33.1 — 2026-05-18</h2>
-<h3>Corrections (ecran Foyer / presence / series)</h3>
+<h3>Corrections (écran Foyer / présence / séries)</h3>
 <ul>
-<li>Le nom du foyer s&#x27;affiche immediatement a l&#x27;ouverture de l&#x27;ecran Foyer (fini le bref &quot;Mon foyer&quot; affiche le temps du chargement).</li>
-<li>Calendrier des series : les etoiles et le trait de serie restent desormais a l&#x27;interieur du calendrier (plus de marques qui debordaient hors de la grille).</li>
-<li>Modifier la presence (present / absent) recalcule aussitot le retard des taches maison et la serie : l&#x27;affichage est a jour sans avoir a recharger.</li>
+<li>Le nom du foyer s&#x27;affiche immédiatement à l&#x27;ouverture de l&#x27;écran Foyer (fini le bref &quot;Mon foyer&quot; affiché le temps du chargement).</li>
+<li>Calendrier des séries : les étoiles et le trait de série restent désormais à l&#x27;intérieur du calendrier (plus de marques qui débordaient hors de la grille).</li>
+<li>Modifier la présence (présent / absent) recalcule aussitôt le retard des tâches maison et la série : l&#x27;affichage est à jour sans avoir à recharger.</li>
 </ul>
 <h2>v0.33.0 — 2026-05-18</h2>
-<h3>Ecran Foyer dedie</h3>
+<h3>Écran Foyer dédié</h3>
 <ul>
-<li>Les reglages lies au foyer sont regroupes dans un ecran &quot;Foyer&quot; dedie (titre = nom du foyer), accessible depuis la ligne du foyer dans les Reglages et depuis la card &quot;Foyer&quot; de l&#x27;accueil. Deux groupes clairs : &quot;Ce foyer&quot; (partage entre membres) et &quot;Mon compte&quot; (vaut pour tous tes foyers), avec un (i) qui explique le perimetre.</li>
-<li>L&#x27;ancien ecran &quot;Mes foyers&quot; disparait : &quot;Creer un nouveau foyer&quot; est un bouton dans les Reglages (bascule automatique sur le foyer cree), et &quot;Changer de foyer&quot; est une feuille de selection directement dans l&#x27;ecran Foyer — affichee seulement si tu as au moins deux foyers.</li>
-<li>Pieces et Categories sont desormais ranges sous l&#x27;ecran Foyer. Un bouton &quot;Simuler le rattrapage&quot; y ouvre le meme simulateur que la card &quot;Foyer&quot;.</li>
+<li>Les réglages liés au foyer sont regroupés dans un écran &quot;Foyer&quot; dédié (titre = nom du foyer), accessible depuis la ligne du foyer dans les Réglages et depuis la card &quot;Foyer&quot; de l&#x27;accueil. Deux groupes clairs : &quot;Ce foyer&quot; (partagé entre membres) et &quot;Mon compte&quot; (vaut pour tous tes foyers), avec un (i) qui explique le périmètre.</li>
+<li>L&#x27;ancien écran &quot;Mes foyers&quot; disparaît : &quot;Créer un nouveau foyer&quot; est un bouton dans les Réglages (bascule automatique sur le foyer créé), et &quot;Changer de foyer&quot; est une feuille de sélection directement dans l&#x27;écran Foyer — affichée seulement si tu as au moins deux foyers.</li>
+<li>Pièces et Catégories sont désormais rangées sous l&#x27;écran Foyer. Un bouton &quot;Simuler le rattrapage&quot; y ouvre le même simulateur que la card &quot;Foyer&quot;.</li>
 </ul>
-<h3>Calendrier de presence editable</h3>
+<h3>Calendrier de présence éditable</h3>
 <ul>
-<li>Un calendrier dans l&#x27;ecran Foyer permet de poser ou effacer les jours presents/absents, dans le passe comme dans le futur (planifier une absence a l&#x27;avance). Trois etats : vert = present, rouge doux = absent (taches maison gelees ce jour), gris = non renseigne (compte absent par defaut). Une icone indique la source : Wi-Fi (detecte) ou main (pose manuellement).</li>
-<li>Un jour pose a la main n&#x27;est jamais ecrase par la detection Wi-Fi automatique (priorite au manuel). Legende et (i) detaillee sous la grille. C&#x27;est la meme grille que le rappel &quot;Jours a confirmer&quot;, avec un lien &quot;Voir tout le calendrier&quot; depuis ce rappel.</li>
+<li>Un calendrier dans l&#x27;écran Foyer permet de poser ou effacer les jours présents/absents, dans le passé comme dans le futur (planifier une absence à l&#x27;avance). Trois états : vert = présent, rouge doux = absent (tâches maison gelées ce jour), gris = non renseigné (compte absent par défaut). Une icône indique la source : Wi-Fi (détecté) ou main (posé manuellement).</li>
+<li>Un jour posé à la main n&#x27;est jamais écrasé par la détection Wi-Fi automatique (priorité au manuel). Légende et (i) détaillée sous la grille. C&#x27;est la même grille que le rappel &quot;Jours à confirmer&quot;, avec un lien &quot;Voir tout le calendrier&quot; depuis ce rappel.</li>
 </ul>
-<h3>Calendrier des series</h3>
+<h3>Calendrier des séries</h3>
 <ul>
-<li>Depuis l&#x27;onglet Stats (bloc serie du resume) et le profil d&#x27;un membre, un calendrier des series en lecture seule : une etoile sur chaque jour ou le membre a fait au moins une tache, et un trait qui relie les jours actifs. La serie passe au travers des jours confirmes absents (une absence legitime ne casse pas la serie) et se casse sur un jour incertain ou un jour present sans tache. Selecteur de membre integre ; lien &quot;Modifier la presence&quot; vers l&#x27;ecran Foyer.</li>
+<li>Depuis l&#x27;onglet Stats (bloc série du résumé) et le profil d&#x27;un membre, un calendrier des séries en lecture seule : une étoile sur chaque jour où le membre a fait au moins une tâche, et un trait qui relie les jours actifs. La série passe au travers des jours confirmés absents (une absence légitime ne casse pas la série) et se casse sur un jour incertain ou un jour présent sans tâche. Sélecteur de membre intégré ; lien &quot;Modifier la présence&quot; vers l&#x27;écran Foyer.</li>
 </ul>
 <h2>v0.32.0 — 2026-05-12</h2>
-<h3>Gamification — desactivation possible</h3>
+<h3>Gamification — désactivation possible</h3>
 <ul>
-<li>Nouveau switch &quot;Activer la gamification pour mon compte&quot; en haut des Reglages. Si desactive, tu ne vois plus les points, les bonus, les stats, le leaderboard, les badges, les streaks et le fair-share dans aucun de tes foyers. La tab Stats disparait de la barre de navigation pour rendre l&#x27;app plus epuree.</li>
-<li>Nouveau switch &quot;Gamification dans ce foyer&quot; dans Reglages &gt; Options avancees. N&#x27;importe quel membre peut le toggler — un dialog de confirmation rappelle que l&#x27;autre membre sera aussi affecte avant validation.</li>
-<li>Quand la gamification est desactivee, la celebration apres une tache validee reste (confetti + emoji + message d&#x27;encouragement) mais sans le &quot;+X pts&quot;.</li>
-<li>Nouveau lien &quot;Pourquoi je n&#x27;ai pas de points pour certaines taches ?&quot; dans les Reglages — visible uniquement si tu es dans un etat sans gamification (toi-meme OU au moins un de tes foyers). Il explique la cause precise (toi, un foyer, plusieurs causes cumulees, multi-foyer mixte) et propose un bouton pour reactiver directement.</li>
-<li>Les textes du popup d&#x27;info sur l&#x27;effort de la tache adaptent leur formulation : si la gamification est desactivee, on ne mentionne plus les points ni le fair-share, on parle uniquement d&#x27;estimation de temps.</li>
+<li>Nouveau switch &quot;Activer la gamification pour mon compte&quot; en haut des Réglages. Si désactivé, tu ne vois plus les points, les bonus, les stats, le leaderboard, les badges, les streaks et le fair-share dans aucun de tes foyers. La tab Stats disparaît de la barre de navigation pour rendre l&#x27;app plus épurée.</li>
+<li>Nouveau switch &quot;Gamification dans ce foyer&quot; dans Réglages &gt; Options avancées. N&#x27;importe quel membre peut le toggler — un dialog de confirmation rappelle que l&#x27;autre membre sera aussi affecté avant validation.</li>
+<li>Quand la gamification est désactivée, la célébration après une tâche validée reste (confetti + emoji + message d&#x27;encouragement) mais sans le &quot;+X pts&quot;.</li>
+<li>Nouveau lien &quot;Pourquoi je n&#x27;ai pas de points pour certaines tâches ?&quot; dans les Réglages — visible uniquement si tu es dans un état sans gamification (toi-même OU au moins un de tes foyers). Il explique la cause précise (toi, un foyer, plusieurs causes cumulées, multi-foyer mixte) et propose un bouton pour réactiver directement.</li>
+<li>Les textes du popup d&#x27;info sur l&#x27;effort de la tâche adaptent leur formulation : si la gamification est désactivée, on ne mentionne plus les points ni le fair-share, on parle uniquement d&#x27;estimation de temps.</li>
 </ul>
 <h2>v0.31.3 — 2026-05-12</h2>
-<h3>Gamification — lisibilite des points</h3>
+<h3>Gamification — lisibilité des points</h3>
 <ul>
-<li>Affichage des points prevus sur chaque carte de la page d&#x27;accueil (&quot;💰 N pts&quot;), avec mention du bonus retard quand applicable (&quot;🔥 +M pts bonus retard&quot;)</li>
-<li>Icone (i) cliquable a cote des taches solo (0 point) qui ouvre une pop-up explicative : pourquoi un seul participant = pas de points, et pourquoi valider la tache reste utile</li>
-<li>Meme pop-up disponible dans le dialog &quot;Fait !&quot; quand la tache ne rapportera pas de points</li>
+<li>Affichage des points prévus sur chaque carte de la page d&#x27;accueil (&quot;💰 N pts&quot;), avec mention du bonus retard quand applicable (&quot;🔥 +M pts bonus retard&quot;)</li>
+<li>Icône (i) cliquable à côté des tâches solo (0 point) qui ouvre une pop-up explicative : pourquoi un seul participant = pas de points, et pourquoi valider la tâche reste utile</li>
+<li>Même pop-up disponible dans le dialog &quot;Fait !&quot; quand la tâche ne rapportera pas de points</li>
 </ul>
 <h2>v0.31.2 — 2026-05-12</h2>
-<h3>Absences (gel a la maison)</h3>
+<h3>Absences (gel à la maison)</h3>
 <ul>
-<li>Le dialog &quot;Jours a confirmer&quot; pre-coche desormais tous les jours en absent par defaut. Plus besoin de tout toggler apres une longue absence — il suffit de marquer les quelques jours ou tu etais reellement la.</li>
-<li>Les taches &quot;a la maison&quot; ne s&#x27;affichent plus comme en retard pendant les jours d&#x27;absence confirmes. Le retard est gele et reprend a ton retour, sans cumul de &quot;dette&quot; injuste.</li>
-<li>Les stats (hebdo, mensuel, total, leaderboard, long-terme, totaux du couple, resume hebdo) ignorent maintenant les completions tombant sur un jour absent — coherent avec le gel applique aux taches.</li>
-<li>Apres avoir resolu un prompt d&#x27;absence, les taches sont automatiquement recalculees : l&#x27;affichage est toujours bon, plus d&#x27;incoherence visuelle.</li>
+<li>Le dialog &quot;Jours à confirmer&quot; pré-coche désormais tous les jours en absent par défaut. Plus besoin de tout toggler après une longue absence — il suffit de marquer les quelques jours où tu étais réellement là.</li>
+<li>Les tâches &quot;à la maison&quot; ne s&#x27;affichent plus comme en retard pendant les jours d&#x27;absence confirmés. Le retard est gelé et reprend à ton retour, sans cumul de &quot;dette&quot; injuste.</li>
+<li>Les stats (hebdo, mensuel, total, leaderboard, long-terme, totaux du couple, résumé hebdo) ignorent maintenant les complétions tombant sur un jour absent — cohérent avec le gel appliqué aux tâches.</li>
+<li>Après avoir résolu un prompt d&#x27;absence, les tâches sont automatiquement recalculées : l&#x27;affichage est toujours bon, plus d&#x27;incohérence visuelle.</li>
 </ul>
 <h2>v0.31.1 — 2026-05-01</h2>
 <h3>Sous le capot</h3>
 <ul>
-<li>Mise en place d&#x27;un export CSV de l&#x27;historique cote serveur (completions + taches). Accessible uniquement via curl avec le JWT pour l&#x27;instant ; un ecran &quot;Mes donnees&quot; dans les Reglages suivra dans une iteration ulterieure.</li>
-<li>Cette release embarque aussi v0.31.0 (stats hebdo + globales couple + long-terme + objectifs + add-device) qui n&#x27;avait jamais ete installee sur le device.</li>
+<li>Mise en place d&#x27;un export CSV de l&#x27;historique côté serveur (complétions + tâches). Accessible uniquement via curl avec le JWT pour l&#x27;instant ; un écran &quot;Mes données&quot; dans les Réglages suivra dans une itération ultérieure.</li>
+<li>Cette release embarque aussi v0.31.0 (stats hebdo + globales couple + long-terme + objectifs + add-device) qui n&#x27;avait jamais été installée sur le device.</li>
 </ul>
 <h2>v0.31.0 — 2026-04-30</h2>
 <h3>Statistiques hebdomadaires</h3>
 <ul>
-<li>Une nouvelle card &quot;Cette semaine&quot; en haut de l&#x27;onglet Stats resume ta semaine du foyer : nombre de taches, points cumules, classement par membre avec emoji 🏆 sur le top, et top 3 des taches les plus faites. Fleches gauche/droite pour naviguer dans les semaines passees.</li>
+<li>Une nouvelle card &quot;Cette semaine&quot; en haut de l&#x27;onglet Stats résume ta semaine du foyer : nombre de tâches, points cumulés, classement par membre avec emoji 🏆 sur le top, et top 3 des tâches les plus faites. Flèches gauche/droite pour naviguer dans les semaines passées.</li>
 </ul>
 <h3>Statistiques globales du couple</h3>
 <ul>
-<li>Le modal de profil utilisateur (cliquer sur un nom dans Stats) affiche desormais une card &quot;Total du foyer&quot; avec 3 colonnes (cette semaine / ce mois / au total). Si le foyer enchaine plusieurs jours d&#x27;affilee avec &gt;=1 tache faite par n&#x27;importe qui, un compteur &quot;🔥 N jours d&#x27;affilee&quot; apparait. La section &quot;Repartition&quot; (barres par membre) est conservee en complement.</li>
+<li>Le modal de profil utilisateur (cliquer sur un nom dans Stats) affiche désormais une card &quot;Total du foyer&quot; avec 3 colonnes (cette semaine / ce mois / au total). Si le foyer enchaîne plusieurs jours d&#x27;affilée avec &gt;=1 tâche faite par n&#x27;importe qui, un compteur &quot;🔥 N jours d&#x27;affilée&quot; apparaît. La section &quot;Répartition&quot; (barres par membre) est conservée en complément.</li>
 </ul>
-<h3>Stats long-terme par pieces</h3>
+<h3>Stats long-terme par pièces</h3>
 <ul>
-<li>Nouvelle card &quot;Repartition par pieces&quot; sur Stats : barres horizontales pour visualiser quelle piece concentre le plus de taches sur la periode (Mois / Trimestre / Annee). Affiche aussi le temps cumule estime (deduit du consensus effort de chaque tache, 1pt = 5min).</li>
+<li>Nouvelle card &quot;Répartition par pièces&quot; sur Stats : barres horizontales pour visualiser quelle pièce concentre le plus de tâches sur la période (Mois / Trimestre / Année). Affiche aussi le temps cumulé estimé (déduit du consensus effort de chaque tâche, 1pt = 5min).</li>
 </ul>
-<h3>Objectifs personnels et partages</h3>
+<h3>Objectifs personnels et partagés</h3>
 <ul>
-<li>Nouvelle card &quot;Mes objectifs&quot; sur Stats. Tape sur + pour creer un objectif (ex: 3 taches par semaine), avec choix de periode (par jour/ semaine/mois) et de la cible (1 a 30). La progression est calculee automatiquement et affichee avec une barre de progression par objectif. Long-press pour supprimer.</li>
+<li>Nouvelle card &quot;Mes objectifs&quot; sur Stats. Tape sur + pour créer un objectif (ex: 3 tâches par semaine), avec choix de période (par jour/ semaine/mois) et de la cible (1 à 30). La progression est calculée automatiquement et affichée avec une barre de progression par objectif. Long-press pour supprimer.</li>
 </ul>
 <h3>Ajouter un de mes appareils</h3>
 <ul>
-<li>Une nouvelle card &quot;Ajouter un de mes appareils&quot; dans les Reglages permet de generer un QR pour connecter une tablette ou un 2eme telephone a ton compte sans creer de nouveau membre dans le foyer.</li>
+<li>Une nouvelle card &quot;Ajouter un de mes appareils&quot; dans les Réglages permet de générer un QR pour connecter une tablette ou un 2ème téléphone à ton compte sans créer de nouveau membre dans le foyer.</li>
 </ul>
 <h2>v0.30.1 — 2026-04-30</h2>
-<h3>Securite du foyer (Reglages)</h3>
+<h3>Sécurité du foyer (Réglages)</h3>
 <ul>
-<li>Nouvelle section &quot;Securite du foyer&quot; dans les Reglages avec deux actions :</li>
-<li>&quot;Regenerer mon code de recuperation&quot; : remplace ton ancien code par un nouveau, affiche une seule fois avec boutons Copier et Partager. Utile si tu n&#x27;avais pas encore de code, ou si tu soupconnes que l&#x27;ancien a fuite.</li>
-<li>&quot;Quitter le foyer&quot; : tu sors du foyer en preservant ton historique cote serveur. Si tu es membre d&#x27;un autre foyer, tu y bascules automatiquement ; sinon tu retombes sur l&#x27;ecran d&#x27;accueil.</li>
+<li>Nouvelle section &quot;Sécurité du foyer&quot; dans les Réglages avec deux actions :</li>
+<li>&quot;Régénérer mon code de récupération&quot; : remplace ton ancien code par un nouveau, affiché une seule fois avec boutons Copier et Partager. Utile si tu n&#x27;avais pas encore de code, ou si tu soupçonnes que l&#x27;ancien a fuité.</li>
+<li>&quot;Quitter le foyer&quot; : tu sors du foyer en préservant ton historique côté serveur. Si tu es membre d&#x27;un autre foyer, tu y bascules automatiquement ; sinon tu retombes sur l&#x27;écran d&#x27;accueil.</li>
 </ul>
 <h3>Soutenir / Discuter avec le dev</h3>
 <ul>
-<li>Nouvelle card en bas des Reglages avec un mot du dev (auteur solo, solo). Deux boutons : &quot;Payer un cafe&quot; (ouvre la page Buy Me a Coffee dans le navigateur) et &quot;M&#x27;ecrire&quot; (ouvre l&#x27;app mail avec un brouillon vers le dev). Les retours, idees et bugs sont les bienvenus.</li>
+<li>Nouvelle card en bas des Réglages avec un mot du dev (auteur solo, solo). Deux boutons : &quot;Payer un café&quot; (ouvre la page Buy Me a Coffee dans le navigateur) et &quot;M&#x27;écrire&quot; (ouvre l&#x27;app mail avec un brouillon vers le dev). Les retours, idées et bugs sont les bienvenus.</li>
 </ul>
 <h2>v0.30.0 — 2026-04-29</h2>
 <h3>Inviter quelqu&#x27;un dans le foyer</h3>
 <ul>
-<li>Une nouvelle card &quot;Inviter quelqu&#x27;un&quot; dans les Reglages permet de generer un QR code d&#x27;invitation valide 15 minutes. La personne invitee installe l&#x27;app, choisit &quot;Rejoindre un foyer&quot; et scanne le QR pour devenir membre du foyer.</li>
+<li>Une nouvelle card &quot;Inviter quelqu&#x27;un&quot; dans les Réglages permet de générer un QR code d&#x27;invitation valide 15 minutes. La personne invitée installe l&#x27;app, choisit &quot;Rejoindre un foyer&quot; et scanne le QR pour devenir membre du foyer.</li>
 </ul>
 <h3>Onboarding sans compte</h3>
 <ul>
-<li>A la 1re ouverture de l&#x27;app (ou apres une desinstallation), un ecran d&#x27;accueil propose trois choix : &quot;Creer un foyer&quot;, &quot;Rejoindre un foyer&quot; (scan QR), ou &quot;Retrouver mon foyer&quot; (code de recuperation). Plus besoin de creer un compte avec username.</li>
-<li>Le parcours &quot;Creer un foyer&quot; guide en 5 etapes : ton prenom, le nom du foyer, les pieces de chez toi, les taches que tu veux suivre (tirees du catalogue), puis ton code de recuperation.</li>
-<li>Pour l&#x27;instant le reseau Tailscale maison continue de te connecter automatiquement comme avant — tu ne verras le nouvel accueil que si tu reinstalles l&#x27;app.</li>
+<li>À la 1re ouverture de l&#x27;app (ou après une désinstallation), un écran d&#x27;accueil propose trois choix : &quot;Créer un foyer&quot;, &quot;Rejoindre un foyer&quot; (scan QR), ou &quot;Retrouver mon foyer&quot; (code de récupération). Plus besoin de créer un compte avec username.</li>
+<li>Le parcours &quot;Créer un foyer&quot; guide en 5 étapes : ton prénom, le nom du foyer, les pièces de chez toi, les tâches que tu veux suivre (tirées du catalogue), puis ton code de récupération.</li>
+<li>Pour l&#x27;instant le réseau Tailscale maison continue de te connecter automatiquement comme avant — tu ne verras le nouvel accueil que si tu réinstalles l&#x27;app.</li>
 </ul>
-<h3>Code de recuperation</h3>
+<h3>Code de récupération</h3>
 <ul>
-<li>A la creation ou a la jonction d&#x27;un foyer, un code unique de 8 caracteres (XXXX-XXXX) est affiche. Note-le : il te permet de retrouver ton foyer + tes droits d&#x27;admin si tu perds ton telephone. Affiche une seule fois, partageable par mail/messagerie via un bouton dedie.</li>
+<li>À la création ou à la jonction d&#x27;un foyer, un code unique de 8 caractères (XXXX-XXXX) est affiché. Note-le : il te permet de retrouver ton foyer + tes droits d&#x27;admin si tu perds ton téléphone. Affiché une seule fois, partageable par mail/messagerie via un bouton dédié.</li>
 </ul>
 <h2>v0.29.0 — 2026-04-29</h2>
 <h3>Modal &quot;+ d&#x27;info&quot; sur l&#x27;effort</h3>
 <ul>
-<li>Sur la fiche d&#x27;une tache, dans la section &quot;Effort &amp; Affinite&quot;, un nouveau lien &quot;Effort &amp; points · + d&#x27;info&quot; ouvre un modal qui explique a quoi sert le vote effort : calcul des points gagnes quand la tache est validee, partage equitable (fair-share) entre membres, et retard global du foyer.</li>
-<li>Le modal liste les votes effort de chaque membre avec la date du vote. Boutons &quot;Modifier mon vote&quot; sur ta ligne, &quot;Demander revote&quot; sur celle des autres, et &quot;Demander a voter&quot; pour les membres assignes qui n&#x27;ont pas encore vote.</li>
-<li>Symetrique du modal &quot;+ d&#x27;info&quot; deja existant pour la frequence.</li>
+<li>Sur la fiche d&#x27;une tâche, dans la section &quot;Effort &amp; Affinité&quot;, un nouveau lien &quot;Effort &amp; points · + d&#x27;info&quot; ouvre un modal qui explique à quoi sert le vote effort : calcul des points gagnés quand la tâche est validée, partage équitable (fair-share) entre membres, et retard global du foyer.</li>
+<li>Le modal liste les votes effort de chaque membre avec la date du vote. Boutons &quot;Modifier mon vote&quot; sur ta ligne, &quot;Demander revote&quot; sur celle des autres, et &quot;Demander à voter&quot; pour les membres assignés qui n&#x27;ont pas encore voté.</li>
+<li>Symétrique du modal &quot;+ d&#x27;info&quot; déjà existant pour la fréquence.</li>
 </ul>
 <h2>v0.28.2 — 2026-04-29</h2>
-<h3>Icone de notification reconnaissable</h3>
+<h3>Icône de notification reconnaissable</h3>
 <ul>
-<li>Les notifications affichent desormais la silhouette du chapeau de magicien dans la barre de statut, au lieu d&#x27;un carre blanc generique. La pastille de fond reprend la couleur indigo de l&#x27;app sur Android 8+.</li>
+<li>Les notifications affichent désormais la silhouette du chapeau de magicien dans la barre de statut, au lieu d&#x27;un carré blanc générique. La pastille de fond reprend la couleur indigo de l&#x27;app sur Android 8+.</li>
 </ul>
 <h2>v0.28.1 — 2026-04-28</h2>
 <h3>Notifications push enfin fiables</h3>
@@ -548,608 +548,608 @@
 <h2>v0.28.0 — 2026-04-28</h2>
 <h3>Bandeau &quot;Tu n&#x27;as pas voté&quot; sur le détail des tâches</h3>
 <ul>
-<li>Sur le detail d&#x27;une tache, un bandeau bleu apparait quand tu n&#x27;as pas encore exprime ton avis (frequence, affinite, ou effort). Cliquer dessus ouvre le formulaire de vote, pre-rempli avec les valeurs deja saisies. C&#x27;est purement une invitation : libre a toi de l&#x27;ignorer.</li>
-<li>Le sous-texte sous la frequence change selon l&#x27;etat des votes : &quot;Moyenne des votes de toi &amp; l&#x27;autre membre&quot;, ou &quot;Vote de l&#x27;autre membre · tu n&#x27;as pas vote&quot;, ou &quot;Pas encore vote&quot;.</li>
+<li>Sur le détail d&#x27;une tâche, un bandeau bleu apparaît quand tu n&#x27;as pas encore exprimé ton avis (fréquence, affinité, ou effort). Cliquer dessus ouvre le formulaire de vote, pré-rempli avec les valeurs déjà saisies. C&#x27;est purement une invitation : libre à toi de l&#x27;ignorer.</li>
+<li>Le sous-texte sous la fréquence change selon l&#x27;état des votes : &quot;Moyenne des votes de toi &amp; l&#x27;autre membre&quot;, ou &quot;Vote de l&#x27;autre membre · tu n&#x27;as pas voté&quot;, ou &quot;Pas encore voté&quot;.</li>
 </ul>
 <h3>Modaux &quot;+ d&#x27;info&quot; sur la fréquence et l&#x27;affinité</h3>
 <ul>
-<li>Un lien &quot;+ d&#x27;info&quot; sous la frequence ouvre un modal qui explique le mecanisme de vote, montre la valeur de chacun avec sa date, et permet de modifier ton vote ou de demander a un autre membre de revoter.</li>
-<li>Un modal equivalent sur l&#x27;affinite explique pourquoi c&#x27;est une preference perso (qui n&#x27;influence que tes propres suggestions), et te laisse modifier ton avis. Pas de bouton &quot;demander a quelqu&#x27;un d&#x27;autre&quot; pour l&#x27;affinite : c&#x27;est subjectif et personnel.</li>
+<li>Un lien &quot;+ d&#x27;info&quot; sous la fréquence ouvre un modal qui explique le mécanisme de vote, montre la valeur de chacun avec sa date, et permet de modifier ton vote ou de demander à un autre membre de revoter.</li>
+<li>Un modal équivalent sur l&#x27;affinité explique pourquoi c&#x27;est une préférence perso (qui n&#x27;influence que tes propres suggestions), et te laisse modifier ton avis. Pas de bouton &quot;demander à quelqu&#x27;un d&#x27;autre&quot; pour l&#x27;affinité : c&#x27;est subjectif et personnel.</li>
 </ul>
 <h3>Demander à quelqu&#x27;un de revoter</h3>
 <ul>
-<li>Depuis le modal &quot;+ d&#x27;info&quot; frequence, un bouton &quot;Demander revote&quot; cote utilisateur envoie une demande dans sa file d&#x27;attente. Quand l&#x27;autre ouvre l&#x27;app, le formulaire de vote pop avec un message &quot;X t&#x27;a demande de revoter sur cette tache&quot;. Idem pour l&#x27;effort.</li>
-<li>Une demande deja envoyee est visible (bouton grise &quot;Demande envoyee&quot;) pour eviter d&#x27;envoyer 10 fois la meme.</li>
+<li>Depuis le modal &quot;+ d&#x27;info&quot; fréquence, un bouton &quot;Demander revote&quot; côté utilisateur envoie une demande dans sa file d&#x27;attente. Quand l&#x27;autre ouvre l&#x27;app, le formulaire de vote pop avec un message &quot;X t&#x27;a demandé de revoter sur cette tâche&quot;. Idem pour l&#x27;effort.</li>
+<li>Une demande déjà envoyée est visible (bouton grisé &quot;Demande envoyée&quot;) pour éviter d&#x27;envoyer 10 fois la même.</li>
 </ul>
 <h2>v0.27.0 — 2026-04-28</h2>
-<h3>Frequence des taches : un vote, simple et clair</h3>
+<h3>Fréquence des tâches : un vote, simple et clair</h3>
 <ul>
-<li>A la creation d&#x27;une tache, on parle desormais explicitement de &quot;vote&quot; : ta saisie est ton vote sur la frequence, pas une regle imposee. Si tu es seul a voter, c&#x27;est ton vote qui devient la frequence affichee.</li>
-<li>Quatre choix de type de tache, en mots clairs : &quot;Reguliere&quot;, &quot;Selon le mois&quot;, &quot;Irreguliere&quot;, &quot;Une seule fois&quot;. Trois anciens types techniques (jours fixes de semaine, mensuel a jour fixe, toutes les N semaines) disparaissent — ils n&#x27;etaient pas utilises et compliquaient l&#x27;interface.</li>
-<li>Le mini-dialog &quot;Modifier mon vote&quot; propose deux modes : &quot;Reguliere&quot; (un slider unique) ou &quot;Selon le mois&quot; (12 sliders mensuels). Pratique pour les taches saisonnieres : tondre la pelouse tous les 7 jours en ete et tous les 30 en hiver, par exemple.</li>
-<li>Le slider de creation pose la bonne question : <em>&quot;Selon toi, tous les combien faut-il faire cette tache ?&quot;</em></li>
+<li>À la création d&#x27;une tâche, on parle désormais explicitement de &quot;vote&quot; : ta saisie est ton vote sur la fréquence, pas une règle imposée. Si tu es seul à voter, c&#x27;est ton vote qui devient la fréquence affichée.</li>
+<li>Quatre choix de type de tâche, en mots clairs : &quot;Régulière&quot;, &quot;Selon le mois&quot;, &quot;Irrégulière&quot;, &quot;Une seule fois&quot;. Trois anciens types techniques (jours fixes de semaine, mensuel à jour fixe, toutes les N semaines) disparaissent — ils n&#x27;étaient pas utilisés et compliquaient l&#x27;interface.</li>
+<li>Le mini-dialog &quot;Modifier mon vote&quot; propose deux modes : &quot;Régulière&quot; (un slider unique) ou &quot;Selon le mois&quot; (12 sliders mensuels). Pratique pour les tâches saisonnières : tondre la pelouse tous les 7 jours en été et tous les 30 en hiver, par exemple.</li>
+<li>Le slider de création pose la bonne question : <em>&quot;Selon toi, tous les combien faut-il faire cette tâche ?&quot;</em></li>
 </ul>
 <h2>v0.26.0 — 2026-04-27</h2>
-<h3>Filtres de la liste des taches en mots clairs</h3>
+<h3>Filtres de la liste des tâches en mots clairs</h3>
 <ul>
-<li>Les six filtres en haut de la liste (a faire / aimees / long / recurrentes / maison / solo) ne sont plus des icones mais des chips texte. Plus besoin de deviner ce que veut dire la flamme ou le coeur.</li>
-<li>Trois etats au lieu de deux : un clic active le filtre positif (fond rouge, &quot;A faire&quot;), un deuxieme clic le bascule en filtre inverse (fond vert, &quot;Pas a faire&quot;), un troisieme clic l&#x27;enleve (juste le texte avec un contour).</li>
-<li>Les chips defilent horizontalement quand il y en a trop pour la largeur de l&#x27;ecran.</li>
+<li>Les six filtres en haut de la liste (à faire / aimées / long / récurrentes / maison / solo) ne sont plus des icônes mais des chips texte. Plus besoin de deviner ce que veut dire la flamme ou le cœur.</li>
+<li>Trois états au lieu de deux : un clic active le filtre positif (fond rouge, &quot;À faire&quot;), un deuxième clic le bascule en filtre inverse (fond vert, &quot;Pas à faire&quot;), un troisième clic l&#x27;enlève (juste le texte avec un contour).</li>
+<li>Les chips défilent horizontalement quand il y en a trop pour la largeur de l&#x27;écran.</li>
 </ul>
 <h2>v0.25.1 — 2026-04-27</h2>
 <h3>Ajustements de la mini-courbe Retard sur l&#x27;Accueil</h3>
 <ul>
-<li>La carte du retard du foyer remonte maintenant la phase de creation initiale du backlog (memes premiers points filtres que sur l&#x27;ecran Stats), pour une lecture plus claire des 30 derniers jours utiles.</li>
-<li>La carte est repositionnee tout en bas de l&#x27;Accueil, sous les taches urgentes : c&#x27;est une lecture contextuelle, pas une action a entreprendre.</li>
+<li>La carte du retard du foyer remonte maintenant la phase de création initiale du backlog (mêmes premiers points filtrés que sur l&#x27;écran Stats), pour une lecture plus claire des 30 derniers jours utiles.</li>
+<li>La carte est repositionnée tout en bas de l&#x27;Accueil, sous les tâches urgentes : c&#x27;est une lecture contextuelle, pas une action à entreprendre.</li>
 </ul>
 <h2>v0.25.0 — 2026-04-27</h2>
 <h3>Retard du foyer sur l&#x27;Accueil</h3>
 <ul>
-<li>L&#x27;Accueil affiche desormais une mini-courbe du retard du foyer sur les 30 derniers jours glissants, sous les cartes &quot;Rythme&quot; et &quot;Retard&quot;. Permet de voir d&#x27;un coup d&#x27;oeil la tendance recente sans aller dans les Stats.</li>
-<li>Pas de triche sur la phase de creation pour cette vue : on montre les 30 derniers jours fideles a la realite, contrairement a la vue &quot;Depuis le debut&quot; des stats qui demarre au pic.</li>
+<li>L&#x27;Accueil affiche désormais une mini-courbe du retard du foyer sur les 30 derniers jours glissants, sous les cartes &quot;Rythme&quot; et &quot;Retard&quot;. Permet de voir d&#x27;un coup d&#x27;œil la tendance récente sans aller dans les Stats.</li>
+<li>Pas de triche sur la phase de création pour cette vue : on montre les 30 derniers jours fidèles à la réalité, contrairement à la vue &quot;Depuis le début&quot; des stats qui démarre au pic.</li>
 </ul>
-<h3>Selecteur de periode sur le graphique Retard</h3>
+<h3>Sélecteur de période sur le graphique Retard</h3>
 <ul>
-<li>Dans Stats, le graphique &quot;Retard&quot; gagne deux chips en haut : &quot;Depuis le debut&quot; (defaut, trim de la phase de creation) et &quot;30 derniers jours&quot; (vue glissante recente).</li>
+<li>Dans Stats, le graphique &quot;Retard&quot; gagne deux chips en haut : &quot;Depuis le début&quot; (défaut, trim de la phase de création) et &quot;30 derniers jours&quot; (vue glissante récente).</li>
 </ul>
 <h2>v0.24.0 — 2026-04-27</h2>
-<h3>Recap &quot;Cette semaine&quot; en tete des stats</h3>
+<h3>Récap &quot;Cette semaine&quot; en tête des stats</h3>
 <ul>
-<li>Une nouvelle carte en haut de l&#x27;onglet Resume montre tes points de la semaine, ton &quot;+/- X% vs semaine precedente&quot;, le jour ou le foyer a fait le plus de taches, et la categorie la plus active.</li>
-<li>Carte automatiquement masquee si rien a afficher (foyer tout neuf ou debut de semaine).</li>
+<li>Une nouvelle carte en haut de l&#x27;onglet Résumé montre tes points de la semaine, ton &quot;+/- X% vs semaine précédente&quot;, le jour où le foyer a fait le plus de tâches, et la catégorie la plus active.</li>
+<li>Carte automatiquement masquée si rien à afficher (foyer tout neuf ou début de semaine).</li>
 </ul>
 <h3>Stats du foyer dans le profil utilisateur</h3>
 <ul>
-<li>Quand on clique sur le nom de quelqu&#x27;un (dans une carte d&#x27;historique, un classement, etc.), la modal de profil affiche desormais aussi la repartition entre les membres sur la semaine et au total, avec une barre coloree.</li>
-<li>Le nom de l&#x27;utilisateur ouvert est en gras dans la legende pour le reperage immediat.</li>
+<li>Quand on clique sur le nom de quelqu&#x27;un (dans une carte d&#x27;historique, un classement, etc.), la modal de profil affiche désormais aussi la répartition entre les membres sur la semaine et au total, avec une barre colorée.</li>
+<li>Le nom de l&#x27;utilisateur ouvert est en gras dans la légende pour le repérage immédiat.</li>
 </ul>
 <h2>v0.23.0 — 2026-04-27</h2>
 <h3>Statistiques enrichies</h3>
 <ul>
-<li>Sur les courses de points 7 jours et 30 jours, un &quot;+/- X% vs avant&quot; en couleur (vert si en progres, rouge si en recul) compare a la periode precedente.</li>
-<li>Un nouveau graphique &quot;Repartition par categorie&quot; arrive en derniere position du swiper : top 8 des categories que tu fais le plus, avec un breakdown par utilisateur. Selecteur de periode integre (Semaine / Mois / 3 mois / Tout).</li>
-<li>Le graphique &quot;Par jour de semaine&quot; gagne le meme selecteur de periode pour zoomer sur l&#x27;evolution recente vs l&#x27;historique total.</li>
-<li>La course de points &quot;Depuis toujours&quot; passe automatiquement en buckets mensuels au-dela d&#x27;un an d&#x27;historique pour rester lisible.</li>
+<li>Sur les courses de points 7 jours et 30 jours, un &quot;+/- X% vs avant&quot; en couleur (vert si en progrès, rouge si en recul) compare à la période précédente.</li>
+<li>Un nouveau graphique &quot;Répartition par catégorie&quot; arrive en dernière position du swiper : top 8 des catégories que tu fais le plus, avec un breakdown par utilisateur. Sélecteur de période intégré (Semaine / Mois / 3 mois / Tout).</li>
+<li>Le graphique &quot;Par jour de semaine&quot; gagne le même sélecteur de période pour zoomer sur l&#x27;évolution récente vs l&#x27;historique total.</li>
+<li>La course de points &quot;Depuis toujours&quot; passe automatiquement en buckets mensuels au-delà d&#x27;un an d&#x27;historique pour rester lisible.</li>
 </ul>
 <h3>Tap sur un point de graphique</h3>
 <ul>
-<li>Toucher un point sur les courses de points ouvre directement l&#x27;historique filtre sur la journee correspondante. Pratique pour enqueter sur un pic ou un creux.</li>
+<li>Toucher un point sur les courses de points ouvre directement l&#x27;historique filtré sur la journée correspondante. Pratique pour enquêter sur un pic ou un creux.</li>
 </ul>
 <h2>v0.22.0 — 2026-04-27</h2>
-<h3>Notifications affinees pour les completions</h3>
+<h3>Notifications affinées pour les complétions</h3>
 <ul>
-<li>Trois reglages independants remplacent l&#x27;ancien &quot;Taches completees&quot; : &quot;Quand quelqu&#x27;un fait une tache seul&quot;, &quot;Quand on fait une tache ensemble (avec moi)&quot;, et &quot;Quand une tache est faite a plusieurs sans moi&quot; (visible uniquement a 3+ membres dans le foyer).</li>
-<li>Les notifs collectives sont personnalisees : &quot;Alex a fait la vaisselle avec toi&quot;, &quot;Alex, Sam &amp; toi avez fait …&quot;, ou &quot;Alex &amp; Sam ont fait …&quot; selon que tu participes ou non.</li>
+<li>Trois réglages indépendants remplacent l&#x27;ancien &quot;Tâches complétées&quot; : &quot;Quand quelqu&#x27;un fait une tâche seul&quot;, &quot;Quand on fait une tâche ensemble (avec moi)&quot;, et &quot;Quand une tâche est faite à plusieurs sans moi&quot; (visible uniquement à 3+ membres dans le foyer).</li>
+<li>Les notifs collectives sont personnalisées : &quot;Alex a fait la vaisselle avec toi&quot;, &quot;Alex, Sam &amp; toi avez fait …&quot;, ou &quot;Alex &amp; Sam ont fait …&quot; selon que tu participes ou non.</li>
 </ul>
-<h3>Historique des taches repense pour les collectifs</h3>
+<h3>Historique des tâches repensé pour les collectifs</h3>
 <ul>
-<li>Un evenement &quot;fait ensemble&quot; apparait comme une seule carte avec tous les participants (&quot;A, B &amp; C&quot;) au lieu d&#x27;une ligne par personne.</li>
-<li>Icone groupe distincte des completions solo, et chaque nom est cliquable vers le profil du participant.</li>
-<li>Long-press sur un collectif supprime tout l&#x27;evenement d&#x27;un coup.</li>
+<li>Un événement &quot;fait ensemble&quot; apparaît comme une seule carte avec tous les participants (&quot;A, B &amp; C&quot;) au lieu d&#x27;une ligne par personne.</li>
+<li>Icône groupe distincte des complétions solo, et chaque nom est cliquable vers le profil du participant.</li>
+<li>Long-press sur un collectif supprime tout l&#x27;événement d&#x27;un coup.</li>
 </ul>
-<h3>Onglet Statistiques repense</h3>
+<h3>Onglet Statistiques repensé</h3>
 <ul>
-<li>Streaks remontees en premier dans Resume.</li>
-<li>Nouvelle carte &quot;Statistiques&quot; avec cinq graphiques que l&#x27;on swipe : retard du foyer dans le temps, course de points cumules sur 7 jours, 30 jours, depuis toujours, et frequence des taches faites par jour de semaine.</li>
-<li>Le graphique &quot;Retard&quot; (en 1ere position) montre l&#x27;evolution du retard du foyer depuis le debut, sur les taches en commun uniquement (les taches assignees a une seule personne sont exclues). Toggle Minutes / Taches pour basculer l&#x27;unite. Le delta vs debut s&#x27;affiche en vert quand le retard a baisse.</li>
-<li>Classement (Semaine / Mois / Total) fusionne dans Resume — l&#x27;onglet &quot;Classement&quot; disparait.</li>
+<li>Streaks remontées en premier dans Résumé.</li>
+<li>Nouvelle carte &quot;Statistiques&quot; avec cinq graphiques que l&#x27;on swipe : retard du foyer dans le temps, course de points cumulés sur 7 jours, 30 jours, depuis toujours, et fréquence des tâches faites par jour de semaine.</li>
+<li>Le graphique &quot;Retard&quot; (en 1ère position) montre l&#x27;évolution du retard du foyer depuis le début, sur les tâches en commun uniquement (les tâches assignées à une seule personne sont exclues). Toggle Minutes / Tâches pour basculer l&#x27;unité. Le delta vs début s&#x27;affiche en vert quand le retard a baissé.</li>
+<li>Classement (Semaine / Mois / Total) fusionné dans Résumé — l&#x27;onglet &quot;Classement&quot; disparaît.</li>
 </ul>
 <h2>v0.21.0 — 2026-04-26</h2>
-<h3>Recurrence : choisir l&#x27;unite (jours, semaines, mois)</h3>
+<h3>Récurrence : choisir l&#x27;unité (jours, semaines, mois)</h3>
 <ul>
-<li>Sur le formulaire d&#x27;edition d&#x27;une tache, l&#x27;unite de saisie de la frequence se bascule entre Jours, Semaines et Mois via trois petits boutons. Pratique pour creer une tache mensuelle sans avoir a calculer &quot;30 jours&quot;.</li>
-<li>Le mini-dialog de vote sur la cadence et la popup de notation (post-completion) ont aussi ce switch d&#x27;unite : voter &quot;tous les 3 mois&quot; ne demande plus de calcul mental.</li>
-<li>Quand on change d&#x27;unite, la valeur s&#x27;adapte intelligemment (92 j devient &quot;3 mois&quot;, soit 90 j) — la conversion est explicite et le breakdown est affiche en clair.</li>
+<li>Sur le formulaire d&#x27;édition d&#x27;une tâche, l&#x27;unité de saisie de la fréquence se bascule entre Jours, Semaines et Mois via trois petits boutons. Pratique pour créer une tâche mensuelle sans avoir à calculer &quot;30 jours&quot;.</li>
+<li>Le mini-dialog de vote sur la cadence et la popup de notation (post-complétion) ont aussi ce switch d&#x27;unité : voter &quot;tous les 3 mois&quot; ne demande plus de calcul mental.</li>
+<li>Quand on change d&#x27;unité, la valeur s&#x27;adapte intelligemment (92 j devient &quot;3 mois&quot;, soit 90 j) — la conversion est explicite et le breakdown est affiché en clair.</li>
 </ul>
-<h3>Affichage humain des durees</h3>
+<h3>Affichage humain des durées</h3>
 <ul>
-<li>Les durees longues sont affichees dans la forme la plus lisible : &quot;3 mois 2 j&quot; plutot que &quot;92 jours&quot;, &quot;1 sem. 3 j&quot; plutot que &quot;10 jours&quot;.</li>
-<li>Visible partout ou la cadence apparait : ecran detail d&#x27;une tache, formulaire d&#x27;edition, popup de vote, popup de notation, votes des autres membres.</li>
+<li>Les durées longues sont affichées dans la forme la plus lisible : &quot;3 mois 2 j&quot; plutôt que &quot;92 jours&quot;, &quot;1 sem. 3 j&quot; plutôt que &quot;10 jours&quot;.</li>
+<li>Visible partout où la cadence apparaît : écran détail d&#x27;une tâche, formulaire d&#x27;édition, popup de vote, popup de notation, votes des autres membres.</li>
 </ul>
 <h2>v0.20.0 — 2026-04-25</h2>
-<h3>Auto-archivage des taches ponctuelles</h3>
+<h3>Auto-archivage des tâches ponctuelles</h3>
 <ul>
-<li>Les taches ponctuelles (sans recurrence) completees depuis plus de 7 jours sont automatiquement masquees de la liste principale.</li>
-<li>L&#x27;historique reste preserve : les completions restent visibles dans les stats, le leaderboard et le pace.</li>
-<li>Pas de bouton de restauration : si une tache archivee redevient pertinente, il suffit de la recreer (l&#x27;autocomplete de duplication la propose toujours).</li>
+<li>Les tâches ponctuelles (sans récurrence) complétées depuis plus de 7 jours sont automatiquement masquées de la liste principale.</li>
+<li>L&#x27;historique reste préservé : les complétions restent visibles dans les stats, le leaderboard et le pace.</li>
+<li>Pas de bouton de restauration : si une tâche archivée redevient pertinente, il suffit de la recréer (l&#x27;autocomplete de duplication la propose toujours).</li>
 </ul>
-<h3>Dupliquer une tache existante</h3>
+<h3>Dupliquer une tâche existante</h3>
 <ul>
-<li>Nouveau bouton &quot;Dupliquer&quot; en haut de l&#x27;ecran detail d&#x27;une tache : cree une nouvelle tache pre-remplie avec les memes parametres, qu&#x27;il suffit d&#x27;ajuster (par ex. changer la piece) avant de valider.</li>
-<li>Dans le formulaire de creation d&#x27;une nouvelle tache, des suggestions apparaissent des 2 caracteres tapes dans le titre : selectionner une suggestion remplit tout le formulaire d&#x27;un coup.</li>
-<li>Un chip &quot;Duplique de [titre]&quot; indique qu&#x27;on est en train de cloner ; tap dessus pour annuler la duplication et repartir d&#x27;un formulaire vierge.</li>
-<li>Le clone herite du consensus de cadence et de la repartition d&#x27;effort de la tache d&#x27;origine, mais demarre avec un historique vide (les votes individuels ne sont pas copies, chacun re-votera au prochain prompt).</li>
+<li>Nouveau bouton &quot;Dupliquer&quot; en haut de l&#x27;écran détail d&#x27;une tâche : crée une nouvelle tâche pré-remplie avec les mêmes paramètres, qu&#x27;il suffit d&#x27;ajuster (par ex. changer la pièce) avant de valider.</li>
+<li>Dans le formulaire de création d&#x27;une nouvelle tâche, des suggestions apparaissent dès 2 caractères tapés dans le titre : sélectionner une suggestion remplit tout le formulaire d&#x27;un coup.</li>
+<li>Un chip &quot;Dupliqué de [titre]&quot; indique qu&#x27;on est en train de cloner ; tap dessus pour annuler la duplication et repartir d&#x27;un formulaire vierge.</li>
+<li>Le clone hérite du consensus de cadence et de la répartition d&#x27;effort de la tâche d&#x27;origine, mais démarre avec un historique vide (les votes individuels ne sont pas copiés, chacun re-votera au prochain prompt).</li>
 </ul>
 <h2>v0.19.0 — 2026-04-24</h2>
 <h3>Historique : filtres et recherche</h3>
 <ul>
-<li>Une barre de recherche permet de filtrer l&#x27;historique par titre de tache. Tape &quot;lavabo&quot; et tu ne verras que ce qui touche a la tache &quot;Nettoyer le lavabo&quot;.</li>
+<li>Une barre de recherche permet de filtrer l&#x27;historique par titre de tâche. Tape &quot;lavabo&quot; et tu ne verras que ce qui touche à la tâche &quot;Nettoyer le lavabo&quot;.</li>
 <li>Un bouton &quot;Filtres&quot; ouvre un panneau pliable avec :</li>
-<li>Type d&#x27;evenement (3 chips multi-select : Completions, Votes, Modifications) pour ne voir qu&#x27;une famille a la fois.</li>
+<li>Type d&#x27;événement (3 chips multi-select : Complétions, Votes, Modifications) pour ne voir qu&#x27;une famille à la fois.</li>
 <li>Acteur (Tous, par membre du foyer) pour filtrer par personne.</li>
-<li>Periode (Cette semaine, Ce mois, 3 derniers mois, Tout) pour scoper la fenetre temporelle.</li>
-<li>Les filtres sont combinables et un compteur sur le bouton &quot;Filtres&quot; indique combien sont actifs. Un bouton &quot;Effacer&quot; remet tout a zero.</li>
+<li>Période (Cette semaine, Ce mois, 3 derniers mois, Tout) pour scoper la fenêtre temporelle.</li>
+<li>Les filtres sont combinables et un compteur sur le bouton &quot;Filtres&quot; indique combien sont actifs. Un bouton &quot;Effacer&quot; remet tout à zéro.</li>
 </ul>
-<h3>Historique : meilleure lisibilite</h3>
+<h3>Historique : meilleure lisibilité</h3>
 <ul>
-<li>Les modifications de cadence affichent maintenant la transition complete : &quot;modifie la recurrence de &#x27;Aspirateur&#x27; (recurrence) : tous les 7j → tous les 10j&quot;, au lieu d&#x27;un simple &quot;(recurrence)&quot; sans contexte.</li>
-<li>Les taches definitivement supprimees gardent leur titre suivi de &quot;(supprimee)&quot; au lieu d&#x27;apparaitre comme &#x27;?&#x27; dans l&#x27;historique.</li>
-<li>Les votes de frequence n&#x27;apparaissent plus en double : avant, chaque vote etait visible a la fois comme &quot;vote&quot; et comme &quot;modification de recurrence&quot;. Maintenant un seul evenement par vote.</li>
+<li>Les modifications de cadence affichent maintenant la transition complète : &quot;modifié la récurrence de &#x27;Aspirateur&#x27; (recurrence) : tous les 7j → tous les 10j&quot;, au lieu d&#x27;un simple &quot;(recurrence)&quot; sans contexte.</li>
+<li>Les tâches définitivement supprimées gardent leur titre suivi de &quot;(supprimée)&quot; au lieu d&#x27;apparaître comme &#x27;?&#x27; dans l&#x27;historique.</li>
+<li>Les votes de fréquence n&#x27;apparaissent plus en double : avant, chaque vote était visible à la fois comme &quot;vote&quot; et comme &quot;modification de récurrence&quot;. Maintenant un seul événement par vote.</li>
 </ul>
 <h2>v0.18.1 — 2026-04-24</h2>
 <h3>Ajustement</h3>
 <ul>
-<li>Le slider du mini-dialog &quot;Modifier via le vote&quot; propose maintenant une plage adaptee a la cadence de la tache (de 30% a 300% du consensus actuel) au lieu de toujours afficher 1 a 365 jours. Sur une tache a 5 jours, tu vois maintenant un slider de 2 a 15 jours, et ton vote actuel est visible au milieu de la barre au lieu d&#x27;etre colle a gauche. Si tu avais deja vote tres differemment du consensus actuel, la plage est etendue pour inclure ta valeur — pas de troncature silencieuse.</li>
+<li>Le slider du mini-dialog &quot;Modifier via le vote&quot; propose maintenant une plage adaptée à la cadence de la tâche (de 30% à 300% du consensus actuel) au lieu de toujours afficher 1 à 365 jours. Sur une tâche à 5 jours, tu vois maintenant un slider de 2 à 15 jours, et ton vote actuel est visible au milieu de la barre au lieu d&#x27;être collé à gauche. Si tu avais déjà voté très différemment du consensus actuel, la plage est étendue pour inclure ta valeur — pas de troncature silencieuse.</li>
 </ul>
 <h2>v0.18.0 — 2026-04-24</h2>
-<h3>Cadence des taches : enfin pilotee 100% par les votes</h3>
+<h3>Cadence des tâches : enfin pilotée 100% par les votes</h3>
 <ul>
-<li>Tu ne peux plus ecraser la cadence d&#x27;une tache (champ &quot;tous les X jours&quot;) en l&#x27;editant directement dans la fiche : le champ devient grise et affiche &quot;Consensus : 7 j (2 votes)&quot;. Pour modifier la cadence, un bouton &quot;Modifier via le vote&quot; ouvre un mini-dialog dedie ou tu peux poser ton vote, qui rentre dans le calcul du consensus avec ceux des autres membres du foyer.</li>
+<li>Tu ne peux plus écraser la cadence d&#x27;une tâche (champ &quot;tous les X jours&quot;) en l&#x27;éditant directement dans la fiche : le champ devient grisé et affiche &quot;Consensus : 7 j (2 votes)&quot;. Pour modifier la cadence, un bouton &quot;Modifier via le vote&quot; ouvre un mini-dialog dédié où tu peux poser ton vote, qui rentre dans le calcul du consensus avec ceux des autres membres du foyer.</li>
 <li>Le mini-dialog affiche le consensus actuel et les votes des autres membres (&quot;Alex : 7 j&quot;) pour que tu voies pourquoi la cadence est ce qu&#x27;elle est avant de voter.</li>
-<li>A la creation d&#x27;une tache recurrente &quot;tous les X jours&quot;, la valeur que tu saisis devient automatiquement ton vote initial — plus de cadence &quot;fantome&quot; qui ne correspond a aucun vote.</li>
-<li>Si tu changes le type de recurrence (ex : passer de &quot;tous les 7 jours&quot; a &quot;variable par mois&quot;), tes votes sont conserves en sommeil. Si tu reviens a &quot;tous les X jours&quot; plus tard, ils reprennent vie automatiquement et la cadence est recalculee.</li>
+<li>À la création d&#x27;une tâche récurrente &quot;tous les X jours&quot;, la valeur que tu saisis devient automatiquement ton vote initial — plus de cadence &quot;fantôme&quot; qui ne correspond à aucun vote.</li>
+<li>Si tu changes le type de récurrence (ex : passer de &quot;tous les 7 jours&quot; à &quot;variable par mois&quot;), tes votes sont conservés en sommeil. Si tu reviens à &quot;tous les X jours&quot; plus tard, ils reprennent vie automatiquement et la cadence est recalculée.</li>
 </ul>
 <h2>v0.17.0 — 2026-04-23</h2>
 <h3>Mode vacances</h3>
 <ul>
-<li>Les streaks (jours d&#x27;affilee) ne sont plus casses par les jours d&#x27;absence : si vous etes en vacances et que vos jours sont marques absents (via le dialog de resolution de presence), votre serie continue comme si rien ne s&#x27;etait passe. Le compteur reste honnete : il affiche toujours le nombre reel de jours d&#x27;activite, mais l&#x27;absence ne casse plus la serie.</li>
-<li>Meme regle pour les badges &quot;Regulier&quot; / &quot;Semaine parfaite&quot; / &quot;Deux semaines&quot; / &quot;Mois parfait&quot; : ils restent debloquables apres une periode de vacances, sans devoir tout recommencer a zero.</li>
-<li>Seuls les jours <strong>explicitement</strong> marques absents gelent la serie. Les jours &quot;a confirmer&quot; (incertains) la cassent toujours — pensez a resoudre via le dialog au prochain lancement de l&#x27;app pour que vos vacances soient bien comptees.</li>
+<li>Les streaks (jours d&#x27;affilée) ne sont plus cassés par les jours d&#x27;absence : si vous êtes en vacances et que vos jours sont marqués absents (via le dialog de résolution de présence), votre série continue comme si rien ne s&#x27;était passé. Le compteur reste honnête : il affiche toujours le nombre réel de jours d&#x27;activité, mais l&#x27;absence ne casse plus la série.</li>
+<li>Même règle pour les badges &quot;Régulier&quot; / &quot;Semaine parfaite&quot; / &quot;Deux semaines&quot; / &quot;Mois parfait&quot; : ils restent débloquables après une période de vacances, sans devoir tout recommencer à zéro.</li>
+<li>Seuls les jours <strong>explicitement</strong> marqués absents gèlent la série. Les jours &quot;à confirmer&quot; (incertains) la cassent toujours — pensez à résoudre via le dialog au prochain lancement de l&#x27;app pour que vos vacances soient bien comptées.</li>
 </ul>
 <h2>v0.16.2 — 2026-04-23</h2>
 <h3>Correction</h3>
 <ul>
-<li>Quand on cree une nouvelle tache, on n&#x27;est plus prompted instantanement de la noter (affinite + effort). L&#x27;app attend maintenant que la tache ait ete faite au moins 2 fois et que la derniere completion remonte a au moins 1 jour avant de proposer la notation. Evite le double travail &quot;je remplis le formulaire de creation puis je remplis le formulaire de notation&quot; et laisse le temps d&#x27;eprouver la tache pour pouvoir la noter sincerement.</li>
-<li>Les taches ponctuelles (sans recurrence) ne sont plus jamais proposees a la notation : noter une tache one-shot n&#x27;a pas d&#x27;utilite long-terme.</li>
+<li>Quand on crée une nouvelle tâche, on n&#x27;est plus prompted instantanément de la noter (affinité + effort). L&#x27;app attend maintenant que la tâche ait été faite au moins 2 fois et que la dernière complétion remonte à au moins 1 jour avant de proposer la notation. Évite le double travail &quot;je remplis le formulaire de création puis je remplis le formulaire de notation&quot; et laisse le temps d&#x27;éprouver la tâche pour pouvoir la noter sincèrement.</li>
+<li>Les tâches ponctuelles (sans récurrence) ne sont plus jamais proposées à la notation : noter une tâche one-shot n&#x27;a pas d&#x27;utilité long-terme.</li>
 </ul>
 <h2>v0.16.1 — 2026-04-23</h2>
 <h3>Correction</h3>
 <ul>
-<li>L&#x27;heure du resume quotidien choisie dans les Reglages est enfin respectee des qu&#x27;on bouge le slider : on deplace, on relache, la prochaine notif tombe a la nouvelle heure. Plus besoin de tuer et relancer l&#x27;app.</li>
+<li>L&#x27;heure du résumé quotidien choisie dans les Réglages est enfin respectée dès qu&#x27;on bouge le slider : on déplace, on relâche, la prochaine notif tombe à la nouvelle heure. Plus besoin de tuer et relancer l&#x27;app.</li>
 </ul>
 <h2>v0.16.0 — 2026-04-22</h2>
 <h3>Nouveau</h3>
 <ul>
-<li>Bouton pour ignorer une suggestion sur l&#x27;ecran d&#x27;accueil : chaque carte a maintenant une petite croix en haut a droite qui masque la tache et affiche la suivante du meme tier. Les dismiss sont purement locaux et se reinitialisent a chaque redemarrage de l&#x27;app.</li>
-<li>Quand toutes les suggestions d&#x27;un tier (urgentes / affinite / sans cadence) ont ete ignorees, un message apparait et les taches ignorees redeviennent visibles — rien n&#x27;est jamais perdu.</li>
+<li>Bouton pour ignorer une suggestion sur l&#x27;écran d&#x27;accueil : chaque carte a maintenant une petite croix en haut à droite qui masque la tâche et affiche la suivante du même tier. Les dismiss sont purement locaux et se réinitialisent à chaque redémarrage de l&#x27;app.</li>
+<li>Quand toutes les suggestions d&#x27;un tier (urgentes / affinité / sans cadence) ont été ignorées, un message apparaît et les tâches ignorées redeviennent visibles — rien n&#x27;est jamais perdu.</li>
 </ul>
 <h2>v0.15.5 — 2026-04-20</h2>
 <h3>Corrections</h3>
 <ul>
-<li>La notification quotidienne sortait a un horaire arbitraire au lieu de l&#x27;heure reglee dans les parametres. Cause : l&#x27;ancienne planification creee par une version anterieure persistait meme apres mise a jour. Corrige : chaque montee de version replanifie le rappel avec l&#x27;heure choisie dans Reglages.</li>
+<li>La notification quotidienne sortait à un horaire arbitraire au lieu de l&#x27;heure réglée dans les paramètres. Cause : l&#x27;ancienne planification créée par une version antérieure persistait même après mise à jour. Corrigé : chaque montée de version replanifie le rappel avec l&#x27;heure choisie dans Réglages.</li>
 </ul>
 <h2>v0.15.4 — 2026-04-19</h2>
 <h3>Ajustements</h3>
 <ul>
-<li>Le slider de vote de frequence dans la popup de notation ne depasse plus 365 jours, meme quand la tache avait une cadence tres longue. Evite de proposer des votes que le serveur rejetterait.</li>
+<li>Le slider de vote de fréquence dans la popup de notation ne dépasse plus 365 jours, même quand la tâche avait une cadence très longue. Évite de proposer des votes que le serveur rejetterait.</li>
 </ul>
 <h2>v0.15.3 — 2026-04-19</h2>
 <h3>Corrections</h3>
 <ul>
-<li>Le bandeau &quot;Synchronisation en cours&quot; qui restait affiche en permanence est corrige. Certains votes de frequence saisis via le slider (ex : passer a tous les 120 jours) etaient rejetes par le serveur et l&#x27;app les rejouait en boucle sans jamais les abandonner, ce qui laissait le bandeau affiche indefiniment.</li>
-<li>Le cap sur les votes de frequence passe de 60 a 365 jours. Tu peux maintenant voter pour des taches qui reviennent annuellement (controle technique voiture, decorations de Noel, etc.).</li>
+<li>Le bandeau &quot;Synchronisation en cours&quot; qui restait affiché en permanence est corrigé. Certains votes de fréquence saisis via le slider (ex : passer à tous les 120 jours) étaient rejetés par le serveur et l&#x27;app les rejouait en boucle sans jamais les abandonner, ce qui laissait le bandeau affiché indéfiniment.</li>
+<li>Le cap sur les votes de fréquence passe de 60 à 365 jours. Tu peux maintenant voter pour des tâches qui reviennent annuellement (contrôle technique voiture, décorations de Noël, etc.).</li>
 </ul>
 <h2>v0.15.2 — 2026-04-19</h2>
 <h3>Notifications</h3>
 <ul>
-<li>Le rappel quotidien des taches a faire fonctionne a nouveau : le worker qui envoie la notification n&#x27;etait pas authentifie et recevait systematiquement une erreur du serveur, donc aucune notification n&#x27;etait produite.</li>
-<li>Nouveau : l&#x27;heure de la notification quotidienne est maintenant respectee. Choisis l&#x27;heure dans Reglages -&gt; Notifications (slider 6h-22h), la notif arrivera autour de cette heure le lendemain. Avant, WorkManager choisissait une fenetre arbitraire dans la journee.</li>
-<li>Le toggle &quot;Notification quotidienne&quot; dans Reglages desactive correctement le rappel (plus besoin de redemarrer l&#x27;app).</li>
+<li>Le rappel quotidien des tâches à faire fonctionne à nouveau : le worker qui envoie la notification n&#x27;était pas authentifié et recevait systématiquement une erreur du serveur, donc aucune notification n&#x27;était produite.</li>
+<li>Nouveau : l&#x27;heure de la notification quotidienne est maintenant respectée. Choisis l&#x27;heure dans Réglages -&gt; Notifications (slider 6h-22h), la notif arrivera autour de cette heure le lendemain. Avant, WorkManager choisissait une fenêtre arbitraire dans la journée.</li>
+<li>Le toggle &quot;Notification quotidienne&quot; dans Réglages désactive correctement le rappel (plus besoin de redémarrer l&#x27;app).</li>
 </ul>
 <h2>v0.15.1 — 2026-04-19</h2>
 <h3>Corrections</h3>
 <ul>
-<li>Correction d&#x27;un bug qui faisait apparaitre certaines taches recurrentes comme &quot;en retard&quot; dans la liste alors qu&#x27;elles avaient ete faites recemment (exemple : une tache tous les 45 jours faite il y a 10 jours pouvait s&#x27;afficher en retard de 11 jours). L&#x27;ecran de detail affichait la bonne info — c&#x27;est uniquement la liste qui etait trompee.</li>
+<li>Correction d&#x27;un bug qui faisait apparaître certaines tâches récurrentes comme &quot;en retard&quot; dans la liste alors qu&#x27;elles avaient été faites récemment (exemple : une tâche tous les 45 jours faite il y a 10 jours pouvait s&#x27;afficher en retard de 11 jours). L&#x27;écran de détail affichait la bonne info — c&#x27;est uniquement la liste qui était trompée.</li>
 </ul>
 <h2>v0.15.0 — 2026-04-19</h2>
-<h3>Liste des taches</h3>
+<h3>Liste des tâches</h3>
 <ul>
-<li>Nouveau filtre Solo / Groupe (icone 👤) pour separer les taches attribuees a moi seul des taches partagees.</li>
+<li>Nouveau filtre Solo / Groupe (icône 👤) pour séparer les tâches attribuées à moi seul des tâches partagées.</li>
 </ul>
-<h3>Edition d&#x27;une tache</h3>
+<h3>Édition d&#x27;une tâche</h3>
 <ul>
-<li>On peut maintenant changer le type de recurrence en editant une tache existante (ex : passer d&#x27;une recurrence reguliere a &quot;Quand c&#x27;est necessaire&quot;, ou l&#x27;inverse).</li>
-<li>La tolerance au retard n&#x27;est plus affichee pour les taches &quot;Quand c&#x27;est necessaire&quot; — elle ne s&#x27;appliquait pas a ce type et pretait a confusion.</li>
+<li>On peut maintenant changer le type de récurrence en éditant une tâche existante (ex : passer d&#x27;une récurrence régulière à &quot;Quand c&#x27;est nécessaire&quot;, ou l&#x27;inverse).</li>
+<li>La tolérance au retard n&#x27;est plus affichée pour les tâches &quot;Quand c&#x27;est nécessaire&quot; — elle ne s&#x27;appliquait pas à ce type et prêtait à confusion.</li>
 </ul>
 <h3>Corrections</h3>
 <ul>
-<li>Les notifications fonctionnent enfin sur Android 13+ : l&#x27;app demande la permission au lancement (elle etait declaree mais jamais demandee, Android les refusait silencieusement).</li>
+<li>Les notifications fonctionnent enfin sur Android 13+ : l&#x27;app demande la permission au lancement (elle était déclarée mais jamais demandée, Android les refusait silencieusement).</li>
 </ul>
 <h2>v0.14.0 — 2026-04-19</h2>
-<h3>Recurrence &quot;Sans cadence&quot;</h3>
+<h3>Récurrence &quot;Sans cadence&quot;</h3>
 <ul>
-<li>Nouveau choix dans le picker de recurrence : &quot;Quand c&#x27;est necessaire&quot; — pour les taches qu&#x27;on fait irregulierement sans rythme fixe (ex : lessive, liste de courses).</li>
-<li>Les taches &quot;sans cadence&quot; apparaissent dans une 3e section dediee sur l&#x27;accueil, toujours verte, avec un libelle factuel (&quot;Pas encore faite&quot; ou &quot;Fait il y a X j&quot;) au lieu d&#x27;un compte a rebours.</li>
-<li>L&#x27;app apprend automatiquement a quelle frequence tu fais cette tache et la classe en tete quand elle te l&#x27;a pas proposee depuis longtemps.</li>
+<li>Nouveau choix dans le picker de récurrence : &quot;Quand c&#x27;est nécessaire&quot; — pour les tâches qu&#x27;on fait irrégulièrement sans rythme fixe (ex : lessive, liste de courses).</li>
+<li>Les tâches &quot;sans cadence&quot; apparaissent dans une 3e section dédiée sur l&#x27;accueil, toujours verte, avec un libellé factuel (&quot;Pas encore faite&quot; ou &quot;Fait il y a X j&quot;) au lieu d&#x27;un compte à rebours.</li>
+<li>L&#x27;app apprend automatiquement à quelle fréquence tu fais cette tâche et la classe en tête quand elle te l&#x27;a pas proposée depuis longtemps.</li>
 <li>Le gel des vacances continue de s&#x27;appliquer (les jours d&#x27;absence ne comptent pas).</li>
 </ul>
-<h3>Detail de tache : respect des attributions</h3>
+<h3>Détail de tâche : respect des attributions</h3>
 <ul>
-<li>Sur une tache attribuee a une seule personne, l&#x27;ecran detail affiche maintenant un bandeau &quot;Pour un membre uniquement&quot; (avec son prenom) en haut.</li>
-<li>L&#x27;autre personne ne voit plus son propre encart &quot;Effort &amp; Affinite&quot; pour cette tache (il etait trompeur : noter une tache qu&#x27;on ne fait pas n&#x27;a pas de sens).</li>
-<li>Le bouton &quot;Modifier&quot; de la note d&#x27;affinite/effort est masque pour qui n&#x27;est pas attribue.</li>
+<li>Sur une tâche attribuée à une seule personne, l&#x27;écran détail affiche maintenant un bandeau &quot;Pour un membre uniquement&quot; (avec son prénom) en haut.</li>
+<li>L&#x27;autre personne ne voit plus son propre encart &quot;Effort &amp; Affinité&quot; pour cette tâche (il était trompeur : noter une tâche qu&#x27;on ne fait pas n&#x27;a pas de sens).</li>
+<li>Le bouton &quot;Modifier&quot; de la note d&#x27;affinité/effort est masqué pour qui n&#x27;est pas attribué.</li>
 </ul>
 <h2>v0.13.1 — 2026-04-18</h2>
 <h3>Fix recherche</h3>
 <ul>
-<li>Le curseur du champ de recherche revenait en arriere quand on tapait vite : corrige. L&#x27;affichage du texte saisi est maintenant synchrone, independant du temps que prend le filtrage en arriere-plan.</li>
+<li>Le curseur du champ de recherche revenait en arrière quand on tapait vite : corrigé. L&#x27;affichage du texte saisi est maintenant synchrone, indépendant du temps que prend le filtrage en arrière-plan.</li>
 </ul>
 <h2>v0.13.0 — 2026-04-18</h2>
-<h3>Recherche dans les taches</h3>
+<h3>Recherche dans les tâches</h3>
 <ul>
-<li>Nouvelle loupe dans l&#x27;ecran Taches, en haut a droite de la rangee de filtres. Cliquer la loupe remplace les chips de filtres par un champ de recherche qui prend toute la largeur.</li>
-<li>Par defaut la recherche ignore tous les filtres actifs (y compris &quot;A faire&quot;) et cherche dans toutes les taches.</li>
-<li>Un petit bouton en forme d&#x27;entonnoir a cote du champ permet de reappliquer les filtres courants si besoin.</li>
-<li>La recherche matche le titre, la description, le nom de la categorie et le nom de la piece. Insensible aux accents (taper &quot;ecole&quot; trouve &quot;Ecole&quot;) et a la casse.</li>
-<li>Recherche multi-mots : &quot;cuisine linge&quot; trouve les taches qui contiennent les deux.</li>
+<li>Nouvelle loupe dans l&#x27;écran Tâches, en haut à droite de la rangée de filtres. Cliquer la loupe remplace les chips de filtres par un champ de recherche qui prend toute la largeur.</li>
+<li>Par défaut la recherche ignore tous les filtres actifs (y compris &quot;À faire&quot;) et cherche dans toutes les tâches.</li>
+<li>Un petit bouton en forme d&#x27;entonnoir à côté du champ permet de réappliquer les filtres courants si besoin.</li>
+<li>La recherche matche le titre, la description, le nom de la catégorie et le nom de la pièce. Insensible aux accents (taper &quot;ecole&quot; trouve &quot;École&quot;) et à la casse.</li>
+<li>Recherche multi-mots : &quot;cuisine linge&quot; trouve les tâches qui contiennent les deux.</li>
 </ul>
-<h3>Refonte de la detection de presence</h3>
+<h3>Refonte de la détection de présence</h3>
 <ul>
-<li>La detection automatique en arriere-plan (qui necessitait que l&#x27;app tourne en permanence) est supprimee : Android la brimait trop pour qu&#x27;elle soit fiable.</li>
-<li>Nouveau fonctionnement : l&#x27;app detecte ta presence au lancement quand elle voit le WiFi maison. Les jours ou personne n&#x27;a lance l&#x27;app sont marques &quot;a confirmer&quot;.</li>
-<li>Nouveau dialog de resolution : quand des jours sont incertains, l&#x27;app propose au lancement une grille-calendrier ou chaque jour peut etre marque present (vert) ou absent (gris). Pour les longues absences (&gt;30 jours), un mode simplifie &quot;j&#x27;etais absent depuis X&quot; apparait a la place.</li>
-<li>Les permissions de localisation en arriere-plan ne sont donc plus necessaires — tu peux les retirer dans les reglages Android si tu veux.</li>
+<li>La détection automatique en arrière-plan (qui nécessitait que l&#x27;app tourne en permanence) est supprimée : Android la brimait trop pour qu&#x27;elle soit fiable.</li>
+<li>Nouveau fonctionnement : l&#x27;app détecte ta présence au lancement quand elle voit le WiFi maison. Les jours où personne n&#x27;a lancé l&#x27;app sont marqués &quot;à confirmer&quot;.</li>
+<li>Nouveau dialog de résolution : quand des jours sont incertains, l&#x27;app propose au lancement une grille-calendrier où chaque jour peut être marqué présent (vert) ou absent (gris). Pour les longues absences (&gt;30 jours), un mode simplifié &quot;j&#x27;étais absent depuis X&quot; apparaît à la place.</li>
+<li>Les permissions de localisation en arrière-plan ne sont donc plus nécessaires — tu peux les retirer dans les réglages Android si tu veux.</li>
 </ul>
 <h2>v0.12.0 — 2026-04-17</h2>
 <h3>Bonus et malus de points</h3>
 <ul>
-<li>Les taches en retard rapportent maintenant un bonus de points (+50% par defaut) quand elles depassent un seuil configurable. Une pastille &quot;🔥 +50%&quot; apparait sur les suggestions concernees.</li>
-<li>A l&#x27;inverse, completer une tache tres en avance applique un malus progressif (jusqu&#x27;a -50% des points). Plus tu la fais tot dans le cycle, plus le malus est fort.</li>
-<li>La premiere completion d&#x27;une tache donne toujours les points pleins (pas de bonus ni de malus).</li>
-<li>Le dialog &quot;Deja fait&quot; / &quot;Fait ensemble&quot; affiche maintenant une ligne de preview des points avant validation : tu vois combien tu vas gagner et pourquoi (bonus retard, malus avance, premiere fois).</li>
-<li>La celebration apres validation affiche les points gagnes (+X pts) avec la raison du bonus ou malus.</li>
-<li>La fiche detail d&#x27;une tache affiche le bonus ou malus actuel a cote de l&#x27;etat d&#x27;urgence.</li>
+<li>Les tâches en retard rapportent maintenant un bonus de points (+50% par défaut) quand elles dépassent un seuil configurable. Une pastille &quot;🔥 +50%&quot; apparaît sur les suggestions concernées.</li>
+<li>À l&#x27;inverse, compléter une tâche très en avance applique un malus progressif (jusqu&#x27;à -50% des points). Plus tu la fais tôt dans le cycle, plus le malus est fort.</li>
+<li>La première complétion d&#x27;une tâche donne toujours les points pleins (pas de bonus ni de malus).</li>
+<li>Le dialog &quot;Déjà fait&quot; / &quot;Fait ensemble&quot; affiche maintenant une ligne de preview des points avant validation : tu vois combien tu vas gagner et pourquoi (bonus retard, malus avance, première fois).</li>
+<li>La célébration après validation affiche les points gagnés (+X pts) avec la raison du bonus ou malus.</li>
+<li>La fiche détail d&#x27;une tâche affiche le bonus ou malus actuel à côté de l&#x27;état d&#x27;urgence.</li>
 </ul>
-<h3>Detection des taches penibles</h3>
+<h3>Détection des tâches pénibles</h3>
 <ul>
-<li>Quand une tache est systematiquement en retard (plus de 70% des completions en zone bonus sur une fenetre glissante), l&#x27;app propose automatiquement a chaque membre du foyer de bumper la penibilite de +1.</li>
-<li>Le modal de bump affiche la liste des dernieres completions avec leur statut, et propose soit un bump rapide, soit d&#x27;aller modifier les notes (affinite/effort).</li>
-<li>Un seul prompt s&#x27;affiche a l&#x27;ouverture de l&#x27;app (pas de spam). Apres un prompt, 2h de silence minimum.</li>
+<li>Quand une tâche est systématiquement en retard (plus de 70% des complétions en zone bonus sur une fenêtre glissante), l&#x27;app propose automatiquement à chaque membre du foyer de bumper la pénibilité de +1.</li>
+<li>Le modal de bump affiche la liste des dernières complétions avec leur statut, et propose soit un bump rapide, soit d&#x27;aller modifier les notes (affinité/effort).</li>
+<li>Un seul prompt s&#x27;affiche à l&#x27;ouverture de l&#x27;app (pas de spam). Après un prompt, 2h de silence minimum.</li>
 </ul>
-<h3>Reglages avances</h3>
+<h3>Réglages avancés</h3>
 <ul>
-<li>Nouveau panneau &quot;Bonus / Malus de points&quot; dans les Options avancees des Reglages, avec tous les seuils configurables par foyer (14 curseurs avec explications).</li>
+<li>Nouveau panneau &quot;Bonus / Malus de points&quot; dans les Options avancées des Réglages, avec tous les seuils configurables par foyer (14 curseurs avec explications).</li>
 </ul>
 <h2>v0.11.1 — 2026-04-15</h2>
-<h3>Fin du &quot;flash&quot; apres une completion sur l&#x27;accueil</h3>
+<h3>Fin du &quot;flash&quot; après une complétion sur l&#x27;accueil</h3>
 <ul>
-<li>Avant : apres avoir valide une tache sur l&#x27;accueil, l&#x27;animation de celebration se jouait, puis la meme tache reapparaissait brievement pendant 1-2 secondes avant d&#x27;etre remplacee par une autre. C&#x27;etait lie au fait que le serveur n&#x27;avait pas encore vu la validation (synchro en cours) et renvoyait donc la meme suggestion.</li>
-<li>Maintenant : l&#x27;accueil charge en arriere-plan un tampon de plusieurs suggestions d&#x27;avance (5 urgentes + 5 affinites). Quand tu valides une tache, la suivante apparait instantanement apres l&#x27;animation, sans attendre le serveur. La tache que tu viens de valider est automatiquement masquee cote client jusqu&#x27;a ce que la synchro rattrape.</li>
-<li>En cas de burst de completions (5 d&#x27;affilee sans que la synchro suive), une petite carte &quot;Prochaine suggestion en route...&quot; s&#x27;affiche le temps que le backend rattrape, plutot que de te montrer du vide ou une fausse tache.</li>
+<li>Avant : après avoir validé une tâche sur l&#x27;accueil, l&#x27;animation de célébration se jouait, puis la même tâche réapparaissait brièvement pendant 1-2 secondes avant d&#x27;être remplacée par une autre. C&#x27;était lié au fait que le serveur n&#x27;avait pas encore vu la validation (synchro en cours) et renvoyait donc la même suggestion.</li>
+<li>Maintenant : l&#x27;accueil charge en arrière-plan un tampon de plusieurs suggestions d&#x27;avance (5 urgentes + 5 affinités). Quand tu valides une tâche, la suivante apparaît instantanément après l&#x27;animation, sans attendre le serveur. La tâche que tu viens de valider est automatiquement masquée côté client jusqu&#x27;à ce que la synchro rattrape.</li>
+<li>En cas de burst de complétions (5 d&#x27;affilée sans que la synchro suive), une petite carte &quot;Prochaine suggestion en route...&quot; s&#x27;affiche le temps que le backend rattrape, plutôt que de te montrer du vide ou une fausse tâche.</li>
 </ul>
 <h2>v0.11.0 — 2026-04-15</h2>
-<h3>&quot;Fait ensemble&quot; — partager les taches et les points</h3>
+<h3>&quot;Fait ensemble&quot; — partager les tâches et les points</h3>
 <ul>
-<li>Nouveau bouton <strong>Fait ensemble</strong> (icone groupe) sur chaque tache, present sur l&#x27;accueil, la liste des taches et la vue detail. Il permet de dire &quot;on ne l&#x27;a pas fait tout seul&quot; : les points sont partages equitablement entre les participants et chacun progresse dans son compteur.</li>
-<li>Dans un foyer a 2 personnes : cliquer ouvre directement un selecteur de date, les deux membres sont automatiquement inclus (pas besoin de cocher).</li>
-<li>Dans un foyer a 3 personnes ou plus : une popup apparait avec les membres assignes pre-coches, un bouton &quot;Ajouter un membre&quot; pour inclure quelqu&#x27;un d&#x27;autre du foyer, et un selecteur de date. Minimum 1 participant coche pour valider.</li>
-<li>Si quelqu&#x27;un a deja valide la tache dans la fenetre anti-doublon, la validation collective est refusee en bloc (aucune ligne creee) et un message l&#x27;explique.</li>
+<li>Nouveau bouton <strong>Fait ensemble</strong> (icône groupe) sur chaque tâche, présent sur l&#x27;accueil, la liste des tâches et la vue détail. Il permet de dire &quot;on ne l&#x27;a pas fait tout seul&quot; : les points sont partagés équitablement entre les participants et chacun progresse dans son compteur.</li>
+<li>Dans un foyer à 2 personnes : cliquer ouvre directement un sélecteur de date, les deux membres sont automatiquement inclus (pas besoin de cocher).</li>
+<li>Dans un foyer à 3 personnes ou plus : une popup apparaît avec les membres assignés pré-cochés, un bouton &quot;Ajouter un membre&quot; pour inclure quelqu&#x27;un d&#x27;autre du foyer, et un sélecteur de date. Minimum 1 participant coché pour valider.</li>
+<li>Si quelqu&#x27;un a déjà validé la tâche dans la fenêtre anti-doublon, la validation collective est refusée en bloc (aucune ligne créée) et un message l&#x27;explique.</li>
 </ul>
-<h3>&quot;Deja fait&quot; sur la vue detail d&#x27;une tache</h3>
+<h3>&quot;Déjà fait&quot; sur la vue détail d&#x27;une tâche</h3>
 <ul>
-<li>Le bouton <strong>Deja fait</strong> (icone calendrier) est maintenant aussi present sur l&#x27;ecran detail d&#x27;une tache, en plus de l&#x27;accueil et de la liste. Jusqu&#x27;ici il manquait a cet endroit.</li>
-<li>Dans la popup &quot;Deja fait&quot;, un nouveau bouton &quot;A plusieurs...&quot; permet de basculer vers le flow &quot;Fait ensemble&quot; sans repartir de zero.</li>
+<li>Le bouton <strong>Déjà fait</strong> (icône calendrier) est maintenant aussi présent sur l&#x27;écran détail d&#x27;une tâche, en plus de l&#x27;accueil et de la liste. Jusqu&#x27;ici il manquait à cet endroit.</li>
+<li>Dans la popup &quot;Déjà fait&quot;, un nouveau bouton &quot;À plusieurs...&quot; permet de basculer vers le flow &quot;Fait ensemble&quot; sans repartir de zéro.</li>
 </ul>
-<h3>Popup de completion unifiee</h3>
+<h3>Popup de complétion unifiée</h3>
 <ul>
-<li>Les deux anciennes popups separees (choisir qui puis choisir quand) sont remplacees par une seule popup claire avec la date et la liste des participants au meme endroit. Plus rapide a valider.</li>
+<li>Les deux anciennes popups séparées (choisir qui puis choisir quand) sont remplacées par une seule popup claire avec la date et la liste des participants au même endroit. Plus rapide à valider.</li>
 </ul>
 <h3>Nettoyage de l&#x27;accueil</h3>
 <ul>
-<li>La section &quot;En cours&quot; de l&#x27;accueil (qui affichait les taches demarrees mais pas encore validees) est supprimee. Elle etait quasi jamais utilisee et parasitait l&#x27;ecran.</li>
+<li>La section &quot;En cours&quot; de l&#x27;accueil (qui affichait les tâches démarrées mais pas encore validées) est supprimée. Elle était quasi jamais utilisée et parasitait l&#x27;écran.</li>
 </ul>
 <h2>v0.10.2 — 2026-04-15</h2>
-<h3>Fin des crashs apres mise a jour</h3>
+<h3>Fin des crashs après mise à jour</h3>
 <ul>
-<li>L&#x27;app purge maintenant automatiquement son cache local d&#x27;ecran d&#x27;accueil a chaque nouvelle version installee. Ca evite les crashs comme celui de la v0.10.0 : quand le format des donnees change d&#x27;une version a l&#x27;autre, l&#x27;ancien contenu en cache pouvait faire planter l&#x27;app au premier lancement. Maintenant, la premiere ouverture apres une mise a jour repart d&#x27;un cache vide et se re-remplit au premier refresh reseau.</li>
+<li>L&#x27;app purge maintenant automatiquement son cache local d&#x27;écran d&#x27;accueil à chaque nouvelle version installée. Ça évite les crashs comme celui de la v0.10.0 : quand le format des données change d&#x27;une version à l&#x27;autre, l&#x27;ancien contenu en cache pouvait faire planter l&#x27;app au premier lancement. Maintenant, la première ouverture après une mise à jour repart d&#x27;un cache vide et se re-remplit au premier refresh réseau.</li>
 </ul>
 <h2>v0.10.1 — 2026-04-15</h2>
-<h3>Fix crash au demarrage</h3>
+<h3>Fix crash au démarrage</h3>
 <ul>
-<li>Corrige un crash de l&#x27;app au demarrage apres la mise a jour v0.10.0 (ecran qui se ferme immediatement quand on ouvre l&#x27;app). Cause : les anciennes suggestions encore en cache local n&#x27;avaient pas le nouveau champ d&#x27;etat ; l&#x27;app tentait de les afficher avant le refresh et plantait. Maintenant le rendu est tolerant a ce cas et affiche neutre le temps que le refresh arrive.</li>
+<li>Corrige un crash de l&#x27;app au démarrage après la mise à jour v0.10.0 (écran qui se ferme immédiatement quand on ouvre l&#x27;app). Cause : les anciennes suggestions encore en cache local n&#x27;avaient pas le nouveau champ d&#x27;état ; l&#x27;app tentait de les afficher avant le refresh et plantait. Maintenant le rendu est tolérant à ce cas et affiche neutre le temps que le refresh arrive.</li>
 </ul>
 <h2>v0.10.0 — 2026-04-15</h2>
-<h3>Refonte du modele de fraicheur — fini la demi-vie, place a l&#x27;echeance</h3>
+<h3>Refonte du modèle de fraîcheur — fini la demi-vie, place à l&#x27;échéance</h3>
 <ul>
-<li>Avant : chaque tache avait un score de &quot;fraicheur&quot; qui decroissait de facon exponentielle (demi-vie). Probleme : pas intuitif. Une tache &quot;litiere tous les 2 jours&quot; faite il y a 4 jours n&#x27;etait toujours qu&#x27;en orange, alors que mentalement elle est &quot;en retard de 2 jours&quot;.</li>
-<li>Maintenant : chaque tache a une <strong>echeance</strong> (<code>due_date = derniere_completion + intervalle</code>) et l&#x27;etat est calcule en jours :</li>
-<li><strong>Vert</strong> : pas encore due (loin de l&#x27;echeance)</li>
-<li><strong>Orange</strong> : du aujourd&#x27;hui ou bientot (fenetre de <code>floor(intervalle * 0.10)</code> jours avant l&#x27;echeance — pour 7j elle est de 0 jour, pour 30j de 3 jours, pour 60j de 6 jours)</li>
-<li><strong>Rouge</strong> : en retard (apres l&#x27;echeance)</li>
-<li>Sur les cartes : couleur + texte countdown (&quot;dans 3j&quot;, &quot;a faire aujourd&#x27;hui&quot;, &quot;en retard de 2 j&quot;) affiches systematiquement.</li>
-<li>Au passage, le scenario d&#x27;origine est corrige : litiere 2j faite le 11/04 -&gt; rouge &quot;en retard de 2 j&quot; le 15/04 (avant : encore orange, ce qui n&#x27;avait aucun sens).</li>
+<li>Avant : chaque tâche avait un score de &quot;fraîcheur&quot; qui décroissait de façon exponentielle (demi-vie). Problème : pas intuitif. Une tâche &quot;litière tous les 2 jours&quot; faite il y a 4 jours n&#x27;était toujours qu&#x27;en orange, alors que mentalement elle est &quot;en retard de 2 jours&quot;.</li>
+<li>Maintenant : chaque tâche a une <strong>échéance</strong> (<code>due_date = derniere_completion + intervalle</code>) et l&#x27;état est calculé en jours :</li>
+<li><strong>Vert</strong> : pas encore due (loin de l&#x27;échéance)</li>
+<li><strong>Orange</strong> : dû aujourd&#x27;hui ou bientôt (fenêtre de <code>floor(intervalle * 0.10)</code> jours avant l&#x27;échéance — pour 7j elle est de 0 jour, pour 30j de 3 jours, pour 60j de 6 jours)</li>
+<li><strong>Rouge</strong> : en retard (après l&#x27;échéance)</li>
+<li>Sur les cartes : couleur + texte countdown (&quot;dans 3j&quot;, &quot;à faire aujourd&#x27;hui&quot;, &quot;en retard de 2 j&quot;) affichés systématiquement.</li>
+<li>Au passage, le scénario d&#x27;origine est corrigé : litière 2j faite le 11/04 -&gt; rouge &quot;en retard de 2 j&quot; le 15/04 (avant : encore orange, ce qui n&#x27;avait aucun sens).</li>
 </ul>
-<h3>Tolerance repurposee — uniquement pour le selecteur &quot;la plus urgente&quot;</h3>
+<h3>Tolérance repurposée — uniquement pour le sélecteur &quot;la plus urgente&quot;</h3>
 <ul>
-<li>La tolerance (STRICT / NORMAL / SOUPLE) ne change plus rien a l&#x27;etat affiche d&#x27;une tache ni au moment ou elle passe en retard.</li>
-<li>Son seul role : prioriser le selecteur de la &quot;tache la plus urgente&quot; sur la home page :</li>
+<li>La tolérance (STRICT / NORMAL / SOUPLE) ne change plus rien à l&#x27;état affiché d&#x27;une tâche ni au moment où elle passe en retard.</li>
+<li>Son seul rôle : prioriser le sélecteur de la &quot;tâche la plus urgente&quot; sur la home page :</li>
 <li>STRICT en retard passe avant NORMAL en retard, qui passe avant SOUPLE en retard. Au sein d&#x27;un tier, on prend celle avec le plus gros ratio (jours de retard / intervalle).</li>
-<li>Si aucune tache n&#x27;est en retard, fallback sur les Oranges (toutes tolerances confondues, plus proche de l&#x27;echeance d&#x27;abord).</li>
-<li>Une bulle ℹ a cote du selecteur de tolerance (dans le detail/edition/creation d&#x27;une tache) explique tout ca.</li>
+<li>Si aucune tâche n&#x27;est en retard, fallback sur les Oranges (toutes tolérances confondues, plus proche de l&#x27;échéance d&#x27;abord).</li>
+<li>Une bulle ℹ à côté du sélecteur de tolérance (dans le détail/édition/création d&#x27;une tâche) explique tout ça.</li>
 </ul>
 <h3>Nettoyage</h3>
 <ul>
-<li>Suppression du knob &quot;Seuil de suggestion&quot; dans les reglages avances (le modele est maintenant deterministe, plus besoin de le configurer).</li>
+<li>Suppression du knob &quot;Seuil de suggestion&quot; dans les réglages avancés (le modèle est maintenant déterministe, plus besoin de le configurer).</li>
 </ul>
 <h2>v0.9.0 — 2026-04-14</h2>
 <h3>Catalogue de templates</h3>
 <ul>
-<li>Nouvel ecran &quot;Catalogue&quot; accessible via un petit bouton magique a cote du &quot;+&quot; dans l&#x27;ecran des taches. Il propose une bibliotheque de taches, de pieces et de categories pretes a l&#x27;emploi (vaisselle, aspirateur, nettoyer la sdb, cuisine, salon, menage, linge, ...) en trois onglets.</li>
-<li>Selection multiple (tu coches ce que tu veux) et bouton &quot;Importer N&quot; en bas. Quand les taches que tu importes referencent des pieces ou des categories, une popup de rattachement propose soit de les creer, soit de les mapper sur des elements existants de ton foyer (avec detection automatique des noms similaires — &quot;Cuisine&quot; vs &quot;cuisine&quot; vs &quot;La cuisine&quot; sont detectes comme la meme chose).</li>
-<li>Pratique pour peupler un foyer vide en quelques clics, ou pour t&#x27;inspirer et ajouter des taches auxquelles tu n&#x27;aurais pas pense.</li>
+<li>Nouvel écran &quot;Catalogue&quot; accessible via un petit bouton magique à côté du &quot;+&quot; dans l&#x27;écran des tâches. Il propose une bibliothèque de tâches, de pièces et de catégories prêtes à l&#x27;emploi (vaisselle, aspirateur, nettoyer la sdb, cuisine, salon, ménage, linge, ...) en trois onglets.</li>
+<li>Sélection multiple (tu coches ce que tu veux) et bouton &quot;Importer N&quot; en bas. Quand les tâches que tu importes référencent des pièces ou des catégories, une popup de rattachement propose soit de les créer, soit de les mapper sur des éléments existants de ton foyer (avec détection automatique des noms similaires — &quot;Cuisine&quot; vs &quot;cuisine&quot; vs &quot;La cuisine&quot; sont détectés comme la même chose).</li>
+<li>Pratique pour peupler un foyer vide en quelques clics, ou pour t&#x27;inspirer et ajouter des tâches auxquelles tu n&#x27;aurais pas pensé.</li>
 </ul>
 <h2>v0.8.1 — 2026-04-14</h2>
 <h3>Proposition d&#x27;objectifs en mode foyer</h3>
 <ul>
-<li>Le popup de simulation (tap sur les cartes &quot;Moi&quot; ou &quot;Foyer&quot;) contient maintenant un slider par membre du foyer : tu peux simuler un plan complet en ajustant les rythmes de chacun et voir en direct en combien de jours le retard serait rattrape. Le bouton &quot;Juste pour moi&quot; reste dispo pour sauver uniquement ton objectif.</li>
-<li>Nouveau bouton &quot;Proposer au foyer&quot; (actif des que tu bouges au moins un slider des autres membres) : il envoie ta proposition en live au reste du foyer. Les autres recoivent un modal bloquant avec ta proposition, ils ont 3 minutes pour accepter ou refuser. Pendant ce temps, tu vois un ecran d&#x27;attente qui liste en direct qui a valide, avec un bouton &quot;Annuler la proposition&quot; si tu changes d&#x27;avis.</li>
-<li>Quand tout le monde accepte, les objectifs sont sauves pour chacun et une popup de celebration apparait sur les apps de tous les membres (&quot;Vous etes sur la bonne voie vers un foyer propre !&quot;) avec un easter egg a decouvrir en cliquant sur le lien en bas.</li>
-<li>Si quelqu&#x27;un refuse ou si le delai expire, la proposition est annulee, aucun objectif n&#x27;est sauve, et tout le monde est notifie.</li>
+<li>Le popup de simulation (tap sur les cartes &quot;Moi&quot; ou &quot;Foyer&quot;) contient maintenant un slider par membre du foyer : tu peux simuler un plan complet en ajustant les rythmes de chacun et voir en direct en combien de jours le retard serait rattrapé. Le bouton &quot;Juste pour moi&quot; reste dispo pour sauver uniquement ton objectif.</li>
+<li>Nouveau bouton &quot;Proposer au foyer&quot; (actif dès que tu bouges au moins un slider des autres membres) : il envoie ta proposition en live au reste du foyer. Les autres reçoivent un modal bloquant avec ta proposition, ils ont 3 minutes pour accepter ou refuser. Pendant ce temps, tu vois un écran d&#x27;attente qui liste en direct qui a validé, avec un bouton &quot;Annuler la proposition&quot; si tu changes d&#x27;avis.</li>
+<li>Quand tout le monde accepte, les objectifs sont sauvés pour chacun et une popup de célébration apparaît sur les apps de tous les membres (&quot;Vous êtes sur la bonne voie vers un foyer propre !&quot;) avec un easter egg à découvrir en cliquant sur le lien en bas.</li>
+<li>Si quelqu&#x27;un refuse ou si le délai expire, la proposition est annulée, aucun objectif n&#x27;est sauvé, et tout le monde est notifié.</li>
 </ul>
 <h2>v0.8.0 — 2026-04-14</h2>
-<h3>Prevision de rattrapage du retard</h3>
+<h3>Prévision de rattrapage du retard</h3>
 <ul>
-<li>Deux nouvelles cartes en haut de l&#x27;accueil : &quot;Moi&quot; (minutes faites aujourd&#x27;hui, barre de progression vers l&#x27;objectif du jour, nombre de jours de rattrapage estime) et &quot;Foyer&quot; (retard courant du foyer, nombre de jours pour etre a zero, rythme de maintien une fois resorbe).</li>
-<li>Popup de simulation : tap sur une carte ouvre un slider pour fixer ton rythme cible en minutes ou en taches par jour, avec feedback live sur le nombre de jours de rattrapage. Le bouton &quot;Definir comme objectif&quot; sauve ton engagement personnel.</li>
-<li>L&#x27;unite d&#x27;affichage (minutes ou taches) est choisissable dans le popup et sauvee par foyer.</li>
+<li>Deux nouvelles cartes en haut de l&#x27;accueil : &quot;Moi&quot; (minutes faites aujourd&#x27;hui, barre de progression vers l&#x27;objectif du jour, nombre de jours de rattrapage estimé) et &quot;Foyer&quot; (retard courant du foyer, nombre de jours pour être à zéro, rythme de maintien une fois résorbé).</li>
+<li>Popup de simulation : tap sur une carte ouvre un slider pour fixer ton rythme cible en minutes ou en tâches par jour, avec feedback live sur le nombre de jours de rattrapage. Le bouton &quot;Définir comme objectif&quot; sauve ton engagement personnel.</li>
+<li>L&#x27;unité d&#x27;affichage (minutes ou tâches) est choisissable dans le popup et sauvée par foyer.</li>
 </ul>
 <h3>Accueil plus compact</h3>
 <ul>
-<li>Suppression du liseret rouge et de la barre de progression sur les suggestions de taches : la pastille rouge suffisait deja a signaler l&#x27;urgence.</li>
-<li>Suppression du titre &quot;Suggestions&quot; (evident vu le contexte).</li>
-<li>Deplacement du message &quot;Tu as fait plus que ta part...&quot; depuis l&#x27;accueil vers l&#x27;onglet &quot;Resume&quot; des Stats — pour que les cartes de taches et les cartes de prevision tiennent en un seul ecran.</li>
+<li>Suppression du liseré rouge et de la barre de progression sur les suggestions de tâches : la pastille rouge suffisait déjà à signaler l&#x27;urgence.</li>
+<li>Suppression du titre &quot;Suggestions&quot; (évident vu le contexte).</li>
+<li>Déplacement du message &quot;Tu as fait plus que ta part...&quot; depuis l&#x27;accueil vers l&#x27;onglet &quot;Résumé&quot; des Stats — pour que les cartes de tâches et les cartes de prévision tiennent en un seul écran.</li>
 </ul>
 <h2>v0.7.4 — 2026-04-14</h2>
-<h3>Mise en pause des taches &quot;a la maison&quot; en cas d&#x27;absence</h3>
+<h3>Mise en pause des tâches &quot;à la maison&quot; en cas d&#x27;absence</h3>
 <ul>
-<li>Quand personne n&#x27;est detecte au WiFi maison pendant plus de 24h, les taches des categories marquees &quot;a la maison&quot; arretent de vieillir jusqu&#x27;au retour. Au-dela des 24h de tolerance, le compteur est fige — plus de retard accumule pendant les vacances.</li>
-<li>Popup &quot;Bon retour a la maison !&quot; au retour, avec le nombre de jours d&#x27;absence et un rappel que les taches concernees ont ete mises en pause.</li>
-<li>Detection automatique de la presence WiFi en arriere-plan toutes les 6h et au lancement de l&#x27;app.</li>
+<li>Quand personne n&#x27;est détecté au WiFi maison pendant plus de 24h, les tâches des catégories marquées &quot;à la maison&quot; arrêtent de vieillir jusqu&#x27;au retour. Au-delà des 24h de tolérance, le compteur est figé — plus de retard accumulé pendant les vacances.</li>
+<li>Popup &quot;Bon retour à la maison !&quot; au retour, avec le nombre de jours d&#x27;absence et un rappel que les tâches concernées ont été mises en pause.</li>
+<li>Détection automatique de la présence WiFi en arrière-plan toutes les 6h et au lancement de l&#x27;app.</li>
 </ul>
-<h3>Reglage du foyer</h3>
+<h3>Réglage du foyer</h3>
 <ul>
-<li>Bouton &quot;modifier&quot; sur chaque foyer (admins uniquement) dans Reglages &gt; Mes foyers : permet de renommer le foyer et d&#x27;activer/desactiver la mise en pause des taches &quot;a la maison&quot; en cas d&#x27;absence.</li>
+<li>Bouton &quot;modifier&quot; sur chaque foyer (admins uniquement) dans Réglages &gt; Mes foyers : permet de renommer le foyer et d&#x27;activer/désactiver la mise en pause des tâches &quot;à la maison&quot; en cas d&#x27;absence.</li>
 </ul>
-<h3>Tooltip adaptatif &quot;a la maison&quot;</h3>
+<h3>Tooltip adaptatif &quot;à la maison&quot;</h3>
 <ul>
-<li>Le tooltip d&#x27;info a cote de &quot;A la maison uniquement&quot; (edition de categorie) explique maintenant l&#x27;etat reel du freeze : si la mise en pause est desactivee, si tu n&#x27;as pas configure ton WiFi maison, si on attend ta premiere connexion, ou si d&#x27;autres membres du foyer bloquent encore la detection.</li>
+<li>Le tooltip d&#x27;info à côté de &quot;À la maison uniquement&quot; (édition de catégorie) explique maintenant l&#x27;état réel du freeze : si la mise en pause est désactivée, si tu n&#x27;as pas configuré ton WiFi maison, si on attend ta première connexion, ou si d&#x27;autres membres du foyer bloquent encore la détection.</li>
 </ul>
 <h2>v0.7.3 — 2026-04-14</h2>
 <h3>Multi-foyer : isolation users + wifi maison</h3>
 <ul>
-<li>Les listes d&#x27;utilisateurs dans les pickers (assignation de tache, &quot;qui a fait ?&quot;, fair-share, stats, leaderboard) n&#x27;affichent plus que les membres du foyer actif. Avant, tous les users de la base apparaissaient meme dans un foyer ou ils n&#x27;etaient pas.</li>
-<li>Les SSIDs WiFi maison sont maintenant stockes par foyer : dans ta maison tu configures tes SSIDs, dans la colloc d&#x27;un ami tu en configures d&#x27;autres, sans melanger. Quand tu basculais de foyer, les SSIDs de l&#x27;autre foyer apparaissaient — corrige.</li>
+<li>Les listes d&#x27;utilisateurs dans les pickers (assignation de tâche, &quot;qui a fait ?&quot;, fair-share, stats, leaderboard) n&#x27;affichent plus que les membres du foyer actif. Avant, tous les users de la base apparaissaient même dans un foyer où ils n&#x27;étaient pas.</li>
+<li>Les SSIDs WiFi maison sont maintenant stockés par foyer : dans ta maison tu configures tes SSIDs, dans la colloc d&#x27;un ami tu en configures d&#x27;autres, sans mélanger. Quand tu basculais de foyer, les SSIDs de l&#x27;autre foyer apparaissaient — corrigé.</li>
 </ul>
 <h2>v0.7.2 — 2026-04-14</h2>
-<h3>Multi-foyer : stats isolees par foyer</h3>
+<h3>Multi-foyer : stats isolées par foyer</h3>
 <ul>
-<li>Les statistiques (points, taches completees, leaderboard, streaks, badges, historique) ne melangent plus les donnees de tous tes foyers : chaque ecran stats affiche uniquement les chiffres du foyer actif.</li>
-<li>Les badges gagnes sont specifiques a chaque foyer (un meme badge peut etre gagne dans plusieurs foyers separement).</li>
+<li>Les statistiques (points, tâches complétées, leaderboard, streaks, badges, historique) ne mélangent plus les données de tous tes foyers : chaque écran stats affiche uniquement les chiffres du foyer actif.</li>
+<li>Les badges gagnés sont spécifiques à chaque foyer (un même badge peut être gagné dans plusieurs foyers séparément).</li>
 </ul>
 <h2>v0.7.0 — 2026-04-14</h2>
 <h3>Multi-foyer (refonte invisible mais fondamentale)</h3>
 <ul>
-<li>L&#x27;app est maintenant prete a gerer plusieurs foyers : tu peux creer un nouveau foyer (par exemple pour une colloc d&#x27;amis) et basculer entre tes foyers sans perdre les donnees de l&#x27;autre.</li>
-<li>Nouvel ecran <strong>Reglages → Mes foyers</strong> : tu vois la liste des foyers auxquels tu appartiens, tu peux en creer un nouveau via le bouton + et basculer en cliquant dessus. Au basculement, l&#x27;app vide son cache local et recharge les donnees du nouveau foyer (quelques secondes).</li>
-<li>Pour l&#x27;instant les membres existants partagent un seul foyer &quot;Maison&quot; — toutes les taches, categories et pieces existantes y ont ete migrees automatiquement.</li>
-<li>L&#x27;invitation d&#x27;amis par QR code pour creer un foyer commun sera ajoutee dans une prochaine version (ca necessite une infra de deploiement publique).</li>
+<li>L&#x27;app est maintenant prête à gérer plusieurs foyers : tu peux créer un nouveau foyer (par exemple pour une colloc d&#x27;amis) et basculer entre tes foyers sans perdre les données de l&#x27;autre.</li>
+<li>Nouvel écran <strong>Réglages → Mes foyers</strong> : tu vois la liste des foyers auxquels tu appartiens, tu peux en créer un nouveau via le bouton + et basculer en cliquant dessus. Au basculement, l&#x27;app vide son cache local et recharge les données du nouveau foyer (quelques secondes).</li>
+<li>Pour l&#x27;instant les membres existants partagent un seul foyer &quot;Maison&quot; — toutes les tâches, catégories et pièces existantes y ont été migrées automatiquement.</li>
+<li>L&#x27;invitation d&#x27;amis par QR code pour créer un foyer commun sera ajoutée dans une prochaine version (ça nécessite une infra de déploiement publique).</li>
 </ul>
-<h3>Taches ponctuelles visibles</h3>
+<h3>Tâches ponctuelles visibles</h3>
 <ul>
-<li>Une tache creee sans recurrence (ponctuelle) apparait maintenant dans la liste &quot;a faire&quot; et dans les suggestions de l&#x27;accueil tant qu&#x27;elle n&#x27;a pas ete faite. Avant, elle etait invisible tant qu&#x27;on n&#x27;avait pas desactive le filtre &quot;a faire&quot;.</li>
+<li>Une tâche créée sans récurrence (ponctuelle) apparaît maintenant dans la liste &quot;à faire&quot; et dans les suggestions de l&#x27;accueil tant qu&#x27;elle n&#x27;a pas été faite. Avant, elle était invisible tant qu&#x27;on n&#x27;avait pas désactivé le filtre &quot;à faire&quot;.</li>
 </ul>
-<h3>Piece correctement sauvegardee</h3>
+<h3>Pièce correctement sauvegardée</h3>
 <ul>
-<li>Quand on cree ou modifie une tache et qu&#x27;on lui assigne une piece, la piece est maintenant bien enregistree. Avant, la piece choisie pouvait etre perdue apres sauvegarde.</li>
+<li>Quand on crée ou modifie une tâche et qu&#x27;on lui assigne une pièce, la pièce est maintenant bien enregistrée. Avant, la pièce choisie pouvait être perdue après sauvegarde.</li>
 </ul>
 <h3>Popup de notation moins intrusive</h3>
 <ul>
-<li>La popup qui demande de noter l&#x27;affinite/effort d&#x27;une tache ne reapparait plus a chaque fois qu&#x27;on revient sur l&#x27;accueil. Elle s&#x27;affiche a l&#x27;ouverture de l&#x27;app et au retour depuis le multitache, puis plus jusqu&#x27;a la prochaine session.</li>
+<li>La popup qui demande de noter l&#x27;affinité/effort d&#x27;une tâche ne réapparaît plus à chaque fois qu&#x27;on revient sur l&#x27;accueil. Elle s&#x27;affiche à l&#x27;ouverture de l&#x27;app et au retour depuis le multitâche, puis plus jusqu&#x27;à la prochaine session.</li>
 </ul>
 <h2>v0.6.2 — 2026-04-13</h2>
-<h3>Felicitations a chaque tache validee</h3>
+<h3>Félicitations à chaque tâche validée</h3>
 <ul>
-<li>Quand tu valides une tache (peu importe ou : accueil, liste ou fiche detail, et que ce soit &quot;fait&quot; ou &quot;deja fait&quot;), la carte affiche maintenant un emoji de felicitations (&quot;Bravo !&quot;, &quot;Bien joue !&quot;, etc.) et des confetti tombent sur l&#x27;ecran pendant 2 secondes avant que la tache disparaisse / la suivante apparaisse. Plus de validation invisible.</li>
+<li>Quand tu valides une tâche (peu importe où : accueil, liste ou fiche détail, et que ce soit &quot;fait&quot; ou &quot;déjà fait&quot;), la carte affiche maintenant un emoji de félicitations (&quot;Bravo !&quot;, &quot;Bien joué !&quot;, etc.) et des confetti tombent sur l&#x27;écran pendant 2 secondes avant que la tâche disparaisse / la suivante apparaisse. Plus de validation invisible.</li>
 </ul>
 <h2>v0.6.1 — 2026-04-13</h2>
-<h3>Pieces visibles partout</h3>
+<h3>Pièces visibles partout</h3>
 <ul>
-<li>Sur la page d&#x27;accueil, les cartes &quot;Suggestions&quot; et &quot;En cours&quot; affichent maintenant la piece (avec son emoji si tu en as defini un) et la categorie en pastille colore sous le titre.</li>
-<li>Les cartes de suggestions tres en retard ont un liseret rouge autour pour attirer l&#x27;oeil.</li>
-<li>La fiche detail d&#x27;une tache affiche aussi la piece (read-only — pour la modifier passe par le crayon en haut a droite).</li>
-<li>La popup de notation affiche la piece sous le titre de la tache pour rappel visuel.</li>
+<li>Sur la page d&#x27;accueil, les cartes &quot;Suggestions&quot; et &quot;En cours&quot; affichent maintenant la pièce (avec son emoji si tu en as défini un) et la catégorie en pastille colorée sous le titre.</li>
+<li>Les cartes de suggestions très en retard ont un liseré rouge autour pour attirer l&#x27;œil.</li>
+<li>La fiche détail d&#x27;une tâche affiche aussi la pièce (read-only — pour la modifier passe par le crayon en haut à droite).</li>
+<li>La popup de notation affiche la pièce sous le titre de la tâche pour rappel visuel.</li>
 </ul>
 <h2>v0.6.0 — 2026-04-13</h2>
-<h3>Pieces : nouvelle gestion</h3>
+<h3>Pièces : nouvelle gestion</h3>
 <ul>
-<li>Les pieces de la maison sont maintenant des entites de plein droit (Cuisine, SDB, Chambre, Salon, etc.) au lieu d&#x27;etre cachees dans les titres des taches.</li>
-<li>Nouvel ecran &quot;Gerer les pieces&quot; dans Reglages : ajoute, modifie, supprime tes pieces. Chacune a un nom, une couleur et un emoji optionnel.</li>
-<li>Quand tu cree ou modifie une tache, un selecteur &quot;Piece&quot; apparait a cote de &quot;Categorie&quot;.</li>
-<li>Les filtres par piece dans la liste affichent maintenant l&#x27;emoji a cote du nom.</li>
-<li>Dans la liste des taches, le nom de la piece (avec son emoji si defini) apparait sous le titre.</li>
-<li>Migration automatique : tes 29 taches existantes ont ete liees aux pieces extraites de leurs titres. Les titres ont ete nettoyes du suffixe &quot; — Piece&quot;. Les 13 taches sans suffixe restent sans piece, tu peux les editer pour en attribuer une.</li>
+<li>Les pièces de la maison sont maintenant des entités de plein droit (Cuisine, SDB, Chambre, Salon, etc.) au lieu d&#x27;être cachées dans les titres des tâches.</li>
+<li>Nouvel écran &quot;Gérer les pièces&quot; dans Réglages : ajoute, modifie, supprime tes pièces. Chacune a un nom, une couleur et un emoji optionnel.</li>
+<li>Quand tu crées ou modifies une tâche, un sélecteur &quot;Pièce&quot; apparaît à côté de &quot;Catégorie&quot;.</li>
+<li>Les filtres par pièce dans la liste affichent maintenant l&#x27;emoji à côté du nom.</li>
+<li>Dans la liste des tâches, le nom de la pièce (avec son emoji si défini) apparaît sous le titre.</li>
+<li>Migration automatique : tes 29 tâches existantes ont été liées aux pièces extraites de leurs titres. Les titres ont été nettoyés du suffixe &quot; — Pièce&quot;. Les 13 tâches sans suffixe restent sans pièce, tu peux les éditer pour en attribuer une.</li>
 </ul>
 <h2>v0.5.8 — 2026-04-13</h2>
-<h3>Liste des taches</h3>
+<h3>Liste des tâches</h3>
 <ul>
-<li>Plus d&#x27;air superflu en haut de l&#x27;ecran : la 1ere rangee de filtres colle vraiment au status bar Android (correction du double padding).</li>
+<li>Plus d&#x27;air superflu en haut de l&#x27;écran : la 1ère rangée de filtres colle vraiment au status bar Android (correction du double padding).</li>
 </ul>
 <h2>v0.5.7 — 2026-04-13</h2>
-<h3>Liste des taches</h3>
+<h3>Liste des tâches</h3>
 <ul>
-<li>Encore plus de fluidite au scroll (optimisations internes : Compose peut maintenant detecter les cartes inchangees et ne pas les redessiner inutilement quand la liste se met a jour).</li>
+<li>Encore plus de fluidité au scroll (optimisations internes : Compose peut maintenant détecter les cartes inchangées et ne pas les redessiner inutilement quand la liste se met à jour).</li>
 </ul>
 <h2>v0.5.6 — 2026-04-13</h2>
-<h3>Liste des taches</h3>
+<h3>Liste des tâches</h3>
 <ul>
-<li>Marge en haut de la liste reduite : la 1ere rangee de filtres colle directement sous la barre d&#x27;etat Android (avant : trop d&#x27;air en haut).</li>
-<li>Defilement nettement plus fluide grace a plusieurs optimisations internes (pipeline de filtrage deporte hors du thread principal, callbacks stabilises pour eviter les recompositions inutiles).</li>
+<li>Marge en haut de la liste réduite : la 1ère rangée de filtres colle directement sous la barre d&#x27;état Android (avant : trop d&#x27;air en haut).</li>
+<li>Défilement nettement plus fluide grâce à plusieurs optimisations internes (pipeline de filtrage déporté hors du thread principal, callbacks stabilisés pour éviter les recompositions inutiles).</li>
 </ul>
 <h2>v0.5.5 — 2026-04-13</h2>
-<h3>Liste des taches : refonte visuelle</h3>
+<h3>Liste des tâches : refonte visuelle</h3>
 <ul>
-<li>Le bandeau violet &quot;Torchons &amp; Serviettes&quot; en haut a ete retire — il prenait de la place sans rien proposer de cliquable.</li>
-<li>Nouvelle barre de synchronisation fine et discrete tout en haut, qui apparait pendant les chargements (au lieu d&#x27;un gros spinner plein ecran qui masquait les taches).</li>
-<li>Espacements entre les rangees de filtres revus : plus d&#x27;air en haut, espacement uniforme entre les rangees.</li>
-<li>Cartes de tache simplifiees : on ne garde plus que le nom, la piece et un indicateur de retard sous forme de bordure colore a gauche (vert/jaune/orange/rouge). Plus de badge categorie, d&#x27;etoiles, de barre de progression ni de texte &quot;Rouge X%&quot;. Les cartes sont plus compactes, on en voit plus a l&#x27;ecran et le scroll est plus fluide.</li>
+<li>Le bandeau violet &quot;Torchons &amp; Serviettes&quot; en haut a été retiré — il prenait de la place sans rien proposer de cliquable.</li>
+<li>Nouvelle barre de synchronisation fine et discrète tout en haut, qui apparaît pendant les chargements (au lieu d&#x27;un gros spinner plein écran qui masquait les tâches).</li>
+<li>Espacements entre les rangées de filtres revus : plus d&#x27;air en haut, espacement uniforme entre les rangées.</li>
+<li>Cartes de tâche simplifiées : on ne garde plus que le nom, la pièce et un indicateur de retard sous forme de bordure colorée à gauche (vert/jaune/orange/rouge). Plus de badge catégorie, d&#x27;étoiles, de barre de progression ni de texte &quot;Rouge X%&quot;. Les cartes sont plus compactes, on en voit plus à l&#x27;écran et le scroll est plus fluide.</li>
 </ul>
 <h2>v0.5.4 — 2026-04-13</h2>
-<h3>Liste des taches</h3>
+<h3>Liste des tâches</h3>
 <ul>
-<li>Au demarrage de l&#x27;app, le filtre &quot;🔥 A faire&quot; est maintenant active par defaut : tu vois directement les taches urgentes, sans scroller dans toute la liste. Tu peux desactiver le filtre en tapant sur la chip rouge si tu veux voir toutes les taches.</li>
+<li>Au démarrage de l&#x27;app, le filtre &quot;🔥 À faire&quot; est maintenant activé par défaut : tu vois directement les tâches urgentes, sans scroller dans toute la liste. Tu peux désactiver le filtre en tapant sur la chip rouge si tu veux voir toutes les tâches.</li>
 </ul>
 <h2>v0.5.3 — 2026-04-13</h2>
-<h3>Liste des taches</h3>
+<h3>Liste des tâches</h3>
 <ul>
-<li>Le swipe pour valider une tache est supprime — il declenchait parfois des validations accidentelles.</li>
-<li>Les deux boutons d&#x27;action sur chaque carte (calendrier &quot;deja fait&quot; et check &quot;valider&quot;) sont plus gros, avec un fond colore (vert pour valider, gris pour le calendrier) et clairement identifiables comme boutons cliquables.</li>
-<li>Le defilement de la liste est nettement plus fluide, surtout quand il y a beaucoup de taches.</li>
+<li>Le swipe pour valider une tâche est supprimé — il déclenchait parfois des validations accidentelles.</li>
+<li>Les deux boutons d&#x27;action sur chaque carte (calendrier &quot;déjà fait&quot; et check &quot;valider&quot;) sont plus gros, avec un fond coloré (vert pour valider, gris pour le calendrier) et clairement identifiables comme boutons cliquables.</li>
+<li>Le défilement de la liste est nettement plus fluide, surtout quand il y a beaucoup de tâches.</li>
 </ul>
 <h2>v0.5.2 — 2026-04-13</h2>
-<h3>Notation unifiee</h3>
+<h3>Notation unifiée</h3>
 <ul>
-<li>Le bouton &quot;Modifier&quot; sur la fiche d&#x27;une tache ouvre maintenant la meme popup de notation que celle de l&#x27;accueil — avec affinite, effort ET frequence dans un seul ecran.</li>
-<li>Les valeurs precedentes sont prechargees correctement (avant, le bouton &quot;Modifier&quot; affichait toujours 5/10 et 15min par defaut).</li>
-<li>Affichage de la date de derniere notation au-dessus des reglages : &quot;Derniere notation il y a 3 jours&quot; / &quot;Jamais note&quot;.</li>
+<li>Le bouton &quot;Modifier&quot; sur la fiche d&#x27;une tâche ouvre maintenant la même popup de notation que celle de l&#x27;accueil — avec affinité, effort ET fréquence dans un seul écran.</li>
+<li>Les valeurs précédentes sont préchargées correctement (avant, le bouton &quot;Modifier&quot; affichait toujours 5/10 et 15min par défaut).</li>
+<li>Affichage de la date de dernière notation au-dessus des réglages : &quot;Dernière notation il y a 3 jours&quot; / &quot;Jamais noté&quot;.</li>
 </ul>
-<h3>Frequence</h3>
+<h3>Fréquence</h3>
 <ul>
-<li>La frequence d&#x27;une tache existante ne se modifie plus depuis l&#x27;ecran d&#x27;edition de la tache : il faut passer par la popup de notation (chacun vote sa frequence et la moyenne est utilisee).</li>
-<li>Lors de la creation d&#x27;une tache, le choix de la frequence reste disponible.</li>
-<li>Le slider d&#x27;effort est cap a 1h max (avant : 1h30 sur la fiche detail, 1h sur l&#x27;accueil — incoherent).</li>
+<li>La fréquence d&#x27;une tâche existante ne se modifie plus depuis l&#x27;écran d&#x27;édition de la tâche : il faut passer par la popup de notation (chacun vote sa fréquence et la moyenne est utilisée).</li>
+<li>Lors de la création d&#x27;une tâche, le choix de la fréquence reste disponible.</li>
+<li>Le slider d&#x27;effort est cap à 1h max (avant : 1h30 sur la fiche détail, 1h sur l&#x27;accueil — incohérent).</li>
 </ul>
 <h2>v0.5.1 — 2026-04-13</h2>
 <h3>Corrections</h3>
 <ul>
-<li>L&#x27;app ne crashe plus au demarrage apres mise a jour vers v0.5.0 (incompatibilite de schema de base locale sur la table d&#x27;historique).</li>
+<li>L&#x27;app ne crashe plus au démarrage après mise à jour vers v0.5.0 (incompatibilité de schéma de base locale sur la table d&#x27;historique).</li>
 </ul>
 <h2>v0.5.0 — 2026-04-13</h2>
 <h3>Historique des modifications</h3>
 <ul>
-<li>Nouvelle section « Historique des modifications » dans la fiche detail d&#x27;une tache, sous l&#x27;historique des completions : affiche qui a vote quoi et comment le consensus a evolue (affinite, effort, frequence).</li>
-<li>Chaque vote s&#x27;affiche avec son impact sur la moyenne : par exemple « Alex a vote 7j frequence → consensus 6j » ou « Sam a vote 3/10 affinite → consensus 4/10 ».</li>
-<li>Les modifications directes de la tache (changement de titre, recurrence, categorie, tolerance, affectations) apparaissent aussi dans cette timeline.</li>
+<li>Nouvelle section « Historique des modifications » dans la fiche détail d&#x27;une tâche, sous l&#x27;historique des complétions : affiche qui a voté quoi et comment le consensus a évolué (affinité, effort, fréquence).</li>
+<li>Chaque vote s&#x27;affiche avec son impact sur la moyenne : par exemple « Alex a voté 7j fréquence → consensus 6j » ou « Sam a voté 3/10 affinité → consensus 4/10 ».</li>
+<li>Les modifications directes de la tâche (changement de titre, récurrence, catégorie, tolérance, affectations) apparaissent aussi dans cette timeline.</li>
 </ul>
-<h3>Frequence votable</h3>
+<h3>Fréquence votable</h3>
 <ul>
-<li>Quand la popup de notation propose d&#x27;ajuster la frequence d&#x27;une tache, c&#x27;est maintenant un vote individuel : chaque participant a sa propre valeur et le consensus affiche est la moyenne des votes.</li>
-<li>Avant, le dernier qui ajustait la frequence ecrasait la valeur pour tout le monde — ce n&#x27;est plus le cas.</li>
+<li>Quand la popup de notation propose d&#x27;ajuster la fréquence d&#x27;une tâche, c&#x27;est maintenant un vote individuel : chaque participant a sa propre valeur et le consensus affiché est la moyenne des votes.</li>
+<li>Avant, le dernier qui ajustait la fréquence écrasait la valeur pour tout le monde — ce n&#x27;est plus le cas.</li>
 </ul>
 <h2>v0.4.1 — 2026-04-12</h2>
 <h3>Corrections</h3>
 <ul>
-<li>Les reglages (WiFi maison, notifications, seuil de suggestions, etc.) se sauvegardent maintenant correctement — avant, les modifications pouvaient etre perdues a la reouverture de l&#x27;app.</li>
-<li>La popup de notation d&#x27;affinite n&#x27;apparait plus en double a l&#x27;ouverture de l&#x27;app.</li>
-<li>Le bouton &quot;Une autre&quot; dans la popup de notation fonctionne : il passe bien a la tache suivante au lieu de simplement fermer la popup.</li>
-<li>Le bouton &quot;?&quot; affiche maintenant une tache differente a chaque utilisation (avant, il montrait toujours la meme).</li>
-<li>La popup de notation affiche le nombre de taches restantes a noter.</li>
-<li>Quand toutes les taches sont deja notees, un message le confirme au lieu de ne rien faire.</li>
+<li>Les réglages (WiFi maison, notifications, seuil de suggestions, etc.) se sauvegardent maintenant correctement — avant, les modifications pouvaient être perdues à la réouverture de l&#x27;app.</li>
+<li>La popup de notation d&#x27;affinité n&#x27;apparaît plus en double à l&#x27;ouverture de l&#x27;app.</li>
+<li>Le bouton &quot;Une autre&quot; dans la popup de notation fonctionne : il passe bien à la tâche suivante au lieu de simplement fermer la popup.</li>
+<li>Le bouton &quot;?&quot; affiche maintenant une tâche différente à chaque utilisation (avant, il montrait toujours la même).</li>
+<li>La popup de notation affiche le nombre de tâches restantes à noter.</li>
+<li>Quand toutes les tâches sont déjà notées, un message le confirme au lieu de ne rien faire.</li>
 </ul>
 <h2>v0.4.0 — 2026-04-12</h2>
 <h3>Toute l&#x27;app fonctionne hors ligne</h3>
 <ul>
-<li>Les ecrans Taches et Detail d&#x27;une tache affichent maintenant les dernieres donnees connues meme quand le backend ne repond pas (avant, ils restaient vides).</li>
-<li>Le bandeau &quot;Hors ligne&quot; affiche la date et l&#x27;heure des dernieres donnees (&quot;donnees du 12/04 14:32&quot;).</li>
-<li>Quand la connexion revient, les donnees se rafraichissent automatiquement sans avoir a fermer et rouvrir l&#x27;ecran.</li>
+<li>Les écrans Tâches et Détail d&#x27;une tâche affichent maintenant les dernières données connues même quand le backend ne répond pas (avant, ils restaient vides).</li>
+<li>Le bandeau &quot;Hors ligne&quot; affiche la date et l&#x27;heure des dernières données (&quot;données du 12/04 14:32&quot;).</li>
+<li>Quand la connexion revient, les données se rafraîchissent automatiquement sans avoir à fermer et rouvrir l&#x27;écran.</li>
 </ul>
-<h3>Creation et validation de taches sans reseau</h3>
+<h3>Création et validation de tâches sans réseau</h3>
 <ul>
-<li>On peut maintenant creer, modifier, supprimer et valider des taches meme sans connexion au backend.</li>
-<li>Les operations s&#x27;appliquent instantanement dans l&#x27;app et se synchronisent automatiquement quand la connexion revient.</li>
-<li>Un badge &quot;X operation(s) en attente&quot; s&#x27;affiche dans le bandeau quand des operations n&#x27;ont pas encore ete envoyees au serveur.</li>
-<li>Quand la synchronisation se fait, un indicateur &quot;Synchronisation en cours...&quot; s&#x27;affiche brievement.</li>
+<li>On peut maintenant créer, modifier, supprimer et valider des tâches même sans connexion au backend.</li>
+<li>Les opérations s&#x27;appliquent instantanément dans l&#x27;app et se synchronisent automatiquement quand la connexion revient.</li>
+<li>Un badge &quot;X opération(s) en attente&quot; s&#x27;affiche dans le bandeau quand des opérations n&#x27;ont pas encore été envoyées au serveur.</li>
+<li>Quand la synchronisation se fait, un indicateur &quot;Synchronisation en cours...&quot; s&#x27;affiche brièvement.</li>
 </ul>
 <h2>v0.3.0 — 2026-04-11</h2>
 <h3>Mode hors ligne sur l&#x27;accueil</h3>
 <ul>
-<li>L&#x27;accueil affiche maintenant les dernieres donnees connues meme quand le backend ne repond pas, au lieu de rester bloque ou de mentir avec &quot;Tout est frais !&quot; alors que rien n&#x27;a pu charger.</li>
-<li>Quand le backend est injoignable, un bandeau orange &quot;Hors ligne&quot; apparait en haut de l&#x27;app avec un bouton &quot;Reessayer&quot;.</li>
-<li>Quand le backend revient (par exemple apres redemarrage du serveur), l&#x27;app le detecte automatiquement et le bandeau disparait tout seul.</li>
-<li>Si l&#x27;accueil n&#x27;a vraiment aucune donnee a afficher faute de backend, il affiche un message clair &quot;Donnees indisponibles&quot; au lieu du &quot;Tout est frais !&quot; trompeur.</li>
+<li>L&#x27;accueil affiche maintenant les dernières données connues même quand le backend ne répond pas, au lieu de rester bloqué ou de mentir avec &quot;Tout est frais !&quot; alors que rien n&#x27;a pu charger.</li>
+<li>Quand le backend est injoignable, un bandeau orange &quot;Hors ligne&quot; apparaît en haut de l&#x27;app avec un bouton &quot;Réessayer&quot;.</li>
+<li>Quand le backend revient (par exemple après redémarrage du serveur), l&#x27;app le détecte automatiquement et le bandeau disparaît tout seul.</li>
+<li>Si l&#x27;accueil n&#x27;a vraiment aucune donnée à afficher faute de backend, il affiche un message clair &quot;Données indisponibles&quot; au lieu du &quot;Tout est frais !&quot; trompeur.</li>
 </ul>
-<h3>Demarrage plus rapide</h3>
+<h3>Démarrage plus rapide</h3>
 <ul>
-<li>L&#x27;app n&#x27;attend plus 30 secondes en blanc au demarrage si le backend rame ou est injoignable. Au-dela de quelques secondes elle passe directement en mode hors ligne.</li>
+<li>L&#x27;app n&#x27;attend plus 30 secondes en blanc au démarrage si le backend rame ou est injoignable. Au-delà de quelques secondes elle passe directement en mode hors ligne.</li>
 </ul>
 <h2>v0.2.2 — 2026-04-11</h2>
-<h3>Tolerance au retard sur les taches recurrentes</h3>
+<h3>Tolérance au retard sur les tâches récurrentes</h3>
 <ul>
-<li>Tu peux maintenant choisir, pour chaque tache recurrente, a quel point l&#x27;app est severe sur le retard : Strict, Normal ou Souple. Le choix est dans le formulaire d&#x27;edition de la tache, juste apres la recurrence.</li>
-<li>Strict : la tache devient orange/rouge avant l&#x27;echeance.</li>
-<li>Normal (defaut) : la tache est jaune a l&#x27;echeance — comportement actuel.</li>
-<li>Souple : la tache reste verte meme un peu apres l&#x27;echeance.</li>
+<li>Tu peux maintenant choisir, pour chaque tâche récurrente, à quel point l&#x27;app est sévère sur le retard : Strict, Normal ou Souple. Le choix est dans le formulaire d&#x27;édition de la tâche, juste après la récurrence.</li>
+<li>Strict : la tâche devient orange/rouge avant l&#x27;échéance.</li>
+<li>Normal (défaut) : la tâche est jaune à l&#x27;échéance — comportement actuel.</li>
+<li>Souple : la tâche reste verte même un peu après l&#x27;échéance.</li>
 </ul>
-<h3>Felicitations fair-share plus intelligentes</h3>
+<h3>Félicitations fair-share plus intelligentes</h3>
 <ul>
-<li>Le message &quot;Tu as fait plus que ta part&quot; sur l&#x27;accueil arrive maintenant uniquement quand tu as fait <em>vraiment</em> plus que ta part, et non au moindre ecart. Par defaut il faut avoir fait 30% de plus que ton ratio cible.</li>
-<li>Ce seuil de tolerance est reglable dans Reglages avances (&quot;Tolerance fair-share&quot;, de 0% a 100%).</li>
-<li>Le message ne s&#x27;affiche plus quand l&#x27;app n&#x27;a pas assez de donnees (moins de 10 taches completees au total sur les 30 derniers jours).</li>
-<li>Le texte du message dit maintenant &quot;ces 30 derniers jours&quot; au lieu de &quot;ce mois-ci&quot;, plus precis par rapport au calcul reel.</li>
+<li>Le message &quot;Tu as fait plus que ta part&quot; sur l&#x27;accueil arrive maintenant uniquement quand tu as fait <em>vraiment</em> plus que ta part, et non au moindre écart. Par défaut il faut avoir fait 30% de plus que ton ratio cible.</li>
+<li>Ce seuil de tolérance est réglable dans Réglages avancés (&quot;Tolérance fair-share&quot;, de 0% à 100%).</li>
+<li>Le message ne s&#x27;affiche plus quand l&#x27;app n&#x27;a pas assez de données (moins de 10 tâches complétées au total sur les 30 derniers jours).</li>
+<li>Le texte du message dit maintenant &quot;ces 30 derniers jours&quot; au lieu de &quot;ce mois-ci&quot;, plus précis par rapport au calcul réel.</li>
 </ul>
 <h2>v0.2.1 — 2026-04-11</h2>
 <h3>Maintenance</h3>
 <ul>
-<li>Ameliorations internes du stockage des configurations sensibles. Transparent pour l&#x27;utilisateur.</li>
+<li>Améliorations internes du stockage des configurations sensibles. Transparent pour l&#x27;utilisateur.</li>
 </ul>
 <h2>v0.2.0 — 2026-04-11</h2>
-<h3>Filtres puissants sur la liste des taches</h3>
+<h3>Filtres puissants sur la liste des tâches</h3>
 <ul>
-<li>Cinq filtres rapides en haut de la liste : &quot;A faire&quot; (rouge), Affinite (aimees / detestees), Effort (long / court), Recurrence (recurrentes / ponctuelles), Maison (a la maison / hors maison).</li>
-<li>Chaque filtre est tri-state : un clic active &quot;haut&quot;, deux clics active &quot;bas&quot;, trois clics desactive.</li>
-<li>Filtre par piece, extrait automatiquement du titre des taches (ex : &quot;— Cuisine&quot;, &quot;— Salon&quot;).</li>
-<li>Possibilite de selectionner plusieurs categories en meme temps au lieu d&#x27;une seule.</li>
-<li>Les categories vides ne sont plus affichees dans la barre de filtres.</li>
-<li>Un petit recapitulatif des filtres actifs s&#x27;affiche au-dessus de la liste.</li>
+<li>Cinq filtres rapides en haut de la liste : &quot;À faire&quot; (rouge), Affinité (aimées / détestées), Effort (long / court), Récurrence (récurrentes / ponctuelles), Maison (à la maison / hors maison).</li>
+<li>Chaque filtre est tri-state : un clic active &quot;haut&quot;, deux clics active &quot;bas&quot;, trois clics désactive.</li>
+<li>Filtre par pièce, extrait automatiquement du titre des tâches (ex : &quot;— Cuisine&quot;, &quot;— Salon&quot;).</li>
+<li>Possibilité de sélectionner plusieurs catégories en même temps au lieu d&#x27;une seule.</li>
+<li>Les catégories vides ne sont plus affichées dans la barre de filtres.</li>
+<li>Un petit récapitulatif des filtres actifs s&#x27;affiche au-dessus de la liste.</li>
 </ul>
 <h3>Popup de notation enrichie</h3>
 <ul>
-<li>La popup d&#x27;affinite et d&#x27;effort se pre-remplit maintenant avec ta derniere note (ou la moyenne du foyer si tu n&#x27;as jamais note).</li>
-<li>Pour une tache ponctuelle, tu peux la transformer en tache recurrente directement depuis la popup, et choisir la frequence.</li>
-<li>Pour une tache deja recurrente, tu peux ajuster sa frequence (de 50 % a 200 % de la valeur actuelle).</li>
+<li>La popup d&#x27;affinité et d&#x27;effort se pré-remplit maintenant avec ta dernière note (ou la moyenne du foyer si tu n&#x27;as jamais noté).</li>
+<li>Pour une tâche ponctuelle, tu peux la transformer en tâche récurrente directement depuis la popup, et choisir la fréquence.</li>
+<li>Pour une tâche déjà récurrente, tu peux ajuster sa fréquence (de 50 % à 200 % de la valeur actuelle).</li>
 </ul>
-<h3>&quot;Qui a fait cette tache ?&quot;</h3>
+<h3>&quot;Qui a fait cette tâche ?&quot;</h3>
 <ul>
-<li>Quand tu valides une tache en mode &quot;deja fait&quot; (date passee), un nouveau selecteur te demande qui (parmi les membres) l&#x27;a faite, en plus de la date.</li>
-<li>Le selecteur est skippe automatiquement si une seule personne est assignee a la tache.</li>
+<li>Quand tu valides une tâche en mode &quot;déjà fait&quot; (date passée), un nouveau sélecteur te demande qui (parmi les membres) l&#x27;a faite, en plus de la date.</li>
+<li>Le sélecteur est skippé automatiquement si une seule personne est assignée à la tâche.</li>
 </ul>
 <h3>Profil utilisateur cliquable partout</h3>
 <ul>
-<li>Tu peux maintenant cliquer sur le nom de n&#x27;importe quel membre n&#x27;importe ou dans l&#x27;app : feed historique, classement, resume stats, streaks, completions de taches.</li>
-<li>Un modal s&#x27;ouvre avec son historique personnel, son nombre de completions et son total de points.</li>
-<li>Les taches dans cet historique sont elles-memes cliquables pour aller a leur detail.</li>
+<li>Tu peux maintenant cliquer sur le nom de n&#x27;importe quel membre n&#x27;importe où dans l&#x27;app : feed historique, classement, résumé stats, streaks, complétions de tâches.</li>
+<li>Un modal s&#x27;ouvre avec son historique personnel, son nombre de complétions et son total de points.</li>
+<li>Les tâches dans cet historique sont elles-mêmes cliquables pour aller à leur détail.</li>
 </ul>
-<h3>Historique nettoye</h3>
+<h3>Historique nettoyé</h3>
 <ul>
-<li>Plus de doublons sur les affinites et efforts : les saves sans changement reel ne polluent plus le flux.</li>
-<li>Quand une tache est modifiee, le feed indique maintenant precisement quels champs ont change (titre, categorie, recurrence, etc.) au lieu d&#x27;un &quot;modifie&quot; opaque.</li>
-<li>Cliquer sur une carte du feed ouvre directement la tache correspondante.</li>
+<li>Plus de doublons sur les affinités et efforts : les saves sans changement réel ne polluent plus le flux.</li>
+<li>Quand une tâche est modifiée, le feed indique maintenant précisément quels champs ont changé (titre, catégorie, récurrence, etc.) au lieu d&#x27;un &quot;modifié&quot; opaque.</li>
+<li>Cliquer sur une carte du feed ouvre directement la tâche correspondante.</li>
 </ul>
 <h3>Anti-double-validation</h3>
 <ul>
-<li>Impossible de valider la meme tache deux fois dans la meme heure.</li>
-<li>Pour les taches hebdomadaires ou plus longues, blocage sur la journee entiere.</li>
-<li>Evite les doubles taps accidentels sur le bouton &quot;Faite&quot;.</li>
+<li>Impossible de valider la même tâche deux fois dans la même heure.</li>
+<li>Pour les tâches hebdomadaires ou plus longues, blocage sur la journée entière.</li>
+<li>Évite les doubles taps accidentels sur le bouton &quot;Faite&quot;.</li>
 </ul>
-<h3>Nouveautes &amp; Roadmap dans l&#x27;app</h3>
+<h3>Nouveautés &amp; Roadmap dans l&#x27;app</h3>
 <ul>
-<li>Nouvelle entree &quot;Nouveautes&quot; dans les Reglages.</li>
-<li>Affiche la version actuelle, les notes de version et la roadmap des features prevues.</li>
+<li>Nouvelle entrée &quot;Nouveautés&quot; dans les Réglages.</li>
+<li>Affiche la version actuelle, les notes de version et la roadmap des features prévues.</li>
 </ul>
-<h3>Cosmetique</h3>
+<h3>Cosmétique</h3>
 <ul>
-<li>Nouvelle icone d&#x27;app : un chapeau de magicien pose sur une serpillere, sur fond bleu nuit etoile.</li>
-<li>La version de l&#x27;app affichee en bas de l&#x27;accueil et dans les Reglages est maintenant lue dynamiquement (fini le &quot;v1.0.0&quot; en dur).</li>
+<li>Nouvelle icône d&#x27;app : un chapeau de magicien posé sur une serpillère, sur fond bleu nuit étoilé.</li>
+<li>La version de l&#x27;app affichée en bas de l&#x27;accueil et dans les Réglages est maintenant lue dynamiquement (fini le &quot;v1.0.0&quot; en dur).</li>
 </ul>
 <h2>v0.1.0 — 2026-04-08</h2>
-<h3>Premiere version</h3>
+<h3>Première version</h3>
 <ul>
-<li>CRUD taches avec recurrence (intervalle, jours de semaine, mensuel, custom).</li>
-<li>Categories, attribution, completions avec points.</li>
+<li>CRUD tâches avec récurrence (intervalle, jours de semaine, mensuel, custom).</li>
+<li>Catégories, attribution, complétions avec points.</li>
 <li>Sync offline bidirectionnelle.</li>
 <li>Gamification : freshness score, streaks, leaderboard, badges.</li>
 <li>Fair-share : ratio configurable par couple.</li>
 <li>Notifications push Firebase + rappels locaux.</li>
-<li>Import initial des 39 taches depuis la config Home Assistant.</li>
+<li>Import initial des 39 tâches depuis la config Home Assistant.</li>
 </ul>
   </div>
 </main>

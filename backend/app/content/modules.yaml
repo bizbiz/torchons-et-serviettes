@@ -595,17 +595,22 @@ site_cards:
       en: "Tasks that come back (every X days, more often in summer, on a fixed date…) shared across the household."
     detail:
       fr: >-
-        Quatre modèles : tous les X jours ; une fréquence différente selon le
-        mois, pour ce qui suit les saisons ; à date fixe sur le calendrier, sans
-        dérive possible même si vous la faites en retard ; ou « quand il y a
-        besoin » — l'app apprend alors la cadence réelle. Les tâches sans
-        récurrence existent aussi : une fois faites, elles s'archivent seules.
+        Cinq modèles : « Régulière », tous les X jours ; « Selon le mois »,
+        une fréquence différente selon le mois, pour ce qui suit les saisons ;
+        « À date fixe » sur le calendrier, sans dérive possible même si vous la
+        faites en retard ; « Anniversaire de la 1re fois », qui revient à la
+        date anniversaire de la première exécution ; ou « Irrégulière », quand
+        il y a besoin — l'app apprend alors la cadence réelle. Les tâches sans
+        récurrence existent aussi (« Une seule fois ») : une fois faites,
+        elles s'archivent seules.
       en: >-
-        Four patterns: every X days; a different frequency per month, for
-        whatever follows the seasons; on a fixed calendar date, with no drift
-        even if you do it late; or "whenever it is needed" — the app then learns
-        the real cadence. One-shot tasks exist too: once done, they archive
-        themselves.
+        Five patterns: "Regular", every X days; "Varies by month", a different
+        frequency per month, for whatever follows the seasons; "On a fixed
+        date" on the calendar, with no drift even if you do it late;
+        "Anniversary of the first time", which comes back on the anniversary
+        of the first completion; or "Irregular", whenever it is needed — the
+        app then learns the real cadence. One-shot tasks exist too ("Once
+        only"): once done, they archive themselves.
 
   - key: urgency
     modules: []

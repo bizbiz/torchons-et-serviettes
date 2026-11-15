@@ -32,7 +32,7 @@
 <main>
   <div class="wrap">
     <h1>Privacy policy</h1>
-    <p class="meta">Last updated: May 15, 2026</p>
+    <p class="meta">Last updated: November 15, 2026</p>
     <p class="lead">
       Torchons &amp; Serviettes is designed to collect the bare
       minimum. No e-mail, no password, no phone number, no
@@ -96,11 +96,65 @@
           <td>Allow recovery of a household after phone loss</td>
           <td>Stored as an <code>argon2id</code> hash; never in clear</td>
         </tr>
+        <tr>
+          <td>Name of your home Wi-Fi (SSID), if you enter it</td>
+          <td>Entered by the user in the household settings</td>
+          <td>Detect presence at home, to pause tasks during absences</td>
+          <td>As long as the household exists: the name stays attached to your
+            household membership, even after account deletion, until the
+            household is purged (section 6)</td>
+        </tr>
+        <tr>
+          <td>Household presence / absence calendar (one status per day)</td>
+          <td>Detected through the home Wi-Fi when the app opens, or entered by hand</td>
+          <td>Do not count absence days towards overdue tasks</td>
+          <td>As long as the household exists (household purge: section 6)</td>
+        </tr>
+        <tr>
+          <td>Connected devices: model name (for example "Pixel 7"), platform,
+            date of first and last connection</td>
+          <td>Sent by the app</td>
+          <td>Show you your devices and let you cut off access to one</td>
+          <td>Erased when the account is anonymized (section 6)</td>
+        </tr>
+        <tr>
+          <td>IP address and timestamp of requests, in the server's technical logs</td>
+          <td>Received each time the app connects to the server</td>
+          <td>Operation, troubleshooting, per-address request limiting</td>
+          <td>In operating logs only, never in the database; the rotation
+            period of these logs is not set by the app</td>
+        </tr>
+        <tr>
+          <td>IP address, in the hosting logs of this website</td>
+          <td>Received when the site is visited</td>
+          <td>Deliver and protect the site (Cloudflare)</td>
+          <td>According to Cloudflare's rules</td>
+        </tr>
+        <tr>
+          <td>Android automatic backup of the app (the user's Google account)</td>
+          <td>Performed by Android, if enabled on the phone</td>
+          <td>Get your data back when changing phones</td>
+          <td>According to Google's rules. Everything is backed up (session,
+            preferences, home Wi-Fi name, local copy of tasks)
+            <strong>except</strong> the device identifier, which is excluded so
+            that two phones restored from one backup can be told apart</td>
+        </tr>
       </tbody>
     </table>
     <p>
+      Two exchanges with Google do not go through our server. When the app is
+      offline and you open its connection diagnosis, it tests the Internet by
+      calling <code>connectivitycheck.gstatic.com</code> (Google then sees the
+      phone's IP address; nothing else is sent). Also, the app embeds the
+      Google Play Billing component; it is prepared for a possible paid
+      option, which does not exist today: no purchase is offered and no
+      payment data is collected.
+    </p>
+    <p>
       <strong>Not collected:</strong> e-mail, password, phone number,
-      geolocation, photos, contacts, banking or payment data.
+      geographic position (GPS or mobile network), photos, contacts, banking
+      or payment data. The home Wi-Fi name is only used to recognise that you
+      are at home.
     </p>
 
     <h2>3. No tracking, no cookies</h2>
@@ -128,6 +182,8 @@
       <tbody>
         <tr><td>Scaleway</td><td>Server and database hosting</td><td>France (European Union)</td></tr>
         <tr><td>Google (Firebase Cloud Messaging)</td><td>Push notification delivery</td><td>United States</td></tr>
+        <tr><td>Cloudflare</td><td>Hosting and delivery of this website (not of the app)</td>
+          <td>Global network (US company)</td></tr>
       </tbody>
     </table>
     <p>
@@ -139,22 +195,52 @@
 
     <h2>5. Transfers outside the European Union</h2>
     <p>
-      Data hosting remains in France (Scaleway). The only transfer
+      The app's data is hosted in France (Scaleway). One transfer
       outside the EU concerns the delivery of push notifications via
       Google Firebase Cloud Messaging (United States). This transfer
       is governed by the European Commission's Standard Contractual
       Clauses. The content transmitted is limited to what's strictly
-      necessary to display a notification.
+      necessary to display a notification. This website is delivered by
+      Cloudflare (a US company), and the Android backup and connectivity
+      test described in section 2 are Google's: they follow their own
+      policies.
     </p>
 
     <h2>6. Retention and deletion</h2>
     <p>
-      You can delete your account directly from the app (Settings →
-      Household security). Deletion triggers an immediate logical
-      erasure, followed by a definitive purge of the associated data
-      within <strong>30 days</strong>. A household left completely
-      inactive is archived after 90 days of inactivity, then purged
-      after 365 days.
+      You can delete your account directly from the app
+      (<strong>Settings › Delete my account</strong>). Here is what
+      happens, as the server does it:
+    </p>
+    <ul>
+      <li>
+        <strong>Immediately</strong>: you leave all your households, the
+        account is marked deleted, and every phone connected to the account is
+        signed out and erases its local data on its next call to the server.
+      </li>
+      <li>
+        <strong>For 30 days</strong>: your recovery code ("Recover my
+        household") lets you come back and restore everything.
+      </li>
+      <li>
+        <strong>After 30 days</strong> (nightly job): the account is
+        <em>anonymized</em>, not removed from the database. Your name becomes
+        "Former member", the recovery code is erased (no return possible any
+        more), and your devices, notification tokens, personal settings,
+        streaks and personal tasks are deleted. The tasks you completed stay
+        in the household history, under the name "Former member".
+      </li>
+      <li>
+        <strong>Households</strong>: a household with no active member left is
+        archived by the next nightly job, then permanently deleted 365 days
+        later, with its tasks, history, presence calendar and the associated
+        home Wi-Fi names. While the household exists, those last two items are
+        not erased by an account deletion alone.
+      </li>
+    </ul>
+    <p>
+      The server's technical logs (IP addresses) are not tied to an account
+      and are not affected by account deletion.
     </p>
 
     <h2>7. Your rights</h2>
@@ -165,8 +251,9 @@
     </p>
     <ul>
       <li>
-        <strong>Erasure</strong>: can be performed immediately and
-        autonomously from the app (account deletion).
+        <strong>Erasure</strong>: can be done autonomously from the app
+        (Settings › Delete my account); the exact effects, including
+        anonymization after 30 days, are described in section 6.
       </li>
       <li>
         <strong>Other rights</strong>: exercise them by writing to
@@ -208,6 +295,17 @@
     <p>
       For any question about this policy or your data:
       <a href="mailto:contact@torchonsetserviettes.app">contact@torchonsetserviettes.app</a>.
+    </p>
+
+    <h2>12. Your connected devices</h2>
+    <p>
+      You can see at any time which devices hold a session on your account,
+      and cut off access for any of them:
+      <strong>Settings › Household › My devices</strong>. A cut-off device is
+      signed out and its local data is erased the next time it connects. A
+      device that never reconnects keeps what it already holds in memory: no
+      app can erase a phone that stays offline, and we would rather say so
+      than let you assume otherwise.
     </p>
   </div>
 </main>

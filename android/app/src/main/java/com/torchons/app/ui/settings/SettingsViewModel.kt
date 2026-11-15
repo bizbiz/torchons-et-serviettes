@@ -5,6 +5,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.torchons.app.core.network.DeviceRevocationMonitor
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.BonusConfig
@@ -38,6 +39,7 @@ class SettingsViewModel @Inject constructor(
     private val apiService: ApiService,
     private val taskRepository: TaskRepository,
     private val propositionStateHolder: PropositionStateHolder,
+    private val revocationMonitor: DeviceRevocationMonitor,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -506,6 +508,18 @@ class SettingsViewModel @Inject constructor(
     )
 
     fun leaveFoyer() = foyers.leaveFoyer()
+
+    // Account deletion (DELETE /api/me), then the same local wipe as a revoked device.
+    private val deleteAccountAction = DeleteAccountAction(
+        scope = viewModelScope,
+        deleteMe = apiService::deleteMe,
+        wipe = revocationMonitor::wipeNow,
+    )
+    val deleteAccountState: StateFlow<DeleteAccountState> = deleteAccountAction.state
+
+    fun deleteAccount() = deleteAccountAction.start()
+
+    fun dismissDeleteAccountError() = deleteAccountAction.dismissError()
 
     fun dismissLeave() {
         _leaveState.value = LeaveState.Idle
