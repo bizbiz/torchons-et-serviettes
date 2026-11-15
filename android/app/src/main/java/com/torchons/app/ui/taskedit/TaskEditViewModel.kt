@@ -6,14 +6,11 @@ import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.model.CreateTaskRequest
-import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.RecurrenceRule
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.CatalogSuggestion
-import com.torchons.app.data.model.ContextView
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.UpdateTaskRequest
-import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.util.DurationUnit
@@ -26,121 +23,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-/**
- * Etat du formulaire de creation/edition de tache.
- */
-data class TaskEditUiState(
-    val isLoading: Boolean = false,
-    val isSaving: Boolean = false,
-    val isEditMode: Boolean = false,
-    val title: String = "",
-    val description: String = "",
-    /** Contextes choisis, dans l'ORDRE : le premier decide de l'endroit ou la
-     *  tache s'affiche. Une liste et non un Set pour cette raison. */
-    val contextIds: List<String> = emptyList(),
-    val assignedToIds: List<String> = emptyList(),
-    val recurrenceType: String = "none",
-    /**
-     * Texte affiche dans le champ "Tous les X" — exprime la valeur dans
-     * l'unite [recurrenceUnit] courante (ex: "3" en MOIS = 90 jours).
-     * La conversion vers le canonique en jours se fait au save() via
-     * [recurrenceUnit].toDays(...).
-     */
-    val recurrenceFieldText: String = "7",
-    /** Unite de saisie pour le champ de recurrence (Jours / Semaines / Mois). */
-    val recurrenceUnit: DurationUnit = DurationUnit.JOURS,
-    /** `calendar` : mois ou la tache devient due. Vide = janvier par defaut. */
-    val recurrenceMonths: Set<Int> = emptySet(),
-    /** `calendar` : jour dans le mois (1..28). */
-    val recurrenceDay: Int = 1,
-    /**
-     * `calendar` : tolerance en jours apres l'echeance avant le rouge. C'est
-     * ce qui exprime « acceptable jusqu'a la fin de l'ete » sans creer une
-     * seconde echeance.
-     */
-    val recurrenceGraceDays: Int = 0,
-    /** `anniversary` : period amount, in years or months per [anniversaryInYears]. */
-    val anniversaryAmount: Int = 1,
-    /** `anniversary` : true = the amount counts years, false = months. */
-    val anniversaryInYears: Boolean = true,
-    val daysPerMonth: Map<String, String> = (1..12).associate { it.toString() to "" },
-    val weight: Int = 1,
-    val tolerance: String = "NORMAL",
-    val contexts: List<ContextView> = emptyList(),
-    /** Propositions du catalogue pertinentes pour ce foyer. */
-    val suggestions: List<CatalogSuggestion> = emptyList(),
-    /** Titre de la proposition appliquee, pour l'afficher et pouvoir l'annuler. */
-    val appliedSuggestion: String? = null,
-    val users: List<User> = emptyList(),
-    val error: String? = null,
-    val saved: Boolean = false,
-    val deleted: Boolean = false,
-    /**
-     * Etat des votes de frequence pour la tache en cours d'edition.
-     * Non-null uniquement en mode edition + type interval. Si votesCount >= 1,
-     * le champ recurrenceFieldText est grise dans l'UI et seul le mini-dialog
-     * "Modifier via le vote" peut le faire bouger.
-     */
-    val frequencyVotes: FrequencyVotesState? = null,
-    /** Affiche le mini-dialog de re-vote frequence. */
-    val showFrequencyVoteDialog: Boolean = false,
-    /**
-     * Titre de la tache source quand on est en mode "creation par clonage"
-     * (via bouton Dupliquer dans TaskDetail ou selection d'une suggestion
-     * d'autocomplete). Non-null = un chip "Duplique de [titre]" est affiche
-     * en haut du formulaire et l'autocomplete est desactive le temps que
-     * l'user n'ait pas reset le clone.
-     */
-    val clonedFromTitle: String? = null,
-)
-
-/** `anniversary` period in months, as stored (`every_n_months`). */
-fun TaskEditUiState.anniversaryEveryNMonths(): Int =
-    anniversaryAmount.coerceAtLeast(1) * (if (anniversaryInYears) 12 else 1)
-
-/** Editor fields of a stored `anniversary` rule: whole years when possible. */
-internal fun anniversaryFieldsOf(rule: RecurrenceRule?): Pair<Int, Boolean> {
-    val months = rule?.everyNMonths?.coerceAtLeast(1) ?: 12
-    return if (months % 12 == 0) (months / 12) to true else months to false
-}
-
-/** Duree canonique en jours derivee de [recurrenceFieldText] et [recurrenceUnit]. */
-fun TaskEditUiState.canonicalEveryNDays(): Int {
-    val raw = recurrenceFieldText.toIntOrNull() ?: 7
-    return recurrenceUnit.toDays(raw)
-}
-
-/**
- * La regle telle qu'elle serait enregistree maintenant, pour l'apercu.
- *
- * Construite ici et non dans l'ecran pour qu'il n'existe qu'UN endroit qui
- * sache traduire l'etat en regle : la phrase affichee decrit alors exactement
- * ce que la sauvegarde produira, jamais une approximation qui divergerait.
- */
-fun TaskEditUiState.previewRecurrenceRule(): RecurrenceRule? = when (recurrenceType) {
-    "interval" -> RecurrenceRule(type = "interval", everyNDays = canonicalEveryNDays())
-    "monthly_variable" -> RecurrenceRule(
-        type = "monthly_variable",
-        daysPerMonth = daysPerMonth
-            .filter { (it.value.toIntOrNull() ?: 0) > 0 }
-            .mapValues { it.value.toInt() },
-    )
-    "uncertain" -> RecurrenceRule(type = "uncertain")
-    "calendar" -> RecurrenceRule(
-        type = "calendar",
-        months = recurrenceMonths.sorted().ifEmpty { listOf(1) },
-        day = recurrenceDay,
-        graceDays = recurrenceGraceDays,
-    )
-    "anniversary" -> RecurrenceRule(type = "anniversary", everyNMonths = anniversaryEveryNMonths())
-    else -> null
-}
 
 /**
  * ViewModel pour l'ecran de creation/edition de tache.
@@ -155,6 +41,14 @@ class TaskEditViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(TaskEditUiState())
     val uiState: StateFlow<TaskEditUiState> = _uiState.asStateFlow()
+
+    private val loader = TaskEditLoader(
+        scope = viewModelScope,
+        uiState = _uiState,
+        taskRepository = taskRepository,
+        apiService = apiService,
+        context = context,
+    )
 
     val currentUserId: StateFlow<String?> = authRepository.userIdFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -270,118 +164,14 @@ class TaskEditViewModel @Inject constructor(
     }
 
     /** Charge les donnees de reference (categories, rooms, users) et la tache si edition. */
-    fun loadData(taskId: String?, cloneFromId: String? = null) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-
-            // Users, contexts and the task: refresh the cache when online (REPLACE), then
-            // ALWAYS read the cache (docs/cache-conventions.md). Reading the network answer
-            // left the form empty offline: "Nouvelle tâche" on an existing task (2026-11-02).
-            // One-shot reads, not observed: the edit screen is not reactive.
-            taskRepository.refreshUsers()
-            taskRepository.refreshContexts()
-            // Uniquement en creation : proposer des taches a qui est en train
-            // d'en modifier une n'aurait aucun sens.
-            val propositions = if (taskId == null) {
-                runCatching { apiService.getCatalogSuggestions().body()?.suggestions }
-                    .getOrNull().orEmpty()
-            } else {
-                emptyList()
-            }
-            val contexts = try {
-                taskRepository.observeContexts().first()
-            } catch (e: Exception) {
-                emptyList()
-            }
-            val users = taskRepository.observeUsers().first()
-
-            if (taskId != null) {
-                // Edit mode: the task from the cache, refreshed first when online.
-                taskRepository.refreshTasks()
-                val task = taskRepository.getCachedTaskById(taskId)
-                if (task != null) {
-                    val dpm = task.recurrenceRule?.daysPerMonth?.mapValues { it.value.toString() }
-                        ?: (1..12).associate { it.toString() to "" }
-                    // Fetch des votes de frequence si la tache est en interval —
-                    // sert a griser le champ + afficher le consensus + bouton vote.
-                    val votes = if (task.recurrenceRule?.type == "interval") {
-                        taskRepository.getFrequencyVotes(taskId)
-                    } else {
-                        null
-                    }
-                    val canonicalDays = task.recurrenceRule?.everyNDays ?: 7
-                    val unit = DurationUnit.bestFor(canonicalDays)
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        isEditMode = true,
-                        title = task.title,
-                        description = task.description ?: "",
-                        contextIds = task.contexts.sortedBy { it.position }.map { it.id },
-                        assignedToIds = task.assignedToIds,
-                        recurrenceType = task.recurrenceRule?.type ?: "none",
-                        recurrenceMonths = task.recurrenceRule?.months?.toSet() ?: emptySet(),
-                        recurrenceDay = task.recurrenceRule?.day ?: 1,
-                        recurrenceGraceDays = task.recurrenceRule?.graceDays ?: 0,
-                        anniversaryAmount = anniversaryFieldsOf(task.recurrenceRule).first,
-                        anniversaryInYears = anniversaryFieldsOf(task.recurrenceRule).second,
-                        recurrenceFieldText = unit.fromDays(canonicalDays).toString(),
-                        recurrenceUnit = unit,
-                        daysPerMonth = dpm,
-                        weight = task.weight,
-                        tolerance = task.tolerance,
-                        contexts = contexts,
-                        suggestions = propositions,
-                        users = users,
-                        frequencyVotes = votes,
-                        clonedFromTitle = null,
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false, error = context.getString(R.string.task_detail_not_found)
-                    )
-                }
-            } else if (cloneFromId != null) {
-                // Mode creation par clonage — projete la source dans le formulaire.
-                // recurrenceRule.everyNDays est deja le consensus des votes
-                // (synchronise par upsert_vote_and_sync_consensus cote backend),
-                // donc on copie tel quel : le clone herite du consensus actuel
-                // sans copier les votes individuels, qui sont propres au task_id.
-                applyCloneSourceInternal(
-                    sourceId = cloneFromId,
-                    contexts = contexts,
-                    users = users,
-                )
-            } else {
-                // Mode creation neuve — initialiser avec tous les users assignes (commune)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    isEditMode = false,
-                    assignedToIds = users.map { it.id },
-                    contexts = contexts,
-                    suggestions = propositions,
-                    users = users,
-                    clonedFromTitle = null,
-                )
-            }
-        }
-    }
+    fun loadData(taskId: String?, cloneFromId: String? = null) = loader.loadData(taskId, cloneFromId)
 
     /**
      * Applique un clone depuis l'autocomplete (selection d'une suggestion).
      * Reutilise les categories/users/rooms deja en memoire pour eviter un
      * re-fetch reseau. Appele sur tap dans la dropdown du champ titre.
      */
-    fun applyCloneFrom(sourceId: String) {
-        val state = _uiState.value
-        if (state.isEditMode) return
-        viewModelScope.launch {
-            applyCloneSourceInternal(
-                sourceId = sourceId,
-                contexts = state.contexts,
-                users = state.users,
-            )
-        }
-    }
+    fun applyCloneFrom(sourceId: String) = loader.applyCloneFrom(sourceId)
 
     /**
      * Reset du clone : remet le formulaire dans l'etat "creation neuve"
@@ -396,53 +186,6 @@ class TaskEditViewModel @Inject constructor(
             assignedToIds = state.users.map { it.id },
             users = state.users,
             clonedFromTitle = null,
-        )
-    }
-
-    private suspend fun applyCloneSourceInternal(
-        sourceId: String,
-        contexts: List<ContextView>,
-        users: List<User>,
-    ) {
-        val source = taskRepository.getCachedTaskById(sourceId)
-        if (source == null) {
-            _uiState.value = _uiState.value.copy(
-                isLoading = false,
-                error = context.getString(R.string.task_edit_source_not_found),
-                contexts = contexts,
-                users = users,
-                assignedToIds = if (_uiState.value.assignedToIds.isEmpty()) users.map { it.id } else _uiState.value.assignedToIds,
-            )
-            return
-        }
-        val dpm = source.recurrenceRule?.daysPerMonth?.mapValues { it.value.toString() }
-            ?: (1..12).associate { it.toString() to "" }
-        val canonicalDays = source.recurrenceRule?.everyNDays ?: 7
-        val unit = DurationUnit.bestFor(canonicalDays)
-        _uiState.value = _uiState.value.copy(
-            isLoading = false,
-            isEditMode = false,
-            title = source.title,
-            description = source.description ?: "",
-            contextIds = source.contexts.sortedBy { it.position }.map { it.id },
-            assignedToIds = source.assignedToIds,
-            recurrenceType = source.recurrenceRule?.type ?: "none",
-            recurrenceMonths = source.recurrenceRule?.months?.toSet() ?: emptySet(),
-            recurrenceDay = source.recurrenceRule?.day ?: 1,
-            recurrenceGraceDays = source.recurrenceRule?.graceDays ?: 0,
-            anniversaryAmount = anniversaryFieldsOf(source.recurrenceRule).first,
-            anniversaryInYears = anniversaryFieldsOf(source.recurrenceRule).second,
-            recurrenceFieldText = unit.fromDays(canonicalDays).toString(),
-            recurrenceUnit = unit,
-            daysPerMonth = dpm,
-            weight = source.weight,
-            tolerance = source.tolerance,
-            contexts = contexts,
-            users = users,
-            // Pas de votes : le clone n'a pas de TaskFrequencyVote tant qu'aucun
-            // user n'a vote — chaque user re-vote au prochain prompt.
-            frequencyVotes = null,
-            clonedFromTitle = source.title,
         )
     }
 

@@ -9,11 +9,9 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.BonusConfig
 import com.torchons.app.data.model.Foyer
-import com.torchons.app.data.model.FoyerCreateRequest
 import com.torchons.app.data.model.MaintenanceRateResponse
 import com.torchons.app.data.model.ModuleToggleRequest
 import com.torchons.app.data.model.ModuleView
-import com.torchons.app.data.model.ObjectiveUpdate
 import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.RetardResponse
 import com.torchons.app.data.model.User
@@ -370,218 +368,36 @@ class SettingsViewModel @Inject constructor(
         updateSetting("hide_home_tasks_off_wifi", v)
     }
 
-    /** v0.32 : toggle gamification du foyer courant. Tout membre peut
-     *  toggler (cf design review Q4) — friction cote UI via dialog de
-     *  confirmation mentionnant l'impact sur l'autre membre. */
-    fun setCurrentFoyerGamificationEnabled(enabled: Boolean) {
-        val foyer = _currentFoyer.value ?: return
-        // Optimistic update : on flip le local d'abord pour reactivite UI.
-        _currentFoyer.value = foyer.copy(gamificationEnabled = enabled)
-        _allFoyers.value = _allFoyers.value.map {
-            if (it.id == foyer.id) it.copy(gamificationEnabled = enabled) else it
-        }
-        viewModelScope.launch {
-            tokenManager.setCurrentFoyerGamificationEnabled(enabled)
-            try {
-                val resp = apiService.updateFoyerGamification(
-                    foyer.id,
-                    mapOf("enabled" to enabled),
-                )
-                if (resp.isSuccessful) {
-                    val updated = resp.body()
-                    if (updated != null) {
-                        _currentFoyer.value = updated
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("SettingsVM", "setCurrentFoyerGamificationEnabled failed", e)
-            }
-        }
-    }
-    /**
-     * Renomme le foyer courant (edition inline depuis l'ecran Foyer).
-     * Reutilise PUT /api/foyers/{id} (deja utilise par FoyersScreen). Update
-     * optimiste local pour reactivite UI, puis sync backend.
-     */
-    fun renameCurrentFoyer(newName: String) {
-        val foyer = _currentFoyer.value ?: return
-        val trimmed = newName.trim()
-        if (trimmed.isEmpty() || trimmed == foyer.name) return
-        _currentFoyer.value = foyer.copy(name = trimmed)
-        _allFoyers.value = _allFoyers.value.map {
-            if (it.id == foyer.id) it.copy(name = trimmed) else it
-        }
-        viewModelScope.launch {
-            try {
-                val resp = apiService.updateFoyer(foyer.id, mapOf("name" to trimmed))
-                if (resp.isSuccessful) {
-                    val updated = resp.body()
-                    if (updated != null) _currentFoyer.value = updated
-                }
-            } catch (e: Exception) {
-                Log.e("SettingsVM", "renameCurrentFoyer failed", e)
-            }
-        }
-    }
+    // Foyer actions (gamification, rename, home freeze, switch, create): SettingsFoyerActions.
+    fun setCurrentFoyerGamificationEnabled(enabled: Boolean) =
+        foyers.setCurrentFoyerGamificationEnabled(enabled)
 
-    /**
-     * Toggle la mise en pause des taches "a la maison" quand tout le monde
-     * est absent (home freeze) pour le foyer courant. Reutilise
-     * PUT /api/foyers/{id} (champ home_freeze_enabled, deja gere backend).
-     */
-    fun setCurrentFoyerHomeFreezeEnabled(enabled: Boolean) {
-        val foyer = _currentFoyer.value ?: return
-        _currentFoyer.value = foyer.copy(homeFreezeEnabled = enabled)
-        _allFoyers.value = _allFoyers.value.map {
-            if (it.id == foyer.id) it.copy(homeFreezeEnabled = enabled) else it
-        }
-        viewModelScope.launch {
-            try {
-                val resp = apiService.updateFoyer(
-                    foyer.id,
-                    mapOf("home_freeze_enabled" to enabled),
-                )
-                if (resp.isSuccessful) {
-                    val updated = resp.body()
-                    if (updated != null) _currentFoyer.value = updated
-                }
-            } catch (e: Exception) {
-                Log.e("SettingsVM", "setCurrentFoyerHomeFreezeEnabled failed", e)
-            }
-        }
-    }
+    fun renameCurrentFoyer(newName: String) = foyers.renameCurrentFoyer(newName)
 
-    /**
-     * Switch backend (regenere JWT) -> wipe du cache Room local -> refresh
-     * complet du nouveau foyer. Helper interne reutilise par switchToFoyer
-     * et createAndSwitchToFoyer. Reprend exactement le pattern de
-     * FoyersScreen (option A grille v0.7.0).
-     */
-    /** P4a.1 — re-fetch foyers (suspend, reconciliation serveur). */
-    private suspend fun fetchFoyers() {
-        try {
-            val fResp = apiService.getMyFoyers()
-            if (fResp.isSuccessful) {
-                val foyers = fResp.body() ?: emptyList()
-                // Exclure les foyers quittés (cf loadAll : /foyers ne filtre
-                // pas left_at, on ne liste que les membres actifs).
-                _allFoyers.value = foyers.filter { it.role != "former_member" }
-                val current = foyers.find { it.isCurrent }
-                _currentFoyer.value = current
-                if (current != null) {
-                    tokenManager.setCurrentFoyerGamificationEnabled(
-                        current.gamificationEnabled,
-                    )
-                    tokenManager.setCurrentFoyerName(current.name)
-                }
-            }
-        } catch (_: Exception) {}
-    }
+    fun setCurrentFoyerHomeFreezeEnabled(enabled: Boolean) =
+        foyers.setCurrentFoyerHomeFreezeEnabled(enabled)
 
-    /** P4a.1 Bug A — l'ecran Foyer reflete un foyer nouvellement cree ou
-     *  quitte SANS refresh manuel. Les instances SettingsViewModel de
-     *  SettingsScreen et FoyerSettingsScreen sont distinctes (hiltViewModel
-     *  par backstack) : l'ecran Foyer doit re-fetcher a son apparition. */
-    fun refreshFoyers() {
-        viewModelScope.launch { fetchFoyers() }
-    }
-
-    private suspend fun doSwitchAndRefresh(foyerId: String) {
-        val result = authRepository.switchFoyer(foyerId)
-        if (result.isSuccess) {
-            taskRepository.wipeLocalCache()
-            taskRepository.refreshTasks()
-            taskRepository.refreshContexts()
-            taskRepository.refreshUsers()
-            taskRepository.refreshCompletions(limit = 2000)
-            loadAll()
-        }
-    }
+    fun refreshFoyers() = foyers.refreshFoyers()
 
     /** Bascule vers un autre foyer existant (feuille "Changer de foyer"). */
-    fun switchToFoyer(foyerId: String) {
-        viewModelScope.launch { doSwitchAndRefresh(foyerId) }
-    }
+    fun switchToFoyer(foyerId: String) = foyers.switchToFoyer(foyerId)
 
-    /**
-     * Cree un nouveau foyer puis bascule dessus (bouton "Creer un nouveau
-     * foyer" des Reglages, design decision 3). Reutilise POST /api/foyers
-     * (meme endpoint que l'ancien ecran Mes foyers — aucun endpoint invente).
-     */
-    fun createAndSwitchToFoyer(name: String) {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty()) return
-        viewModelScope.launch {
-            try {
-                val resp = apiService.createFoyer(FoyerCreateRequest(trimmed))
-                if (resp.isSuccessful) {
-                    val created = resp.body()
-                    if (created != null) {
-                        doSwitchAndRefresh(created.id)
-                    } else {
-                        loadAll()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("SettingsVM", "createAndSwitchToFoyer failed", e)
-            }
-        }
-    }
+    fun createAndSwitchToFoyer(name: String) = foyers.createAndSwitchToFoyer(name)
 
-    // --- Simulation rattrapage (reutilise ProjectionSimulationDialog) ---
-    // Les memes endpoints que HomeViewModel.refreshProjection(). Le flow
-    // "Proposer au foyer" (live FCM) reste pilote par HomeViewModel : ici
-    // on supporte uniquement "Juste pour moi" (cf P1, design decision 7).
+    // Simulation rattrapage (ProjectionSimulationDialog) : SettingsSimulation.
+    private val simulation = SettingsSimulation(viewModelScope, apiService)
 
-    private val _simPace = MutableStateFlow<PaceResponse?>(null)
-    val simPace: StateFlow<PaceResponse?> = _simPace.asStateFlow()
+    val simPace: StateFlow<PaceResponse?> = simulation.simPace
 
-    private val _simRetard = MutableStateFlow<RetardResponse?>(null)
-    val simRetard: StateFlow<RetardResponse?> = _simRetard.asStateFlow()
+    val simRetard: StateFlow<RetardResponse?> = simulation.simRetard
 
-    private val _simMaintenance = MutableStateFlow<MaintenanceRateResponse?>(null)
-    val simMaintenance: StateFlow<MaintenanceRateResponse?> = _simMaintenance.asStateFlow()
+    val simMaintenance: StateFlow<MaintenanceRateResponse?> = simulation.simMaintenance
 
-    private val _currentUserId = MutableStateFlow<String?>(null)
-    val currentUserId: StateFlow<String?> = _currentUserId.asStateFlow()
+    val currentUserId: StateFlow<String?> = simulation.currentUserId
 
-    /** Charge les 3 endpoints projection (pace/retard/maintenance) + l'id
-     *  du user courant, pour alimenter ProjectionSimulationDialog. */
-    fun loadSimulationData() {
-        viewModelScope.launch {
-            try {
-                val meResp = apiService.getMe()
-                if (meResp.isSuccessful) _currentUserId.value = meResp.body()?.id
-            } catch (_: Exception) {}
-            try {
-                val r = apiService.getRetard()
-                if (r.isSuccessful) _simRetard.value = r.body()
-            } catch (_: Exception) {}
-            try {
-                val p = apiService.getPace()
-                if (p.isSuccessful) _simPace.value = p.body()
-            } catch (_: Exception) {}
-            try {
-                val m = apiService.getMaintenanceRate()
-                if (m.isSuccessful) _simMaintenance.value = m.body()
-            } catch (_: Exception) {}
-        }
-    }
+    fun loadSimulationData() = simulation.loadSimulationData()
 
-    /** Sauve l'objectif perso de l'user courant (bouton "Juste pour moi"
-     *  du dialog de simulation). Refresh les donnees apres. */
-    fun saveObjective(minutes: Int?, unit: String?) {
-        viewModelScope.launch {
-            try {
-                apiService.updateObjective(
-                    ObjectiveUpdate(dailyObjectiveMinutes = minutes, displayUnit = unit),
-                )
-                loadSimulationData()
-            } catch (e: Exception) {
-                Log.e("SettingsVM", "saveObjective failed", e)
-            }
-        }
-    }
+    fun saveObjective(minutes: Int?, unit: String?) = simulation.saveObjective(minutes, unit)
 
     fun setAffinityExpiry(v: Int) { _settings.value = _settings.value.copy(affinityExpiry = v); updateSetting("affinity_expiry_months", v) }
     fun setFairShareTolerance(v: Int) { _settings.value = _settings.value.copy(fairShareTolerance = v); updateSetting("fair_share_tolerance_percent", v) }
@@ -676,67 +492,20 @@ class SettingsViewModel @Inject constructor(
     private val _leaveState = MutableStateFlow<LeaveState>(LeaveState.Idle)
     val leaveState: StateFlow<LeaveState> = _leaveState.asStateFlow()
 
-    fun leaveFoyer() {
-        if (_leaveState.value is LeaveState.Loading) return
-        _leaveState.value = LeaveState.Loading
-        viewModelScope.launch {
-            try {
-                val foyerId = authRepository.foyerIdFlow.first()
-                if (foyerId.isNullOrEmpty()) {
-                    _leaveState.value = LeaveState.Error(appContext.getString(R.string.settings_leave_no_active_foyer))
-                    return@launch
-                }
-                val resp = apiService.leaveFoyer(foyerId)
-                if (resp.code() == 404) {
-                    // P4a.1 Bug B : 404 = foyer deja quitte/supprime cote
-                    // serveur (re-leave d'un foyer fantome reste en local).
-                    // On ne jette PAS d'erreur : purge locale immediate +
-                    // reconciliation serveur (serveur autoritaire).
-                    _allFoyers.value =
-                        _allFoyers.value.filterNot { it.id == foyerId }
-                    fetchFoyers()
-                    if (_allFoyers.value.isEmpty()) {
-                        authRepository.logout()
-                        _leaveState.value = LeaveState.LoggedOut
-                    } else {
-                        _leaveState.value = LeaveState.SwitchedFoyer
-                    }
-                    return@launch
-                }
-                if (!resp.isSuccessful) {
-                    _leaveState.value =
-                        LeaveState.Error(appContext.getString(R.string.common_error_code_format, resp.code()))
-                    return@launch
-                }
-                val body = resp.body()
-                if (body == null) {
-                    _leaveState.value = LeaveState.Error(appContext.getString(R.string.common_empty_response))
-                    return@launch
-                }
-                // P4a.1 Bug B : retrait OPTIMISTE immediat du foyer quitte
-                // -> il disparait de "Changer de foyer" sans refresh manuel.
-                _allFoyers.value =
-                    _allFoyers.value.filterNot { it.id == foyerId }
-                if (body.newToken != null && body.newActiveFoyerId != null) {
-                    // L'user est encore membre d'un autre foyer : on bascule
-                    // dessus sans logout, puis on reconcilie la liste.
-                    tokenManager.updateTokenAndFoyer(
-                        body.newToken,
-                        body.newActiveFoyerId,
-                    )
-                    fetchFoyers()
-                    _leaveState.value = LeaveState.SwitchedFoyer
-                } else {
-                    // Plus aucun foyer : logout complet.
-                    authRepository.logout()
-                    _leaveState.value = LeaveState.LoggedOut
-                }
-            } catch (e: Exception) {
-                _leaveState.value =
-                    LeaveState.Error(e.message ?: appContext.getString(R.string.common_error_network))
-            }
-        }
-    }
+    private val foyers = SettingsFoyerActions(
+        scope = viewModelScope,
+        apiService = apiService,
+        tokenManager = tokenManager,
+        authRepository = authRepository,
+        taskRepository = taskRepository,
+        appContext = appContext,
+        currentFoyer = _currentFoyer,
+        allFoyers = _allFoyers,
+        leaveState = _leaveState,
+        loadAll = ::loadAll,
+    )
+
+    fun leaveFoyer() = foyers.leaveFoyer()
 
     fun dismissLeave() {
         _leaveState.value = LeaveState.Idle

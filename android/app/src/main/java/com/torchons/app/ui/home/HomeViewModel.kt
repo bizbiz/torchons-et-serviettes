@@ -8,14 +8,9 @@ import com.torchons.app.core.proposition.PropositionStateHolder
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.FairShareStatus
-import com.torchons.app.data.model.MaintenanceRateResponse
 import com.torchons.app.data.model.ObjectiveUpdate
-import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.PendingAffinity
-import com.torchons.app.data.model.PromptResolveRequest
 import com.torchons.app.data.model.PropositionView
-import com.torchons.app.data.model.UserPrompt
-import com.torchons.app.data.model.RetardResponse
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.ContextView
 import com.torchons.app.data.model.Task
@@ -43,97 +38,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-/**
- * Etat UI de l'accueil.
- *
- * @param hasCachedData true des qu'au moins un snapshot non-null a ete observe
- *   depuis le cache Room. Permet de distinguer "ecran vide initial" de
- *   "tout est frais reellement".
- * @param lastRefreshFailed true si le dernier refresh API a echoue (au moins
- *   un des sub-fetches). Combine avec hasCachedData = false, indique au UI
- *   qu'on est dans un etat "rien a afficher car backend injoignable".
- */
-/** Contexte d'un FrequencyVoteDialog / EffortVoteDialog ouvert via prompt (v0.28). */
-data class PromptVoteContext(
-    val promptId: String,
-    val taskId: String,
-    val header: com.torchons.app.ui.common.VoteTaskHeader,
-    val requesterName: String,
-    val frequencyState: com.torchons.app.data.model.FrequencyVotesState? = null,
-    val effortState: com.torchons.app.data.model.EffortVotesState? = null,
-)
-
-data class HomeUiState(
-    val isLoading: Boolean = true,
-    val isRefreshing: Boolean = false,
-    val suggestions: List<Suggestion> = emptyList(),
-    val fairShare: List<FairShareStatus> = emptyList(),
-    val pendingAffinity: PendingAffinity? = null,
-    val showAffinityPopup: Boolean = false,
-    val hasCachedData: Boolean = false,
-    val lastRefreshFailed: Boolean = false,
-    val error: String? = null,
-    /** Id de la tache en cours de "celebration" (animation post-completion). */
-    val celebratingTaskId: String? = null,
-    /** Compteur incremente a chaque celebration pour relancer l'animation konfetti. */
-    val celebrationTrigger: Int = 0,
-    /** Points gagnes a afficher dans la celebration (preview ou response reelle). */
-    val celebrationPoints: Int? = null,
-    /** Raison du multiplicateur (BONUS_RETARD / MALUS_AVANCE / FIRST_COMPLETION / NEUTRAL / PERSO). */
-    val celebrationReason: String? = null,
-    /**
-     * Per-participant attribution shown in the celebration: (displayName,
-     * pointsEarned) pairs. Single completion -> one entry; collective ->
-     * one entry per participant (exact server split).
-     */
-    val celebrationEarnedBy: List<Pair<String, Int>>? = null,
-    /**
-     * Set des task_ids recemment completes cote client pour lesquels le
-     * backend n'a pas encore integre la completion (SyncWorker pas encore
-     * passe). Le HomeScreen les filtre pour afficher la suggestion suivante
-     * du tampon au lieu de montrer la meme tache une seconde fois. Les ids
-     * sont automatiquement nettoyes de ce set des que le backend ne les
-     * renvoie plus dans /suggestions (= il a rattrape le retard de sync).
-     */
-    val justCompletedIds: Set<String> = emptySet(),
-    /**
-     * v0.16+ : set des task_ids dismiss par l'user sur l'ecran Home (clic
-     * sur le ✕ d'une SuggestionCard). Session-only in-memory : reset au
-     * cold start, preservee a travers les LifecycleResumeEffect. Le HomeScreen
-     * les filtre comme pour justCompletedIds. Quand un tier est entierement
-     * dismiss (remainingByTier[tier] == 0), le ViewModel clear ce set et
-     * emet un message sur `recycleToast`.
-     */
-    val dismissedIds: Set<String> = emptySet(),
-    /**
-     * True quand il y a des jours incertains non resolus (home freeze v2).
-     * Le bandeau s'affiche en haut de la home.
-     */
-    val hasUnresolvedPresenceDays: Boolean = false,
-    /** Nombre de jours incertains (pour le bandeau). */
-    val unresolvedPresenceDaysCount: Int = 0,
-    /**
-     * Donnees des 2 cards projection (v0.8.0 magic buttons). Tout null tant
-     * que le premier fetch n'a pas abouti.
-     */
-    val retard: RetardResponse? = null,
-    val pace: PaceResponse? = null,
-    val maintenance: MaintenanceRateResponse? = null,
-    /**
-     * Historique du retard du foyer sur les 30 derniers jours, fetch en
-     * parallele pour la mini-courbe Home (period=month, sans trim creation).
-     */
-    val retardTimelineMonth: com.torchons.app.data.model.RetardTimelineResponse? = null,
-    /** Prompt de la queue unifiee (BUMP_EFFORT / VOTE_RATING / VOTE_FREQUENCY / VOTE_EFFORT). */
-    val currentPrompt: UserPrompt? = null,
-    /** v0.28 : si un VOTE_FREQUENCY est dispatche, contexte du dialog en cours. */
-    val pendingFrequencyVoteContext: PromptVoteContext? = null,
-    /** v0.28 : si un VOTE_EFFORT est dispatche, contexte du dialog en cours. */
-    val pendingEffortVoteContext: PromptVoteContext? = null,
-    /** True quand le modal prompt est actif. */
-    val showPromptModal: Boolean = false,
-)
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -215,6 +119,26 @@ class HomeViewModel @Inject constructor(
      *  ligne points, la pastille bonus, et "+X pts" sur la celebration. */
     val gamificationVisible: StateFlow<Boolean> = tokenManager.gamificationVisibleFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    private val prompts = HomePromptActions(
+        scope = viewModelScope,
+        uiState = _uiState,
+        apiService = apiService,
+        taskRepository = taskRepository,
+        tokenManager = tokenManager,
+        activeTasks = { activeTasks.value },
+        refresh = ::refresh,
+    )
+
+    private val completions = HomeCompletionActions(
+        scope = viewModelScope,
+        uiState = _uiState,
+        application = application,
+        taskRepository = taskRepository,
+        completionChecks = completionChecks,
+        displayName = { displayName.value },
+        refresh = ::refresh,
+    )
 
     init {
         observeCache()
@@ -311,7 +235,7 @@ class HomeViewModel @Inject constructor(
             refreshProjection()
 
             // v1.1 : queue unifiee des prompts (remplace /pending-affinity).
-            fetchNextPrompt()
+            prompts.fetchNextPrompt()
 
             val allOk = settingsOk && results.all { it }
 
@@ -515,31 +439,28 @@ class HomeViewModel @Inject constructor(
     }
 
     fun completeTask(taskId: String, previewPoints: Int? = null, previewReason: String? = null) =
-        unlessDuplicate(taskId) {
-        celebrateThen(taskId, previewPoints, previewReason, earnedByFor(null, previewPoints)) {
-            taskRepository.completeTask(taskId).fold(
-                onSuccess = { refresh() },
-                onFailure = { _uiState.value = _uiState.value.copy(error = it.message) },
-            )
-        }
-    }
+        completions.completeTask(taskId, previewPoints, previewReason)
 
-    /**
-     * Builds the celebration attribution list for a single completion:
-     * (displayName, points). completedBy null = current user. Returns null
-     * when points are unknown (offline preview failure) — the celebration
-     * then falls back to its no-points variant.
-     */
-    private fun earnedByFor(completedBy: String?, points: Int?): List<Pair<String, Int>>? {
-        if (points == null) return null
-        val name = if (completedBy == null) {
-            displayName.value ?: return null
-        } else {
-            _uiState.value.fairShare.firstOrNull { it.userId == completedBy }?.displayName
-                ?: return null
-        }
-        return listOf(name to points)
-    }
+    fun completeTaskAtDate(
+        taskId: String,
+        isoDate: String,
+        completedBy: String? = null,
+        previewPoints: Int? = null,
+        previewReason: String? = null,
+    ) = completions.completeTaskAtDate(taskId, isoDate, completedBy, previewPoints, previewReason)
+
+    /** Completion collective ("fait ensemble"). Online-first via endpoint dedie. */
+    fun completeTaskCollective(
+        taskId: String,
+        participantUserIds: List<String>,
+        isoDate: String? = null,
+        previewPoints: Int? = null,
+        previewReason: String? = null,
+    ) = completions.completeTaskCollective(taskId, participantUserIds, isoDate, previewPoints, previewReason)
+
+    /** Points preview of a completion; null offline or on error (the UI falls back to /suggestions values). */
+    suspend fun fetchCompletionPreview(taskId: String, isoDate: String, numParticipants: Int) =
+        completions.fetchCompletionPreview(taskId, isoDate, numParticipants)
 
     /**
      * v0.16+ : clic sur le ✕ d'une SuggestionCard.
@@ -590,333 +511,36 @@ class HomeViewModel @Inject constructor(
         else -> getApplication<Application>().getString(R.string.home_recycle_other)
     }
 
-    fun completeTaskAtDate(
-        taskId: String,
-        isoDate: String,
-        completedBy: String? = null,
-        previewPoints: Int? = null,
-        previewReason: String? = null,
-    ) = unlessDuplicate(taskId, isoDate, completedBy?.let(::listOf)) {
-        celebrateThen(taskId, previewPoints, previewReason, earnedByFor(completedBy, previewPoints)) {
-            taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
-                onSuccess = { refresh() },
-                onFailure = { _uiState.value = _uiState.value.copy(error = it.message) },
-            )
-        }
-    }
-
-    /** Completion collective ("fait ensemble"). Online-first via endpoint dedie. */
-    fun completeTaskCollective(
-        taskId: String,
-        participantUserIds: List<String>,
-        isoDate: String? = null,
-        previewPoints: Int? = null,
-        previewReason: String? = null,
-    ) = unlessDuplicate(taskId, isoDate, participantUserIds) {
-        celebrateThen(taskId, previewPoints, previewReason) {
-            taskRepository.completeTaskCollective(
-                taskId = taskId,
-                participantUserIds = participantUserIds,
-                completedAt = isoDate,
-            ).fold(
-                onSuccess = { response ->
-                    // Refresh the celebration with the exact server values:
-                    // per-participant attribution (split) + points/reason.
-                    // Guard on celebratingTaskId — a late response must not
-                    // write stale content after the celebration ended.
-                    if (_uiState.value.celebratingTaskId == taskId) {
-                        val first = response.completions.firstOrNull()
-                        val names = _uiState.value.fairShare.associate { it.userId to it.displayName }
-                        val earnedBy = response.completions.mapNotNull { c ->
-                            names[c.completedBy]?.let { it to c.pointsEarned }
-                        }.ifEmpty { null }
-                        _uiState.value = _uiState.value.copy(
-                            celebrationPoints = _uiState.value.celebrationPoints ?: first?.pointsEarned,
-                            celebrationReason = _uiState.value.celebrationReason ?: first?.reason,
-                            celebrationEarnedBy = earnedBy,
-                        )
-                    }
-                    refresh()
-                },
-                onFailure = { err ->
-                    val msg = when (err) {
-                        is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
-                            409 -> getApplication<Application>().getString(R.string.home_collective_conflict)
-                            else -> getApplication<Application>()
-                                .getString(R.string.common_error_code_format, err.httpCode)
-                        }
-                        else -> err.message ?: getApplication<Application>().getString(R.string.common_error_network)
-                    }
-                    _uiState.value = _uiState.value.copy(error = msg)
-                },
-            )
-        }
-    }
-
-    /**
-     * Affiche la celebration (emoji + confetti) pendant ~2s, puis execute
-     * le bloc de completion. A la fin de la celebration, ajoute le taskId
-     * a justCompletedIds pour que le HomeScreen affiche instantanement la
-     * suggestion suivante du tampon (au lieu de re-flasher la meme carte
-     * pendant que le serveur rattrape le retard de sync).
-     */
-    private fun celebrateThen(
-        taskId: String,
-        points: Int?,
-        reason: String?,
-        earnedBy: List<Pair<String, Int>>? = null,
-        block: suspend () -> Unit,
-    ) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                celebratingTaskId = taskId,
-                celebrationTrigger = _uiState.value.celebrationTrigger + 1,
-                celebrationPoints = points,
-                celebrationReason = reason,
-                celebrationEarnedBy = earnedBy,
-            )
-            // Run the completion CONCURRENTLY with the celebration so server
-            // responses (exact collective split) can refresh the celebration
-            // content while it is still on screen. The celebrating card stays
-            // visible through celebratingTaskId; justCompletedIds takes over
-            // the filtering at reset time.
-            val work = launch { block() }
-            kotlinx.coroutines.delay(3000L)
-            _uiState.value = _uiState.value.copy(
-                celebratingTaskId = null,
-                celebrationPoints = null,
-                celebrationReason = null,
-                celebrationEarnedBy = null,
-                justCompletedIds = _uiState.value.justCompletedIds + taskId,
-            )
-            work.join()
-        }
-    }
-
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
 
-    /** Refuses a duplicate completion BEFORE the celebration (CompletionChecks.refusal); [by] null = me. */
-    private fun unlessDuplicate(taskId: String, at: String? = null, by: List<String>? = null, go: () -> Unit) {
-        viewModelScope.launch {
-            val refusal = completionChecks.refusal(taskId, at, by)
-            if (refusal == null) go() else _uiState.value = _uiState.value.copy(error = refusal)
-        }
-    }
-
-    /** Points preview of a completion; null offline or on error (the UI falls back to /suggestions values). */
-    suspend fun fetchCompletionPreview(taskId: String, isoDate: String, numParticipants: Int) =
-        completionChecks.preview(taskId, isoDate, numParticipants)
-
-    // --- Queue unifiee des prompts (BUMP_EFFORT / VOTE_RATING) ---
-
-    /**
-     * Fetch le prochain prompt non-resolu. Respecte la tolerance 2h : si un
-     * prompt a ete affiche il y a moins de 2h, on ne fetch pas.
-     *
-     * Appele dans refresh() apres les projections.
-     */
-    private suspend fun fetchNextPrompt() {
-        try {
-            val resp = apiService.getNextPrompt()
-            if (resp.isSuccessful && resp.body() != null) {
-                val prompt = resp.body()!!
-
-                // Never replace a prompt the user is already looking at (modal or vote dialog).
-                val open = _uiState.value
-                if (PromptPolicy.isPromptOpen(
-                        open.showPromptModal,
-                        open.pendingFrequencyVoteContext != null,
-                        open.pendingEffortVoteContext != null,
-                    )
-                ) return
-                val isPresencePrompt = prompt.type == "RESOLVE_PRESENCE"
-                // Presence and member-requested re-votes bypass the 2 h tolerance.
-                val lastShown = tokenManager.lastPromptShownAtFlow.first()
-                if (PromptPolicy.isHeldBackByTolerance(prompt.type, lastShown, System.currentTimeMillis())) return
-                apiService.markPromptShown(prompt.id)
-                if (!PromptPolicy.bypassesTolerance(prompt.type)) {
-                    tokenManager.setLastPromptShownAt(System.currentTimeMillis())
-                }
-                _uiState.value = _uiState.value.copy(
-                    currentPrompt = prompt,
-                    showPromptModal = true,
-                    // Mettre a jour le bandeau si c'est un prompt RESOLVE_PRESENCE
-                    hasUnresolvedPresenceDays = isPresencePrompt,
-                    unresolvedPresenceDaysCount = if (isPresencePrompt) {
-                        @Suppress("UNCHECKED_CAST")
-                        val days = prompt.context["uncertain_days"] as? List<*>
-                        val count = prompt.context["uncertain_days_count"] as? Number
-                        days?.size ?: count?.toInt() ?: 0
-                    } else _uiState.value.unresolvedPresenceDaysCount,
-                )
-            } else {
-                // Pas de prompt pending -> pas de jours incertains
-                _uiState.value = _uiState.value.copy(
-                    hasUnresolvedPresenceDays = false,
-                    unresolvedPresenceDaysCount = 0,
-                )
-            }
-        } catch (_: Exception) {
-            // offline — pas de prompt
-        }
-    }
+    // --- Queue unifiee des prompts (BUMP_EFFORT / VOTE_RATING) : HomePromptActions ---
 
     /** User repond au prompt (ANSWERED avec payload). */
-    fun resolveCurrentPrompt(resolution: String, payload: Map<String, Any?>? = null) {
-        val prompt = _uiState.value.currentPrompt ?: return
-        val wasPresencePrompt = prompt.type == "RESOLVE_PRESENCE"
-        val wasDismissed = resolution == "DISMISSED"
-        viewModelScope.launch {
-            try {
-                apiService.resolvePrompt(prompt.id, PromptResolveRequest(resolution, payload))
-            } catch (_: Exception) {}
-            _uiState.value = _uiState.value.copy(
-                currentPrompt = null,
-                showPromptModal = false,
-                // Si un RESOLVE_PRESENCE est DISMISSED ("Plus tard"), on garde
-                // le bandeau visible — les taches restent freezees.
-                hasUnresolvedPresenceDays = wasPresencePrompt && wasDismissed,
-            )
-            refresh()
-        }
-    }
+    fun resolveCurrentPrompt(resolution: String, payload: Map<String, Any?>? = null) =
+        prompts.resolveCurrentPrompt(resolution, payload)
 
     /** User ferme le prompt (DISMISSED). */
-    fun dismissCurrentPrompt() {
-        resolveCurrentPrompt("DISMISSED")
-    }
+    fun dismissCurrentPrompt() = prompts.dismissCurrentPrompt()
 
-    // --- v0.28 : dispatch des prompts VOTE_FREQUENCY / VOTE_EFFORT ---
+    fun openFrequencyVoteFromPrompt(taskId: String, requesterName: String) =
+        prompts.openFrequencyVoteFromPrompt(taskId, requesterName)
 
-    /**
-     * Ouvre le FrequencyVoteDialog en reponse a un prompt VOTE_FREQUENCY.
-     * Fetch le state a la volee, garde le promptId pour resolve apres submit.
-     */
-    fun openFrequencyVoteFromPrompt(taskId: String, requesterName: String) {
-        val prompt = _uiState.value.currentPrompt ?: return
-        viewModelScope.launch {
-            try {
-                val resp = apiService.getFrequencyVotes(taskId)
-                if (resp.isSuccessful) {
-                    val state = resp.body()
-                    val task = activeTasks.value.firstOrNull { it.id == taskId }
-                    if (state != null && task != null) {
-                        _uiState.value = _uiState.value.copy(
-                            pendingFrequencyVoteContext = PromptVoteContext(
-                                promptId = prompt.id,
-                                taskId = taskId,
-                                header = com.torchons.app.ui.common.voteHeader(task),
-                                requesterName = requesterName,
-                                frequencyState = state,
-                            ),
-                            // On garde currentPrompt pour pouvoir resolve, mais on
-                            // cache le PromptModal de queue (le dialog vote prend la main).
-                            showPromptModal = false,
-                        )
-                    }
-                }
-            } catch (_: Exception) {}
-        }
-    }
+    fun openEffortVoteFromPrompt(taskId: String, requesterName: String) =
+        prompts.openEffortVoteFromPrompt(taskId, requesterName)
 
-    fun openEffortVoteFromPrompt(taskId: String, requesterName: String) {
-        val prompt = _uiState.value.currentPrompt ?: return
-        viewModelScope.launch {
-            try {
-                val resp = apiService.getEffortVotes(taskId)
-                if (resp.isSuccessful) {
-                    val state = resp.body()
-                    val task = activeTasks.value.firstOrNull { it.id == taskId }
-                    if (state != null && task != null) {
-                        _uiState.value = _uiState.value.copy(
-                            pendingEffortVoteContext = PromptVoteContext(
-                                promptId = prompt.id,
-                                taskId = taskId,
-                                header = com.torchons.app.ui.common.voteHeader(task),
-                                requesterName = requesterName,
-                                effortState = state,
-                            ),
-                            showPromptModal = false,
-                        )
-                    }
-                }
-            } catch (_: Exception) {}
-        }
-    }
+    fun submitPromptFrequencyVote(request: com.torchons.app.data.model.FrequencyRequest) =
+        prompts.submitPromptFrequencyVote(request)
 
-    fun submitPromptFrequencyVote(request: com.torchons.app.data.model.FrequencyRequest) {
-        val ctx = _uiState.value.pendingFrequencyVoteContext ?: return
-        viewModelScope.launch {
-            taskRepository.voteFrequency(ctx.taskId, request)
-            try {
-                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest.frequencyAnswer(request))
-            } catch (_: Exception) {}
-            _uiState.value = _uiState.value.copy(
-                pendingFrequencyVoteContext = null,
-                currentPrompt = null,
-            )
-            refresh()
-        }
-    }
+    fun submitPromptEffortVote(points: Int) = prompts.submitPromptEffortVote(points)
 
-    fun submitPromptEffortVote(points: Int) {
-        val ctx = _uiState.value.pendingEffortVoteContext ?: return
-        viewModelScope.launch {
-            try {
-                apiService.setEffort(ctx.taskId, mapOf("points" to points))
-                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest.effortAnswer(points))
-            } catch (_: Exception) {}
-            _uiState.value = _uiState.value.copy(
-                pendingEffortVoteContext = null,
-                currentPrompt = null,
-            )
-            refresh()
-        }
-    }
+    fun dismissPromptFrequencyVote() = prompts.dismissPromptFrequencyVote()
 
-    fun dismissPromptFrequencyVote() {
-        val ctx = _uiState.value.pendingFrequencyVoteContext ?: return
-        viewModelScope.launch {
-            try {
-                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("DISMISSED"))
-            } catch (_: Exception) {}
-            _uiState.value = _uiState.value.copy(pendingFrequencyVoteContext = null, currentPrompt = null)
-            refresh() // chain to the next queued re-vote, as a submit does
-        }
-    }
-
-    fun dismissPromptEffortVote() {
-        val ctx = _uiState.value.pendingEffortVoteContext ?: return
-        viewModelScope.launch {
-            try {
-                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("DISMISSED"))
-            } catch (_: Exception) {}
-            _uiState.value = _uiState.value.copy(pendingEffortVoteContext = null, currentPrompt = null)
-            refresh() // chain to the next queued re-vote, as a submit does
-        }
-    }
+    fun dismissPromptEffortVote() = prompts.dismissPromptEffortVote()
 
     /** Reouvrir le prompt RESOLVE_PRESENCE depuis le bandeau. */
-    fun reopenPresencePrompt() {
-        viewModelScope.launch {
-            try {
-                val resp = apiService.getNextPrompt()
-                if (resp.isSuccessful && resp.body() != null) {
-                    val prompt = resp.body()!!
-                    if (prompt.type == "RESOLVE_PRESENCE") {
-                        apiService.markPromptShown(prompt.id)
-                        _uiState.value = _uiState.value.copy(
-                            currentPrompt = prompt,
-                            showPromptModal = true,
-                        )
-                    }
-                }
-            } catch (_: Exception) {}
-        }
-    }
-
+    fun reopenPresencePrompt() = prompts.reopenPresencePrompt()
 }
 
 /** Conteneur interne pour le combine des flows snapshot. */

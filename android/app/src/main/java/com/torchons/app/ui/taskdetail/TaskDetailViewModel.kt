@@ -6,19 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.Completion
-import com.torchons.app.data.model.EffortVotesState
-import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.PendingAffinity
-import com.torchons.app.data.model.TaskContextRef
-import com.torchons.app.data.model.Task
-import com.torchons.app.data.model.TaskHistoryEvent
-import com.torchons.app.data.model.FormerMember
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.CompletionChecks
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.ui.common.RatingRecurrence
-import com.torchons.app.util.CompletionDateLabels
 import com.torchons.app.util.TaskUrgencyCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
@@ -32,68 +25,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-data class TaskRating(
-    val userId: String?,
-    val displayName: String,
-    val affinity: Int?,
-    val effortTimeMin: Int?,
-)
-
-data class TaskDetailUiState(
-    val isLoading: Boolean = false,
-    val task: Task? = null,
-    val completions: List<Completion> = emptyList(),
-    val userNames: Map<String, String> = emptyMap(),
-    /** Members who left, by id: author labels only, never a selector. */
-    val formerMembers: Map<String, FormerMember> = emptyMap(),
-    val ratings: List<TaskRating> = emptyList(),
-    val avgEffortTimeMin: Int? = null,
-    val scorePoints: Int? = null,
-    val urgencyState: TaskUrgencyCalculator.State = TaskUrgencyCalculator.State.GREEN,
-    val daysUntilDue: Int = 0,
-    val countdownLabel: String = "",
-    val history: List<TaskHistoryEvent> = emptyList(),
-    /** Contexte principal de la tache, tel qu'il arrive avec elle. */
-    val room: TaskContextRef? = null,
-    /** Contexte de notation pour le modal unifie. Non-null = modal ouvert. */
-    val ratingContext: PendingAffinity? = null,
-    val editingCompletion: Completion? = null,
-    val error: String? = null,
-    val completionMessage: String? = null,
-    val hasCachedData: Boolean = false,
-    val lastRefreshFailed: Boolean = false,
-    /** True pendant un refresh declenche par le pull-to-refresh (indicateur
-     *  de tirage). Distinct de [isLoading] (spinner plein ecran au 1er load). */
-    val isRefreshing: Boolean = false,
-    /** True pendant l'animation de celebration post-completion. */
-    val isCelebrating: Boolean = false,
-    /** Compteur incremente a chaque celebration pour relancer konfetti. */
-    val celebrationTrigger: Int = 0,
-    /** Points affiches dans la celebration (null = inconnu / offline). */
-    val celebrationPoints: Int? = null,
-    /** Raison bonus/malus de la celebration (BONUS_RETARD, MALUS_AVANCE, ...). */
-    val celebrationReason: String? = null,
-    /** Attribution par participant (displayName, points) dans la celebration. */
-    val celebrationEarnedBy: List<Pair<String, Int>>? = null,
-    /** Preview bonus/malus pour affichage dans le header urgence de la fiche.
-     * null tant que le fetch n'a pas abouti ou si pas de recurrence. */
-    val bonusPreview: com.torchons.app.data.model.CompletionPreview? = null,
-    /** v0.28 : etat des votes de frequence (consensus + others + pending). */
-    val frequencyVotes: FrequencyVotesState? = null,
-    /** v0.28 : etat des votes d'effort (consensus + others + pending). */
-    val effortVotes: EffortVotesState? = null,
-    /** v0.28 : modal "+ d'info" frequence ouvert. */
-    val showFrequencyInfo: Boolean = false,
-    /** v0.29 : modal "+ d'info" effort ouvert. */
-    val showEffortInfo: Boolean = false,
-    /** v0.28 : modal "+ d'info" affinite ouvert. */
-    val showAffinityInfo: Boolean = false,
-    /** v0.28 : FrequencyVoteDialog ouvert (depuis le bandeau ou + d'info). */
-    val showFrequencyVoteDialog: Boolean = false,
-    /** v0.28 : EffortVoteDialog ouvert (depuis le bandeau ou + d'info). */
-    val showEffortVoteDialog: Boolean = false,
-)
 
 /**
  * ViewModel du detail d'une tache — pattern stale-while-revalidate.
@@ -127,6 +58,16 @@ class TaskDetailViewModel @Inject constructor(
     /** v0.32 : visibilite UI gamif (user-level AND foyer-level). */
     val gamificationVisible: StateFlow<Boolean> = tokenManager.gamificationVisibleFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    private val completions = TaskDetailCompletionActions(
+        scope = viewModelScope,
+        uiState = _uiState,
+        taskId = taskId,
+        taskRepository = taskRepository,
+        completionChecks = completionChecks,
+        appContext = appContext,
+        currentUserId = { currentUserId.value },
+    )
 
     init {
         observeCache()
@@ -280,34 +221,7 @@ class TaskDetailViewModel @Inject constructor(
         }
     }
 
-    fun completeTask() = unlessDuplicate {
-        celebrate(
-            resolve = {
-                val preview = fetchCompletionPreview(
-                    taskId, CompletionDateLabels.toIsoNoonUtc(LocalDate.now()), 1,
-                )
-                CelebrationContent(
-                    points = preview?.finalPoints,
-                    reason = preview?.reason,
-                    earnedBy = earnedByFor(null, preview?.finalPoints),
-                )
-            },
-            write = {
-                taskRepository.completeTask(taskId).fold(
-                    onSuccess = {
-                        _uiState.value = _uiState.value.copy(
-                            completionMessage = appContext.getString(R.string.common_task_completed),
-                        )
-                    },
-                    onFailure = { error ->
-                        _uiState.value = _uiState.value.copy(
-                            error = error.message ?: appContext.getString(R.string.common_error_complete),
-                        )
-                    },
-                )
-            },
-        )
-    }
+    fun completeTask() = completions.completeTask()
 
     /** Deja fait : completion solo a une date passee (optionnellement pour un autre user). */
     fun completeTaskAtDate(
@@ -315,25 +229,7 @@ class TaskDetailViewModel @Inject constructor(
         completedBy: String? = null,
         previewPoints: Int? = null,
         previewReason: String? = null,
-    ) = unlessDuplicate(isoDate, completedBy?.let(::listOf)) {
-        celebrate(
-            resolve = {
-                CelebrationContent(previewPoints, previewReason, earnedByFor(completedBy, previewPoints))
-            },
-            write = {
-                taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
-                    onSuccess = {
-                        _uiState.value = _uiState.value.copy(
-                            completionMessage = appContext.getString(R.string.common_task_completed),
-                        )
-                    },
-                    onFailure = { error ->
-                        _uiState.value = _uiState.value.copy(error = error.message)
-                    },
-                )
-            },
-        )
-    }
+    ) = completions.completeTaskAtDate(isoDate, completedBy, previewPoints, previewReason)
 
     /** Fait ensemble : completion collective (N participants, split ceil). */
     fun completeTaskCollective(
@@ -341,126 +237,11 @@ class TaskDetailViewModel @Inject constructor(
         isoDate: String? = null,
         previewPoints: Int? = null,
         previewReason: String? = null,
-    ) = unlessDuplicate(isoDate, participantUserIds) {
-        celebrate(
-            resolve = {
-                // Points par personne : preview du dialog, ou fetch (chemin
-                // rapide 2-pers). Le preview divise deja par le nb de participants.
-                val preview = if (previewPoints != null) null
-                    else fetchCompletionPreview(
-                        taskId,
-                        isoDate ?: CompletionDateLabels.toIsoNoonUtc(LocalDate.now()),
-                        participantUserIds.size,
-                    )
-                val points = previewPoints ?: preview?.finalPoints
-                CelebrationContent(
-                    points = points,
-                    reason = previewReason ?: preview?.reason,
-                    earnedBy = earnedByForMany(participantUserIds, points),
-                )
-            },
-            write = {
-                taskRepository.completeTaskCollective(
-                    taskId = taskId,
-                    participantUserIds = participantUserIds,
-                    completedAt = isoDate,
-                ).fold(
-                    onSuccess = {
-                        _uiState.value = _uiState.value.copy(
-                            completionMessage = appContext.resources.getQuantityString(
-                                R.plurals.common_task_completed_by_count,
-                                participantUserIds.size,
-                                participantUserIds.size,
-                            ),
-                        )
-                    },
-                    onFailure = { err ->
-                        val msg = when (err) {
-                            is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
-                                409 -> appContext.getString(R.string.common_collective_conflict)
-                                else -> appContext.getString(R.string.common_error_code_format, err.httpCode)
-                            }
-                            else -> err.message ?: appContext.getString(R.string.common_error_network)
-                        }
-                        _uiState.value = _uiState.value.copy(error = msg)
-                    },
-                )
-            },
-        )
-    }
+    ) = completions.completeTaskCollective(participantUserIds, isoDate, previewPoints, previewReason)
 
-    /** Contenu enrichi d'une celebration : points + raison + attribution. */
-    private data class CelebrationContent(
-        val points: Int?,
-        val reason: String?,
-        val earnedBy: List<Pair<String, Int>>?,
-    )
-
-    /**
-     * Attribution single (displayName, points). [completedBy] null = user
-     * courant. Null si points ou nom inconnus (preview offline) — la
-     * celebration retombe sur sa variante sans points.
-     */
-    private fun earnedByFor(completedBy: String?, points: Int?): List<Pair<String, Int>>? {
-        if (points == null) return null
-        val names = _uiState.value.userNames
-        val name = if (completedBy == null) {
-            names[currentUserId.value] ?: return null
-        } else {
-            names[completedBy] ?: return null
-        }
-        return listOf(name to points)
-    }
-
-    /**
-     * Attribution collective : une entree (displayName, pointsParPersonne) par
-     * participant. [points] est deja le split par personne (final_per_user).
-     */
-    private fun earnedByForMany(participantUserIds: List<String>, points: Int?): List<Pair<String, Int>>? {
-        if (points == null || participantUserIds.isEmpty()) return null
-        val names = _uiState.value.userNames
-        return participantUserIds.mapNotNull { id -> names[id]?.let { it to points } }.ifEmpty { null }
-    }
-
-    /**
-     * Celebration visuelle (card + confetti) pendant ~3s : emoji immediat, puis
-     * points + attribution des que [resolve] les renvoie (preview). L'ecriture
-     * Room reelle ([write]) est faite APRES l'animation (parite Accueil /
-     * onglet Taches).
-     */
-    private fun celebrate(
-        resolve: suspend () -> CelebrationContent,
-        write: suspend () -> Unit,
-    ) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                isCelebrating = true,
-                celebrationTrigger = _uiState.value.celebrationTrigger + 1,
-                celebrationPoints = null,
-                celebrationReason = null,
-                celebrationEarnedBy = null,
-            )
-            val filler = launch {
-                val content = resolve()
-                if (_uiState.value.isCelebrating) {
-                    _uiState.value = _uiState.value.copy(
-                        celebrationPoints = content.points,
-                        celebrationReason = content.reason,
-                        celebrationEarnedBy = content.earnedBy,
-                    )
-                }
-            }
-            kotlinx.coroutines.delay(3000L)
-            filler.cancel()
-            _uiState.value = _uiState.value.copy(
-                isCelebrating = false,
-                celebrationPoints = null,
-                celebrationReason = null,
-                celebrationEarnedBy = null,
-            )
-            write()
-        }
-    }
+    /** Preview bonus/malus pour le dialog de completion. null = offline/erreur. */
+    suspend fun fetchCompletionPreview(taskId: String, isoDate: String, numParticipants: Int) =
+        completions.fetchCompletionPreview(taskId, isoDate, numParticipants)
 
     fun deleteCompletion(completionId: String) {
         viewModelScope.launch {
@@ -707,16 +488,4 @@ class TaskDetailViewModel @Inject constructor(
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
-
-    /** Refuses a duplicate completion BEFORE the celebration (CompletionChecks.refusal); [by] null = me. */
-    private fun unlessDuplicate(at: String? = null, by: List<String>? = null, go: () -> Unit) {
-        viewModelScope.launch {
-            val refusal = completionChecks.refusal(taskId, at, by)
-            if (refusal == null) go() else _uiState.value = _uiState.value.copy(error = refusal)
-        }
-    }
-
-    /** Preview bonus/malus pour le dialog de completion. null = offline/erreur. */
-    suspend fun fetchCompletionPreview(taskId: String, isoDate: String, numParticipants: Int) =
-        completionChecks.preview(taskId, isoDate, numParticipants)
 }
