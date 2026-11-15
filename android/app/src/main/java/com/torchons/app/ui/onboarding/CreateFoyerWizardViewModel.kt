@@ -87,6 +87,10 @@ class CreateFoyerWizardViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
+    // Name pre-filled for the first member when the field is left blank (localized).
+    private val defaultDisplayName: String
+        get() = context.getString(R.string.projection_card_self_title)
+
     private val _uiState = MutableStateFlow(WizardState())
     val uiState: StateFlow<WizardState> = _uiState.asStateFlow()
 
@@ -253,7 +257,8 @@ class CreateFoyerWizardViewModel @Inject constructor(
         _uiState.update {
             val s = it.step
             // Step 1 : default value si vide
-            val newDisplay = if (s == 1 && it.displayName.isBlank()) "Moi" else it.displayName
+            val newDisplay =
+                if (s == 1 && it.displayName.isBlank()) defaultDisplayName else it.displayName
             val newFoyer = if ((s == 1 || s == 2) && it.foyerName.isBlank())
                 if (newDisplay.isNotBlank()) {
                     context.getString(R.string.onboarding_default_foyer_name_format, newDisplay)
@@ -411,7 +416,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
                 val deviceId = tokenManager.getOrCreateDeviceId()
                 val createResp = apiService.onboardingCreateFoyer(
                     OnboardingCreateFoyerRequest(
-                        displayName = s.displayName.ifBlank { "Moi" },
+                        displayName = s.displayName.ifBlank { defaultDisplayName },
                         foyerName = s.foyerName.ifBlank { context.getString(R.string.settings_foyer_default_name) },
                         deviceId = deviceId,
                     )
@@ -438,7 +443,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
                     token = createBody.token,
                     userId = createBody.userId,
                     username = "",  // plus utilise (cf. design doc)
-                    displayName = s.displayName.ifBlank { "Moi" },
+                    displayName = s.displayName.ifBlank { defaultDisplayName },
                     foyerId = createBody.foyerId,
                 )
                 // Push token FCM (best-effort silent)

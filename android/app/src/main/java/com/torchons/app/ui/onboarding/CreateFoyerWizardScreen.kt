@@ -1,7 +1,5 @@
 package com.torchons.app.ui.onboarding
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
@@ -55,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.core.clipboard.copySensitiveToClipboard
 import com.torchons.app.R
 import kotlinx.coroutines.launch
 import com.torchons.app.data.model.CatalogContextView
@@ -685,11 +684,7 @@ private fun StepRecovery(
 }
 
 private fun copyToClipboard(context: Context, code: String) {
-    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        ?: return
-    cm.setPrimaryClip(
-        ClipData.newPlainText(context.getString(R.string.recovery_code_clipboard_label), code),
-    )
+    copySensitiveToClipboard(context, context.getString(R.string.recovery_code_clipboard_label), code)
 }
 
 private fun shareCode(context: Context, code: String) {

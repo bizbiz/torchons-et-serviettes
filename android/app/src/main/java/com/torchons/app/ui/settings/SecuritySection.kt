@@ -1,7 +1,5 @@
 package com.torchons.app.ui.settings
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -49,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.torchons.app.core.clipboard.copySensitiveToClipboard
 import com.torchons.app.R
 
 /**
@@ -399,11 +398,7 @@ fun SupportDevCard() {
 }
 
 internal fun copyCode(context: Context, code: String) {
-    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        ?: return
-    cm.setPrimaryClip(
-        ClipData.newPlainText(context.getString(R.string.recovery_code_clipboard_label), code),
-    )
+    copySensitiveToClipboard(context, context.getString(R.string.recovery_code_clipboard_label), code)
 }
 
 internal fun shareCode(context: Context, code: String) {

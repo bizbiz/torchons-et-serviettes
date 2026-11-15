@@ -1674,4 +1674,28 @@
     <string name="delete_account_dialog_message">Tu quittes tous tes foyers, ton compte est supprimé et tous les téléphones connectés à ce compte sont déconnectés. Pendant 30 jours, ton code de récupération te permet de retrouver ton foyer. Passé ce délai, ton compte est anonymisé&#160;: ton nom disparaît, ton code de récupération est effacé et tes tâches personnelles sont supprimées. Les tâches que tu as accomplies restent dans l\'historique du foyer, sous le nom «&#160;Ancien membre&#160;».</string>
     <string name="delete_account_confirm">Supprimer</string>
     <string name="delete_account_error">Suppression impossible. Vérifie ta connexion et réessaie. Rien n\'a été supprimé.</string>
+
+    <!-- Célébration d'une validation (Celebration.kt) -->
+    <string name="celebration_default_text">Bravo&#160;!</string>
+    <string-array name="celebration_texts">
+        <item>Bravo&#160;!</item>
+        <item>Bien joué&#160;!</item>
+        <item>Top&#160;!</item>
+        <item>Génial&#160;!</item>
+        <item>Tu déboîtes&#160;!</item>
+        <item>Une de plus&#160;!</item>
+    </string-array>
+    <plurals name="celebration_points">
+        <item quantity="one">+%d pt</item>
+        <item quantity="other">+%d pts</item>
+    </plurals>
+    <string name="celebration_reason_late_bonus">bonus tâche en retard</string>
+    <string name="celebration_reason_early_malus">malus tâche en avance</string>
+    <string name="celebration_reason_first_time">première fois</string>
+
+    <!-- Écran provisoire d'onboarding, notifications push, widget -->
+    <string name="onboarding_stub_coming_soon">%1$s\n(bientôt disponible)</string>
+    <string name="notification_channel_name">Notifications</string>
+    <string name="notification_channel_description">Notifications Torchons &amp; Serviettes</string>
+    <string name="widget_loading">Chargement…</string>
 </resources>

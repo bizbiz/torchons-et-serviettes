@@ -91,7 +91,7 @@ import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.CompletionDialog
 import com.torchons.app.ui.common.CompletionDialogMode
 import com.torchons.app.ui.common.RatingDialog
-import com.torchons.app.ui.common.randomCelebration
+import com.torchons.app.ui.common.rememberCelebration
 import com.torchons.app.ui.user.UserProfileDialog
 import com.torchons.app.ui.user.UserProfileRequest
 import com.torchons.app.util.TaskUrgencyCalculator
@@ -907,9 +907,7 @@ fun TaskDetailScreen(
                     // Fait ensemble (secondaires).
                     item {
                         if (uiState.isCelebrating) {
-                            val celebration = remember(uiState.celebrationTrigger) {
-                                randomCelebration()
-                            }
+                            val celebration = rememberCelebration(uiState.celebrationTrigger)
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(16.dp),

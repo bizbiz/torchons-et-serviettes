@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Beta flavor only: the test API is plain HTTP on a private (tailnet) address.
+  The host is not pinned here because it comes from local.properties at build time and
+  must not be written in a tracked file. The prod flavor never sees this file.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

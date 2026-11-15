@@ -28,12 +28,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import android.content.Context
 import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.LongTermResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,6 +50,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LongTermStatsViewModel @Inject constructor(
     private val apiService: ApiService,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     data class State(
@@ -69,12 +72,16 @@ class LongTermStatsViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, data = resp.body()) }
                 } else {
                     _uiState.update {
-                        it.copy(isLoading = false, error = "Erreur ${resp.code()}")
+                        it.copy(isLoading = false,
+                            error = context.getString(R.string.common_error_http_format, resp.code()),
+                        )
                     }
                 }
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isLoading = false, error = e.message ?: "Erreur reseau")
+                    it.copy(isLoading = false,
+                        error = e.message ?: context.getString(R.string.common_error_network),
+                    )
                 }
             }
         }

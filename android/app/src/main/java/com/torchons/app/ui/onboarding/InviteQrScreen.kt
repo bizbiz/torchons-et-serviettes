@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.core.clipboard.copySensitiveToClipboard
 import com.torchons.app.R
 import qrcode.QRCode
 import java.time.OffsetDateTime
@@ -227,11 +228,7 @@ private fun shareInvite(context: android.content.Context, foyerName: String, tok
 }
 
 private fun copyInvite(context: android.content.Context, token: String) {
-    val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
-        as? android.content.ClipboardManager ?: return
-    cm.setPrimaryClip(
-        android.content.ClipData.newPlainText(context.getString(R.string.invite_clipboard_label), token),
-    )
+    copySensitiveToClipboard(context, context.getString(R.string.invite_clipboard_label), token)
 }
 
 /**

@@ -95,7 +95,6 @@ import com.torchons.app.ui.common.CompletionDialog
 import com.torchons.app.ui.common.CompletionDialogMode
 import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.common.anniversaryPeriodLabel
-import com.torchons.app.ui.common.randomCelebration
 import com.torchons.app.ui.user.UserProfileDialog
 import com.torchons.app.ui.user.UserProfileRequest
 import com.torchons.app.util.DurationFormat

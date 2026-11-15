@@ -103,7 +103,9 @@ object AppModule {
         // Logging des requetes HTTP en mode debug
         if (BuildConfig.DEBUG) {
             val loggingInterceptor = HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
+                // BASIC = method, URL, status, size. Never BODY: bodies carry recovery codes.
+                level = HttpLoggingInterceptor.Level.BASIC
+                redactHeader("Authorization")
             }
             builder.addInterceptor(loggingInterceptor)
         }

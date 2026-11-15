@@ -215,11 +215,10 @@ class SettingsViewModel @Inject constructor(
     }
 
     private fun updateSetting(key: String, value: Any) {
-        Log.d("SettingsVM", "updateSetting: $key = $value")
         viewModelScope.launch {
             try {
                 val resp = apiService.updateSettings(mapOf(key to value))
-                Log.d("SettingsVM", "updateSetting response: ${resp.code()} ${resp.isSuccessful}")
+                if (!resp.isSuccessful) Log.w("SettingsVM", "updateSetting $key rejected: ${resp.code()}")
             } catch (e: Exception) {
                 Log.e("SettingsVM", "updateSetting FAILED: $key", e)
             }
@@ -297,7 +296,7 @@ class SettingsViewModel @Inject constructor(
                         ?.let { Regex(""""detail"\s*:\s*"([^"]*)""").find(it)?.groupValues?.get(1) }
                         ?.takeIf { it.isNotBlank() }
                     _moduleError.value = detail ?: appContext.getString(R.string.common_error_http_format, resp.code())
-                    Log.w("SettingsViewModel", "toggleModule $key refuse: ${resp.code()} $raw")
+                    Log.w("SettingsViewModel", "toggleModule $key refuse: ${resp.code()}")
                 }
             } catch (e: Exception) {
                 _modules.value = before

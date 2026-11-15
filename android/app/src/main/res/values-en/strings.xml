@@ -1660,4 +1660,28 @@
     <string name="delete_account_dialog_message">You\'ll leave all your households, your account will be deleted and every phone signed in to it will be signed out. For 30 days, your recovery code lets you get your household back. After that, your account is anonymized: your name disappears, your recovery code is erased and your personal tasks are deleted. The tasks you completed stay in the household history, under the name \"Former member\".</string>
     <string name="delete_account_confirm">Delete</string>
     <string name="delete_account_error">Could not delete. Check your connection and try again. Nothing was deleted.</string>
+
+    <!-- Task completion celebration (Celebration.kt) -->
+    <string name="celebration_default_text">Well done!</string>
+    <string-array name="celebration_texts">
+        <item>Well done!</item>
+        <item>Nice one!</item>
+        <item>Top!</item>
+        <item>Awesome!</item>
+        <item>You nailed it!</item>
+        <item>One more down!</item>
+    </string-array>
+    <plurals name="celebration_points">
+        <item quantity="one">+%d pt</item>
+        <item quantity="other">+%d pts</item>
+    </plurals>
+    <string name="celebration_reason_late_bonus">late task bonus</string>
+    <string name="celebration_reason_early_malus">early task penalty</string>
+    <string name="celebration_reason_first_time">first time</string>
+
+    <!-- Placeholder onboarding screen, push notifications, widget -->
+    <string name="onboarding_stub_coming_soon">%1$s\n(coming soon)</string>
+    <string name="notification_channel_name">Notifications</string>
+    <string name="notification_channel_description">Torchons &amp; Serviettes notifications</string>
+    <string name="widget_loading">Loading…</string>
 </resources>

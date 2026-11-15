@@ -36,7 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
 import com.torchons.app.ui.common.CelebrationCardContent
-import com.torchons.app.ui.common.randomCelebration
+import com.torchons.app.ui.common.rememberCelebration
 import com.torchons.app.util.TaskUrgencyCalculator
 
 /**
@@ -73,9 +73,7 @@ fun TaskCard(
     val task = taskWithUrgency.task
     val taskId = task.id
     val stateColor = TaskUrgencyCalculator.stateColor(taskWithUrgency.state)
-    val celebration = remember(taskId, isCelebrating) {
-        if (isCelebrating) randomCelebration() else null
-    }
+    val celebration = if (isCelebrating) rememberCelebration(taskId) else null
 
     // Depuis v0.6.0 : le titre est propre (sans suffixe " — Piece"), la piece
     // vient directement de TaskWithUrgency.roomName / roomEmoji (pre-resolus

@@ -84,7 +84,7 @@ class TorchonsMessagingService : FirebaseMessagingService() {
         // v0.22+ : le filtrage par categorie (solo / collective_with_me /
         // collective_without_me) est entierement cote backend. Si un push
         // arrive jusqu'ici, c'est qu'il a deja passe le filtre serveur.
-        val title = message.notification?.title ?: message.data["title"] ?: "Torchons & Serviettes"
+        val title = message.notification?.title ?: message.data["title"] ?: getString(R.string.app_name)
         val body = message.notification?.body ?: message.data["body"] ?: return
 
         createNotificationChannel()
@@ -117,10 +117,10 @@ class TorchonsMessagingService : FirebaseMessagingService() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Notifications",
+            getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "Notifications Torchons & Serviettes"
+            description = getString(R.string.notification_channel_description)
         }
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)

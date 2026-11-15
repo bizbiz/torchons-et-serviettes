@@ -86,7 +86,7 @@ import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.common.SoloPointsInfoDialog
 import com.torchons.app.ui.common.RatingRecurrence
-import com.torchons.app.ui.common.randomCelebration
+import com.torchons.app.ui.common.rememberCelebration
 import com.torchons.app.util.CompletionDateLabels
 import com.torchons.app.util.TaskUrgencyCalculator
 
@@ -647,9 +647,7 @@ private fun SuggestionCard(
         else -> TaskUrgencyCalculator.VERT
     }
     // Pickee une seule fois pour cette celebration (key suggestion.taskId).
-    val celebration = remember(suggestion.taskId, isCelebrating) {
-        if (isCelebrating) randomCelebration() else null
-    }
+    val celebration = if (isCelebrating) rememberCelebration(suggestion.taskId) else null
 
     Card(
         onClick = onClick,

@@ -29,3 +29,11 @@
 
 # Gson
 -keep class com.google.gson.** { *; }
+
+# Release builds drop Log.d / Log.v calls (and their string arguments), so debug traces
+# can never leak values from a shipped APK. Log.i/w/e stay: they carry no user values.
+# Needs the optimizing default rules (proguard-android-optimize.txt, see build.gradle.kts).
+-assumenosideeffects class android.util.Log {
+    public static int d(...);
+    public static int v(...);
+}

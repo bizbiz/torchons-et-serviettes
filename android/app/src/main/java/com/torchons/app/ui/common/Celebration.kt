@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -80,7 +82,7 @@ fun CelebrationOverlay(
 fun CelebrationCardContent(
     modifier: Modifier = Modifier,
     emoji: String = "🎉",
-    text: String = "Bravo !",
+    text: String = stringResource(R.string.celebration_default_text),
     points: Int? = null,
     reason: String? = null,  // NEUTRAL / BONUS_RETARD / MALUS_AVANCE / FIRST_COMPLETION / PERSO
     /**
@@ -129,7 +131,7 @@ fun CelebrationCardContent(
         } else if (points != null && points > 0) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "+$points pt${if (points > 1) "s" else ""}",
+                text = pluralStringResource(R.plurals.celebration_points, points, points),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = pointsColor ?: MaterialTheme.colorScheme.primary,
@@ -152,26 +154,24 @@ fun CelebrationCardContent(
  * Determine la couleur + emoji + libelle de la sous-ligne de la celebration
  * selon la `reason` persistee sur la completion.
  */
+@Composable
 private fun celebrationReasonStyle(
     reason: String?,
 ): Triple<Color?, String?, String?> = when (reason) {
-    "BONUS_RETARD" -> Triple(Color(0xFF2E7D32), "🔥", "bonus tache en retard")
-    "MALUS_AVANCE" -> Triple(Color(0xFFEF6C00), "⏱", "malus tache en avance")
-    "FIRST_COMPLETION" -> Triple(Color(0xFF1976D2), "✨", "premiere fois")
+    "BONUS_RETARD" -> Triple(Color(0xFF2E7D32), "🔥", stringResource(R.string.celebration_reason_late_bonus))
+    "MALUS_AVANCE" -> Triple(Color(0xFFEF6C00), "⏱", stringResource(R.string.celebration_reason_early_malus))
+    "FIRST_COMPLETION" -> Triple(Color(0xFF1976D2), "✨", stringResource(R.string.celebration_reason_first_time))
     else -> Triple(null, null, null)
 }
 
 /** Variantes d'emoji pour varier le ressenti. Pickee aleatoirement par celebration. */
 val CELEBRATION_EMOJIS = listOf("🎉", "🎊", "🥳", "✨", "👏", "💪", "⭐", "🏆")
-val CELEBRATION_TEXTS = listOf(
-    "Bravo !",
-    "Bien joue !",
-    "Top !",
-    "Genial !",
-    "Tu deboites !",
-    "Une de plus !",
-)
 
-/** Helper : retourne une paire emoji + texte aleatoire pour une celebration. */
-fun randomCelebration(): Pair<String, String> =
-    CELEBRATION_EMOJIS.random() to CELEBRATION_TEXTS.random()
+/** Random emoji + localized text (R.array.celebration_texts), picked once per `keys` change. */
+@Composable
+fun rememberCelebration(vararg keys: Any?): Pair<String, String> {
+    val resources = LocalContext.current.resources
+    return remember(*keys) {
+        CELEBRATION_EMOJIS.random() to resources.getStringArray(R.array.celebration_texts).random()
+    }
+}

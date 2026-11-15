@@ -45,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.torchons.app.core.clipboard.copySensitiveToClipboard
 import com.torchons.app.R
 import io.github.g00fy2.quickie.QRResult
 import io.github.g00fy2.quickie.ScanQRCode
@@ -348,14 +349,7 @@ private fun copyToClipboardJoin(
     context: android.content.Context,
     code: String,
 ) {
-    val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
-        as? android.content.ClipboardManager ?: return
-    cm.setPrimaryClip(
-        android.content.ClipData.newPlainText(
-            context.getString(R.string.recovery_code_clipboard_label),
-            code,
-        ),
-    )
+    copySensitiveToClipboard(context, context.getString(R.string.recovery_code_clipboard_label), code)
 }
 
 private fun shareCodeJoin(

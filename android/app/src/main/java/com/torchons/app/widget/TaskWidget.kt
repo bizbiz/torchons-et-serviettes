@@ -211,7 +211,7 @@ private fun WidgetContent(load: WidgetLoad) {
             .padding(12.dp),
     ) {
         Text(
-            text = "Torchons & Serviettes",
+            text = context.getString(R.string.app_name),
             style = TextStyle(
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,

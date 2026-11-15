@@ -28,9 +28,9 @@
       Measured 2026-09-02 on the prod flavour, real Google transport: `bmgr backupnow`
       sent 812 KB, then a full uninstall/reinstall of the same v95 APK brought the
       SESSION back — the app reopened straight on the household, no sign-in. So the
-      restored JWT works, and it keeps working: `auth.py` mints it with no `exp` claim
-      and the server holds no revocation list, so a token sitting in a Drive archive
-      stays valid until `jwt_secret` itself is rotated.
+      restored JWT works: it has no `exp` claim, but every authenticated call checks the
+      token's device in the `devices` table, so a token sitting in a Drive archive can
+      be cut off by revoking that device from Settings (docs/appareils.fr.md).
     -->
     <application
         android:name=".TorchonsApp"
@@ -42,7 +42,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.TorchonsServiettes"
-        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="35">
 
         <activity
