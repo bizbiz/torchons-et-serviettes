@@ -133,7 +133,8 @@ Anonymization replaces a purge that failed on any account that had acted: six fo
 ## Troubleshooting: a member lost access to their account, with no code
 
 ⚠️ **This procedure should never be needed.** It writes to the production database outside a
-migration, which `CLAUDE.md` forbids: every use is an exception, granted by Quentin for that
+migration, which the rule forbids (the prod database changes only through a deployed migration):
+every use is an exception, granted by the maintainer for that
 one case. If it is needed, the product left a member with no way back — the two leads that
 would avoid it are on the roadmap (`backend/app/content/roadmap.md`, "Plus tard"), not on
 this page.

@@ -54,8 +54,6 @@ import java.time.format.DateTimeFormatter
  * Affiche le QR code encodant l'invite_token genere via /api/pairing/init.
  * Le joiner scanne ce QR depuis l'app via JoinFoyerScreen. TTL 15 min ;
  * bouton refresh genere un nouveau token.
- *
- * Cf. docs/design-onboarding-public.md §3.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

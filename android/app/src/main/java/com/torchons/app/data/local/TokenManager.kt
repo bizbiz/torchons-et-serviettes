@@ -161,7 +161,7 @@ class TokenManager @Inject constructor(
     }
     suspend fun setAffinityExpiry(months: Int) { context.dataStore.edit { it[AFFINITY_EXPIRY_KEY] = months } }
 
-    // v0.32 : flags gamification (cf. SKILL design v0.32.0).
+    // v0.32 : flags gamification.
     val userGamificationEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[GAMIF_USER_KEY] ?: true }
     val currentFoyerGamificationEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[GAMIF_FOYER_KEY] ?: true }
 

@@ -8,7 +8,7 @@ package com.torchons.app.data.model
  * (POST /presence/checkin sans payload) + resolution manuelle des jours
  * incertains via le prompt RESOLVE_PRESENCE.
  *
- * P2 (design-foyer-settings-presence.md decision 4) ajoute un calendrier de
+ * P2 ajoute un calendrier de
  * presence editable, foyer-scope. GET /api/presence?from=&to= et
  * PUT /api/presence partagent ces DTO.
  */

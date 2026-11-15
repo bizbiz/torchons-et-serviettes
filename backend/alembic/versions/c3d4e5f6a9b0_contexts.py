@@ -14,7 +14,7 @@ CE QUE LA MIGRATION NE FAIT PAS, ET POURQUOI
 Elle ne supprime NI `categories` NI `rooms`, et ne touche pas a
 `tasks.category_id` / `tasks.room_id`. L'APK diffuse lit ces colonnes : les
 retirer maintenant casserait toutes les installations en cours (regle d'ordre
-de synchronisation, cf. CLAUDE.md). Le serveur ecrit donc en double jusqu'a
+de synchronisation, cf. docs/architecture.md § Sync ordering). Le serveur ecrit donc en double jusqu'a
 diffusion du nouveau client, exactement comme pour
 `foyers.gamification_enabled`. Une migration ulterieure fera le menage.
 

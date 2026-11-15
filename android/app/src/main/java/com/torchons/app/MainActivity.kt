@@ -109,7 +109,7 @@ class MainActivity : ComponentActivity() {
 
         // v0.30.x — Plomberie Play Billing : init au cold start, restoration
         // silencieuse des achats existants si JWT present. Aucun paywall
-        // actif a ce stade (cf. roadmap-dev §C).
+        // actif a ce stade.
         billingService.start()
 
         setContent {

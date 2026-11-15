@@ -285,8 +285,8 @@ fun NavGraph(
         // Reglages + le bouton "Creer un foyer" + la feuille switch DANS
         // l'ecran Foyer (design decision 3).
 
-        // P1 refonte — Ecran Foyer unique (design-foyer-settings-presence.md
-        // decision 2). Plein ecran (couvre la bottom nav), atteignable depuis
+        // P1 refonte — Ecran Foyer unique.
+        // Plein ecran (couvre la bottom nav), atteignable depuis
         // la ligne Reglages "🏠 <nom>" et la card Foyer de l'accueil.
         composable(Routes.FOYER_SETTINGS) {
             FoyerSettingsScreen(

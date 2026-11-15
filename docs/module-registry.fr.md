@@ -435,7 +435,8 @@ la bascule ; ses modules perso sans ligne valent donc actif.
 
 ### Ordre de bascule en prod
 
-Le backend AVANT tout APK, règle de synchronisation de `CLAUDE.md` : le
+Le backend AVANT tout APK, règle de synchronisation de
+[`architecture.fr.md`](architecture.fr.md) : le
 serveur sert `foyers.gamification_enabled` en double tant que l'APK diffusé la
 lit. L'inverse casserait les installations en cours.
 

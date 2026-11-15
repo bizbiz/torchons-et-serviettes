@@ -32,7 +32,7 @@ ORDRE DE DEPLOIEMENT
 --------------------
 Cette migration exige que le client deploye n'utilise PLUS `room_id` /
 `category_id`. Elle vient donc APRES la diffusion d'un APK bascule sur les
-contextes, pas avant (cf. CLAUDE.md § Sync ordering).
+contextes, pas avant (cf. docs/architecture.md § Sync ordering).
 """
 from typing import Sequence, Union
 

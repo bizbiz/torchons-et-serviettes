@@ -4,8 +4,6 @@ Pattern : owner authentifie genere un invite_token ephemere via init, le
 client (Android) l'encode dans un QR. Le joiner installe l'app, scanne le
 QR, fournit son display_name et appelle join. Le backend cree User +
 UserFoyer + recovery_code, puis renvoie le JWT.
-
-Voir docs/design-onboarding-public.md §3 pour la decision de fond.
 """
 
 from __future__ import annotations
@@ -140,8 +138,6 @@ async def init_add_device(
     """v0.31 — Owner genere un token pour ajouter un de ses propres
     appareils (tablette, 2nd tel) a son compte. Le scan emettra un JWT
     pour le MEME user_id, sans creer de nouveau User ni UserFoyer.
-
-    Cf. design-onboarding-public.md §2 cas (B).
     """
     user_id = uuid.UUID(current["user_id"])
     foyer_id = uuid.UUID(current["foyer_id"])

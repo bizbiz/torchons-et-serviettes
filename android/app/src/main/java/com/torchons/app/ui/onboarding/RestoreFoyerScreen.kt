@@ -52,8 +52,6 @@ import com.torchons.app.R
  *  2. Verification visuelle ("C'est bien toi, X (admin de Chez Y,
  *     N taches faites) ?") avec Oui/Non. Oui -> /restore/confirm
  *     emet le JWT, save auth, navigation MAIN.
- *
- * Cf. docs/design-onboarding-public.md §5 (Q5e du design review).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

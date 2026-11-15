@@ -57,8 +57,6 @@ import io.github.g00fy2.quickie.ScanQRCode
  *  2. Scan reussi + saisie display_name -> bouton "Rejoindre".
  *  3. Apres /pairing/join reussi -> ecran recovery code identique au
  *     wizard create (StepRecovery reutilise).
- *
- * Cf. docs/design-onboarding-public.md §3 (Owner affiche QR, joiner scanne).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

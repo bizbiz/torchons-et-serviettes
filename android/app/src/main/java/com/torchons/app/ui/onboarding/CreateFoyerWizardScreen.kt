@@ -61,7 +61,7 @@ import com.torchons.app.data.model.CatalogContextView
 import com.torchons.app.data.model.CatalogTaskContextView
 
 /**
- * Wizard "Creer un foyer" — 5 etapes (v0.30). Cf. design-onboarding-public.md §4.
+ * Wizard "Creer un foyer" — 5 etapes (v0.30).
  *
  * @param onSuccess appele quand l'user a termine l'etape 5 (recovery affichee
  *   et "Continuer" cliquee). L'appelant doit naviguer vers MAIN.

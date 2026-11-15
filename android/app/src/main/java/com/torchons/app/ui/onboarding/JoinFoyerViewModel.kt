@@ -27,8 +27,6 @@ import javax.inject.Inject
  *  - Form : saisie display_name + bouton "Rejoindre"
  *  - Submitting : appel /api/pairing/join
  *  - Done  : recovery_code affiche, bouton "Continuer" -> navigate MAIN
- *
- * Cf. docs/design-onboarding-public.md §3 (protocole pairing).
  */
 
 data class JoinState(

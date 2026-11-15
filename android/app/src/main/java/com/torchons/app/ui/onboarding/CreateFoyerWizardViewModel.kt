@@ -41,9 +41,6 @@ import javax.inject.Inject
  *  a. POST /api/onboarding/create-foyer  -> JWT + recovery_code
  *  b. POST /api/catalog/import/resolve   (si pieces ou taches selectionnees)
  *  c. POST /api/catalog/import/apply     (toutes decisions = "create")
- *
- * Cf. docs/design-onboarding-public.md §4 et le sous-§ "Onboarding (creation
- * de foyer wizard)" du DTOs.
  */
 
 /** Etat du chargement du catalogue (pieces/taches proposees). */

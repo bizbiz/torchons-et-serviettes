@@ -13,7 +13,7 @@ permission: every toggle records a change_log entry naming its author.
 Dual write on `motivation`: the shipped APK still reads
 `foyers.gamification_enabled`, so that column is kept in sync until the new
 client is out. Dropping it before then would break live installs — see the sync
-ordering rule in CLAUDE.md.
+ordering rule in docs/architecture.md (Sync ordering).
 """
 
 from __future__ import annotations

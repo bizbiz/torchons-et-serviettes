@@ -19,13 +19,13 @@ Pour le process (PR, format de commit) : [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md
 
 | Sujet | Source unique |
 |-------|---------------|
-| Architecture (backend / Android / DB) | [`CLAUDE.md`](CLAUDE.md) § Architecture |
-| Surface API | [`CLAUDE.md`](CLAUDE.md) § API |
-| Formes de récurrence (4 types vivants) | [`docs/contexts.fr.md`](docs/contexts.fr.md) § Récurrence calendaire, et [`CLAUDE.md`](CLAUDE.md) § Recurrence |
-| Modèle d'urgence (rouge / orange / vert) | [`CLAUDE.md`](CLAUDE.md) § Urgence |
+| Architecture (backend / Android / DB) | [`docs/architecture.fr.md`](docs/architecture.fr.md) § Architecture |
+| Surface API | [`docs/architecture.fr.md`](docs/architecture.fr.md) § API |
+| Formes de récurrence (5 types vivants) | [`docs/contexts.fr.md`](docs/contexts.fr.md) § Récurrence calendaire, et [`docs/architecture.fr.md`](docs/architecture.fr.md) § Récurrence |
+| Modèle d'urgence (rouge / orange / vert) | [`docs/architecture.fr.md`](docs/architecture.fr.md) § Urgence |
 | Contextes (remplacent catégories et pièces) | [`docs/contexts.fr.md`](docs/contexts.fr.md) |
 | Cache et offline-first | [`docs/cache-conventions.fr.md`](docs/cache-conventions.fr.md) |
-| Ordre de sync (serveur avant APK) | [`CLAUDE.md`](CLAUDE.md) § Sync ordering |
+| Ordre de sync (serveur avant APK) | [`docs/architecture.fr.md`](docs/architecture.fr.md) § Ordre de synchronisation |
 | Modules et découverte progressive | [`docs/module-registry.fr.md`](docs/module-registry.fr.md) |
 
 ## Conventions de langue dans le code

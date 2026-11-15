@@ -15,8 +15,6 @@ Trois passes :
 Execute par APScheduler a 03h30 UTC (apres archive @03h00 et retard @03h15
 pour etaler la charge). Idempotent — un re-run apres redemarrage applique
 les memes regles sur l'etat courant sans dupliquer.
-
-Cf. docs/design-onboarding-public.md §9 et §11.
 """
 
 from __future__ import annotations

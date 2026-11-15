@@ -4,8 +4,7 @@ Revision ID: y3m4n5o6p7q8
 Revises: x2l3m4n5o6p7
 Create Date: 2026-04-29
 
-Prepare la transition Tailscale -> Play Store + Scaleway public. Voir
-`docs/design-onboarding-public.md` pour les decisions de fond.
+Prepare la transition Tailscale -> Play Store + Scaleway public.
 
 Changements :
 - `users.recovery_code_hash`, `recovery_code_last_used_at` : code argon2id

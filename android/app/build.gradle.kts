@@ -23,7 +23,7 @@ fun tsProp(key: String, fallback: String): String =
         ?: fallback
 
 // Deux backends : `prod` = serveur public, `beta` = serveur de TEST separe
-// (backend + DB distincts, cf. docs/audit-roadmap-vs-code.md). Les cles
+// (backend + DB distincts). Les cles
 // `ts.api.base.url.prod` / `.beta` priment ; sinon fallback sur la cle
 // legacy `ts.api.base.url` (le poste dogfood l'utilise encore) ; sinon
 // defaut. Pas de gating user-level : l'appli beta est un APK separe

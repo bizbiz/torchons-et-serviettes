@@ -5,7 +5,7 @@ n'a pas encore de JWT a la 1re installation). Cree User + Foyer +
 UserFoyer(admin) + recovery_code en une seule transaction, retourne
 JWT + recovery_code (en clair, une seule fois).
 
-Voir docs/design-onboarding-public.md §4 pour le wizard 5 etapes.
+Le wizard cote client compte 5 etapes.
 
 L'import du catalogue (rooms/tasks) reste sur les endpoints existants
 de /api/catalog/import/apply — le client appelle 1) /onboarding/create-foyer,

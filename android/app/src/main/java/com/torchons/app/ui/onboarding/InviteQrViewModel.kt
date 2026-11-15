@@ -24,8 +24,6 @@ import javax.inject.Inject
  *    qui ajoutera un nouveau membre.
  *  - true -> POST /api/pairing/init-add-device pour creer un QR add_device
  *    qui ajoutera un nouvel appareil au compte de l'user courant.
- *
- * Cf. docs/design-onboarding-public.md §3 et §2 cas (B).
  */
 
 data class InviteQrState(

@@ -5,8 +5,7 @@ import com.google.gson.annotations.SerializedName
 /**
  * DTOs des endpoints onboarding sans compte (v0.30).
  *
- * Voir docs/design-onboarding-public.md cote backend pour les decisions
- * de fond. Cote backend, les routes sont :
+ * Cote backend, les routes sont :
  *   POST /api/onboarding/create-foyer  (unauth)
  *   POST /api/pairing/init             (auth)
  *   POST /api/pairing/join             (unauth)

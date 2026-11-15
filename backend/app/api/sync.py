@@ -73,7 +73,7 @@ async def _op_foyer(session: AsyncSession, op: SyncOperation, user_id: str, toke
 # Refusals no replay can lift: the op names someone outside the household, or
 # its values break the task bounds. The client drops a `rejected` op and says so.
 # Everything else stays `op_error`, replayed: an unknown table, operation or
-# recurrence type is a server OLDER than the app (CLAUDE.md § Sync ordering),
+# recurrence type is a server OLDER than the app (docs/architecture.md § Sync ordering),
 # and passes once the server is deployed -- dropping it would lose the op.
 DEFINITIVE_REFUSALS = frozenset({"USERS_OUTSIDE_FOYER_FORMAT", "USERS_OUTSIDE_FOYER_FORMAT_UNNAMED"})
 

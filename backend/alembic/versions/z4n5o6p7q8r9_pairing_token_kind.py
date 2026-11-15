@@ -9,8 +9,7 @@ Ajoute une colonne `kind` a la table `pairing_tokens` pour distinguer :
   Cree un nouveau User + UserFoyer + recovery_code (cf. v0.30.0).
 - `add_device` : QR pour ajouter un de mes propres appareils (tablette,
   2nd tel) au compte existant. Retourne un JWT pour le `created_by_user_id`
-  du token, sans creer de nouveau User. Cf. design-onboarding-public.md
-  §2 cas (B).
+  du token, sans creer de nouveau User.
 """
 from typing import Sequence, Union
 

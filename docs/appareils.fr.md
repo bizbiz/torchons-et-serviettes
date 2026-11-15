@@ -140,7 +140,8 @@ L'anonymisation remplace une purge qui échouait sur tout compte ayant agi : six
 ## Dépannage : un membre a perdu l'accès à son compte, sans code
 
 ⚠️ **Cette procédure ne devrait jamais servir.** Elle écrit en base de prod hors migration, ce
-que `CLAUDE.md` interdit : chaque usage est une exception, accordée par Quentin pour ce cas-là
+que la règle interdit (la base de prod n'est modifiée que par une migration déployée) :
+chaque usage est une exception, accordée par le mainteneur pour ce cas-là
 seulement. Si elle sert, c'est que le produit a laissé un membre sans issue — les deux pistes
 qui l'éviteraient sont dans la roadmap (`backend/app/content/roadmap.md`, « Plus tard »),
 pas dans cette page.

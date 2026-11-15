@@ -32,9 +32,9 @@ REF=${TS_DEPLOY_REF:-origin/main}
 #   TS_BETA_HEALTH  health URL of the beta (required to measure it)
 #   TS_BETA_HOST    ssh host of the beta (only for the indirect fallback)
 #   TS_BETA_PATH    backend directory on that host, relative to $HOME (idem)
-# They may be set in local-ops/deployed_versions.env (git-ignored), read if present;
-# variables already set in the environment win.
-LOCAL_ENV="$(dirname "$0")/../local-ops/deployed_versions.env"
+# They may be set in deployed_versions.local.env at the repo root (git-ignored), or in the
+# file named by TS_ENV_FILE; read if present. Variables already set in the environment win.
+LOCAL_ENV="${TS_ENV_FILE:-$(dirname "$0")/../deployed_versions.local.env}"
 if [ -f "$LOCAL_ENV" ]; then
   while IFS='=' read -r key value; do
     case "$key" in

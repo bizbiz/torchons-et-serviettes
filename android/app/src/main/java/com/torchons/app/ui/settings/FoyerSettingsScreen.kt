@@ -78,7 +78,7 @@ import com.torchons.app.ui.stats.StreakMember
 import com.torchons.app.util.WifiHelper
 
 /**
- * Ecran "Foyer" (P1 refonte — design-foyer-settings-presence.md decision 9).
+ * Ecran "Foyer" (P1 refonte).
  *
  * Reunit toutes les options foyer-scopees ET les options compte-scopees qui
  * etaient eparpillees dans Reglages. Deux groupes etiquetes, ordre

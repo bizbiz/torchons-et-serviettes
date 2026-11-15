@@ -51,8 +51,7 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 /**
- * Grille calendrier de presence MENSUELLE partagee (P2 —
- * design-foyer-settings-presence.md decision 4c/4d).
+ * Grille calendrier de presence MENSUELLE partagee (P2).
  *
  * Utilisee par DEUX surfaces :
  *  - l'ecran Foyer (sous-section "Calendrier de presence", mode editable),

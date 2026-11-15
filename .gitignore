@@ -67,6 +67,9 @@ backend/seeds/personal/
 # Local AI assistant config — kept on disk for local development sessions
 /CLAUDE.md
 
+# Local environment file of scripts/deployed_versions.sh (private host names and URLs)
+/deployed_versions.local.env
+
 # Journaux du harnais de controle negatif (skill prove-the-test), locaux
 .cn/
 

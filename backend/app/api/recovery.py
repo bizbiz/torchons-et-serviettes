@@ -9,8 +9,6 @@
 - POST /recovery/restore/confirm : unauth, consomme le restore_token et
   emet un vrai JWT.
 
-Voir docs/design-onboarding-public.md §5 pour la decision de fond.
-
 Coin technique : pas de lookup direct par hash (argon2id a un sel par hash).
 La restauration itere sur tous les users avec un recovery_code_hash non
 nul et appelle argon2.verify pour chacun. O(N) en nombre d'users — OK

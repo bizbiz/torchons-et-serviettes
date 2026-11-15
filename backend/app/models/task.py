@@ -25,7 +25,7 @@ class Task(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     # Piece (room) optionnelle. ON DELETE SET NULL : si la piece est
     # supprimee, la tache reste sans piece au lieu d'etre cascade-deleted.
 
-    # Recurrence — JSONB flexible (formats : docs/contexts.md, CLAUDE.md § Recurrence)
+    # Recurrence — JSONB flexible (formats : docs/contexts.md, docs/architecture.md § Recurrence)
     recurrence_rule: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Intervalle infere en jours pour le type "uncertain" (v0.14). NULL tant

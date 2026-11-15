@@ -35,7 +35,7 @@ import kotlin.coroutines.resume
  *    POST /api/billing/verify.
  *
  * Le vrai flow d'achat (`launchBillingFlow` + selection de produit dans
- * Play Console + UI paywall) sera ajoute en v2 (cf. roadmap-dev §C).
+ * Play Console + UI paywall) sera ajoute en v2.
  *
  * Important : les operations BillingClient sont async. On utilise un
  * CoroutineScope singleton interne plutot que viewModelScope pour ne pas

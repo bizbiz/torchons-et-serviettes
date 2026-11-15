@@ -19,13 +19,13 @@ For process (PRs, commit format): [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Topic | Single source |
 |-------|---------------|
-| Architecture (backend / Android / DB) | [`CLAUDE.md`](CLAUDE.md) § Architecture |
-| API surface | [`CLAUDE.md`](CLAUDE.md) § API |
-| Recurrence shapes (4 live types) | [`docs/contexts.md`](docs/contexts.md) § Calendar recurrence, and [`CLAUDE.md`](CLAUDE.md) § Recurrence |
-| Urgency model (red / orange / green) | [`CLAUDE.md`](CLAUDE.md) § Urgence |
+| Architecture (backend / Android / DB) | [`docs/architecture.md`](docs/architecture.md) § Architecture |
+| API surface | [`docs/architecture.md`](docs/architecture.md) § API |
+| Recurrence shapes (5 live types) | [`docs/contexts.md`](docs/contexts.md) § Calendar recurrence, and [`docs/architecture.md`](docs/architecture.md) § Recurrence |
+| Urgency model (red / orange / green) | [`docs/architecture.md`](docs/architecture.md) § Urgency |
 | Contexts (replacing categories and rooms) | [`docs/contexts.md`](docs/contexts.md) |
 | Cache and offline-first | [`docs/cache-conventions.md`](docs/cache-conventions.md) |
-| Sync ordering (server before APK) | [`CLAUDE.md`](CLAUDE.md) § Sync ordering |
+| Sync ordering (server before APK) | [`docs/architecture.md`](docs/architecture.md) § Sync ordering |
 | Modules and progressive disclosure | [`docs/module-registry.md`](docs/module-registry.md) |
 
 ## Language conventions in the code

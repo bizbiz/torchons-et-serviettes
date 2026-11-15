@@ -4,7 +4,7 @@
          prod = "Torchons & Serviettes", beta = "T&S Beta". -->
 
     <!-- Legacy strings (pre-E3 i18n chantier). Will migrate as each screen
-         is converted to stringResource (cf docs/audit-i18n-user-facing-surfaces.md). -->
+         is converted to stringResource. -->
     <!-- Barre de navigation du bas (NavGraph.bottomNavItems) -->
     <string name="nav_home">Accueil</string>
     <string name="nav_tasks">Tâches</string>
@@ -1236,7 +1236,6 @@
 
     <!-- ============================================================
          Lot 2 i18n (post-launch) — Reste des dialogs/écrans secondaires.
-         Voir docs/audit-i18n-final.md.
          ============================================================ -->
 
     <!-- WhyNoPointsDialog (v0.32) -->

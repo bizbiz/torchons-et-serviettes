@@ -348,7 +348,7 @@ fun SecuritySection(
 /**
  * Card "Soutenir / Discuter avec le dev" (v0.30, narratif solo-dev).
  *
- * Cf. docs/design-onboarding-public.md §8. Deux boutons :
+ * Deux boutons :
  *  - Payer un cafe au dev -> ouvre BMC dans le navigateur
  *  - M'ecrire -> ouvre l'app mail avec un brouillon vers SUPPORT_EMAIL
  */

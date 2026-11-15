@@ -402,7 +402,8 @@ modules without a row count as on.
 
 ### Deployment order for production
 
-Backend BEFORE any APK, per the sync ordering rule in `CLAUDE.md`: the server
+Backend BEFORE any APK, per the sync ordering rule in
+[`architecture.md`](architecture.md): the server
 keeps mirroring `foyers.gamification_enabled` while the shipped APK reads it.
 The other order would break live installs.
 
