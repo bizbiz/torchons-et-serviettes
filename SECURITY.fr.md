@@ -7,7 +7,7 @@
 | Version | Supportée |
 |---------|-----------|
 | `main` (HEAD) | ✓ |
-| Dernier tag `v0.35.x` | ✓ correctifs de sécurité |
+| Dernière release | ✓ correctifs de sécurité |
 | Tags antérieurs | ✗ pas de support |
 
 Le projet est en cycle de dev rapide pré-public — il n'y a pas
@@ -35,11 +35,12 @@ Inclure dans le rapport :
 ## Ce qui est in-scope
 
 - Bypass d'authentification ou d'autorisation (JWT, scoping foyer,
-  rôles admin)
+  rôles du foyer : seul un `admin` modifie les réglages du foyer ou active le premium)
 - Injection (SQL, command, header, template)
 - Fuite de données entre foyers (un user A qui voit les données
   d'un foyer B sans y appartenir)
-- Élévation de privilège (passage member → admin sans légitimité)
+- Élévation de privilège (un `member` qui fait une action réservée aux `admin`,
+  ou qui devient `admin` sans légitimité)
 - Vulnérabilités côté Android (Intent injection, stockage de
   secrets, etc.)
 - Vulnérabilités dans les dépendances utilisées en production
@@ -55,10 +56,12 @@ Inclure dans le rapport :
 
 ## Process de réponse
 
-1. Acknowledgement du rapport sous 7 jours.
-2. Investigation + reproduction sous 14 jours.
-3. Fix développé sur une branche privée, puis tag de release dès que
-   possible (généralement < 30j pour une faille critique).
+Projet solo : aucun délai de réponse n'est garanti en chiffres.
+
+1. Accusé de réception du rapport sous quelques jours.
+2. Investigation et reproduction.
+3. Fix développé sur une branche privée, puis publié au mieux : plus la
+   faille est grave, plus vite.
 4. Coordinated disclosure : tu peux publier ta découverte une fois
    le fix taggé et déployé, avec crédit dans le changelog si tu le
    souhaites.

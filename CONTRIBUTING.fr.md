@@ -35,12 +35,15 @@ En participant, tu t'engages à respecter notre
   `res/values-en/strings.xml` (EN) côté Android, et
   `LocalizedHTTPException` côté backend. Plus de littéraux non-traduits
   visibles user. Voir [`CODING_CONVENTIONS.fr.md`](CODING_CONVENTIONS.fr.md).
-- **Tests** : pytest côté backend, instrumented tests côté Android.
-  Les PR qui ajoutent du métier sans test sont OK pour les très petits
-  cas (UI tweaks, copy), pas pour la logique (recurrence, bonus,
-  fair-share, sync).
-- **Pas de `print()` ni `Log.d` oubliés** en code de prod (le linter
-  les laisse passer, le sens commun les rejette).
+- **Tests** : pytest côté backend (`cd backend && python -m pytest`, sur une
+  base PostgreSQL jetable : voir le README), tests unitaires JVM côté Android
+  (`cd android && ./gradlew testBetaReleaseUnitTest` ; environ 130 tests dans
+  `android/app/src/test`, logique pure seulement). Il n'y a pas de tests
+  instrumentés (`androidTest`). Les PR qui ajoutent du métier sans test sont OK
+  pour les très petits cas (UI tweaks, copy), pas pour la logique (récurrence,
+  bonus, fair-share, sync).
+- **Pas de `print()` ni `Log.d` oubliés** en code de prod (aucun linter n'est
+  configuré, rien ne les arrête : le sens commun les rejette).
 - **Pas d'emojis dans le code.** Les emojis sont OK dans les strings
   affichées à l'utilisateur quand c'est intentionnel et cohérent
   avec l'existant.
@@ -83,12 +86,18 @@ Si tu touches au modèle User ou aux endpoints d'auth/lifecycle :
 
 - Toute donnée perso doit pouvoir être supprimée par l'utilisateur
   (endpoint `DELETE /api/me`, soft-delete avec purge ≥30j).
-- Aucun log ne doit contenir de PII (pas d'email, pas de
-  display_name, pas de contenu de tâche). Les IDs UUID sont OK.
+- Le nouveau code ne doit pas journaliser de PII (pas d'email, pas de
+  display_name, pas de contenu de tâche). Les IDs UUID sont OK. Certains logs
+  existants datent d'avant cette règle et sont en cours de nettoyage : ne les
+  copie pas.
 
 ## Process de revue
 
-1. CI verte (lint backend + Android + tests)
+1. CI verte : le workflow `CI` (`.github/workflows/ci.yml`) tourne sur chaque PR
+   et chaque push sur `main`. Deux jobs : le backend applique les migrations
+   Alembic sur un service PostgreSQL 16 et lance pytest (Python 3.12) ; l'Android
+   lance `testBetaReleaseUnitTest` (JDK 17) avec le fichier Firebase d'exemple.
+   Il n'y a pas d'étape de lint : aucun linter n'est configuré.
 2. Mainteneur lit, commente, demande des changements ou approuve
 3. Squash-merge sur main avec un message propre
 4. Le mainteneur tag les releases ; pas de tag manuel dans les PR

@@ -7,7 +7,7 @@
 | Version | Supported |
 |---------|-----------|
 | `main` (HEAD) | ✓ |
-| latest `v0.35.x` tag | ✓ security fixes |
+| the latest release | ✓ security fixes |
 | Older tags | ✗ no support |
 
 The project is in fast pre-public dev cycles — there is no
@@ -34,11 +34,13 @@ Include in the report:
 ## In-scope
 
 - Authentication or authorisation bypass (JWT, household scoping,
-  admin roles)
+  household roles: only an `admin` may change household settings or
+  activate premium)
 - Injection (SQL, command, header, template)
 - Cross-household data leak (a user A seeing data from a household B
   they don't belong to)
-- Privilege escalation (member → admin without legitimacy)
+- Privilege escalation (a `member` performing an `admin`-only action, or
+  becoming `admin` without legitimacy)
 - Android-side vulnerabilities (intent injection, secret storage,
   etc.)
 - Vulnerabilities in production dependencies
@@ -54,10 +56,12 @@ Include in the report:
 
 ## Response process
 
-1. Acknowledgement of the report within 7 days.
-2. Investigation + reproduction within 14 days.
-3. Fix developed on a private branch, then release tagged as soon
-   as possible (typically < 30 days for a critical flaw).
+This is a solo project: there is no numeric response-time guarantee.
+
+1. Acknowledgement of the report within a few days.
+2. Investigation and reproduction.
+3. Fix developed on a private branch, then released on a best-effort basis:
+   the more severe the flaw, the sooner.
 4. Coordinated disclosure: you can publish your finding once the fix
    is tagged and deployed, with credit in the changelog if you wish.
 

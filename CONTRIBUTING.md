@@ -33,12 +33,15 @@ By participating, you agree to follow our
   `res/values-en/strings.xml` (EN) on Android, and
   `LocalizedHTTPException` on the backend. No untranslated literals
   visible to users. See [`CODING_CONVENTIONS.md`](CODING_CONVENTIONS.md).
-- **Tests**: pytest on the backend, instrumented tests on Android.
-  PRs adding business logic without tests are OK for very small cases
-  (UI tweaks, copy), not for logic (recurrence, bonus, fair-share,
+- **Tests**: pytest on the backend (`cd backend && python -m pytest`, against a
+  throwaway PostgreSQL database: see the README), JVM unit tests on Android
+  (`cd android && ./gradlew testBetaReleaseUnitTest`; about 130 tests in
+  `android/app/src/test`, pure logic only). There are no instrumented
+  (`androidTest`) tests. PRs adding business logic without tests are OK for very
+  small cases (UI tweaks, copy), not for logic (recurrence, bonus, fair-share,
   sync).
-- **No leftover `print()` or `Log.d`** in production code (linter lets
-  them pass, common sense rejects them).
+- **No leftover `print()` or `Log.d`** in production code (no linter is configured,
+  so nothing catches them: common sense rejects them).
 - **No emojis in code.** Emojis are OK in user-facing strings when
   intentional and consistent with existing UI.
 
@@ -79,12 +82,17 @@ If you touch the User model or auth/lifecycle endpoints:
 
 - Any personal data must be deletable by the user (endpoint
   `DELETE /api/me`, soft-delete with purge ≥30 days).
-- No log should contain PII (no email, no display name, no task
-  content). UUID IDs are OK.
+- New code must not log PII (no email, no display name, no task
+  content). UUID IDs are OK. Some existing logs predate this rule and are
+  being cleaned up: do not copy them.
 
 ## Review process
 
-1. Green CI (backend lint + Android + tests)
+1. Green CI: the `CI` workflow (`.github/workflows/ci.yml`) runs on every PR and
+   every push to `main`. It has two jobs: the backend job applies the Alembic
+   migrations to a PostgreSQL 16 service and runs pytest (Python 3.12); the Android
+   job runs `testBetaReleaseUnitTest` (JDK 17) with the example Firebase file.
+   There is no lint step: no linter is configured.
 2. Maintainer reads, comments, asks for changes or approves
 3. Squash-merge onto main with a clean message
 4. Maintainer tags releases; no manual tag in PRs
