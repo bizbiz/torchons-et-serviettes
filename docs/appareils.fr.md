@@ -154,7 +154,7 @@ dont plusieurs à clé primaire (user, tâche).
 
 1. **Lire** (lecture seule) les membres du foyer et l'activité de chacun, pour identifier
    l'ancien compte et vérifier que le doublon n'a rien produit.
-2. **Dump** : `bash scripts/backup_prod.sh`.
+2. **Dump** : base de prod, avant toute écriture (script de sauvegarde du mainteneur, hors dépôt).
 3. **Régénérer** le code de l'ancien compte par un script lancé une fois dans `ts_api_prod`,
    qui fait les mêmes écritures que `/recovery/regenerate` (`generate_code`, `hash_code`,
    `lookup_key`, `revoke_other_devices`), vérifie l'identité du compte avant d'écrire et relit
@@ -248,7 +248,6 @@ seul `TEST_USER_ID` : sans le nettoyage de `test_devices.py`, un seul test met 1
 
 ```bash
 cd backend && ./.venv/Scripts/python.exe -m pytest tests/test_devices.py -q   # 9 cas
-python ~/.tools/skills/prove-the-test/cn.py --sujet devices --cible devices  # étalon
 ```
 
 Le contrôle négatif a été joué : en débranchant le refus des appareils révoqués, **4 tests

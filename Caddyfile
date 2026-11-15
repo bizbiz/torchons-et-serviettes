@@ -34,7 +34,7 @@ api.torchonsetserviettes.app {
 	}
 }
 
-# --- BETA (decommenter dans la stack beta : docker-compose.beta.yml) ---
+# --- BETA (decommenter dans la stack beta, maintenue hors du depot) ---
 # Backend + DB SEPARES de la prod (cf. docs/audit-roadmap-vs-code.md).
 # Le service s'appelle `api` aussi dans le projet compose beta isole ; si
 # prod et beta tournent sur la MEME VM, utiliser des projets compose

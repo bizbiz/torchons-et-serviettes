@@ -20,7 +20,7 @@ non-admin member, which is a role question, not an isolation one.
 
 `client_timestamp` is a minute AHEAD: it only feeds the stale-update check, which no test here
 exercises, and `now` made it depend on two clocks. `updated_at` is stamped by the DATABASE
-(func.now(), <beta-host>), `client_timestamp` by the PC running pytest: on 2026-11-12 the base was
+(func.now(), the database host), `client_timestamp` by the PC running pytest: on 2026-11-12 the base was
 58 ms ahead (20 readings, 57.6 to 58.9 ms), so an UPDATE sent less than 58 ms after its INSERT
 looked older than the row and was refused as stale. Intermittent, faster in the full suite
 (warm connections): « 'Injected' == 'Injected, renamed' » in the cannot_move test, the same text

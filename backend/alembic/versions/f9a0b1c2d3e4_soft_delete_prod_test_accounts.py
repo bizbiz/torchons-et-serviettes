@@ -7,7 +7,7 @@ test accounts that agents and repro sessions created before the beta existed
 
 Kept, on purpose: the two real members; `TestUser` of 2026-05-26 (a test account
 we keep, minus its FCM token); `Tom` (demo account, household "new"); and the
-duplicate Bob account of 2026-10-18.
+second member's duplicate account of 2026-10-18.
 
 What this does is what `DELETE /api/me` does, done in SQL:
 - the account gets `deleted_at` (the nightly cleanup hard-deletes it after 30 days);
@@ -21,7 +21,7 @@ It aborts if a household of these accounts still has an active member who is not
 one of them: deleting must never touch a real household.
 
 Downgrade does nothing. The way back is the dump taken just before deploying
-(`scripts/backup_prod.sh`).
+(the maintainer's own backup script).
 
 Revision ID: f9a0b1c2d3e4
 Revises: e7f8a9b0c1d2
@@ -40,7 +40,7 @@ depends_on: Union[str, Sequence[str], None] = None
 # (id, username), as read in production on 2026-11-02.
 TEST_ACCOUNTS = [
     ("0dff91fe-9e34-4648-a728-1de3ded145d6", "u_5554d68cc787"),  # TestUser, 2026-04-29
-    ("9d1a43c6-a082-4ffc-8931-a32f8759ed90", "u_266df1655097"),  # JoinerBob
+    ("9d1a43c6-a082-4ffc-8931-a32f8759ed90", "u_266df1655097"),  # the second member's duplicate account
     ("1d48b2f8-7d86-4c28-befe-c7a68a85b197", "u_e79217864d67"),  # WSummaryUser
     ("f5e310e5-0ac0-4c30-9fee-cb2a63de86f6", "u_11eb81067356"),  # AddDeviceTester
     ("d0ffd559-3aa0-4f74-8a2c-c5217b9f6c20", "u_4cfc75dcabb5"),  # CTU

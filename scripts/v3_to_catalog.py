@@ -9,7 +9,7 @@ English labels are NOT in the markdown (it is French only): they live in
 catalog.yaml itself. Regenerating keeps every existing `en` label, matched by
 `key`, and only seeds a NEW entry with its French label — see
 keep_translations(). Without that, a regeneration silently reverted the whole
-catalogue to French. Usage: `python scripts/v3_to_catalog.py [--out PATH]`.
+catalogue to French. Usage: `python scripts/v3_to_catalog.py DOC [--out PATH]`, DOC being the v3 review document.
 """
 import argparse
 import re
@@ -19,7 +19,6 @@ from pathlib import Path
 
 import yaml
 
-DOC = Path("/path/to/Desktop/torchons-contextes-a-relire-v3.md")
 CATALOG = Path(__file__).resolve().parent.parent / "backend" / "app" / "content" / "catalog.yaml"
 
 MOIS = {
@@ -211,11 +210,12 @@ def parse_doc(lignes: list[str]) -> tuple[list[dict], list[dict]]:
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("doc", type=Path, help="the v3 review document (markdown) to convert")
     ap.add_argument("--out", type=Path, default=CATALOG,
                     help="where to write (default: the repo catalog.yaml)")
     args = ap.parse_args()
 
-    contextes, taches = parse_doc(DOC.read_text(encoding="utf-8").splitlines())
+    contextes, taches = parse_doc(args.doc.read_text(encoding="utf-8").splitlines())
     apply_overrides(contextes)
 
     # --- Contrôles ---

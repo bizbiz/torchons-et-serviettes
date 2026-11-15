@@ -1,6 +1,6 @@
 """A task assigned to one member only must not be readable by the other members of the household.
 
-Asked on 2026-10-18: a hygiene task Bob created for herself must never show up for Quentin,
+Asked on 2026-10-18: a hygiene task one member created for herself must never show up for another,
 in the app or on the widget. Member B creates a task assigned to B alone and completes it; member
 A then sweeps every GET route of the app, enumerated from `app.routes` so that a route added
 later is swept too (through the OpenAPI schema), plus the /sync pull.

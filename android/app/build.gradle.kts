@@ -38,6 +38,11 @@ val tsApiBaseUrlBeta: String =
 // Email de contact dev — garde l'email reel hors du repo public.
 val tsSupportEmail: String = tsProp("ts.support.email", "contact@torchonsetserviettes.app")
 
+// Donation page (Buy Me a Coffee). Empty by default: the button stays hidden until the account
+// exists, so an announced but unclaimed name cannot be taken by someone else. Set
+// `ts.donate.url=...` in local.properties (gitignored) once the account is created.
+val tsDonateUrl: String = tsProp("ts.donate.url", "")
+
 // Marqueur de build (beta uniquement) : SHA git court + date de build,
 // affiche dans Reglages > "Note de version". Permet de verifier de visu
 // QUEL build est installe (versionName seul ne bouge pas entre 2 builds
@@ -87,6 +92,7 @@ android {
         // SUPPORT_EMAIL commun aux flavors. API_BASE_URL est defini PAR FLAVOR
         // (prod = public, beta = test).
         buildConfigField("String", "SUPPORT_EMAIL", "\"$tsSupportEmail\"")
+        buildConfigField("String", "DONATE_URL", "\"$tsDonateUrl\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

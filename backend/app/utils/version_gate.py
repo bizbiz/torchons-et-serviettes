@@ -26,7 +26,7 @@ Two design rules that are not negotiable
 `versionCode` is compared, never `versionName`: it is a monotonic integer, while
 "0.9.0" sorts above "0.10.0" as a string.
 
-Each channel already has its own backend (prod on Scaleway, beta on <beta-host>), so
+Each channel already has its own backend (prod on Scaleway, beta on its own host), so
 the threshold is per-deployment and no channel needs to be named in the header.
 
 Turning a threshold ON is the risky part, and its steps are ordered for a

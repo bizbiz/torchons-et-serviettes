@@ -320,9 +320,9 @@ them blind.
 
 | Channel | Where | Address | Purpose |
 |---------|-------|---------|---------|
-| prod | Scaleway <prod-host> | `api.torchonsetserviettes.app` | public app |
-| beta | <beta-host>, `~/deploiements/ts-beta` | `<beta-host-ip>:8002` | P3/P4 dogfood |
-| dev | <beta-host>, `~/deploiements/ts-dev` | `<beta-host-ip>:5438` | alembic + pytest |
+| prod | Scaleway, `<prod-host>` | `api.torchonsetserviettes.app` | public app |
+| beta | `<beta-host>`, `<beta-dir>` | `<beta-host-ip>:8002` | P3/P4 dogfood |
+| dev | `<beta-host>`, `<dev-dir>` | `<beta-host-ip>:5438` | alembic + pytest |
 
 Before 2026-08-17, `ts.api.base.url.beta` pointed at the **same**
 Scaleway URL as prod: the beta channel existed in the Gradle build

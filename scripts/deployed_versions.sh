@@ -28,9 +28,24 @@ set -uo pipefail
 export LC_ALL=C   # stable collation: `join` and `comm` depend on it
 
 REF=${TS_DEPLOY_REF:-origin/main}
-BETA_HOST=${TS_BETA_HOST:-<beta-host>}
-BETA_PATH=deploiements/ts-beta/backend
-BETA_HEALTH=${TS_BETA_HEALTH:-http://<beta-host-ip>:8002/api/health}
+# The beta lives on a private host: no default, the environment must say where.
+#   TS_BETA_HEALTH  health URL of the beta (required to measure it)
+#   TS_BETA_HOST    ssh host of the beta (only for the indirect fallback)
+#   TS_BETA_PATH    backend directory on that host, relative to $HOME (idem)
+# They may be set in local-ops/deployed_versions.env (git-ignored), read if present;
+# variables already set in the environment win.
+LOCAL_ENV="$(dirname "$0")/../local-ops/deployed_versions.env"
+if [ -f "$LOCAL_ENV" ]; then
+  while IFS='=' read -r key value; do
+    case "$key" in
+      TS_BETA_HEALTH|TS_BETA_HOST|TS_BETA_PATH)
+        [ -z "${!key:-}" ] && export "$key=$value" ;;
+    esac
+  done < <(grep -E '^TS_[A-Z_]+=' "$LOCAL_ENV" | tr -d '\r')
+fi
+BETA_HOST=${TS_BETA_HOST:-}
+BETA_PATH=${TS_BETA_PATH:-}
+BETA_HEALTH=${TS_BETA_HEALTH:-}
 PROD_HEALTH=${TS_PROD_HEALTH:-https://api.torchonsetserviettes.app/api/health}
 PYTHON=${TS_PYTHON:-backend/.venv/Scripts/python.exe}
 
@@ -53,14 +68,14 @@ echo "reference : $REF ($(git rev-parse --short "$REF_SHA")) -- $(git log -1 --d
 # Computed once: identical for every environment, and it costs ~90 `git show`.
 REF_FINGERPRINT=$([ -x "$PYTHON" ] && "$PYTHON" scripts/fingerprint_of_ref.py "$REF_SHA" 2>/dev/null)
 case "$REF_FINGERPRINT" in
-  [0-9a-f]*) echo "empreinte : $REF_FINGERPRINT" ;;
-  *) REF_FINGERPRINT=""; echo "empreinte : non calculable ($PYTHON absent ?) -- mesure indirecte seulement" ;;
+  [0-9a-f]*) echo "fingerprint : $REF_FINGERPRINT" ;;
+  *) REF_FINGERPRINT=""; echo "fingerprint : not computable ($PYTHON missing?) -- indirect measurement only" ;;
 esac
 
-# Empreinte du working tree de CE poste. Elle sert a nommer le cas legitime le
-# plus frequent : pendant un chantier, la beta sert deliberement du travail pas
-# encore commite (docker-compose.beta.yml le documente). Sans cette comparaison,
-# ce cas normal et un vrai retard de deploiement rendent le meme « GAP ».
+# Fingerprint of THIS machine's working tree. It names the most frequent legitimate
+# case: during a work in progress, the beta deliberately serves work that is not
+# committed yet. Without this comparison, that normal case and a real deployment
+# lag both print the same "GAP".
 WT_FINGERPRINT=$([ -x "$PYTHON" ] && "$PYTHON" -c "
 import sys; sys.path.insert(0, 'backend')
 from pathlib import Path
@@ -92,20 +107,20 @@ check_fingerprint() {   # $1 = env label
   [ -n "$REF_FINGERPRINT" ] || return 1
 
   local sha; sha=$(json_field git_sha)
-  [ -n "$sha" ] && echo "  git_sha        : $sha  (declare par le deploiement)"
-  echo "  empreinte      : $served  (mesuree sur le code servi)"
+  [ -n "$sha" ] && echo "  git_sha        : $sha  (declared by the deployment)"
+  echo "  fingerprint    : $served  (measured on the served code)"
   if [ "$served" = "$REF_FINGERPRINT" ]; then
-    echo "  ALIGNED: $1 sert exactement le code de $REF."
+    echo "  ALIGNED: $1 serves exactly the code of $REF."
   elif [ -n "$WT_FINGERPRINT" ] && [ "$served" = "$WT_FINGERPRINT" ]; then
-    # Nommer cette cause change ce que la sortie demande au lecteur : rien a
-    # chercher, seulement a decider si ce travail doit etre commite.
-    echo "  ECART ATTENDU: $1 sert le travail NON COMMITE de ce poste"
-    echo "                 (identique au working tree, different de $REF)."
-    echo "                 Normal pendant un chantier ; a commiter pour refermer."
+    # Naming this cause changes what the output asks of the reader: nothing to
+    # hunt for, only a decision on whether this work should be committed.
+    echo "  EXPECTED GAP: $1 serves this machine's UNCOMMITTED work"
+    echo "                 (identical to the working tree, different from $REF)."
+    echo "                 Normal during a work in progress; commit it to close the gap."
     GAP=1
   else
-    echo "  GAP: le code servi n'est ni $REF ni le working tree de ce poste"
-    echo "       (attendu $REF_FINGERPRINT). La version annoncee ne le dit pas."
+    echo "  GAP: the served code is neither $REF nor this machine's working tree"
+    echo "       (expected $REF_FINGERPRINT). The announced version does not say so."
     GAP=1
   fi
   return 0
@@ -116,48 +131,48 @@ check_prod() {
   echo "== prod =="
   local announced deployed short behind backend_behind
   if ! fetch_health "$PROD_HEALTH"; then
-    echo "  CANNOT MEASURE: $PROD_HEALTH n'a pas repondu"
+    echo "  CANNOT MEASURE: $PROD_HEALTH did not answer"
     UNMEASURED=1; echo; return
   fi
   announced=$(json_field version)
-  [ -n "$announced" ] || { echo "  CANNOT MEASURE: pas de champ version"; UNMEASURED=1; echo; return; }
-  echo "  annonce        : $announced  ($PROD_HEALTH)"
+  [ -n "$announced" ] || { echo "  CANNOT MEASURE: no version field"; UNMEASURED=1; echo; return; }
+  echo "  announced      : $announced  ($PROD_HEALTH)"
 
   if check_fingerprint prod; then echo; return; fi
-  echo "  (pas d'empreinte servie : backend anterieur, mesure INDIRECTE)"
+  echo "  (no served fingerprint: older backend, INDIRECT measurement)"
 
   if ! command -v gh >/dev/null 2>&1; then
-    echo "  CANNOT MEASURE: gh absent, impossible de lire les runs deploy.yml"
+    echo "  CANNOT MEASURE: gh missing, cannot read the deploy.yml runs"
     UNMEASURED=1; echo; return
   fi
   deployed=$(gh run list --workflow=deploy.yml --status=success --limit=1 \
                --json headSha --jq '.[0].headSha' 2>/dev/null)
   case "$deployed" in
-    ''|null) echo "  CANNOT MEASURE: aucun run deploy.yml reussi"; UNMEASURED=1; echo; return ;;
-    *[!0-9a-f]*) echo "  CANNOT MEASURE: gh a rendu autre chose qu'un SHA"; UNMEASURED=1; echo; return ;;
+    ''|null) echo "  CANNOT MEASURE: no successful deploy.yml run"; UNMEASURED=1; echo; return ;;
+    *[!0-9a-f]*) echo "  CANNOT MEASURE: gh returned something other than a SHA"; UNMEASURED=1; echo; return ;;
   esac
   if ! git cat-file -e "${deployed}^{commit}" 2>/dev/null; then
-    echo "  CANNOT MEASURE: SHA deploye $deployed inconnu localement"
+    echo "  CANNOT MEASURE: deployed SHA $deployed unknown locally"
     UNMEASURED=1; echo; return
   fi
   short=$(git rev-parse --short "$deployed")
-  echo "  dernier deploy : $short -- $(git log -1 --date=short --format='%ad %s' "$deployed")"
+  echo "  last deploy    : $short -- $(git log -1 --date=short --format='%ad %s' "$deployed")"
 
   if [ "$deployed" = "$REF_SHA" ]; then
-    echo "  ALIGNED (indirect): le dernier deploiement est $REF."
+    echo "  ALIGNED (indirect): the last deployment is $REF."
     echo; return
   fi
   if ! git merge-base --is-ancestor "$deployed" "$REF_SHA" 2>/dev/null; then
-    echo "  GAP: $short n'est pas un ancetre de $REF."
+    echo "  GAP: $short is not an ancestor of $REF."
     GAP=1; echo; return
   fi
   behind=$(git rev-list --count "${deployed}..${REF_SHA}")
   backend_behind=$(git rev-list --count "${deployed}..${REF_SHA}" -- backend/)
-  echo "  retard sur $REF : $behind commit(s), dont $backend_behind touchant backend/"
+  echo "  behind $REF   : $behind commit(s), $backend_behind of them touching backend/"
   if [ "$backend_behind" -eq 0 ]; then
-    echo "  ALIGNED (indirect): les $behind commit(s) non deployes ne touchent pas le backend."
+    echo "  ALIGNED (indirect): the $behind undeployed commit(s) do not touch the backend."
   else
-    echo "  GAP: $backend_behind commit(s) backend non deployes :"
+    echo "  GAP: $backend_behind undeployed backend commit(s):"
     git log --date=short --format='    %h %ad %s' "${deployed}..${REF_SHA}" -- backend/
     GAP=1
   fi
@@ -168,34 +183,42 @@ check_prod() {
 check_beta() {
   echo "== beta =="
   local announced tmp n_repo rc missing extra common joined differing gapcount
+  if [ -z "$BETA_HEALTH" ]; then
+    echo "  CANNOT MEASURE: beta not measured, TS_BETA_HEALTH is not set"
+    UNMEASURED=1; echo; return
+  fi
   if ! fetch_health "$BETA_HEALTH"; then
-    echo "  CANNOT MEASURE: $BETA_HEALTH n'a pas repondu"
+    echo "  CANNOT MEASURE: $BETA_HEALTH did not answer"
     UNMEASURED=1; echo; return
   fi
   announced=$(json_field version)
-  [ -n "$announced" ] || { echo "  CANNOT MEASURE: pas de champ version"; UNMEASURED=1; echo; return; }
-  echo "  annonce        : $announced  ($BETA_HEALTH)"
+  [ -n "$announced" ] || { echo "  CANNOT MEASURE: no version field"; UNMEASURED=1; echo; return; }
+  echo "  announced      : $announced  ($BETA_HEALTH)"
 
   if check_fingerprint beta; then echo; return; fi
-  echo "  (pas d'empreinte servie : backend anterieur, mesure par ssh)"
+  echo "  (no served fingerprint: older backend, measurement over ssh)"
 
+  if [ -z "$BETA_HOST" ] || [ -z "$BETA_PATH" ]; then
+    echo "  CANNOT MEASURE: TS_BETA_HOST / TS_BETA_PATH not set, no ssh fallback"
+    UNMEASURED=1; echo; return
+  fi
   if ! ssh -o ConnectTimeout=10 -o BatchMode=yes "$BETA_HOST" true 2>/dev/null; then
-    echo "  CANNOT MEASURE: $BETA_HOST injoignable en ssh"
+    echo "  CANNOT MEASURE: $BETA_HOST unreachable over ssh"
     UNMEASURED=1; echo; return
   fi
   if ! ssh -o ConnectTimeout=10 "$BETA_HOST" "test -d ~/$BETA_PATH/app" 2>/dev/null; then
-    echo "  CANNOT MEASURE: ~/$BETA_PATH/app absent sur $BETA_HOST"
+    echo "  CANNOT MEASURE: ~/$BETA_PATH/app missing on $BETA_HOST"
     UNMEASURED=1; echo; return
   fi
   tmp=$(mktemp -d) || { echo "  CANNOT MEASURE: mktemp"; UNMEASURED=1; echo; return; }
 
-  # Cote depot on lit les BLOBS : core.autocrlf=true sur ce poste met des CRLF
-  # dans le working tree que le depot n'a pas.
+  # On the repository side we read the BLOBS: core.autocrlf=true on this machine puts
+  # CRLFs in the working tree that the repository does not have.
   git ls-tree -r --name-only "$REF_SHA" -- backend/app \
     | grep '\.py$' | sed 's|^backend/||' | sort > "$tmp/list"
   n_repo=$(wc -l < "$tmp/list")
   if [ "$n_repo" -le 50 ]; then
-    echo "  CANNOT MEASURE: $n_repo fichier(s) .py — lecture suspecte"
+    echo "  CANNOT MEASURE: $n_repo .py file(s) -- suspicious read"
     UNMEASURED=1; rm -rf "$tmp"; echo; return
   fi
   while IFS= read -r f; do
@@ -206,7 +229,7 @@ check_beta() {
     > "$tmp/beta" 2>/dev/null
   rc=$?
   if [ "$rc" -ne 0 ] || [ ! -s "$tmp/beta" ]; then
-    echo "  CANNOT MEASURE: releve des empreintes echoue (code $rc)"
+    echo "  CANNOT MEASURE: fingerprint listing failed (code $rc)"
     UNMEASURED=1; rm -rf "$tmp"; echo; return
   fi
   sort -k2 -o "$tmp/beta" "$tmp/beta"
@@ -216,26 +239,26 @@ check_beta() {
   missing=$(comm -23 "$tmp/n-repo" "$tmp/n-beta")
   extra=$(comm -13 "$tmp/n-repo" "$tmp/n-beta")
 
-  # Un `join` qui ne rapproche rien rend « aucune difference » — donc vert, pour
-  # la pire des raisons. On exige le denominateur avant de croire le zero.
+  # A `join` that matches nothing reports "no difference" -- green, for the worst
+  # reason. We require the denominator before believing the zero.
   common=$(comm -12 "$tmp/n-repo" "$tmp/n-beta" | grep -c '[^[:space:]]')
   join -j 2 -o 0,1.1,2.1 "$tmp/repo" "$tmp/beta" > "$tmp/joined" 2>/dev/null
   joined=$(grep -c '[^[:space:]]' "$tmp/joined")
   if [ "$joined" -ne "$common" ]; then
-    echo "  CANNOT MEASURE: join a rapproche $joined ligne(s) pour $common fichier(s) communs"
+    echo "  CANNOT MEASURE: join matched $joined line(s) for $common common file(s)"
     UNMEASURED=1; rm -rf "$tmp"; echo; return
   fi
   differing=$(awk '$2!=$3{print $1}' "$tmp/joined")
   gapcount=$(printf '%s\n%s\n%s\n' "$missing" "$extra" "$differing" | grep -c '[^[:space:]]')
 
-  echo "  fichiers .py   : $n_repo dans $REF, $(wc -l < "$tmp/beta") sur beta, $common compares"
+  echo "  .py files      : $n_repo in $REF, $(wc -l < "$tmp/beta") on beta, $common compared"
   if [ "$gapcount" -eq 0 ]; then
-    echo "  ALIGNED: beta sert le code de $REF."
+    echo "  ALIGNED: beta serves the code of $REF."
   else
-    echo "  GAP: $gapcount fichier(s) different de $REF"
-    if [ -n "$missing" ];   then echo "    absents de beta   :"; echo "$missing"   | sed 's/^/      /'; fi
-    if [ -n "$extra" ];     then echo "    en trop sur beta  :"; echo "$extra"     | sed 's/^/      /'; fi
-    if [ -n "$differing" ]; then echo "    contenu different :"; echo "$differing" | sed 's/^/      /'; fi
+    echo "  GAP: $gapcount file(s) differ from $REF"
+    if [ -n "$missing" ];   then echo "    missing on beta   :"; echo "$missing"   | sed 's/^/      /'; fi
+    if [ -n "$extra" ];     then echo "    extra on beta     :"; echo "$extra"     | sed 's/^/      /'; fi
+    if [ -n "$differing" ]; then echo "    content differs   :"; echo "$differing" | sed 's/^/      /'; fi
     GAP=1
   fi
   rm -rf "$tmp"
@@ -249,12 +272,12 @@ case "$WANTED" in
 esac
 
 if [ "$UNMEASURED" -eq 1 ]; then
-  echo "VERDICT: un environnement au moins n'a pas pu etre mesure -- pas un feu vert."
+  echo "VERDICT: at least one environment could not be measured -- not a green light."
   exit 2
 fi
 if [ "$GAP" -eq 1 ]; then
-  echo "VERDICT: un environnement sert un code different de $REF sans que sa version le dise."
+  echo "VERDICT: an environment serves code different from $REF without its version saying so."
   exit 1
 fi
-echo "VERDICT: tous les environnements mesures servent $REF."
+echo "VERDICT: every measured environment serves $REF."
 exit 0

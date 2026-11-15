@@ -147,7 +147,7 @@ new code instead of merging the two: a merge would rewrite some twenty tables po
 
 1. **Read** (read-only) the household members and each one's activity, to identify the old
    account and check that the duplicate produced nothing.
-2. **Dump**: `bash scripts/backup_prod.sh`.
+2. **Dump**: prod database, before any write (the maintainer's own backup script, not in the repo).
 3. **Regenerate** the old account's code with a script run once inside `ts_api_prod`, doing
    the same writes as `/recovery/regenerate` (`generate_code`, `hash_code`, `lookup_key`,
    `revoke_other_devices`), checking the account's identity before writing and re-reading the
@@ -239,7 +239,6 @@ into 401. Measured: 60 rows revoked, 17 reds elsewhere.
 
 ```bash
 cd backend && ./.venv/Scripts/python.exe -m pytest tests/test_devices.py -q   # 9 cases
-python ~/.tools/skills/prove-the-test/cn.py --sujet devices --cible devices  # baseline
 ```
 
 The negative control was played: disabling the refusal of revoked devices turns **4 tests red

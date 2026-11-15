@@ -52,11 +52,10 @@ import androidx.compose.ui.unit.dp
 import com.torchons.app.R
 
 /**
- * URL Buy Me a Coffee du dev. Quand le user clique sur "Payer un cafe",
- * on l'envoie sur cette page externe via Intent.ACTION_VIEW. A remplacer
- * par l'URL reelle quand le compte BMC sera cree (cf. Phase F roadmap dev).
+ * Donation page, opened via Intent.ACTION_VIEW. Comes from BuildConfig
+ * (`ts.donate.url` in local.properties); empty = the button is hidden.
  */
-private const val BMC_URL = "https://buymeacoffee.com/<account>"
+private val DONATE_URL: String = com.torchons.app.BuildConfig.DONATE_URL
 
 /** Email de contact du dev pour le bouton "M'ecrire". Source = BuildConfig
  *  (cf. build.gradle.kts > `tsSupportEmail`). Configurable via
@@ -376,13 +375,15 @@ fun SupportDevCard() {
             )
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { openUrl(context, BMC_URL) },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Default.Coffee, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.support_dev_bmc_button))
+                if (DONATE_URL.isNotBlank()) {
+                    OutlinedButton(
+                        onClick = { openUrl(context, DONATE_URL) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Default.Coffee, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.support_dev_bmc_button))
+                    }
                 }
                 OutlinedButton(
                     onClick = { sendSupportEmail(context) },

@@ -3,7 +3,7 @@
 FCM validates each token as for a real send, so a dead one answers UnregisteredError.
 Prints alive/dead counts per member, never a token. With --delete, removes the dead
 tokens, and only those: a write, so in PROD only with explicit approval and after
-`scripts/backup_prod.sh`.
+a prod dump.
 
 Runs inside the API container, which holds firebase-key.json (the beta has none):
 

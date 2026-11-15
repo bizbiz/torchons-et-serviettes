@@ -38,7 +38,7 @@ distincts : ils répondent à deux menaces différentes.
 `versionCode` est comparé, jamais `versionName` : c'est un entier monotone,
 alors que `"0.9.0"` est supérieur à `"0.10.0"` en comparaison de chaînes.
 
-Chaque canal a déjà son backend (prod sur Scaleway, beta sur <beta-host>), donc le
+Chaque canal a déjà son backend (prod sur Scaleway, beta sur son propre hôte), donc le
 seuil est par déploiement — aucun canal n'a besoin d'être nommé dans le header.
 
 ### Trois décisions qui ne sont pas des détails

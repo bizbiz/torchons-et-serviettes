@@ -37,7 +37,7 @@ two different threats.
 `versionCode` is compared, never `versionName`: it is a monotonic integer,
 whereas `"0.9.0"` sorts above `"0.10.0"` as a string.
 
-Each channel already has its own backend (prod on Scaleway, beta on <beta-host>), so
+Each channel already has its own backend (prod on Scaleway, beta on its own host), so
 the threshold is per-deployment and no channel needs naming in the header.
 
 ### Three decisions that are not details

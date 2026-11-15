@@ -353,9 +353,9 @@ vaut mieux que les rédiger à l'aveugle.
 
 | Canal | Où | Adresse | Sert à |
 |-------|-----|---------|--------|
-| prod | Scaleway <prod-host> | `api.torchonsetserviettes.app` | l'app publique |
-| beta | <beta-host>, `~/deploiements/ts-beta` | `<beta-host-ip>:8002` | dogfood P3/P4 |
-| dev | <beta-host>, `~/deploiements/ts-dev` | `<beta-host-ip>:5438` | alembic + pytest |
+| prod | Scaleway, `<prod-host>` | `api.torchonsetserviettes.app` | l'app publique |
+| beta | `<beta-host>`, `<beta-dir>` | `<beta-host-ip>:8002` | dogfood P3/P4 |
+| dev | `<beta-host>`, `<dev-dir>` | `<beta-host-ip>:5438` | alembic + pytest |
 
 Avant le 2026-08-17, `ts.api.base.url.beta` pointait sur la **même** URL
 Scaleway que la prod : le canal beta existait dans le build Gradle
