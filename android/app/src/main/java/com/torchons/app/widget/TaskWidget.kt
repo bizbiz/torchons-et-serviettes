@@ -116,7 +116,8 @@ private data class WidgetTask(
  * tasks, with nothing to tell the two apart.
  */
 private sealed interface WidgetLoad {
-    data class Loaded(val tasks: List<WidgetTask>) : WidgetLoad
+    /** [householdEmpty]: the household has no active task at all, as opposed to none due. */
+    data class Loaded(val tasks: List<WidgetTask>, val householdEmpty: Boolean = false) : WidgetLoad
     data class Failed(val cause: String) : WidgetLoad
 }
 
@@ -181,9 +182,13 @@ class TaskWidget : GlanceAppWidget() {
                     computeTasksWithUrgency(visible, completions, today, context.resources)
                         .filter { onWidget(it, today) },
                 )
-                WidgetLoad.Loaded(ranked.map {
-                    WidgetTask(it.task.id, it.task.title, it.state, it.countdownLabel, it.task.assignedToIds.size == 1)
-                })
+                WidgetLoad.Loaded(
+                    ranked.map {
+                        val solo = it.task.assignedToIds.size == 1
+                        WidgetTask(it.task.id, it.task.title, it.state, it.countdownLabel, solo)
+                    },
+                    householdEmpty = tasks.isEmpty(),
+                )
             }
         }
             .catch { e -> emit(WidgetLoad.Failed(e.javaClass.simpleName)) }
@@ -220,6 +225,11 @@ private fun WidgetContent(load: WidgetLoad) {
             load is WidgetLoad.Failed -> Text(
                 text = context.getString(R.string.widget_load_failed),
                 style = TextStyle(fontSize = 13.sp, color = ColorProvider(Color(0xFFEF4444))),
+                modifier = GlanceModifier.clickable(actionStartActivity<MainActivity>()),
+            )
+            load is WidgetLoad.Loaded && load.householdEmpty -> Text(
+                text = context.getString(R.string.widget_no_tasks),
+                style = TextStyle(fontSize = 13.sp, color = ColorProvider(Color(0xFF6B7280))),
                 modifier = GlanceModifier.clickable(actionStartActivity<MainActivity>()),
             )
             load is WidgetLoad.Loaded && load.tasks.isEmpty() -> Text(

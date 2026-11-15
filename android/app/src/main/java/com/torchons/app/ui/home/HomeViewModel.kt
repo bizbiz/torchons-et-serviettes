@@ -97,6 +97,14 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
+     * True once the cache says the household has no active task; null until Room answers,
+     * so a household with tasks never flashes the "no task yet" invitation at startup.
+     */
+    val hasNoTasks: StateFlow<Boolean?> = taskRepository.observeActiveTasks()
+        .map { it.isEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /**
      * Pour chaque tache, la completedAt la plus recente (ISO-8601). Utilise
      * par la carte "Sans cadence" (v0.14) pour afficher le label factuel
      * "Fait il y a X j". Derive du cache local des 200 dernieres completions

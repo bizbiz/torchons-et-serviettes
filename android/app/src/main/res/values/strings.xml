@@ -41,6 +41,7 @@
     <string name="points_earned">Points gagnés</string>
     <string name="widget_description">Suggestions de tâches</string>
     <string name="widget_all_fresh">Tout est frais !</string>
+    <string name="widget_no_tasks">Aucune tâche pour l\'instant</string>
     <string name="widget_load_failed">Impossible de charger les tâches. Touche pour ouvrir l\'app.</string>
 
     <!-- ============================================================
@@ -646,6 +647,9 @@
     <string name="home_backend_unreachable_message">Le backend ne répond pas pour le moment. Réessaie dans quelques instants.</string>
     <string name="home_all_fresh_title">Tout est frais&#160;!</string>
     <string name="home_all_fresh_message">Aucune tâche urgente pour le moment.</string>
+    <string name="home_no_tasks_title">Aucune tâche pour l\'instant</string>
+    <string name="home_no_tasks_message">Ajoutez les tâches de votre foyer pour voir ici les plus urgentes.</string>
+    <string name="home_no_tasks_button">Ajouter des tâches</string>
 
     <!-- HomeScreen — carte retard timeline -->
     <string name="home_retard_chart_title">Retard du foyer · 30 jours</string>

@@ -98,9 +98,12 @@ fun HomeScreen(
     /** P1 refonte — tap sur la card "Foyer" : navigue vers l'ecran Foyer
      *  (design decision 7). La card "Moi" garde le dialog de simulation. */
     onFoyerClick: () -> Unit = {},
+    /** Button of the empty-household invitation: opens the Tasks tab. */
+    onAddTasks: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val hasNoTasks by viewModel.hasNoTasks.collectAsState()
     val displayName by viewModel.displayName.collectAsState()
     val userId by viewModel.userId.collectAsState()
     val affinityEnabled by viewModel.affinityPopupEnabled.collectAsState()
@@ -539,59 +542,11 @@ fun HomeScreen(
         }
 
         if (displayedSuggestions.isEmpty() && uiState.justCompletedIds.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 48.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                // Distinguer "vraiment rien (tout est frais)" de
-                // "rien parce que le backend n'a jamais repondu et le cache est vide".
-                val backendUnreachable = uiState.lastRefreshFailed && !uiState.hasCachedData
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (backendUnreachable) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = stringResource(R.string.home_backend_unreachable_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = stringResource(R.string.home_backend_unreachable_message),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = TaskUrgencyCalculator.VERT
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = stringResource(R.string.home_all_fresh_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = stringResource(R.string.home_all_fresh_message),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
+            HomeEmptyState(
+                backendUnreachable = uiState.lastRefreshFailed && !uiState.hasCachedData,
+                householdEmpty = hasNoTasks == true && uiState.hasCachedData,
+                onAddTasks = onAddTasks,
+            )
         }
 
         // Mini-courbe Retard du foyer sur 30 jours glissants — placee tout

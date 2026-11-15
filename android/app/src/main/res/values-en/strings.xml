@@ -39,6 +39,7 @@
     <string name="points_earned">Points earned</string>
     <string name="widget_description">Task suggestions</string>
     <string name="widget_all_fresh">All fresh!</string>
+    <string name="widget_no_tasks">No tasks yet</string>
     <string name="widget_load_failed">Could not load the tasks. Tap to open the app.</string>
 
     <!-- ============================================================
@@ -638,6 +639,9 @@
     <string name="home_backend_unreachable_message">The backend isn\'t responding right now. Try again in a moment.</string>
     <string name="home_all_fresh_title">All fresh!</string>
     <string name="home_all_fresh_message">Nothing urgent right now.</string>
+    <string name="home_no_tasks_title">No tasks yet</string>
+    <string name="home_no_tasks_message">Add your household\'s tasks to see the most urgent ones here.</string>
+    <string name="home_no_tasks_button">Add tasks</string>
 
     <!-- HomeScreen — retard timeline card -->
     <string name="home_retard_chart_title">Household overdue · 30 days</string>
