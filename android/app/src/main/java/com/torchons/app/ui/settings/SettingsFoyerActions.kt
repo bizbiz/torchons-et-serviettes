@@ -37,34 +37,6 @@ internal class SettingsFoyerActions(
     private val loadAll: () -> Unit,
 ) {
 
-    /** v0.32 : toggle gamification du foyer courant. Tout membre peut
-     *  toggler (cf design review Q4) — friction cote UI via dialog de
-     *  confirmation mentionnant l'impact sur l'autre membre. */
-    fun setCurrentFoyerGamificationEnabled(enabled: Boolean) {
-        val foyer = currentFoyer.value ?: return
-        // Optimistic update : on flip le local d'abord pour reactivite UI.
-        currentFoyer.value = foyer.copy(gamificationEnabled = enabled)
-        allFoyers.value = allFoyers.value.map {
-            if (it.id == foyer.id) it.copy(gamificationEnabled = enabled) else it
-        }
-        scope.launch {
-            tokenManager.setCurrentFoyerGamificationEnabled(enabled)
-            try {
-                val resp = apiService.updateFoyerGamification(
-                    foyer.id,
-                    mapOf("enabled" to enabled),
-                )
-                if (resp.isSuccessful) {
-                    val updated = resp.body()
-                    if (updated != null) {
-                        currentFoyer.value = updated
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("SettingsVM", "setCurrentFoyerGamificationEnabled failed", e)
-            }
-        }
-    }
     /**
      * Renomme le foyer courant (edition inline depuis l'ecran Foyer).
      * Reutilise PUT /api/foyers/{id} (deja utilise par FoyersScreen). Update

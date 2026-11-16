@@ -405,29 +405,12 @@ fun HomeScreen(
             }
         }
 
-        // Salutation + bouton noter
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = displayName?.let { stringResource(R.string.home_greeting_format, it) }
-                    ?: stringResource(R.string.home_greeting_fallback),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
-            // Sync status icon (replaces the old full-width OfflineBanner
-            // that used to push the whole layout down when appearing).
-            com.torchons.app.ui.components.SyncStatusIcon()
-            IconButton(onClick = { viewModel.showManualRating() }) {
-                Icon(
-                    imageVector = Icons.Default.QuestionMark,
-                    contentDescription = stringResource(R.string.home_rate_task_cd),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
+        // Greeting + rate button + "feature turned off by a member" notice
+        HomeGreeting(
+            displayName = displayName,
+            onRate = { viewModel.showManualRating() },
+            onSeeFoyer = onFoyerClick,
+        )
 
         // 2 cards projection (v0.8.0 magic buttons)
         // P3 — retard, rythme et objectif appartiennent au module `objectives`.

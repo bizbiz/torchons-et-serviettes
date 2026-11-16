@@ -6,13 +6,18 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.api.ModuleGuideApi
 import com.torchons.app.data.api.markGuideSeenSafe
+import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.ModuleView
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -26,9 +31,29 @@ import kotlinx.coroutines.launch
 class ModuleGuideViewModel @Inject constructor(
     private val apiService: ApiService,
     private val guideApi: ModuleGuideApi,
+    private val tokenManager: TokenManager,
 ) : ViewModel() {
 
     private val _dueGuide = MutableStateFlow<ModuleGuide?>(null)
+
+    // The registry as last served by the open-time GET /api/modules (no extra call).
+    private val _modules = MutableStateFlow<List<ModuleView>>(emptyList())
+
+    /** Home notices: collective modules another member turned off, not yet acknowledged. */
+    val offNotices: StateFlow<List<ModuleView>> = combine(
+        _modules, tokenManager.ackedModuleNoticesFlow, tokenManager.foyerIdFlow,
+    ) { modules, acked, foyerId ->
+        if (foyerId == null) emptyList()
+        else pickModuleOffNotices(modules, foyerId, acked, Instant.now())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Acknowledge one notice: it will not come back unless the module changes again. */
+    fun acknowledgeOffNotice(module: ModuleView) {
+        viewModelScope.launch {
+            val foyerId = tokenManager.getCachedFoyerId() ?: return@launch
+            tokenManager.ackModuleNotice(moduleOffNoticeKey(foyerId, module))
+        }
+    }
 
     /** The guide to show, or null. Loaded once per ViewModel (= per app open). */
     val dueGuide: StateFlow<ModuleGuide?> = _dueGuide.asStateFlow()
@@ -44,7 +69,9 @@ class ModuleGuideViewModel @Inject constructor(
                 if (resp.isSuccessful) {
                     // promptShowing = false here: the screen decides when to
                     // render it, so it never stacks on a prompt modal.
-                    _dueGuide.value = pickDueGuide(resp.body()?.modules.orEmpty(), false)?.toGuide()
+                    val modules = resp.body()?.modules.orEmpty()
+                    _modules.value = modules
+                    _dueGuide.value = pickDueGuide(modules, false)?.toGuide()
                 }
             } catch (e: CancellationException) {
                 throw e

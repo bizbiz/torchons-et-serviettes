@@ -1,5 +1,20 @@
 # Release notes
 
+## v0.45.0 — 2026-11-16
+
+### Settings: the household on one side, you on the other
+- The Household screen gathers the household features (Distribution, Motivation,
+  Objectives…): a change applies to every member.
+- Settings keeps only what is yours. Gamification there becomes "Hide points and streaks for
+  me", with no effect on the others.
+- An option of yours whose feature the household doesn't use stays visible, greyed out, with
+  a link to the household settings.
+- When another member turns off a household feature, a card tells you when you open the app.
+
+### Fixed
+- Turning gamification off from the Household screen no longer had any effect: points and
+  streaks stayed visible.
+
 ## v0.44.6 — 2026-11-16
 
 ### Maintenance

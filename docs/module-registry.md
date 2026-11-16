@@ -91,8 +91,11 @@ hence bounded and self-cleaning.
 
 **3. Who decides — any member.**
 Consistent with observed use: contexts, tasks and `bonus-config` are already
-open to everyone without incident. Every collective toggle sends an info
-notification to the other members and a line in `change_log`.
+open to everyone without incident. Every collective toggle leaves a line in
+`change_log`, signed in `module_states`. The other members learn of it at their
+next app open (revised 2026-11-16, no push): a switch-on through the module
+guide (`guide_due`), a switch-off through a Home card fed by `changed_by_name`
+and `changed_at` of `GET /api/modules`.
 
 `PUT /bonus-config` stays open to any member, while `PUT /foyers/{id}` is
 admin-only: settled on 2026-10-05, the inconsistency is resolved downwards.
@@ -136,6 +139,15 @@ in Settings.
 No 10th screen. Eight of the future sub-options are already there (6
 notifications, affinity popup, home WiFi), arranged by historical accident.
 Three blocks: Features, My foyer, My account.
+
+Revised 2026-11-16: one screen per scope. The Foyer screen carries the
+collective modules ("Household features"); Settings keeps only what is personal:
+personal modules and personal sub-options. Gamification remains there only as
+"Hide points and streaks for me" (`hide_for_me`): a member hides it, never turns
+it on. A personal sub-option whose module is off in the current foyer stays
+visible, greyed out, with a line pointing to the household settings. The old
+"foyer gamification" switch of the Foyer screen is removed. Refused: one screen
+with two sections, grouping by module, admin-only toggles, push notification.
 
 Consequence: the pace of one module every 5 days becomes a default, not a
 ceiling. The impatient opens the screen, the passive lets themselves be guided.
@@ -369,3 +381,9 @@ The backend BEFORE any APK, the sync-ordering rule of
 [`architecture.md`](architecture.md) § Sync ordering: the server serves
 `foyers.gamification_enabled` in duplicate as long as the shipped APK reads it.
 The reverse would break running installations.
+
+The legacy route `PUT /api/foyers/{id}/gamification`, behind the old Foyer
+switch of APKs up to v0.44.6, writes the `motivation` module since 2026-11-16
+(`set_module_enabled`): it used to write the column alone, which the app no
+longer reads, so that switch did nothing. The route goes once the version gate
+has passed those APKs.

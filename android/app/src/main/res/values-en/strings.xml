@@ -155,7 +155,7 @@
     <string name="foyer_presence_freeze_subtitle">Chores that must be done on site stop aging on days the household is away.</string>
     <string name="foyer_presence_hide_off_wifi_section_title">Hide when off WiFi</string>
     <string name="foyer_presence_hide_off_wifi_tooltip_title">Hide when off WiFi</string>
-    <string name="foyer_presence_hide_off_wifi_tooltip_description">Applies to YOU on this household (the other member has their own setting). Without home WiFi configured below, this setting has no effect — everything stays visible.</string>
+    <string name="foyer_presence_hide_off_wifi_tooltip_description">Applies to you only: each member has their own setting. Without home WiFi configured on the Household screen (Presence block), this setting has no effect and everything stays visible.</string>
     <string name="foyer_presence_hide_off_wifi_switch_title">Hide home tasks when off WiFi</string>
     <string name="foyer_presence_hide_off_wifi_switch_subtitle">Chores that must be done on site hide from your list when you are not on your home WiFi.</string>
     <string name="foyer_presence_wifi_section_title">Home WiFi</string>
@@ -166,13 +166,6 @@
     <string name="foyer_presence_wifi_add_button">Add my current WiFi</string>
     <string name="foyer_presence_open_calendar_button">Open presence calendar</string>
 
-    <!-- (7) Household gamification -->
-    <string name="foyer_gamif_section_title">Gamification for this household</string>
-    <string name="foyer_gamif_tooltip_title">Gamification for this household</string>
-    <string name="foyer_gamif_tooltip_description">Enable or disable points, stats and bonuses for ALL members of this household. It\'s a shared setting: disabling it removes it for the other member too. Distinct from your account gamification (which applies to all your households).</string>
-    <string name="foyer_gamif_switch_label">Enable household gamification</string>
-    <string name="foyer_gamif_switch_subtitle_on">Enabled — all members see points in this household.</string>
-    <string name="foyer_gamif_switch_subtitle_off">Disabled — no one sees points in this household.</string>
 
     <!-- (8) Simulation -->
     <string name="foyer_simulation_title">Simulate household catch-up</string>
@@ -248,12 +241,6 @@
     <string name="foyer_wifi_explanation_message">The Torchons &amp; Serviettes app can show tasks to be done at home only when you\'re there.\n\nTo do this, the app needs access to your location while it\'s open.\n\nIf interested, tap Continue. Otherwise tap Cancel — you can re-enable this feature in your settings later.</string>
     <string name="foyer_wifi_explanation_continue">Continue</string>
 
-    <!-- Disable household gamif confirm dialog -->
-    <string name="foyer_gamif_confirm_title">Disable household gamification?</string>
-    <string name="foyer_gamif_confirm_message_intro_format">You\'re about to disable gamification for the household \"%1$s\".</string>
-    <string name="foyer_gamif_confirm_message_detail_format">%1$s and you will no longer see points, stats or bonuses in this household. You can re-enable it any time.</string>
-    <string name="foyer_gamif_confirm_other_member_fallback">the other household member</string>
-    <string name="foyer_gamif_confirm_action">Disable</string>
 
     <!-- Rename dialog -->
     <string name="foyer_rename_title">Rename household</string>
@@ -831,8 +818,8 @@
 
     <!-- User-level gamification -->
     <string name="settings_gamif_title">Gamification</string>
-    <string name="settings_gamif_switch_label">Enable gamification for my account</string>
-    <string name="settings_gamif_switch_subtitle">When off, you won\'t see points, stats or bonuses in any of your households.</string>
+    <string name="settings_gamif_switch_label">Hide points and streaks for me</string>
+    <string name="settings_gamif_switch_subtitle">Changes nothing for the other members.</string>
     <string name="settings_gamif_why_no_points">Why don\'t I get points for some tasks?</string>
 
     <!-- Changelog -->
@@ -847,6 +834,12 @@
     <string name="settings_modules_includes">Includes:</string>
     <string name="settings_modules_requires_format">Enable first: %1$s</string>
     <string name="settings_modules_toggle_failed_format">Could not change this setting: %1$s</string>
+    <string name="foyer_modules_title">Household features</string>
+    <string name="foyer_modules_subtitle">A change applies to every member of the household.</string>
+    <string name="settings_module_off_format">Your household “%1$s” doesn\'t use %2$s.</string>
+    <string name="settings_module_off_link">Household settings</string>
+    <string name="home_module_off_notice_format">%1$s turned off %2$s for the household</string>
+    <string name="home_module_off_notice_see">See</string>
 
     <!-- P4 — contextual proposal to enable a module -->
     <string name="discover_module_overline">An idea for you</string>
@@ -1236,17 +1229,17 @@
     <!-- WhyNoPointsDialog (v0.32) -->
     <string name="why_no_points_title">Why am I not earning points?</string>
     <string name="why_no_points_two_causes">Two causes are stacked:</string>
-    <string name="why_no_points_bullet_user_off">You disabled gamification for your account.</string>
+    <string name="why_no_points_bullet_user_off">You hid points and streaks for yourself.</string>
     <string name="why_no_points_bullet_one_foyer_off_format">The household “%1$s” also has gamification disabled.</string>
     <string name="why_no_points_bullet_many_foyers_off_format">Several of your households also have gamification disabled (%1$s).</string>
-    <string name="why_no_points_two_causes_help">Re-enabling just one cause won\'t be enough — you must enable gamification on BOTH the account side AND the household side to see points.</string>
-    <string name="why_no_points_user_off_message">You disabled gamification for your account in Settings.</string>
-    <string name="why_no_points_user_off_help">Your households all have gamification enabled, but your personal choice takes precedence — you won\'t see points, stats or bonuses until you re-enable it.</string>
+    <string name="why_no_points_two_causes_help">Lifting one cause won\'t be enough: you must stop hiding them for yourself AND the household must use Motivation.</string>
+    <string name="why_no_points_user_off_message">You hid points and streaks for yourself in Settings.</string>
+    <string name="why_no_points_user_off_help">Your households all use Motivation, but your personal choice takes precedence: you see no points, streaks or bonuses while you hide them.</string>
     <string name="why_no_points_multi_mixed_message">Your account has gamification enabled, but some of your households don\'t. You see points in active households and nothing in the others.</string>
     <string name="why_no_points_your_foyers">Your households:</string>
     <string name="why_no_points_single_foyer_off_format">Gamification is disabled in the household “%1$s”.</string>
-    <string name="why_no_points_single_foyer_off_help">You or another member can re-enable it in Settings &gt; Advanced &gt; Household gamification.</string>
-    <string name="why_no_points_button_reactivate_account">Re-enable my account</string>
+    <string name="why_no_points_single_foyer_off_help">Any member can re-enable it: Household screen &gt; Household features &gt; Motivation.</string>
+    <string name="why_no_points_button_reactivate_account">Stop hiding for me</string>
     <string name="why_no_points_button_reactivate_now">Re-enable now</string>
     <string name="why_no_points_button_reactivate_foyer_format">Re-enable household “%1$s”</string>
     <string name="why_no_points_fallback">No reason detected. If you see this message while you have pending points, try a refresh or contact the other member of your household.</string>

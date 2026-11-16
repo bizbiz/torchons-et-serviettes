@@ -36,6 +36,13 @@ data class ModuleView(
     @SerializedName("guide_seen") val guideSeen: Boolean = false,
     /** Show the guide at next app open (module enabled by another member). */
     @SerializedName("guide_due") val guideDue: Boolean = false,
+    /**
+     * Who made the last change of this COLLECTIVE module, and when (ISO-8601,
+     * UTC). Set by the server only when that member is someone else than the
+     * caller; null otherwise (and for an old server).
+     */
+    @SerializedName("changed_by_name") val changedByName: String? = null,
+    @SerializedName("changed_at") val changedAt: String? = null,
 ) {
     val isCollective: Boolean get() = scope == "collective"
 }

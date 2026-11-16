@@ -94,8 +94,11 @@ tourne déjà sur une fenêtre glissante de 30 jours
 **3. Qui décide — n'importe quel membre.**
 Cohérent avec l'usage constaté : contextes, tâches et
 `bonus-config` sont déjà ouverts à tous sans incident. Toute bascule
-collective émet une notification info aux autres membres et une ligne
-dans `change_log`.
+collective laisse une ligne dans `change_log`, signée dans `module_states`.
+Les autres membres en sont informés à leur prochaine ouverture (révisé le
+2026-11-16, pas de push) : une activation par le guide du module
+(`guide_due`), une coupure par une carte sur l'Accueil, alimentée par
+`changed_by_name` et `changed_at` de `GET /api/modules`.
 
 `PUT /bonus-config` reste ouvert à tout membre, alors que `PUT /foyers/{id}`
 est admin-only : tranché le 2026-10-05, l'incohérence est levée par le bas.
@@ -140,6 +143,17 @@ reste atteignable dans Réglages.
 Pas de 10ᵉ écran. Huit des futures sous-options y sont déjà (6
 notifications, popup d'affinité, WiFi maison), rangées par hasard
 historique. Trois blocs : Fonctionnalités, Mon foyer, Mon compte.
+
+Révisé le 2026-11-16 (Quentin, `/grill-me`) : un écran par portée.
+L'écran Foyer porte les modules collectifs (« Fonctionnalités du foyer »),
+Réglages ne garde que le personnel : modules personnels et sous-options
+personnelles. La gamification n'y existe plus que comme « Masquer points et
+séries pour moi » (`hide_for_me`) : un membre la masque, il ne l'allume pas.
+Une sous-option personnelle dont le module est coupé dans le foyer courant
+reste visible, grisée, avec une ligne qui renvoie aux réglages du foyer.
+L'ancien interrupteur « gamification du foyer » de l'écran Foyer est retiré.
+Refusés : un seul écran à deux sections, le regroupement par module, la
+bascule réservée à l'admin, la notification push.
 
 Conséquence : le rythme d'un module tous les 5 jours devient un défaut, pas
 un plafond. L'impatient ouvre l'écran, le passif se laisse guider.
@@ -382,3 +396,9 @@ Le backend AVANT tout APK, règle de synchronisation de
 [`architecture.fr.md`](architecture.fr.md) § Ordre de synchronisation : le
 serveur sert `foyers.gamification_enabled` en double tant que l'APK diffusé la
 lit. L'inverse casserait les installations en cours.
+
+La route héritée `PUT /api/foyers/{id}/gamification`, derrière l'ancien
+interrupteur Foyer des APK jusqu'à la v0.44.6, écrit le module `motivation`
+depuis le 2026-11-16 (`set_module_enabled`) : elle n'écrivait que la colonne,
+que l'app ne lit plus, et cet interrupteur ne faisait rien. Elle part quand le
+version gate aura dépassé ces APK.

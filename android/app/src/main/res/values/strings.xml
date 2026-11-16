@@ -161,7 +161,7 @@
     <string name="foyer_presence_freeze_subtitle">Les tâches à faire sur place arrêtent de vieillir les jours où le foyer est absent.</string>
     <string name="foyer_presence_hide_off_wifi_section_title">Masquer hors WiFi</string>
     <string name="foyer_presence_hide_off_wifi_tooltip_title">Masquer hors WiFi</string>
-    <string name="foyer_presence_hide_off_wifi_tooltip_description">S\'applique à TOI sur ce foyer (l\'autre membre a son propre réglage). Sans WiFi maison configuré ci-dessous, ce réglage n\'a aucun effet — tout reste visible.</string>
+    <string name="foyer_presence_hide_off_wifi_tooltip_description">S\'applique à toi seul : chaque membre a son propre réglage. Sans WiFi maison configuré dans l\'écran Foyer (bloc Présence), ce réglage n\'a aucun effet et tout reste visible.</string>
     <string name="foyer_presence_hide_off_wifi_switch_title">Masquer les tâches maison hors WiFi</string>
     <string name="foyer_presence_hide_off_wifi_switch_subtitle">Les tâches à faire sur place se cachent de ta liste quand tu n\'es pas sur ton WiFi maison.</string>
     <string name="foyer_presence_wifi_section_title">WiFi maison</string>
@@ -172,13 +172,6 @@
     <string name="foyer_presence_wifi_add_button">Ajouter mon WiFi actuel</string>
     <string name="foyer_presence_open_calendar_button">Ouvrir l\'agenda de présence</string>
 
-    <!-- (7) Gamification du foyer -->
-    <string name="foyer_gamif_section_title">Gamification de ce foyer</string>
-    <string name="foyer_gamif_tooltip_title">Gamification de ce foyer</string>
-    <string name="foyer_gamif_tooltip_description">Active ou désactive les points, stats et bonus pour TOUS les membres de ce foyer. C\'est un réglage partagé&#160;: le désactiver le retire aussi à l\'autre membre. Distinct de la gamification de ton compte (qui, elle, s\'applique à tous tes foyers).</string>
-    <string name="foyer_gamif_switch_label">Activer la gamification du foyer</string>
-    <string name="foyer_gamif_switch_subtitle_on">Activée — tous les membres voient les points dans ce foyer.</string>
-    <string name="foyer_gamif_switch_subtitle_off">Désactivée — personne ne voit les points dans ce foyer.</string>
 
     <!-- (8) Simulation -->
     <string name="foyer_simulation_title">Simuler le rattrapage du foyer</string>
@@ -254,12 +247,6 @@
     <string name="foyer_wifi_explanation_message">L\'appli Torchons &amp; Serviettes peut afficher les tâches à faire à la maison uniquement lorsque vous y êtes.\n\nPour ce faire, l\'app a besoin d\'accéder à votre localisation lorsqu\'elle est ouverte.\n\nSi vous êtes intéressé par cette fonctionnalité, cliquez sur Continuer. Sinon, cliquez sur Annuler — vous pourrez réactiver cette fonctionnalité dans vos réglages plus tard.</string>
     <string name="foyer_wifi_explanation_continue">Continuer</string>
 
-    <!-- Dialog confirmation désactivation gamif foyer -->
-    <string name="foyer_gamif_confirm_title">Désactiver la gamification du foyer&#160;?</string>
-    <string name="foyer_gamif_confirm_message_intro_format">Tu vas désactiver la gamification du foyer «&#160;%1$s&#160;».</string>
-    <string name="foyer_gamif_confirm_message_detail_format">%1$s et toi ne verrez plus les points, les stats ni les bonus dans ce foyer. Vous pourrez le réactiver à tout moment.</string>
-    <string name="foyer_gamif_confirm_other_member_fallback">l\'autre membre du foyer</string>
-    <string name="foyer_gamif_confirm_action">Désactiver</string>
 
     <!-- Dialog renommer -->
     <string name="foyer_rename_title">Renommer le foyer</string>
@@ -839,8 +826,8 @@
 
     <!-- Gamification user-level -->
     <string name="settings_gamif_title">Gamification</string>
-    <string name="settings_gamif_switch_label">Activer la gamification pour mon compte</string>
-    <string name="settings_gamif_switch_subtitle">Si désactivée, tu ne verras plus les points, stats et bonus dans aucun de tes foyers.</string>
+    <string name="settings_gamif_switch_label">Masquer points et séries pour moi</string>
+    <string name="settings_gamif_switch_subtitle">Ne change rien pour les autres membres.</string>
     <string name="settings_gamif_why_no_points">Pourquoi je n\'ai pas de points pour certaines tâches&#160;?</string>
 
     <!-- Nouveautés -->
@@ -855,6 +842,12 @@
     <string name="settings_modules_includes">Contient :</string>
     <string name="settings_modules_requires_format">Activez d\'abord : %1$s</string>
     <string name="settings_modules_toggle_failed_format">Impossible de changer ce réglage : %1$s</string>
+    <string name="foyer_modules_title">Fonctionnalités du foyer</string>
+    <string name="foyer_modules_subtitle">Un changement vaut pour tous les membres du foyer.</string>
+    <string name="settings_module_off_format">Ton foyer «&#160;%1$s&#160;» n\'utilise pas %2$s.</string>
+    <string name="settings_module_off_link">Réglages du foyer</string>
+    <string name="home_module_off_notice_format">%1$s a coupé %2$s pour le foyer</string>
+    <string name="home_module_off_notice_see">Voir</string>
 
     <!-- P4 — proposition contextuelle d'activer un module -->
     <string name="discover_module_overline">Une idée pour vous</string>
@@ -1250,17 +1243,17 @@
     <!-- WhyNoPointsDialog (v0.32) -->
     <string name="why_no_points_title">Pourquoi je n\'ai pas de points&#160;?</string>
     <string name="why_no_points_two_causes">Deux causes se cumulent&#160;:</string>
-    <string name="why_no_points_bullet_user_off">Tu as désactivé la gamification pour ton compte.</string>
+    <string name="why_no_points_bullet_user_off">Tu as masqué les points et les séries pour toi.</string>
     <string name="why_no_points_bullet_one_foyer_off_format">Le foyer « %1$s » a aussi sa gamification désactivée.</string>
     <string name="why_no_points_bullet_many_foyers_off_format">Plusieurs de tes foyers ont aussi leur gamification désactivée (%1$s).</string>
-    <string name="why_no_points_two_causes_help">Réactiver une seule cause ne suffira pas — il faut activer la gamification côté compte ET côté foyer pour voir les points.</string>
-    <string name="why_no_points_user_off_message">Tu as désactivé la gamification pour ton compte dans tes Réglages.</string>
-    <string name="why_no_points_user_off_help">Tes foyers ont tous leur gamification activée, mais ton choix personnel prend le dessus — tu ne vois pas de points, de stats ni de bonus tant que tu n\'as pas réactivé.</string>
+    <string name="why_no_points_two_causes_help">Lever une seule cause ne suffira pas : il faut ne plus les masquer pour toi ET que le foyer utilise Motivation.</string>
+    <string name="why_no_points_user_off_message">Tu as masqué les points et les séries pour toi dans tes Réglages.</string>
+    <string name="why_no_points_user_off_help">Tes foyers utilisent tous Motivation, mais ton choix personnel prend le dessus : tu ne vois ni points, ni séries, ni bonus tant que tu les masques.</string>
     <string name="why_no_points_multi_mixed_message">Ton compte a la gamification activée, mais certains de tes foyers ne l\'ont pas. Tu vois des points dans les foyers activés, et rien dans les autres.</string>
     <string name="why_no_points_your_foyers">Tes foyers&#160;:</string>
     <string name="why_no_points_single_foyer_off_format">La gamification est désactivée dans le foyer « %1$s ».</string>
-    <string name="why_no_points_single_foyer_off_help">Toi ou un autre membre du foyer peut la réactiver dans Réglages &gt; Options avancées &gt; Gamification du foyer.</string>
-    <string name="why_no_points_button_reactivate_account">Réactiver mon compte</string>
+    <string name="why_no_points_single_foyer_off_help">N\'importe quel membre peut la réactiver : écran Foyer &gt; Fonctionnalités du foyer &gt; Motivation.</string>
+    <string name="why_no_points_button_reactivate_account">Ne plus masquer pour moi</string>
     <string name="why_no_points_button_reactivate_now">Réactiver maintenant</string>
     <string name="why_no_points_button_reactivate_foyer_format">Réactiver le foyer « %1$s »</string>
     <string name="why_no_points_fallback">Aucune raison détectée. Si tu vois ce message alors que tu as des points en attente, tente un refresh ou contacte l\'autre membre du foyer.</string>

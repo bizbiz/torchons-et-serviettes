@@ -53,14 +53,37 @@ import com.torchons.app.data.model.ModuleView
  * left missing: without this the section spun forever once opened offline.
  */
 @Composable
-fun ModulesSection(viewModel: SettingsViewModel) {
+fun ModulesSection(viewModel: SettingsViewModel, collective: Boolean) {
     val modules by viewModel.modules.collectAsState()
     val loading by viewModel.loadingAll.collectAsState()
     LifecycleResumeEffect(Unit) {
         viewModel.refreshIfIncomplete()
         onPauseOrDispose { }
     }
-    ModulesSection(modules = modules, onToggle = viewModel::toggleModule, isLoading = loading)
+    ModulesSection(
+        modules = modules.filter { it.isCollective == collective },
+        onToggle = viewModel::toggleModule,
+        isLoading = loading,
+        titleRes = if (collective) R.string.foyer_modules_title else R.string.settings_modules_title,
+        subtitleRes = if (collective) R.string.foyer_modules_subtitle else R.string.settings_modules_subtitle,
+    )
+}
+
+/** Error line shown under a modules block when a toggle was refused; tap to dismiss. */
+@Composable
+fun ModuleToggleError(viewModel: SettingsViewModel) {
+    val moduleError by viewModel.moduleError.collectAsState()
+    moduleError?.let { message ->
+        Text(
+            text = stringResource(R.string.settings_modules_toggle_failed_format, message),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { viewModel.dismissModuleError() }
+                .padding(horizontal = 4.dp),
+        )
+    }
 }
 
 /**
@@ -85,6 +108,8 @@ fun ModulesSection(
     modules: List<ModuleView>,
     onToggle: (String, Boolean, (ModuleView) -> Unit) -> Unit,
     isLoading: Boolean,
+    titleRes: Int = R.string.settings_modules_title,
+    subtitleRes: Int = R.string.settings_modules_subtitle,
 ) {
     val guideVm: ModuleGuideViewModel = hiltViewModel()
     val guide by guideVm.settingsGuide.collectAsState()
@@ -105,14 +130,14 @@ fun ModulesSection(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = stringResource(R.string.settings_modules_title),
+                    text = stringResource(titleRes),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
 
             Text(
-                text = stringResource(R.string.settings_modules_subtitle),
+                text = stringResource(subtitleRes),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp),

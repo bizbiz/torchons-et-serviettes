@@ -30,6 +30,7 @@ from app.auth import get_current_user
 from app.database import get_session
 from app.models.foyer import Foyer
 from app.models.module_state import ModuleState
+from app.models.user import User
 from app.services.module_guides import (
     due_module_keys,
     mark_guide_seen,
@@ -80,6 +81,11 @@ class ModuleView(BaseModel):
     guide_how: str = ""
     guide_seen: bool = False
     guide_due: bool = False
+    # Last change of a COLLECTIVE module, filled only when ANOTHER member made
+    # it (signed row). The client shows "<member> switched X off" once per
+    # change; the switch-on case is already told by the guide (`guide_due`).
+    changed_by_name: str | None = None
+    changed_at: datetime | None = None
 
 
 class ModulesResponse(BaseModel):
@@ -160,13 +166,35 @@ async def list_modules(
     registry = get_registry()
     seen = await seen_module_keys(session, user_id)
     due = await due_module_keys(session, foyer_id, user_id, states, seen)
+    changes = await _changes_by_others(session, foyer_id, user_id)
 
-    return ModulesResponse(
-        modules=[
-            _to_view(m, states[m.key], states, locale, seen, due)
-            for m in registry.modules
-        ]
+    views = []
+    for m in registry.modules:
+        view = _to_view(m, states[m.key], states, locale, seen, due)
+        if m.key in changes:
+            view.changed_by_name, view.changed_at = changes[m.key]
+        views.append(view)
+    return ModulesResponse(modules=views)
+
+
+async def _changes_by_others(
+    session: AsyncSession, foyer_id: uuid.UUID, user_id: uuid.UUID
+) -> dict[str, tuple[str, datetime]]:
+    """Collective rows last signed by another member: key -> (name, when).
+
+    Unsigned rows (migration backfill) and the member's own changes are left
+    out: there is nobody else to name.
+    """
+    result = await session.execute(
+        select(ModuleState.module_key, User.display_name, ModuleState.updated_at)
+        .join(User, User.id == ModuleState.updated_by_user_id)
+        .where(
+            ModuleState.foyer_id == foyer_id,
+            ModuleState.user_id.is_(None),
+            ModuleState.updated_by_user_id != user_id,
+        )
     )
+    return {key: (name, when) for key, name, when in result.all()}
 
 
 @router.post("/{module_key}/guide-seen", status_code=204)
@@ -203,11 +231,22 @@ async def toggle_module(
     if module is None:
         raise LocalizedHTTPException(status_code=404, error_code="MODULE_UNKNOWN")
 
-    states = await resolve_states(session, foyer_id, user_id)
+    states = await set_module_enabled(
+        session, foyer_id, user_id, module, body.enabled, locale
+    )
+    await session.commit()
 
-    # Dependency guard, both directions. Bonus/malus without Motivation has
-    # nothing to modulate, so neither order of operations may produce it.
-    if body.enabled:
+    # `due` stays empty: the actor is the one who just switched it, never "another member".
+    seen = await seen_module_keys(session, user_id)
+    return _to_view(module, body.enabled, states, locale, seen)
+
+
+def _check_dependencies(
+    module: Module, states: dict[str, bool], enabled: bool, locale: str
+) -> None:
+    """Dependency guard, both directions. Bonus/malus without Motivation has
+    nothing to modulate, so neither order of operations may produce it."""
+    if enabled:
         unmet = unmet_requirements(module, states)
         if unmet:
             raise LocalizedHTTPException(
@@ -215,16 +254,35 @@ async def toggle_module(
                 error_code="MODULE_REQUIRES",
                 format_args={"requires": _titles(unmet, locale)},
             )
-    else:
-        active_dependents = [
-            d.key for d in dependents_of(module.key) if states.get(d.key, False)
-        ]
-        if active_dependents:
-            raise LocalizedHTTPException(
-                status_code=409,
-                error_code="MODULE_HAS_DEPENDENTS",
-                format_args={"dependents": _titles(active_dependents, locale)},
-            )
+        return
+    active_dependents = [
+        d.key for d in dependents_of(module.key) if states.get(d.key, False)
+    ]
+    if active_dependents:
+        raise LocalizedHTTPException(
+            status_code=409,
+            error_code="MODULE_HAS_DEPENDENTS",
+            format_args={"dependents": _titles(active_dependents, locale)},
+        )
+
+
+async def set_module_enabled(
+    session: AsyncSession,
+    foyer_id: uuid.UUID,
+    user_id: uuid.UUID,
+    module: Module,
+    enabled: bool,
+    locale: str,
+) -> dict[str, bool]:
+    """Write one toggle, signed by `user_id`, with its guards. Does not commit.
+
+    Shared by PUT /api/modules/{key} and the legacy foyer gamification route
+    (PUT /api/foyers/{id}/gamification), so that both switches write the state
+    the app actually reads. Returns the member's states after the change.
+    """
+    body = ModuleToggleRequest(enabled=enabled)
+    states = await resolve_states(session, foyer_id, user_id)
+    _check_dependencies(module, states, enabled, locale)
 
     # Collective rows carry a NULL user_id; personal ones carry the member's.
     row_user_id = None if module.is_collective else user_id
@@ -278,9 +336,5 @@ async def toggle_module(
         old_data={"module_key": module.key, "enabled": was_enabled},
         new_data={"module_key": module.key, "enabled": body.enabled},
     )
-    await session.commit()
-
     states[module.key] = body.enabled
-    # `due` stays empty: the actor is the one who just switched it, never "another member".
-    seen = await seen_module_keys(session, user_id)
-    return _to_view(module, body.enabled, states, locale, seen)
+    return states

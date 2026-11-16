@@ -108,7 +108,6 @@ fun FoyerSettingsScreen(
     val currentFoyer by viewModel.currentFoyer.collectAsState()
     val allFoyers by viewModel.allFoyers.collectAsState()
     val users by viewModel.users.collectAsState()
-    val displayName by viewModel.displayName.collectAsState()
     val userId by viewModel.userId.collectAsState()
 
     // P4a.1 Bug A — l'instance SettingsViewModel de CET ecran est distincte
@@ -121,11 +120,9 @@ fun FoyerSettingsScreen(
     val homeSsids = s.homeSsids
     val affinityExpiry = s.affinityExpiry
     val fairShareTolerance = s.fairShareTolerance
-    val gamifFoyer = currentFoyer?.gamificationEnabled ?: true
     val homeFreezeEnabled = currentFoyer?.homeFreezeEnabled ?: false
 
     var showWifiExplanation by remember { mutableStateOf(false) }
-    var showFoyerGamifConfirmDialog by remember { mutableStateOf(false) }
     var showSwitchSheet by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showSimulationDialog by remember { mutableStateOf(false) }
@@ -248,6 +245,10 @@ fun FoyerSettingsScreen(
                 onClick = onManageContexts,
             )
 
+            // (5) Household features: the collective modules, one switch for everyone.
+            ModulesSection(viewModel = viewModel, collective = true)
+            ModuleToggleError(viewModel = viewModel)
+
             // (6) Presence & absences (bloc : home freeze + WiFi maison)
             // P3 — tout le bloc appartient au module `presence`. Le gel pendant les
             // absences, le calendrier et le WiFi maison sont ses sous-options : les
@@ -277,30 +278,8 @@ fun FoyerSettingsScreen(
                     onCheckedChange = { viewModel.setCurrentFoyerHomeFreezeEnabled(it) },
                 )
 
-                // Toggle perso : masquer les taches maison de SA liste hors
-                // WiFi maison. Per-user (l'autre membre a son propre reglage).
-                // (i) precise la portee + le no-op si pas de WiFi configure.
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.foyer_presence_hide_off_wifi_section_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    InfoTooltip(
-                        title = stringResource(R.string.foyer_presence_hide_off_wifi_tooltip_title),
-                        description = stringResource(R.string.foyer_presence_hide_off_wifi_tooltip_description),
-                    )
-                }
-                SettingSwitch(
-                    title = stringResource(R.string.foyer_presence_hide_off_wifi_switch_title),
-                    subtitle = stringResource(R.string.foyer_presence_hide_off_wifi_switch_subtitle),
-                    checked = s.hideHomeTasksOffWifi,
-                    onCheckedChange = { viewModel.setHideHomeTasksOffWifi(it) },
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                // The personal "hide home tasks off WiFi" switch moved to Settings
+                // (HomeWifiCard): it is the member's choice, not the household's.
 
                 // WiFi maison (deplace tel quel depuis SettingsScreen)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -398,49 +377,6 @@ fun FoyerSettingsScreen(
                     Text(stringResource(R.string.foyer_presence_open_calendar_button))
                 }
             }
-            }
-
-            // (7) Gamification de ce foyer (+ (i))
-            SettingCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.foyer_gamif_section_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    InfoTooltip(
-                        title = stringResource(R.string.foyer_gamif_tooltip_title),
-                        description = stringResource(R.string.foyer_gamif_tooltip_description),
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.foyer_gamif_switch_label),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            text = if (gamifFoyer)
-                                stringResource(R.string.foyer_gamif_switch_subtitle_on)
-                            else
-                                stringResource(R.string.foyer_gamif_switch_subtitle_off),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = gamifFoyer,
-                        onCheckedChange = { newValue ->
-                            if (!newValue) {
-                                showFoyerGamifConfirmDialog = true
-                            } else {
-                                viewModel.setCurrentFoyerGamificationEnabled(true)
-                            }
-                        },
-                    )
-                }
             }
 
             // (8) Simuler le rattrapage du foyer (-> ProjectionSimulationDialog)
@@ -788,44 +724,6 @@ fun FoyerSettingsScreen(
             },
             dismissButton = {
                 OutlinedButton(onClick = { showWifiExplanation = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            },
-        )
-    }
-
-    // --- Dialog confirmation desactivation gamif foyer ---
-    if (showFoyerGamifConfirmDialog) {
-        val fallbackOther = stringResource(R.string.foyer_gamif_confirm_other_member_fallback)
-        val otherMemberName = users
-            .firstOrNull { it.displayName != displayName }
-            ?.displayName
-            ?: fallbackOther
-        AlertDialog(
-            onDismissRequest = { showFoyerGamifConfirmDialog = false },
-            title = { Text(stringResource(R.string.foyer_gamif_confirm_title)) },
-            text = {
-                Column {
-                    Text(
-                        text = stringResource(R.string.foyer_gamif_confirm_message_intro_format, foyerName),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.foyer_gamif_confirm_message_detail_format, otherMemberName),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    viewModel.setCurrentFoyerGamificationEnabled(false)
-                    showFoyerGamifConfirmDialog = false
-                }) { Text(stringResource(R.string.foyer_gamif_confirm_action)) }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showFoyerGamifConfirmDialog = false }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },

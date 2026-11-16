@@ -1,5 +1,20 @@
 # Notes de version
 
+## v0.45.0 — 2026-11-16
+
+### Réglages : le foyer d'un côté, toi de l'autre
+- L'écran Foyer réunit les fonctionnalités du foyer (Répartition, Motivation, Objectifs…) :
+  un changement vaut pour tous les membres.
+- Les Réglages ne gardent que ce qui est à toi. La gamification y devient « Masquer points et
+  séries pour moi », sans effet pour les autres.
+- Une option à toi dont le foyer n'utilise pas la fonctionnalité reste visible, grisée, avec
+  un lien vers les réglages du foyer.
+- Quand un autre membre coupe une fonctionnalité du foyer, une carte te le dit à l'ouverture.
+
+### Corrigé
+- Couper la gamification depuis l'écran Foyer n'avait plus d'effet : les points et les séries
+  restaient visibles.
+
 ## v0.44.6 — 2026-11-16
 
 ### Maintenance

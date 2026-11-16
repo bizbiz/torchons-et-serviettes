@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -84,6 +85,9 @@ class TokenManager @Inject constructor(
         // par des virgules. Absent tant que GET /api/modules n'a pas repondu
         // au moins une fois — c'est ce vide qui declenche le repli hérité.
         private val MODULE_STATES_KEY = stringPreferencesKey("module_states")
+        // Acknowledged "module turned off by another member" notices, keys
+        // "<foyerId>:<moduleKey>:<changedAt>" (a new change gives a new key).
+        private val ACKED_MODULE_NOTICES_KEY = stringSetPreferencesKey("acked_module_off_notices")
     }
 
     /** Flow du token JWT. Emet null si aucun token stocke. */
@@ -185,6 +189,19 @@ class TokenManager @Inject constructor(
         context.dataStore.data.map { prefs ->
             parseModuleStates(prefs[MODULE_STATES_KEY])[key] ?: fallback
         }
+
+    /** Notice keys the user has already dismissed (see ModuleOffNotice.kt). */
+    val ackedModuleNoticesFlow: Flow<Set<String>> = context.dataStore.data.map { prefs ->
+        prefs[ACKED_MODULE_NOTICES_KEY] ?: emptySet()
+    }
+
+    suspend fun ackModuleNotice(key: String) {
+        context.dataStore.edit { prefs ->
+            // Keep the set bounded: notices older than 30 days never show again anyway.
+            val current = prefs[ACKED_MODULE_NOTICES_KEY] ?: emptySet()
+            prefs[ACKED_MODULE_NOTICES_KEY] = (current + key).toList().takeLast(50).toSet()
+        }
+    }
 
     suspend fun setModuleStates(states: Map<String, Boolean>) {
         val encoded = states.entries.joinToString(",") { "${it.key}=${if (it.value) 1 else 0}" }

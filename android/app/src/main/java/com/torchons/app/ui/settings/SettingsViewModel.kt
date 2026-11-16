@@ -369,10 +369,7 @@ class SettingsViewModel @Inject constructor(
         updateSetting("hide_home_tasks_off_wifi", v)
     }
 
-    // Foyer actions (gamification, rename, home freeze, switch, create): SettingsFoyerActions.
-    fun setCurrentFoyerGamificationEnabled(enabled: Boolean) =
-        foyers.setCurrentFoyerGamificationEnabled(enabled)
-
+    // Foyer actions (rename, home freeze, switch, create): SettingsFoyerActions.
     fun renameCurrentFoyer(newName: String) = foyers.renameCurrentFoyer(newName)
 
     fun setCurrentFoyerHomeFreezeEnabled(enabled: Boolean) =

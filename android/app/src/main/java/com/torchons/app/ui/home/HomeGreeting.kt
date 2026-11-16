@@ -1,0 +1,53 @@
+package com.torchons.app.ui.home
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Arrangement
+import com.torchons.app.R
+import com.torchons.app.ui.common.ModuleOffNoticeHost
+
+/**
+ * Top of Home: greeting + sync icon + "rate a task" button, then the notice card(s)
+ * telling that another member turned a household feature off (nothing when none).
+ */
+@Composable
+fun HomeGreeting(displayName: String?, onRate: () -> Unit, onSeeFoyer: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = displayName?.let { stringResource(R.string.home_greeting_format, it) }
+                    ?: stringResource(R.string.home_greeting_fallback),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            // Sync status icon (replaces the old full-width OfflineBanner
+            // that used to push the whole layout down when appearing).
+            com.torchons.app.ui.components.SyncStatusIcon()
+            IconButton(onClick = onRate) {
+                Icon(
+                    imageVector = Icons.Default.QuestionMark,
+                    contentDescription = stringResource(R.string.home_rate_task_cd),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+        ModuleOffNoticeHost(onSee = onSeeFoyer)
+    }
+}

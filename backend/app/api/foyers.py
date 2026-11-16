@@ -20,6 +20,9 @@ from app.services.presence import seed_initial_presence
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
 from app.utils.scoping import current_foyer_uuid
+from app.utils.locale import get_request_locale
+from app.services.modules import get_registry
+from app.api.modules import set_module_enabled
 
 router = APIRouter(prefix="/api/foyers", tags=["foyers"])
 
@@ -162,6 +165,7 @@ async def update_foyer_gamification(
     body: GamificationToggle,
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
+    locale: str = Depends(get_request_locale),
 ):
     """Toggle gamification du foyer — accessible a tout membre (pas admin-only).
 
@@ -191,7 +195,14 @@ async def update_foyer_gamification(
     if foyer is None:
         raise LocalizedHTTPException(status_code=404, error_code="FOYER_NOT_FOUND")
 
-    foyer.gamification_enabled = body.enabled
+    # Since the module registry (P2) the app reads the `motivation` module, not
+    # this column: writing the column alone made this switch a no-op (seen on
+    # prod 2026-11-16). The module write mirrors the column itself. Route kept
+    # for installed APKs up to v0.44.6; drop it once the version gate passes them.
+    motivation = get_registry().by_key("motivation")
+    await set_module_enabled(
+        session, foyer_id, user_id, motivation, body.enabled, locale
+    )
     foyer.version += 1
     await record_change(
         session, "foyers", foyer.id, "UPDATE", current["user_id"],

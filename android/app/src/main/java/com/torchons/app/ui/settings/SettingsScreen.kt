@@ -125,7 +125,6 @@ fun SettingsScreen(
     val displayName by viewModel.displayName.collectAsState()
     val s by viewModel.settings.collectAsState()
     val modules by viewModel.modules.collectAsState()
-    val moduleError by viewModel.moduleError.collectAsState()
     // Vrai si le module est actif. Tant que GET /api/modules n'a pas repondu la
     // liste est vide et on repond `true` : l'ecran reste alors exactement ce
     // qu'il etait avant P2, au lieu de faire disparaitre des reglages le temps
@@ -155,6 +154,14 @@ fun SettingsScreen(
     var showWhyNoPointsDialog by remember { mutableStateOf(false) }
 
     val foyerName = currentFoyer?.name ?: stringResource(R.string.settings_foyer_default_name)
+
+    // Non-null when the current household turned this collective module off: the personal
+    // option stays visible but disabled, with a link to the household screen.
+    fun moduleOffInfo(key: String): ModuleOffInfo? {
+        val module = modules.firstOrNull { it.key == key } ?: return null
+        if (module.enabled) return null
+        return ModuleOffInfo(foyerName, module.title, onOpenFoyerSettings)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.checkBackend()
@@ -269,89 +276,19 @@ fun SettingsScreen(
 
         // P2 — le registre des modules. Niveau 1 de l'arbre : ce qui suit dans
         // l'ecran n'est que le niveau 2, revele module par module.
-        ModulesSection(viewModel = viewModel)
+        ModulesSection(viewModel = viewModel, collective = false)
 
-        moduleError?.let { message ->
-            Text(
-                text = stringResource(R.string.settings_modules_toggle_failed_format, message),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { viewModel.dismissModuleError() }
-                    .padding(horizontal = 4.dp),
-            )
-        }
+        ModuleToggleError(viewModel = viewModel)
 
-        // Sous-options du module `motivation` : visibles seulement si le module
-        // est actif. "Ne pas me les afficher" n'a de sens que si le foyer a active Motivation.
-        // L'interrupteur du module vit dans le bloc Fonctionnalites ci-dessus ;
-        // ici on ne montre que ce qu'il contient. Un reglage, un seul ecrivain.
-        if (moduleEnabled("motivation")) {
-        // v0.32 : Gamification user-level + help link conditionnel.
-        // DISTINCTE de la gamification du foyer (qui, elle, vit dans
-        // l'ecran Foyer). Ici = "pour mon compte, tous foyers confondus".
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "🎯", style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.settings_gamif_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.settings_gamif_switch_label),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_gamif_switch_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = gamifUser,
-                        onCheckedChange = { viewModel.setGamificationEnabled(it) },
-                    )
-                }
-
-                if (helpLinkVisible) {
-                    Spacer(Modifier.height(8.dp))
-                    HorizontalDivider()
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showWhyNoPointsDialog = true }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.settings_gamif_why_no_points),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Text(
-                            text = "›",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-            }
-        }
-        }
+        // Personal choice on the household's `motivation` module: hide points and streaks
+        // for me only. Shown (disabled, with the reason) even when the household turned it off.
+        HidePointsCard(
+            hidden = !gamifUser,
+            onHiddenChange = { hide -> viewModel.setGamificationEnabled(!hide) },
+            moduleOff = moduleOffInfo("motivation"),
+            helpLinkVisible = helpLinkVisible,
+            onWhyNoPoints = { showWhyNoPointsDialog = true },
+        )
 
         // Nouveautes + Roadmap
         Card(
@@ -479,42 +416,19 @@ fun SettingsScreen(
         }
         }
 
-        // Sous-options du module `repartition` : visibles seulement si le module
-        // est actif. La popup de notation d'affinite est une sous-option de Repartition.
-        // L'interrupteur du module vit dans le bloc Fonctionnalites ci-dessus ;
-        // ici on ne montre que ce qu'il contient. Un reglage, un seul ecrivain.
-        if (moduleEnabled("repartition")) {
-        // Affinite
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.QuestionMark,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.settings_affinity_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                SettingSwitch(
-                    title = stringResource(R.string.settings_affinity_switch_label),
-                    subtitle = stringResource(R.string.settings_affinity_switch_subtitle),
-                    checked = affinityPopup,
-                    onCheckedChange = { viewModel.setAffinityPopup(it) }
-                )
-            }
-        }
-        }
+        // Personal choice on the household's `repartition` module: the affinity popup.
+        AffinityPopupCard(
+            enabled = affinityPopup,
+            onEnabledChange = { viewModel.setAffinityPopup(it) },
+            moduleOff = moduleOffInfo("repartition"),
+        )
+
+        // Personal choice on the household's `presence` module.
+        HomeWifiCard(
+            hidden = s.hideHomeTasksOffWifi,
+            onHiddenChange = { viewModel.setHideHomeTasksOffWifi(it) },
+            moduleOff = moduleOffInfo("presence"),
+        )
 
         // Infos app (relogees ici — etaient dans "Options avancees" qui a
         // disparu avec la refonte P1 ; doivent rester accessibles).
@@ -652,11 +566,12 @@ fun SettingsScreen(
                 showWhyNoPointsDialog = false
             },
             onReactivateFoyer = { foyerId ->
-                // Si c'est le foyer courant, on toggle directement. Sinon
+                // Si c'est le foyer courant, on bascule directement le module. Sinon
                 // l'user doit switcher dessus d'abord — on ferme le dialog
                 // et on l'oriente vers l'ecran Foyer (qui gere le switch).
                 if (currentFoyer?.id == foyerId) {
-                    viewModel.setCurrentFoyerGamificationEnabled(true)
+                    // The household decision is the `motivation` module: same path as its switch.
+                    viewModel.toggleModule("motivation", true)
                     showWhyNoPointsDialog = false
                 } else {
                     showWhyNoPointsDialog = false
