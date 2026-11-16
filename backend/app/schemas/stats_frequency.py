@@ -1,24 +1,15 @@
 """Response of GET /api/stats/category-frequency: completions per context, per member.
 
-The route predates the contexts: its body speaks of CATEGORIES (`categories`, `category_id`,
-`category_name`), which now carry the task's PRIMARY CONTEXT. Since 2026-11-12 the same list is
-also served under the current names (`contexts`, `context_id`, `context_name`), which the app
-reads. The old names stay while an APK that reads them is in circulation (todo : « Renommer les
-champs d'API qui parlent encore de pièces »).
+Each entry is the task's PRIMARY CONTEXT. The route kept its old path, but its body speaks of
+contexts only (`contexts`, `context_id`, `context_name`): the old names (`categories`,
+`category_id`, `category_name`) were retired on 2026-11-16, behind the version gate (112).
 """
 
 from __future__ import annotations
 
 from uuid import UUID
 
-from pydantic import BaseModel, computed_field
-
-
-class CategoryFrequencyEntry(BaseModel):
-    category_id: UUID | None  # None = sans contexte
-    category_name: str
-    counts: list[int]  # parallele a `users` (meme ordre)
-    total: int
+from pydantic import BaseModel
 
 
 class ContextFrequencyEntry(BaseModel):
@@ -35,15 +26,4 @@ class CategoryFrequencyUser(BaseModel):
 
 class CategoryFrequencyResponse(BaseModel):
     users: list[CategoryFrequencyUser]
-    categories: list[CategoryFrequencyEntry]  # top 8, triees par total desc
-
-    @computed_field
-    @property
-    def contexts(self) -> list[ContextFrequencyEntry]:
-        """`categories` under the current names, same order."""
-        return [
-            ContextFrequencyEntry(
-                context_id=c.category_id, context_name=c.category_name, counts=c.counts, total=c.total,
-            )
-            for c in self.categories
-        ]
+    contexts: list[ContextFrequencyEntry]  # top 8, sorted by total desc

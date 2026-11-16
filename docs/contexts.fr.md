@@ -100,11 +100,14 @@ serveur AVANT le client pour un *ajout* ; pour un *retrait*, c'est l'inverse —
 le client doit avoir cessé d'utiliser ce qui disparaît. Cette migration vient
 donc APRÈS la diffusion d'un APK basculé, jamais avant.
 
-Deux noms de champs survivent volontairement : `room_keys` en entrée d'import
-et `category_id` dans les réponses de statistiques. Ils portent désormais des
-contextes. Les renommer ne changerait rien au modèle et casserait tout client
-en vol pendant le déploiement ; les nouveaux noms (`context_keys`, `contexts`)
-existent à côté.
+Les anciens noms de champs d'API ont suivi le même ordre. L'app a cessé de les
+employer en v0.44.3 (versionCode 112) ; le serveur les a servis à côté des
+nouveaux jusqu'à ce que le version gate de prod atteigne 112, puis les a
+retirés le 16/11/2026 : l'import ne connaît plus que `context_keys`,
+`context_decisions` et `contexts`, les statistiques par contexte que
+`contexts`, `context_id` et `context_name`, et la suggestion de l'accueil
+n'expose plus de `category_id`. Un champ inconnu est ignoré, sans erreur :
+c'est le gate qui garantit qu'aucun client ne les envoie encore.
 
 ## Migration
 

@@ -100,10 +100,14 @@ before the client for an *addition*; for a *removal* it is the opposite — the
 client must already have stopped using what disappears. This migration
 therefore ships AFTER a switched-over APK, never before.
 
-Two field names survive on purpose: `room_keys` on import input and
-`category_id` in statistics responses. They now carry contexts. Renaming them
-would change nothing in the model and would break any client in flight during
-the deployment; the new names (`context_keys`, `contexts`) exist alongside.
+The old API field names followed the same order. The app stopped using them
+in v0.44.3 (versionCode 112); the server served them beside the new ones
+until the production version gate reached 112, then retired them on
+2026-11-16: the import only knows `context_keys`, `context_decisions` and
+`contexts`, the per-context statistics only `contexts`, `context_id` and
+`context_name`, and the home suggestion no longer exposes a `category_id`. An
+unknown field is ignored without error: the gate is what guarantees that no
+client still sends them.
 
 ## Migration
 

@@ -98,16 +98,14 @@ class CatalogTaskView(BaseModel):
 class ImportResolveRequest(BaseModel):
     """Body POST /resolve : les cles de templates que l'user veut importer."""
     task_keys: list[str] = Field(default_factory=list)
-    #: Nom courant. Les deux suivants sont les noms de la v0.37, acceptes tant
-    #: qu'un client en circulation les emet.
+    # The v0.37 names (`room_keys`, `category_keys`) were retired on 2026-11-16: the version
+    # gate (112) refuses every APK that still sent them. Unknown fields are ignored.
     context_keys: list[str] = Field(default_factory=list)
-    room_keys: list[str] = Field(default_factory=list)
-    category_keys: list[str] = Field(default_factory=list)
 
     @property
     def chosen_context_keys(self) -> set[str]:
-        """Les cles choisies, quel que soit le champ par lequel elles arrivent."""
-        return set(self.context_keys) | set(self.room_keys) | set(self.category_keys)
+        """The chosen context keys."""
+        return set(self.context_keys)
 
 
 class ResolvedItem(BaseModel):
@@ -122,11 +120,7 @@ class ResolvedItem(BaseModel):
 
 
 class ImportResolveResponse(BaseModel):
-    #: Nom courant. `rooms` porte la meme liste pour la v0.37, qui la lit
-    #: encore ; `categories` reste vide, elle n'a plus d'objet.
     contexts: list[ResolvedItem] = Field(default_factory=list)
-    rooms: list[ResolvedItem] = Field(default_factory=list)
-    categories: list[ResolvedItem] = Field(default_factory=list)
     tasks: list[ResolvedItem]  # pas de conflit possible, juste pour confirmation
 
 
@@ -141,21 +135,17 @@ class ImportDecision(BaseModel):
 
 class ImportApplyRequest(BaseModel):
     task_keys: list[str] = Field(default_factory=list)
-    #: Contextes explicitement choisis. `room_keys` / `category_keys` sont les
-    #: noms de la v0.37 ; `*_decisions` viennent de sa reponse a /resolve.
+    #: Explicitly chosen contexts, and the decisions taken on the /resolve answer.
+    #: The v0.37 names (`room_keys`, `category_keys`, `room_decisions`,
+    #: `category_decisions`) were retired on 2026-11-16, behind the version gate (112).
     context_keys: list[str] = Field(default_factory=list)
-    room_keys: list[str] = Field(default_factory=list)
-    category_keys: list[str] = Field(default_factory=list)
     context_decisions: list[ImportDecision] = Field(default_factory=list)
-    room_decisions: list[ImportDecision] = Field(default_factory=list)
-    category_decisions: list[ImportDecision] = Field(default_factory=list)
 
     @property
     def chosen_context_keys(self) -> set[str]:
-        """Les contextes retenus, quelle que soit la forme du corps recu."""
-        keys = set(self.context_keys) | set(self.room_keys) | set(self.category_keys)
-        for decision in (*self.context_decisions, *self.room_decisions,
-                         *self.category_decisions):
+        """The kept contexts: the chosen keys plus every decided template."""
+        keys = set(self.context_keys)
+        for decision in self.context_decisions:
             if decision.template_key:
                 keys.add(decision.template_key)
         return keys
@@ -389,18 +379,14 @@ async def resolve_import(
 ):
     """Analyse les items a importer et retourne les propositions de mapping.
 
-    Les tasks selectionnees referencent des rooms/categories (via
-    default_room_key / default_category_key) qu'il faut potentiellement
-    creer ou mapper. On ajoute aussi les rooms/categories selectionnees
-    explicitement (room_keys / category_keys) pour le meme traitement.
+    The selected tasks reference contexts that may have to be created or
+    mapped; the contexts chosen explicitly (`context_keys`) get the same
+    treatment.
     """
     catalog = get_catalog()
     foyer_id = current_foyer_uuid(current)
 
-    # Collect rooms/categories necessaires : selectionnees + referencees par tasks
-    # Les cles envoyees SONT des cles de contexte. Le nom du champ reste
-    # `room_keys` : le renommer ne changerait rien au modele et casserait tout
-    # client en vol pendant le deploiement (cf. todo.md).
+    # Needed contexts: the chosen ones plus those the selected tasks keep.
     chosen = body.chosen_context_keys
     implicit = _implicit_keys(catalog)
     needed: set[str] = set(chosen)
@@ -432,10 +418,6 @@ async def resolve_import(
     contextes = [_resolu(k) for k in sorted(needed) if catalog.context_by_key(k)]
     return ImportResolveResponse(
         contexts=contextes,
-        # Meme liste sous l'ancien nom : la v0.37 lit `rooms` et en fait des
-        # decisions « create ». `categories` reste vide, elle n'a plus d'objet.
-        rooms=contextes,
-        categories=[],
         tasks=[
             ResolvedItem(
                 template_key=tk,

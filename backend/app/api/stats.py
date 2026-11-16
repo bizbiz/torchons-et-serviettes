@@ -20,7 +20,7 @@ from app.models.foyer import Foyer
 from app.models.streak import Streak
 from app.models.task import Task
 from app.models.user import User
-from app.schemas.stats_frequency import CategoryFrequencyEntry, CategoryFrequencyResponse, CategoryFrequencyUser
+from app.schemas.stats_frequency import CategoryFrequencyResponse, CategoryFrequencyUser, ContextFrequencyEntry
 from app.services.presence import get_absent_dates
 from app.services.recurrence import min_completion_gap_seconds
 from app.utils.scoping import current_foyer_uuid, visible_history, visible_to
@@ -916,12 +916,12 @@ async def get_category_frequency(
     # Trier par total desc, top 8.
     ordered = sorted(cat_acc.items(), key=lambda kv: cat_total[kv[0]], reverse=True)[:8]
 
-    entries: list[CategoryFrequencyEntry] = []
+    entries: list[ContextFrequencyEntry] = []
     for cid, counts in ordered:
         name = cat_names.get(cid, "?") if cid is not None else "Sans contexte"
-        entries.append(CategoryFrequencyEntry(
-            category_id=cid,
-            category_name=name,
+        entries.append(ContextFrequencyEntry(
+            context_id=cid,
+            context_name=name,
             counts=counts,
             total=cat_total[cid],
         ))
@@ -931,7 +931,7 @@ async def get_category_frequency(
             CategoryFrequencyUser(user_id=u.id, display_name=u.display_name)
             for u in users
         ],
-        categories=entries,
+        contexts=entries,
     )
 
 

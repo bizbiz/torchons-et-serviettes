@@ -1,14 +1,14 @@
 """The catalogue import, called exactly as the app calls it since 2026-11-12.
 
 `CreateFoyerWizardViewModel` sent the context keys as `room_keys` and read `rooms` back; it now
-sends `context_keys` and `context_decisions` and reads `contexts`. The v0.37 names stay accepted
-for the APKs in circulation (todo : « Renommer les champs d'API qui parlent encore de pièces »),
-so a test that sends them proves nothing about the new client.
+sends `context_keys` and `context_decisions` and reads `contexts`. The v0.37 names (`room_keys`,
+`category_keys`, `*_decisions`, `rooms`, `categories`) were retired on 2026-11-16, once the
+version gate reached 112 (docs/version-gate.fr.md).
 
 PATHS by which « the app's import attaches the chosen contexts » can break:
   (1) /resolve not returning the chosen contexts under `contexts` ......... COVERED
   (2) /apply ignoring `context_keys` / `context_decisions` ................ COVERED
-  non couvert : the old names (`room_keys`), covered by test_contexts.py until they are retired.
+  (3) /resolve serving an old name again (`rooms`, `categories`) .......... COVERED
   non couvert : the wizard's second call site (join flow), same request built the same way.
 Negative witness, 2026-11-12: the same body with the keys renamed (`xcontext_keys`) fails (2).
 """
@@ -52,6 +52,7 @@ async def test_the_wizard_import_with_the_current_names(client, auth_headers):
         json={"task_keys": [task_tpl.key], "context_keys": chosen},
     )
     assert resolved.status_code == 200, resolved.text
+    assert not {"rooms", "categories"} & set(resolved.json()), list(resolved.json())
     contexts = resolved.json()["contexts"]
     assert set(chosen) <= {c["template_key"] for c in contexts}, contexts
 

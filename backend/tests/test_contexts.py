@@ -97,7 +97,7 @@ async def test_import_creates_contexts_and_ordered_links(client, auth_headers):
     resp = await client.post(
         "/api/catalog/import/apply",
         headers=auth_headers,
-        json={"task_keys": [multi.key], "room_keys": choisis},
+        json={"task_keys": [multi.key], "context_keys": choisis},
     )
     assert resp.status_code in (200, 201), resp.text
 
@@ -392,7 +392,7 @@ async def test_stats_split_by_context_totals_match_completions(client, auth_head
     assert resp.status_code == 200, resp.text
     data = resp.json()
 
-    noms = [c["category_name"] for c in data["categories"]]
+    noms = [c["context_name"] for c in data["contexts"]]
     assert "Ctx stat A" in noms, noms
     # Le SECOND contexte ne doit PAS apparaitre : il n'est pas le principal.
     assert "Ctx stat B" not in noms, noms
