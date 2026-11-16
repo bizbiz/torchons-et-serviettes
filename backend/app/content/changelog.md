@@ -1,5 +1,11 @@
 # Notes de version
 
+## v0.44.6 — 2026-11-16
+
+### Maintenance
+- Nettoyage interne du serveur : les anciennes versions de l'app, déjà refusées, ne sont plus
+  prises en charge. Rien ne change dans l'usage.
+
 ## v0.44.5 — 2026-11-16
 
 ### Création de tâche

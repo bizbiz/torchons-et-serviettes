@@ -1,5 +1,11 @@
 # Release notes
 
+## v0.44.6 — 2026-11-16
+
+### Maintenance
+- Internal server cleanup: old versions of the app, already refused, are no longer supported.
+  Nothing changes in use.
+
 ## v0.44.5 — 2026-11-16
 
 ### Creating a chore
