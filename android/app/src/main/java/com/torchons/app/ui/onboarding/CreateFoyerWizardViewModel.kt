@@ -75,6 +75,8 @@ data class WizardState(
     // l'étape Toi (prénom) et l'étape Recovery (code compte déjà existant),
     // et on crée via POST /foyers + switch au lieu de l'onboarding-bootstrap.
     val addFoyerMode: Boolean = false,
+    /** Step 3 was skipped: a catalog (re)load must not re-check the defaults. */
+    val contextsSkipped: Boolean = false,
 )
 
 @HiltViewModel
@@ -115,8 +117,9 @@ class CreateFoyerWizardViewModel @Inject constructor(
                         it.copy(
                             contexts = body.contexts,
                             contextTasks = body.tasks,
-                            selectedContextKeys = if (it.selectedContextKeys.isEmpty())
-                                defauts else it.selectedContextKeys,
+                            selectedContextKeys =
+                                if (it.selectedContextKeys.isEmpty() && !it.contextsSkipped)
+                                    defauts else it.selectedContextKeys,
                             catalogStatus = CatalogStatus.OK,
                         ).let { charge -> recalculerSelection(charge) }
                     }
@@ -186,14 +189,7 @@ class CreateFoyerWizardViewModel @Inject constructor(
      * taches d'un contexte non coche — un foyer sans couloir heritait des
      * plinthes du couloir, invisibles dans le wizard et pourtant creees.
      */
-    private fun recalculerSelection(state: WizardState): WizardState {
-        val visibles = visibleContextTasks(state)
-        val cochees = visibles
-            .filter { (it.defaultSelected && it.key !in state.taskOptOut) || it.key in state.taskOptIn }
-            .map { it.key }
-            .toSet()
-        return state.copy(selectedTaskKeys = cochees)
-    }
+    private fun recalculerSelection(state: WizardState): WizardState = recomputeSelection(state)
 
     /**
      * Taches a afficher en step 4 : on garde celles dont la `default_room_key`
@@ -217,13 +213,8 @@ class CreateFoyerWizardViewModel @Inject constructor(
      * catalogue etait affiche sans condition. Meme regle que `Catalog.tasks_for`
      * cote serveur.
      */
-    fun visibleContextTasks(state: WizardState = _uiState.value): List<CatalogTaskContextView> {
-        val implicites = state.contexts.filter { !it.selectable }.map { it.key }.toSet()
-        val choisis = state.selectedContextKeys
-        return state.contextTasks.filter { t ->
-            t.contexts.any { c -> c !in implicites && c in choisis }
-        }
-    }
+    fun visibleContextTasks(state: WizardState = _uiState.value): List<CatalogTaskContextView> =
+        visibleTasksOf(state)
 
     /**
      * Sous quel contexte afficher cette tache : le premier SELECTIONNE, pas le
@@ -280,6 +271,22 @@ class CreateFoyerWizardViewModel @Inject constructor(
             _uiState.update { it.copy(step = 4) }  // re-place sur 4
             submit()
         }
+    }
+
+    /**
+     * "Skip this step" on steps 3 and 4: nothing from the step is kept (no
+     * context and no custom room on 3, no task on 4), then advance like
+     * [nextStep] (which submits on step 4). Other steps just advance.
+     */
+    fun skipStep() {
+        _uiState.update {
+            when (it.step) {
+                3 -> withContextsSkipped(it)
+                4 -> withTasksSkipped(it)
+                else -> it
+            }
+        }
+        nextStep()
     }
 
     fun prevStep() {

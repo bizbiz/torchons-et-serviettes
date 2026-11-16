@@ -40,7 +40,7 @@ internal class TaskEditLoader(
             taskRepository.refreshContexts()
             // Uniquement en creation : proposer des taches a qui est en train
             // d'en modifier une n'aurait aucun sens.
-            val propositions = if (taskId == null) {
+            val serverPropositions = if (taskId == null) {
                 runCatching { apiService.getCatalogSuggestions().body()?.suggestions }
                     .getOrNull().orEmpty()
             } else {
@@ -52,6 +52,14 @@ internal class TaskEditLoader(
                 emptyList()
             }
             val users = taskRepository.observeUsers().first()
+            // A household without any context gets an empty list from the server: propose the
+            // whole catalog instead (the title filter still narrows it).
+            val propositions = if (taskId == null && contexts.isEmpty() && serverPropositions.isEmpty()) {
+                runCatching { apiService.getCatalogContexts().body()?.tasks }
+                    .getOrNull()?.let(::catalogTasksAsSuggestions).orEmpty()
+            } else {
+                serverPropositions
+            }
 
             if (taskId != null) {
                 // Edit mode: the task from the cache, refreshed first when online.

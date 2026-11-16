@@ -248,6 +248,14 @@ fun TaskEditScreen(
                 )
             }
 
+            // Contextes : une tache en porte PLUSIEURS (TaskContextsField.kt). Places
+            // AVANT le titre : les cocher filtre les propositions du catalogue.
+            TaskContextsField(
+                contexts = uiState.contexts,
+                selectedIds = uiState.contextIds,
+                onToggle = viewModel::toggleContext,
+            )
+
             // Titre — TextFieldValue local pour pouvoir piloter la selection
             // (select-all au montage en mode clone, fin de texte sinon).
             var titleFieldValue by remember { mutableStateOf(TextFieldValue(uiState.title)) }
@@ -325,52 +333,16 @@ fun TaskEditScreen(
             // serait le catalogue brut : 181 lignes dont l'immense majorite ne
             // concerne pas ce foyer, et une liste qu'on referme.
             //
-            // Le champ titre filtre la liste au lieu de la remplacer : taper
+            // Les contextes coches ET le champ titre filtrent la liste au lieu de la remplacer : taper
             // « litiere » restreint aux propositions correspondantes, et ce
             // qu'on choisit remplit la frequence, l'effort et les contextes
             // d'un coup.
             val propositions = viewModel.matchingSuggestions(uiState.title)
-            if (!uiState.isEditMode && uiState.appliedSuggestion == null &&
-                propositions.isNotEmpty()
-            ) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    tonalElevation = 2.dp,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                ) {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.task_edit_catalog_header),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        )
-                        propositions.take(6).forEach { proposition ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { viewModel.applySuggestion(proposition) }
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = proposition.title,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                    )
-                                    proposition.contextLabel?.let { label ->
-                                        Text(
-                                            text = label,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            if (!uiState.isEditMode && uiState.appliedSuggestion == null) {
+                CatalogProposalsCard(
+                    proposals = propositions,
+                    onPick = viewModel::applySuggestion,
+                )
             }
 
             // Bandeau « rempli depuis une proposition », avec sortie de secours.
@@ -404,13 +376,6 @@ fun TaskEditScreen(
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 4
-            )
-
-            // Contextes : une tache en porte PLUSIEURS (TaskContextsField.kt).
-            TaskContextsField(
-                contexts = uiState.contexts,
-                selectedIds = uiState.contextIds,
-                onToggle = viewModel::toggleContext,
             )
 
             // Assignes

@@ -1,5 +1,16 @@
 # Notes de version
 
+## v0.44.5 — 2026-11-16
+
+### Création de tâche
+- Les contextes viennent en premier et filtrent les propositions.
+- Un foyer sans pièce voit tout le catalogue, filtré par le titre.
+
+### Création d'un foyer
+- Sauter une étape n'ajoute plus rien : ni pièce, ni tâche.
+- Le nom du foyer est déjà rempli et ne se saute plus.
+- « Ajouter des tâches » ouvre directement la création d'une tâche.
+
 ## v0.44.4 — 2026-11-16
 
 ### Confidentialité

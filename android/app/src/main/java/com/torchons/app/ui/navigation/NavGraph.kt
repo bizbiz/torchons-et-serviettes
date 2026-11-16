@@ -476,13 +476,8 @@ fun MainScreen(
                         onEditTask = onNavigateToEditTask,
                         onNavigateToSettings = onNavigateToFoyerSettings,
                         onFoyerClick = onNavigateToFoyerSettings,
-                        onAddTasks = {
-                            innerNavController.navigate(Routes.TASK_LIST) {
-                                popUpTo(Routes.HOME) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        // An empty household's invitation goes straight to task creation.
+                        onAddTasks = onNavigateToCreateTask,
                     )
                 }
                 composable(Routes.TASK_LIST) {

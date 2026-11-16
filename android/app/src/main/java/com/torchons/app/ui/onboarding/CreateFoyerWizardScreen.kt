@@ -1,7 +1,5 @@
 package com.torchons.app.ui.onboarding
 
-import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,8 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,13 +43,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.torchons.app.core.clipboard.copySensitiveToClipboard
 import com.torchons.app.R
 import com.torchons.app.ui.settings.PrivacyNoticeLine
 import kotlinx.coroutines.launch
@@ -156,6 +149,7 @@ fun CreateFoyerWizardScreen(
                             stringResource(R.string.wizard_foyer_default_at_someones_format, state.displayName)
                         else stringResource(R.string.settings_foyer_default_name),
                         onChange = viewModel::setFoyerName,
+                        onSuggestFoyerName = viewModel::suggestFoyerName,
                         onNext = viewModel::nextStep,
                     )
 
@@ -169,6 +163,7 @@ fun CreateFoyerWizardScreen(
                         onRemoveCustomRoom = viewModel::removeCustomRoom,
                         onRetry = viewModel::retryCatalog,
                         onNext = viewModel::nextStep,
+                        onSkip = viewModel::skipStep,
                     )
 
                     4 -> StepTaches(
@@ -181,6 +176,7 @@ fun CreateFoyerWizardScreen(
                         onToggle = viewModel::toggleTask,
                         onRetry = viewModel::retryCatalog,
                         onNext = viewModel::nextStep,
+                        onSkip = viewModel::skipStep,
                         onPageChange = { portee.launch { defilement.scrollTo(0) } },
                     )
 
@@ -256,10 +252,6 @@ private fun StepIdentite(
         onClick = onNext,
         modifier = Modifier.fillMaxWidth(),
     ) { Text(stringResource(R.string.wizard_continue)) }
-    Spacer(Modifier.height(8.dp))
-    TextButton(onClick = onNext, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.wizard_skip_step))
-    }
 }
 
 /** Nom du foyer seul — ne sert plus qu'au mode « ajouter un foyer », ou le
@@ -269,8 +261,11 @@ private fun StepFoyer(
     value: String,
     defaultHint: String,
     onChange: (String) -> Unit,
+    onSuggestFoyerName: (String) -> Unit,
     onNext: () -> Unit,
 ) {
+    // Pre-fill the field with the default; never overwrites a typed value (see the ViewModel).
+    LaunchedEffect(defaultHint) { onSuggestFoyerName(defaultHint) }
     Text(
         text = stringResource(R.string.wizard_foyer_name_title),
         style = MaterialTheme.typography.headlineSmall,
@@ -296,10 +291,6 @@ private fun StepFoyer(
         onClick = onNext,
         modifier = Modifier.fillMaxWidth(),
     ) { Text(stringResource(R.string.wizard_continue)) }
-    Spacer(Modifier.height(8.dp))
-    TextButton(onClick = onNext, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.wizard_skip_step))
-    }
 }
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -314,6 +305,7 @@ private fun StepContextes(
     onRemoveCustomRoom: (String) -> Unit,
     onRetry: () -> Unit,
     onNext: () -> Unit,
+    onSkip: () -> Unit,
 ) {
     Text(
         text = stringResource(R.string.wizard_contexts_title),
@@ -409,7 +401,7 @@ private fun StepContextes(
         modifier = Modifier.fillMaxWidth(),
     ) { Text(stringResource(R.string.wizard_continue)) }
     Spacer(Modifier.height(8.dp))
-    TextButton(onClick = onNext, modifier = Modifier.fillMaxWidth()) {
+    TextButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.wizard_skip_step))
     }
 }
@@ -461,6 +453,7 @@ private fun StepTaches(
     onToggle: (String) -> Unit,
     onRetry: () -> Unit,
     onNext: () -> Unit,
+    onSkip: () -> Unit,
     onPageChange: () -> Unit,
 ) {
     // Sections dans l'ordre du CATALOGUE, pas dans celui des taches : c'est
@@ -564,7 +557,7 @@ private fun StepTaches(
     }
     Spacer(Modifier.height(8.dp))
     TextButton(
-        onClick = onNext,
+        onClick = onSkip,
         enabled = !isSubmitting,
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -592,110 +585,4 @@ private fun CatalogErrorBox(onRetry: () -> Unit) {
             OutlinedButton(onClick = onRetry) { Text(stringResource(R.string.wizard_retry)) }
         }
     }
-}
-
-@Composable
-private fun StepRecovery(
-    recoveryCode: String?,
-    onContinue: () -> Unit,
-) {
-    val context = LocalContext.current
-
-    Text(
-        text = stringResource(R.string.wizard_recovery_title),
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Bold,
-    )
-    Spacer(Modifier.height(8.dp))
-    Text(
-        text = stringResource(R.string.wizard_recovery_help),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Spacer(Modifier.height(24.dp))
-
-    Surface(
-        color = MaterialTheme.colorScheme.primaryContainer,
-        shape = MaterialTheme.shapes.large,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(
-            text = recoveryCode ?: stringResource(R.string.wizard_recovery_placeholder),
-            style = MaterialTheme.typography.displayMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 24.dp, horizontal = 16.dp),
-        )
-    }
-
-    Spacer(Modifier.height(16.dp))
-    Surface(
-        color = MaterialTheme.colorScheme.errorContainer,
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(
-            text = stringResource(R.string.recovery_warning_dont_share_long),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.padding(12.dp),
-        )
-    }
-
-    Spacer(Modifier.height(24.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        OutlinedButton(
-            onClick = {
-                recoveryCode?.let { copyToClipboard(context, it) }
-            },
-            modifier = Modifier.weight(1f),
-            enabled = recoveryCode != null,
-        ) {
-            Icon(Icons.Default.ContentCopy, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.recovery_dialog_copy))
-        }
-        OutlinedButton(
-            onClick = {
-                recoveryCode?.let { shareCode(context, it) }
-            },
-            modifier = Modifier.weight(1f),
-            enabled = recoveryCode != null,
-        ) {
-            Icon(Icons.Default.Share, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.recovery_dialog_share))
-        }
-    }
-
-    Spacer(Modifier.height(24.dp))
-    Button(
-        onClick = onContinue,
-        modifier = Modifier.fillMaxWidth(),
-        enabled = recoveryCode != null,
-    ) { Text(stringResource(R.string.wizard_recovery_continue)) }
-}
-
-private fun copyToClipboard(context: Context, code: String) {
-    copySensitiveToClipboard(context, context.getString(R.string.recovery_code_clipboard_label), code)
-}
-
-private fun shareCode(context: Context, code: String) {
-    val send = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.recovery_share_subject))
-        putExtra(
-            Intent.EXTRA_TEXT,
-            context.getString(R.string.recovery_share_body_format, code),
-        )
-    }
-    context.startActivity(
-        Intent.createChooser(send, context.getString(R.string.recovery_share_chooser)),
-    )
 }

@@ -1,5 +1,16 @@
 # Release notes
 
+## v0.44.5 — 2026-11-16
+
+### Creating a chore
+- Contexts come first and filter the suggestions.
+- A household without rooms sees the whole catalog, filtered by the title.
+
+### Creating a household
+- Skipping a step no longer adds anything: no room, no chore.
+- The household name comes pre-filled and can no longer be skipped.
+- "Add chores" goes straight to creating a chore.
+
 ## v0.44.4 — 2026-11-16
 
 ### Privacy

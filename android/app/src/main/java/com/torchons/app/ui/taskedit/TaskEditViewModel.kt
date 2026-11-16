@@ -147,14 +147,7 @@ class TaskEditViewModel @Inject constructor(
     fun matchingSuggestions(query: String): List<CatalogSuggestion> {
         val state = _uiState.value
         if (state.isEditMode) return emptyList()
-        val toutes = state.suggestions
-        if (query.isBlank()) return toutes
-        val tokens = normalize(query).split(Regex("\\s+")).filter { it.isNotBlank() }
-        if (tokens.isEmpty()) return toutes
-        return toutes.filter { s ->
-            val botte = normalize(s.title)
-            tokens.all { botte.contains(it) }
-        }
+        return filterCatalogSuggestions(state.suggestions, query, state.contextIds)
     }
 
     fun toggleContext(id: String) {
@@ -417,6 +410,32 @@ class TaskEditViewModel @Inject constructor(
                 },
             )
         }
+    }
+}
+
+/**
+ * Narrows catalog proposals by checked contexts, then by the typed title.
+ *
+ * A proposal is kept when it carries at least one of [checkedContextIds]
+ * (the server already resolved `contextIds` to the household's own contexts,
+ * so ids are compared directly); no checked context means no context filter.
+ * The title is a tokenized, accent-insensitive search: every token must appear.
+ */
+internal fun filterCatalogSuggestions(
+    all: List<CatalogSuggestion>,
+    query: String,
+    checkedContextIds: List<String>,
+): List<CatalogSuggestion> {
+    val byContext = if (checkedContextIds.isEmpty()) {
+        all
+    } else {
+        all.filter { s -> s.contextIds.any { it in checkedContextIds } }
+    }
+    val tokens = normalize(query).split(Regex("\\s+")).filter { it.isNotBlank() }
+    if (tokens.isEmpty()) return byContext
+    return byContext.filter { s ->
+        val haystack = normalize(s.title)
+        tokens.all { haystack.contains(it) }
     }
 }
 
