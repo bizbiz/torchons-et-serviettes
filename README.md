@@ -155,6 +155,10 @@ AGPL-3.0 — see [`LICENSE`](LICENSE). If you host a modified instance
 accessible over a network, you must make the source code of your
 modifications available to the users of that instance.
 
+The Android app uses three non-free Google libraries (Play billing, Firebase notifications,
+ML Kit QR scanning): an additional permission (AGPL section 7) allows redistributing the app
+with them, see [`LICENSE-EXCEPTIONS.md`](LICENSE-EXCEPTIONS.md).
+
 [agpl]: https://img.shields.io/badge/License-AGPL_v3-blue.svg
 [android]: https://img.shields.io/badge/Platform-Android-3DDC84.svg?logo=android&logoColor=white
 [fastapi]: https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi&logoColor=white
