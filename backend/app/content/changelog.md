@@ -1,5 +1,12 @@
 # Notes de version
 
+## v0.45.1 — 2026-11-16
+
+### Corrigé
+- Gamification coupée : l'historique récent n'affiche plus de points.
+- Gamification coupée : le profil d'un membre garde un lien vers l'agenda de présence.
+- Une option grisée dans Réglages se mettait à jour seulement après un redémarrage de l'app.
+
 ## v0.45.0 — 2026-11-16
 
 ### Réglages : le foyer d'un côté, toi de l'autre

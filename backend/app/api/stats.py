@@ -25,6 +25,8 @@ from app.services.presence import get_absent_dates
 from app.services.recurrence import min_completion_gap_seconds
 from app.utils.scoping import current_foyer_uuid, visible_history, visible_to
 from app.utils.text import join_with_amp
+from app.services.history_text import _t, points_suffix
+from app.services.points_visibility import points_visible
 
 router = APIRouter(prefix="/api", tags=["stats"])
 
@@ -1076,67 +1078,6 @@ _TASK_FIELD_LABELS_BY_LOCALE: dict[str, dict[str, str]] = {
 }
 
 
-# Templates de description d'evenements historique, par locale.
-_HISTORY_TEMPLATES: dict[str, dict[str, str]] = {
-    "fr": {
-        "completion_solo": "{who} a complété : {title} (+{points} pts)",
-        "completion_collective": "{joined} ont fait : {title} (+{points} pts chacun)",
-        "affinity": "{who} a noté l'affinité de '{title}' à {score}/10",
-        "effort": "{who} a estimé l'effort de '{title}' à {minutes}",
-        "task_created": "{who} a créé la tâche '{title}'",
-        "task_deleted": "{who} a supprimé la tâche '{title}'",
-        "task_updated": "{who} a modifié la tâche '{title}' ({fields}){detail}",
-        "completion_action_update": "modifié",
-        "completion_action_delete": "supprimé",
-        "completion_edited_or_deleted": "{who} a {action} une complétion de '{title}'",
-        "category_action_insert": "créé",
-        "category_action_update": "modifié",
-        "category_action_delete": "supprimé",
-        "category_changed": "{who} a {action} une catégorie",
-        "task_deleted_suffix": " (supprimée)",
-        "recurrence_interval_format": "tous les {n}j",
-        "recurrence_monthly_variable": "variable selon le mois",
-        "recurrence_uncertain": "irrégulière",
-        "recurrence_calendar": "à date fixe",
-        "recurrence_anniversary_years_format": "tous les {n} an(s) après la 1re fois",
-        "recurrence_anniversary_months_format": "tous les {n} mois après la 1re fois",
-        "recurrence_none": "ponctuelle",
-    },
-    "en": {
-        "completion_solo": "{who} completed: {title} (+{points} pts)",
-        "completion_collective": "{joined} did: {title} (+{points} pts each)",
-        "affinity": "{who} rated affinity of '{title}' at {score}/10",
-        "effort": "{who} estimated effort of '{title}' at {minutes}",
-        "task_created": "{who} created task '{title}'",
-        "task_deleted": "{who} deleted task '{title}'",
-        "task_updated": "{who} edited task '{title}' ({fields}){detail}",
-        "completion_action_update": "edited",
-        "completion_action_delete": "deleted",
-        "completion_edited_or_deleted": "{who} {action} a completion of '{title}'",
-        "category_action_insert": "created",
-        "category_action_update": "edited",
-        "category_action_delete": "deleted",
-        "category_changed": "{who} {action} a category",
-        "task_deleted_suffix": " (deleted)",
-        "recurrence_interval_format": "every {n}d",
-        "recurrence_monthly_variable": "varies by month",
-        "recurrence_uncertain": "irregular",
-        "recurrence_calendar": "on a fixed date",
-        "recurrence_anniversary_years_format": "every {n} year(s) after the first time",
-        "recurrence_anniversary_months_format": "every {n} month(s) after the first time",
-        "recurrence_none": "one-shot",
-    },
-}
-
-
-def _t(locale: str, key: str, **kwargs) -> str:
-    """Format un template d'historique dans la locale demandee (fallback FR)."""
-    bucket = _HISTORY_TEMPLATES.get(locale) or _HISTORY_TEMPLATES["fr"]
-    template = bucket.get(key) or _HISTORY_TEMPLATES["fr"].get(key) or key
-    try:
-        return template.format(**kwargs)
-    except (KeyError, IndexError):
-        return template
 
 
 def _format_minutes(points: int) -> str:
@@ -1190,6 +1131,55 @@ def _format_recurrence_rule(rule: dict | None, locale: str = "fr") -> str | None
     return rtype or "?"
 
 
+def _completion_event(
+    head: TaskCompletion,
+    title: str,
+    participants: list[UUID],
+    row_count: int,
+    actor_of,
+    user_names: dict[UUID, str],
+    locale: str,
+    show_points: bool,
+) -> dict:
+    """One completion event of the history feed, solo or collective.
+
+    The description carries the points only when the reader sees points
+    (`show_points`); `meta.points` stays, for clients that gate it themselves.
+    """
+    pts = head.points_earned  # toutes les lignes d'un collectif partagent les memes points
+    task = {"id": str(head.task_id), "title": title}
+    if not (head.collective_id is not None and row_count >= 2):
+        actor = actor_of(head.completed_by)
+        who = actor["name"] if actor else "?"
+        suffix = points_suffix(locale, "points_solo", pts, show_points)
+        return {
+            "type": "completion",
+            "date": head.completed_at,
+            "description": _t(locale, "completion_solo", who=who, title=title, pts=suffix),
+            "user": who,
+            "actor": actor,
+            "task": task,
+            "meta": {"points": pts},
+        }
+    participant_names = [user_names.get(uid, "?") for uid in participants]
+    joined = join_with_amp(participant_names)
+    suffix = points_suffix(locale, "points_collective", pts, show_points)
+    return {
+        "type": "completion",
+        "date": head.completed_at,
+        "description": _t(locale, "completion_collective", joined=joined, title=title, pts=suffix),
+        "user": joined,
+        "actor": actor_of(head.completed_by),  # le recorder
+        "task": task,
+        "meta": {
+            "points": pts,
+            "collective_id": str(head.collective_id),
+            "participant_ids": [str(p) for p in participants],
+            "participant_names": participant_names,
+        },
+    }
+
+
 async def _build_history(
     session: AsyncSession,
     foyer_uuid: UUID,
@@ -1200,6 +1190,7 @@ async def _build_history(
     since: datetime | None = None,
     q: str | None = None,
     locale: str = "fr",
+    show_points: bool = True,
 ) -> list[dict]:
     """Construit le feed d'historique, filtrable par actor + type + periode +
     recherche titre. Scope foyer.
@@ -1333,38 +1324,9 @@ async def _build_history(
                 # Doublon dans la fenetre : on skip.
                 continue
         seen_last[seen_key] = head.completed_at
-
-        is_collective = head.collective_id is not None and len(rows) >= 2
-        if not is_collective:
-            actor = _actor(head.completed_by)
-            who = actor["name"] if actor else "?"
-            events.append({
-                "type": "completion",
-                "date": head.completed_at,
-                "description": _t(locale, "completion_solo", who=who, title=title, points=head.points_earned),
-                "user": who,
-                "actor": actor,
-                "task": {"id": str(head.task_id), "title": title},
-                "meta": {"points": head.points_earned},
-            })
-        else:
-            participant_names = [user_names.get(uid, "?") for uid in participants]
-            joined = join_with_amp(participant_names)
-            pts = head.points_earned  # toutes les lignes partagent les memes points
-            events.append({
-                "type": "completion",
-                "date": head.completed_at,
-                "description": _t(locale, "completion_collective", joined=joined, title=title, points=pts),
-                "user": joined,
-                "actor": _actor(head.completed_by),  # le recorder
-                "task": {"id": str(head.task_id), "title": title},
-                "meta": {
-                    "points": pts,
-                    "collective_id": str(head.collective_id),
-                    "participant_ids": [str(p) for p in participants],
-                    "participant_names": participant_names,
-                },
-            })
+        events.append(_completion_event(
+            head, title, participants, len(rows), _actor, user_names, locale, show_points
+        ))
 
     # --- 2. Affinites (seulement celles qui ont reellement change : created_at != updated_at) ---
     if fetch_affinities:
@@ -1715,6 +1677,7 @@ async def global_history(
         event_types = None
 
     locale = pick_locale_from_header(request.headers.get("accept-language"))
+    show = await _reader_sees_points(session, current)
     build = lambda n, cursor: _build_history(  # noqa: E731
         session,
         foyer_uuid=current_foyer_uuid(current),
@@ -1725,6 +1688,7 @@ async def global_history(
         since=since,
         q=q,
         locale=locale,
+        show_points=show,
     )
     return await visible_history(session, current, build, limit, before)
 
@@ -1740,6 +1704,7 @@ async def user_history(
 ):
     """Historique personnel d'un utilisateur dans le foyer actif."""
     locale = pick_locale_from_header(request.headers.get("accept-language"))
+    show = await _reader_sees_points(session, current)
     build = lambda n, cursor: _build_history(  # noqa: E731
         session,
         foyer_uuid=current_foyer_uuid(current),
@@ -1747,8 +1712,16 @@ async def user_history(
         before=cursor,
         actor_id=user_id,
         locale=locale,
+        show_points=show,
     )
     return await visible_history(session, current, build, limit, before)
+
+
+async def _reader_sees_points(session: AsyncSession, current: dict) -> bool:
+    """The CALLER's view: history text is written for whoever reads it."""
+    return await points_visible(
+        session, current_foyer_uuid(current), UUID(current["user_id"])
+    )
 
 
 # --- Stats long-terme (v0.31, item roadmap "Stats long-terme et par dimension") ---

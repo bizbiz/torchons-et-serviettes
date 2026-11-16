@@ -170,6 +170,7 @@ fun SettingsScreen(
         // re-fetch les foyers à chaque (ré)apparition pour que la ligne
         // "🏠 <nom>" reflète un switch/leave fait dans l'écran Foyer.
         viewModel.refreshFoyers()
+        viewModel.refreshModules()
     }
 
     Column(

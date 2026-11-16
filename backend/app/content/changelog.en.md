@@ -1,5 +1,12 @@
 # Release notes
 
+## v0.45.1 — 2026-11-16
+
+### Fixed
+- Gamification off: the recent history no longer shows points.
+- Gamification off: a member's profile keeps a link to the presence calendar.
+- A greyed-out option in Settings only updated after restarting the app.
+
 ## v0.45.0 — 2026-11-16
 
 ### Settings: the household on one side, you on the other

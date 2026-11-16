@@ -202,14 +202,22 @@ fun UserProfileDialog(
 
                 // P3 (decision 10) : lien vers le calendrier des series de ce
                 // membre (modal lecture seule). Affiche seulement si l'hote
-                // a cable le callback (Stats).
-                if (onOpenStreakCalendar != null && gamificationVisible) {
+                // a cable le callback (Stats). The calendar belongs to the Presence
+                // module, not to points: with gamification off it stays reachable,
+                // named "presence calendar" (the modal then shows no streaks).
+                val presenceOn = com.torchons.app.ui.common.moduleEnabled("presence")
+                if (onOpenStreakCalendar != null && (gamificationVisible || presenceOn)) {
                     Spacer(Modifier.height(4.dp))
                     TextButton(
                         onClick = onOpenStreakCalendar,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(stringResource(R.string.user_profile_streak_calendar_link))
+                        Text(
+                            stringResource(
+                                if (gamificationVisible) R.string.user_profile_streak_calendar_link
+                                else R.string.user_profile_presence_calendar_link
+                            )
+                        )
                     }
                 }
 

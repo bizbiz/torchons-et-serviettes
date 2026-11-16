@@ -256,6 +256,12 @@ class SettingsViewModel @Inject constructor(
     }
     // --- Modules (P2) ---
 
+    /** Settings and Foyer each hold their own instance: a module switched on the Foyer
+     *  screen is only seen here after a reload, so the screen reloads on every display. */
+    fun refreshModules() {
+        viewModelScope.launch { loadModules() }
+    }
+
     /** Charge le registre et publie l'etat dans TokenManager. */
     private suspend fun loadModules() {
         try {

@@ -1409,6 +1409,7 @@
     <string name="user_profile_stat_points">Points</string>
     <string name="user_profile_stat_points_value_format">+%1$d</string>
     <string name="user_profile_streak_calendar_link">Voir le calendrier des séries →</string>
+    <string name="user_profile_presence_calendar_link">Voir l\'agenda de présence →</string>
     <string name="user_profile_section_split">Répartition</string>
     <string name="user_profile_split_week">Cette semaine</string>
     <string name="user_profile_split_total">Au total</string>
