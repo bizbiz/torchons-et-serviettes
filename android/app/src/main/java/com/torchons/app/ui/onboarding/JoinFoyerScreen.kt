@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.core.clipboard.copySensitiveToClipboard
 import com.torchons.app.R
+import com.torchons.app.ui.settings.PrivacyNoticeLine
 import io.github.g00fy2.quickie.QRResult
 import io.github.g00fy2.quickie.ScanQRCode
 
@@ -181,6 +182,7 @@ private fun ScanInvitation(onScanClick: () -> Unit, onCodePasted: (String) -> Un
         enabled = pasted.isNotBlank(),
         modifier = Modifier.fillMaxWidth(),
     ) { Text(stringResource(R.string.join_paste_button)) }
+    PrivacyNoticeLine(Modifier.padding(top = 24.dp), joining = true)
 }
 
 /**
@@ -234,6 +236,7 @@ private fun EnterDisplayName(
             Text(stringResource(R.string.join_submit_button))
         }
     }
+    PrivacyNoticeLine(Modifier.padding(top = 16.dp), joining = true)
 }
 
 @Composable

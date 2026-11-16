@@ -1,5 +1,15 @@
 # Notes de version
 
+## v0.44.4 — 2026-11-16
+
+### Confidentialité
+- Un lien vers la politique de confidentialité, à la création
+  du foyer, en le rejoignant, et dans Réglages.
+- Quand un membre quitte le foyer, ses données personnelles
+  sont effacées plus complètement au bout de 30 jours.
+- Le nom du Wi-Fi de la maison est effacé dès qu'on quitte
+  le foyer.
+
 ## v0.44.3 — 2026-11-15
 
 ### Validations

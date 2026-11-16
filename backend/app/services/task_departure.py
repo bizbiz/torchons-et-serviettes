@@ -24,9 +24,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, delete, func, select
+from sqlalchemy import DateTime, delete, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.completion import TaskCompletion
 from app.models.sync import ChangeLog
 from app.models.task import Task
 from app.models.task_assignment import TaskAssignment
@@ -147,6 +148,11 @@ async def delete_tasks_only_assigned_to(session: AsyncSession, user_ids) -> int:
 
     Must run BEFORE the users are deleted: afterwards the assignment rows are gone by CASCADE
     and nothing tells these tasks apart from tasks that never had an assignee.
+
+    task_completions.task_id has no ON DELETE: until 2026-11-16 a solo task done even once
+    blocked this delete and failed the whole nightly job. Its completions by these accounts go
+    with it. A task someone ELSE also completed is kept (still theirs, suspended, invisible):
+    another member's completion is never deleted here.
     """
     ids = list(user_ids)
     if not ids:
@@ -156,5 +162,14 @@ async def delete_tasks_only_assigned_to(session: AsyncSession, user_ids) -> int:
         .group_by(TaskAssignment.task_id)
         .having(func.count().filter(TaskAssignment.user_id.not_in(ids)) == 0)
     )
-    result = await session.execute(delete(Task).where(Task.id.in_(only_theirs)))
+    done_by_others = exists().where(
+        TaskCompletion.task_id == Task.id, TaskCompletion.completed_by.not_in(ids),
+    )
+    doomed = (await session.execute(
+        select(Task.id).where(Task.id.in_(only_theirs), ~done_by_others)
+    )).scalars().all()
+    if not doomed:
+        return 0
+    await session.execute(delete(TaskCompletion).where(TaskCompletion.task_id.in_(doomed)))
+    result = await session.execute(delete(Task).where(Task.id.in_(doomed)))
     return result.rowcount or 0

@@ -8,7 +8,7 @@
 # `html_handling = auto-trailing-slash` (défaut) sert privacy.html à /privacy.
 # `not_found_handling = 404-page` sert site/404.html sur une route inconnue.
 
-name = "torchons-serviettes"
+name = "torchons-et-serviettes"
 compatibility_date = "2026-05-15"
 
 [assets]

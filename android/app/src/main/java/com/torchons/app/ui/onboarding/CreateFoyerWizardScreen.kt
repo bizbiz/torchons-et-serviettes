@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.core.clipboard.copySensitiveToClipboard
 import com.torchons.app.R
+import com.torchons.app.ui.settings.PrivacyNoticeLine
 import kotlinx.coroutines.launch
 import com.torchons.app.data.model.CatalogContextView
 import com.torchons.app.data.model.CatalogTaskContextView
@@ -183,11 +184,9 @@ fun CreateFoyerWizardScreen(
                         onPageChange = { portee.launch { defilement.scrollTo(0) } },
                     )
 
-                    5 -> StepRecovery(
-                        recoveryCode = state.recoveryCode,
-                        onContinue = viewModel::finish,
-                    )
+                    5 -> StepRecovery(state.recoveryCode, onContinue = viewModel::finish)
                 }
+                if (state.step in 1..4) PrivacyNoticeLine(Modifier.padding(top = 16.dp))
             }
         }
     }

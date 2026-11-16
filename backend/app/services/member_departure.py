@@ -10,7 +10,7 @@ household (POST /foyers/{id}/leave) and deleting one's account (DELETE /me).
   as soon as the account had acted (six foreign keys to users with no ON DELETE, measured on
   2026-11-02), and the completions must stay in the household history (Quentin's choice). The
   name becomes ANONYMOUS_NAME, the recovery code is erased (no return possible any more), the
-  personal rows go, the solo tasks go.
+  personal rows go, the solo tasks go. What exactly is erased: services/account_erasure.py.
 """
 
 from __future__ import annotations
@@ -18,19 +18,13 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import and_, delete, exists, func, or_, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.device import Device
-from app.models.fair_share import FairShareConfig
 from app.models.foyer import Foyer
-from app.models.notification import NotificationToken
-from app.models.streak import Streak
-from app.models.suggestion_dismissal import SuggestionDismissal
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
-from app.models.user_prompt import UserPrompt
-from app.models.user_settings import UserSettings
+from app.services.account_erasure import erase_personal_data
 from app.services.task_departure import (
     delete_tasks_only_assigned_to, reactivate_suspended_tasks, restore_shared_assignments,
 )
@@ -38,18 +32,6 @@ from app.services.task_departure import (
 RETURN_WINDOW_DAYS = 30
 # Stored as is, so that APKs that do not know the `anonymized` flag still show something sane.
 ANONYMOUS_NAME = "Ancien membre"
-
-# Rows that only describe the person, deleted at anonymization. Everything that describes the
-# household (completions, votes, efforts, change_log) stays, pointing to the anonymized row.
-PERSONAL_TABLES = (
-    (NotificationToken, NotificationToken.user_id),
-    (Device, Device.user_id),
-    (UserSettings, UserSettings.user_id),
-    (Streak, Streak.user_id),
-    (UserPrompt, UserPrompt.user_id),
-    (FairShareConfig, FairShareConfig.user_id),
-    (SuggestionDismissal, SuggestionDismissal.user_id),
-)
 
 
 def return_cutoff(now: datetime | None = None) -> datetime:
@@ -134,8 +116,7 @@ async def anonymize_departed_users(session: AsyncSession, now: datetime | None =
         return 0
     ids = [u.id for u in users]
     await delete_tasks_only_assigned_to(session, ids)
-    for model, column in PERSONAL_TABLES:
-        await session.execute(delete(model).where(column.in_(ids)))
+    await erase_personal_data(session, ids)
     for user in users:
         user.display_name = ANONYMOUS_NAME
         user.username = f"former_{user.id.hex[:12]}"

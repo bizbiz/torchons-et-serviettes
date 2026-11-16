@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Politique de confidentialité — Torchons &amp; Serviettes</title>
-<meta name="description" content="Politique de confidentialité de Torchons & Serviettes : données collectées, finalités, durées, droits RGPD.">
+<meta name="description"
+  content="Politique de confidentialité de Torchons & Serviettes : données collectées,
+  finalités, durées, droits RGPD.">
 <link rel="alternate" hreflang="fr" href="https://torchonsetserviettes.app/privacy.html">
 <link rel="alternate" hreflang="en" href="https://torchonsetserviettes.app/en/privacy.html">
 <link rel="stylesheet" href="styles.css">
@@ -26,13 +28,28 @@
 <main>
   <div class="wrap">
     <h1>Politique de confidentialité</h1>
-    <p class="meta">Dernière mise à jour : 15 novembre 2026</p>
+    <p class="meta">Dernière mise à jour : 16 novembre 2026</p>
     <p class="lead">
       Torchons &amp; Serviettes est conçue pour collecter le strict minimum.
       Pas d'e-mail, pas de mot de passe, pas de numéro de téléphone, pas de
-      géolocalisation, pas de publicité, pas de pistage, pas de statistiques
-      tierces.
+      position géographique, pas de publicité, pas de pistage, pas d'outil de
+      mesure d'audience.
     </p>
+
+    <div class="callout">
+      <strong>En bref, en mots simples</strong>
+      <ul>
+        <li>On ne vous demande ni e-mail, ni mot de passe, ni numéro de téléphone.</li>
+        <li>Votre pseudo, les tâches et ce que vous avez fait sont partagés avec les membres
+          de votre foyer, et gardés sur notre serveur, en France.</li>
+        <li>L'app ne collecte pas votre position. Si vous l'activez, elle lit seulement le
+          nom de votre Wi-Fi, pour savoir si vous êtes à la maison.</li>
+        <li>Vous avez moins de 15 ans ? Demandez l'accord d'un parent avant d'utiliser
+          l'app.</li>
+        <li>Vous pouvez supprimer votre compte dans l'app quand vous voulez. Pour tout
+          effacer tout de suite, écrivez-nous.</li>
+      </ul>
+    </div>
 
     <h2>1. Responsable du traitement</h2>
     <p>
@@ -45,10 +62,19 @@
     <h2>2. Données collectées, finalités et base légale</h2>
     <p>
       L'inscription se fait sans compte classique : aucun e-mail ni mot de
-      passe n'est demandé. Les données ci-dessous sont les seules traitées,
-      toutes nécessaires au fonctionnement du service (base légale :
-      exécution du service demandé / intérêt légitime au bon fonctionnement
-      de l'application).
+      passe n'est demandé. Les données ci-dessous sont les seules que le
+      serveur de l'application traite.
+    </p>
+    <p>
+      <strong>Base légale.</strong> Les données nécessaires au service que vous
+      utilisez (pseudonyme, foyer, tâches, validations, préférences et votes,
+      appareils, notifications, et le nom du Wi-Fi si vous activez la détection
+      de présence) sont traitées pour exécuter ce service (article 6-1-b du
+      RGPD). Les journaux techniques du serveur et la limitation du nombre de
+      requêtes reposent sur l'intérêt légitime à protéger le service contre
+      les pannes et les abus (article 6-1-f, considérant 49). L'historique gardé
+      sous pseudonyme après votre départ repose sur l'intérêt légitime des
+      autres membres du foyer à garder leurs statistiques justes (section 6).
     </p>
     <table>
       <thead>
@@ -59,43 +85,76 @@
           <td>Pseudonyme (nom affiché)</td>
           <td>Saisi par l'utilisateur</td>
           <td>Identifier les membres au sein d'un foyer</td>
-          <td>Tant que le compte/foyer est actif</td>
+          <td>Tant que le compte est actif ; remplacé par « Ancien membre » à la
+            pseudonymisation (section 6)</td>
         </tr>
         <tr>
-          <td>Tâches, complétions, votes, évaluations</td>
+          <td>Contenus libres : nom du foyer, noms des tâches et des pièces,
+            descriptions des tâches, notes laissées en validant une tâche</td>
+          <td>Saisis par les membres</td>
+          <td>Organiser les tâches du foyer</td>
+          <td>Tant que le foyer existe ; vos notes de validation sont vidées à la
+            pseudonymisation (section 6)</td>
+        </tr>
+        <tr>
+          <td>Validations de tâches (qui, quand, points) et historique des
+            modifications</td>
           <td>Générées par l'usage</td>
-          <td>Gérer et répartir les tâches du foyer, historique partagé</td>
-          <td>Tant que le compte/foyer est actif</td>
+          <td>Historique partagé, statistiques, répartition équitable,
+            synchronisation entre téléphones</td>
+          <td>Tant que le foyer existe ; vos validations sont gardées sous
+            pseudonyme après votre départ (section 6)</td>
+        </tr>
+        <tr>
+          <td>Préférences et votes : votes d'effort et de fréquence, préférences
+            par tâche, objectif de minutes par jour, réglages de part équitable,
+            réglages de notifications, badges, séries</td>
+          <td>Saisis par l'utilisateur ou générés par l'usage</td>
+          <td>Répartir les tâches, personnaliser l'application</td>
+          <td>Tant que le compte est actif ; supprimés ou vidés à la
+            pseudonymisation, sauf les votes d'effort et de fréquence, gardés
+            sous pseudonyme (section 6)</td>
         </tr>
         <tr>
           <td>Identifiant d'appareil (UUID technique)</td>
           <td>Généré à l'installation</td>
           <td>Authentification et synchronisation hors-ligne</td>
-          <td>Tant que le compte est actif</td>
+          <td>Tant que le compte est actif ; supprimé à la pseudonymisation</td>
         </tr>
         <tr>
-          <td>Jeton de notification (Firebase Cloud Messaging)</td>
-          <td>Généré par le système</td>
-          <td>Envoyer les notifications/rappels de tâches</td>
-          <td>Jusqu'à désinstallation ou désactivation des notifications</td>
+          <td>Jeton de notification (Firebase Cloud Messaging, ou identifiant
+            d'installation Firebase)</td>
+          <td>Généré par le système du téléphone</td>
+          <td>Envoyer les notifications et rappels de tâches</td>
+          <td>Effacé quand Google le déclare invalide (application désinstallée,
+            téléphone réinitialisé) et à la pseudonymisation du compte</td>
         </tr>
         <tr>
           <td>Code de récupération (haché)</td>
           <td>Généré à la création/jonction d'un foyer</td>
           <td>Permettre de retrouver son foyer en cas de perte du téléphone</td>
-          <td>Stocké sous forme de hachage <code>argon2id</code> ; jamais en clair</td>
+          <td>Stocké sous forme de hachage <code>argon2id</code>, jamais en clair ;
+            effacé à la pseudonymisation</td>
         </tr>
         <tr>
-          <td>Nom de votre WiFi maison (SSID), si vous l'indiquez</td>
-          <td>Saisi par l'utilisateur dans les réglages du foyer</td>
-          <td>Détecter la présence au foyer, pour mettre en pause les tâches pendant les absences</td>
-          <td>Tant que le foyer existe : le nom reste associé à votre appartenance
-            au foyer, même après suppression du compte, jusqu'à la purge du foyer
-            (section 6)</td>
+          <td>Nom de votre Wi-Fi maison (SSID), si vous activez la détection de
+            présence</td>
+          <td>Lu sur la connexion Wi-Fi du téléphone quand vous l'ajoutez dans les
+            réglages du foyer (Android exige pour cela la permission
+            « localisation »)</td>
+          <td>Reconnaître que vous êtes chez vous, pour mettre en pause les tâches
+            pendant les absences. La comparaison se fait sur le téléphone : le
+            serveur reçoit seulement « présent aujourd'hui »</td>
+          <td>Tant que vous êtes membre du foyer : effacé quand vous le retirez,
+            quand vous quittez le foyer et quand vous supprimez votre compte. Il
+            n'est pas copié dans l'historique des modifications</td>
         </tr>
         <tr>
-          <td>Calendrier de présence et d'absence du foyer (un statut par jour)</td>
-          <td>Détecté via le WiFi maison au lancement de l'app, ou saisi à la main</td>
+          <td>Calendrier de présence et d'absence du foyer (un statut par jour pour
+            le foyer, sans indiquer quel membre l'a déclenché)</td>
+          <td>Détecté au lancement de l'app quand le téléphone est sur le Wi-Fi
+            maison, ou saisi à la main ; enregistré même quand la fonction
+            Absences est désactivée</td>
           <td>Ne pas compter les jours d'absence dans le retard des tâches</td>
           <td>Tant que le foyer existe (purge du foyer : section 6)</td>
         </tr>
@@ -104,15 +163,28 @@
             plateforme, date de première et de dernière connexion</td>
           <td>Transmis par l'application</td>
           <td>Vous montrer vos appareils et en couper l'accès</td>
-          <td>Effacés à l'anonymisation du compte (section 6)</td>
+          <td>Effacés à la pseudonymisation du compte (section 6)</td>
         </tr>
         <tr>
-          <td>Adresse IP et horodatage des requêtes, dans les journaux techniques du serveur</td>
-          <td>Reçus à chaque connexion de l'application au serveur</td>
-          <td>Exploitation, diagnostic de pannes, limitation du nombre de requêtes par adresse</td>
-          <td>Dans les journaux d'exploitation seulement, jamais dans la base de
-            données ; durée de rotation de ces journaux non fixée par
-            l'application</td>
+          <td>Journaux techniques du serveur. Journal d'accès du proxy : adresse IP,
+            date, méthode, adresse demandée (certaines contiennent l'identifiant
+            technique de votre compte ou d'une tâche), statut de la réponse,
+            en-têtes techniques de la requête (User-Agent, langue, version de
+            l'application…). Journal de l'API : événements de l'application, dont
+            certains portent l'identifiant technique d'un compte, jamais d'adresse
+            IP</td>
+          <td>Reçus à chaque requête de l'application au serveur</td>
+          <td>Sécurité, diagnostic de pannes, lutte contre les abus</td>
+          <td>Hors de la base de données. Rotation automatique : au plus environ
+            50 Mo par journal, soit environ deux semaines au trafic actuel, moins
+            s'il augmente</td>
+        </tr>
+        <tr>
+          <td>Adresse IP, pour limiter le nombre de requêtes</td>
+          <td>Reçue à chaque requête</td>
+          <td>Freiner les abus (trop de requêtes depuis une même adresse)</td>
+          <td>En mémoire seulement, jamais écrite sur disque ni en base ; effacée au
+            redémarrage du serveur</td>
         </tr>
         <tr>
           <td>Adresse IP, dans les journaux d'hébergement de ce site</td>
@@ -125,35 +197,59 @@
           <td>Réalisée par Android, si elle est activée sur le téléphone</td>
           <td>Retrouver ses données en changeant de téléphone</td>
           <td>Selon les règles de Google. Tout est sauvegardé (session,
-            préférences, nom du WiFi maison, copie locale des tâches)
+            préférences, nom du Wi-Fi maison, copie locale des tâches)
             <strong>sauf</strong> l'identifiant d'appareil, qui en est exclu
-            pour distinguer deux téléphones issus d'une même sauvegarde</td>
+            pour distinguer deux téléphones issus d'une même sauvegarde. La
+            session sauvegardée peut être coupée depuis « Mes appareils »
+            (section 12)</td>
         </tr>
       </tbody>
     </table>
     <p>
-      Deux échanges avec Google ne passent pas par notre serveur. Quand
+      <strong>Contenus libres.</strong> Les noms, descriptions et notes acceptent
+      n'importe quel texte, et la plupart sont visibles des autres membres du
+      foyer. N'y écrivez pas d'informations sensibles (santé, opinions,
+      coordonnées d'un tiers…).
+    </p>
+    <p>
+      Trois échanges avec Google ne passent pas par notre serveur. Quand
       l'application est hors ligne et que vous ouvrez son diagnostic de
       connexion, elle teste Internet en appelant
       <code>connectivitycheck.gstatic.com</code> (Google voit alors l'adresse
-      IP du téléphone ; rien d'autre n'est envoyé). Par ailleurs, l'application
-      embarque le composant Google Play Billing ; il est préparé pour une
-      éventuelle option payante, qui n'existe pas aujourd'hui : aucun achat
-      n'est proposé et aucune donnée de paiement n'est collectée.
+      IP du téléphone ; rien d'autre n'est envoyé). Pour rejoindre un foyer,
+      vous pouvez scanner le QR code d'invitation : l'application utilise
+      alors l'appareil photo (permission « appareil photo ») et le lecteur de
+      codes <strong>ML Kit</strong> de Google, dont le modèle est intégré à
+      l'application. D'après la documentation de Google, ML Kit envoie à Google
+      des informations techniques : fabricant et modèle du téléphone, version
+      d'Android, nom et version de l'application, un identifiant propre à
+      l'installation, mesures de performance, taille des images traitées et
+      codes d'erreur ; les images elles-mêmes ne figurent pas dans cette liste.
+      Enfin, l'application embarque le composant Google Play Billing ; il est
+      préparé pour une éventuelle option payante, qui n'existe pas
+      aujourd'hui : aucun achat n'est proposé et aucune donnée de paiement
+      n'est collectée.
     </p>
     <p>
-      <strong>Ne sont pas collectés :</strong> e-mail, mot de passe, numéro
-      de téléphone, position géographique (GPS ou réseau mobile), photos,
-      carnet de contacts, données bancaires ou de paiement. Le nom du WiFi
-      maison n'est utilisé que pour reconnaître que vous êtes chez vous.
+      <strong>Ne sont pas collectés :</strong> e-mail (sauf si vous nous
+      écrivez), mot de passe, numéro de téléphone, photos (l'appareil photo ne
+      sert qu'à lire un QR code ; aucune image n'est envoyée à notre serveur),
+      carnet de contacts, données bancaires ou de paiement, et
+      <strong>position géographique</strong> : Android range la lecture du nom
+      du Wi-Fi sous la permission « localisation », c'est pourquoi l'app la
+      demande, mais elle ne lit ni n'envoie aucune coordonnée (ni GPS, ni
+      réseau mobile). Cette permission est facultative : sans elle, vous
+      confirmez votre présence à la main.
     </p>
 
     <h2>3. Absence de pistage et de cookies</h2>
     <p>
       L'application n'intègre aucun outil d'analyse d'audience, aucun
-      rapport de plantage tiers, aucun traqueur publicitaire. Ce site web
-      ne dépose aucun cookie et ne charge aucune ressource externe (polices,
-      scripts, CDN).
+      rapport de plantage tiers, aucun traqueur publicitaire. Seule exception
+      technique : les informations de diagnostic que le lecteur de QR code
+      ML Kit envoie lui-même à Google (section 2) ; nous n'y avons pas accès.
+      Ce site web ne dépose aucun cookie et ne charge aucune ressource externe
+      (polices, scripts, CDN).
     </p>
     <div class="callout">
       Conséquence directe de ce choix : aucun bug ne « remonte »
@@ -167,18 +263,59 @@
     <h2>4. Destinataires et sous-traitants</h2>
     <p>
       Les données ne sont ni vendues, ni louées, ni partagées à des fins
-      publicitaires. Elles sont traitées par les sous-traitants techniques
+      publicitaires. Elles sont traitées par les prestataires techniques
       strictement nécessaires :
     </p>
     <table>
-      <thead><tr><th>Sous-traitant</th><th>Rôle</th><th>Localisation</th></tr></thead>
+      <thead>
+        <tr><th>Prestataire</th><th>Rôle</th><th>Localisation</th><th>Encadrement du transfert</th></tr>
+      </thead>
       <tbody>
-        <tr><td>Scaleway</td><td>Hébergement du serveur et de la base de données</td><td>France (Union européenne)</td></tr>
-        <tr><td>Google (Firebase Cloud Messaging)</td><td>Acheminement des notifications push</td><td>États-Unis</td></tr>
-        <tr><td>Cloudflare</td><td>Hébergement et diffusion de ce site web (pas de l'application)</td>
-          <td>Réseau mondial (société américaine)</td></tr>
+        <tr>
+          <td>Scaleway</td>
+          <td>Hébergement du serveur et de la base de données</td>
+          <td>France (Union européenne)</td>
+          <td>Aucun transfert hors UE</td>
+        </tr>
+        <tr>
+          <td>Google (Firebase Cloud Messaging)</td>
+          <td>Acheminement des notifications push</td>
+          <td>États-Unis</td>
+          <td>Data Privacy Framework UE–États-Unis ; clauses contractuelles types</td>
+        </tr>
+        <tr>
+          <td>Google (ML Kit)</td>
+          <td>Lecteur de QR code intégré à l'application ; reçoit les informations de
+            diagnostic décrites en section 2</td>
+          <td>États-Unis</td>
+          <td>Data Privacy Framework UE–États-Unis ; clauses contractuelles types</td>
+        </tr>
+        <tr>
+          <td>Cloudflare</td>
+          <td>Hébergement et diffusion de ce site web (pas de l'application)</td>
+          <td>Réseau mondial (société américaine)</td>
+          <td>Data Privacy Framework UE–États-Unis ; clauses contractuelles types</td>
+        </tr>
+        <tr>
+          <td>Cloudflare (Email Routing)</td>
+          <td>Acheminement des e-mails envoyés à l'adresse de contact vers la boîte du
+            responsable</td>
+          <td>Réseau mondial (société américaine)</td>
+          <td>Data Privacy Framework UE–États-Unis ; clauses contractuelles types</td>
+        </tr>
+        <tr>
+          <td>Google (Gmail)</td>
+          <td>Boîte de réception des messages de contact, vers laquelle
+            Cloudflare Email Routing les transfère</td>
+          <td>États-Unis</td>
+          <td>Data Privacy Framework UE–États-Unis ; clauses contractuelles types</td>
+        </tr>
       </tbody>
     </table>
+    <p>
+      Si vous nous écrivez, votre adresse e-mail et votre message servent
+      uniquement à vous répondre.
+    </p>
     <p>
       Le service de dons « Buy Me a Coffee » est un service tiers externe :
       si vous choisissez d'y faire un don, les données de cette transaction
@@ -188,29 +325,48 @@
 
     <h2>5. Transferts hors Union européenne</h2>
     <p>
-      Les données de l'application sont hébergées en France (Scaleway). Un
-      transfert hors UE concerne l'acheminement des notifications push via
-      Google Firebase Cloud Messaging (États-Unis). Ce transfert est
-      encadré par les Clauses Contractuelles Types de la Commission
-      européenne. Le contenu transmis se limite au strict nécessaire à
-      l'affichage d'une notification. Ce site web est diffusé par
-      Cloudflare (société américaine), et la sauvegarde Android ainsi que le
-      test de connexion décrits en section 2 relèvent de Google : ils
-      dépendent de leurs propres politiques.
+      Les données de l'application sont hébergées en France (Scaleway). Trois
+      flux sortent de l'Union européenne vers des sociétés américaines : les
+      notifications push (Google Firebase Cloud Messaging), les informations
+      de diagnostic du lecteur de QR code (Google ML Kit), et ce site web ainsi
+      que les e-mails envoyés à l'adresse de contact (Cloudflare, puis la boîte
+      Gmail de Google qui les reçoit). Ces
+      transferts s'appuient sur la décision d'adéquation de la Commission
+      européenne du 10 juillet 2023 (Data Privacy Framework UE–États-Unis), et
+      à défaut sur les clauses contractuelles types de la Commission prévues
+      par les conditions de ces prestataires. La sauvegarde Android et le test
+      de connexion décrits en section 2 relèvent de Google et suivent ses
+      propres politiques.
+    </p>
+    <p>
+      <strong>Ce que Google voit dans une notification.</strong> Les
+      notifications visibles sont transmises en clair à Google, qui les
+      achemine. Leur texte contient le pseudonyme du membre concerné et le nom
+      de la tâche (par exemple « Alex a fait : Passer l'aspirateur »), parfois
+      la date de la validation. Pour un revote, il contient aussi la ou les
+      pièces ou catégories de la tâche, le type de vote et, dans la réponse,
+      sa valeur (par exemple « de 15 à 10 min »). D'autres messages,
+      invisibles, servent à mettre l'application à jour en direct : ils portent des identifiants techniques (d'une
+      proposition, d'une tâche ou d'un membre) et, pour la réponse à un revote,
+      le pseudonyme de celui qui a répondu et les valeurs du vote.
     </p>
 
-    <h2>6. Durée de conservation et suppression</h2>
+    <h2 id="suppression">6. Durée de conservation et suppression</h2>
     <p>
       Vous pouvez supprimer votre compte directement depuis l'application
-      (<strong>Réglages › Supprimer mon compte</strong>). Voici ce qui se
-      passe, tel que le serveur le fait :
+      (<strong>Réglages › Supprimer mon compte</strong>). Quitter son dernier
+      foyer a les mêmes effets, sans que le compte soit marqué supprimé. Voici
+      ce qui se passe, tel que le serveur le fait :
     </p>
     <ul>
       <li>
         <strong>Tout de suite</strong> : vous quittez tous vos foyers, le
         compte est marqué supprimé, et tous les téléphones connectés à ce
         compte sont déconnectés et effacent leurs données locales à leur
-        prochain appel au serveur.
+        prochain appel au serveur. Les noms de Wi-Fi que vous aviez enregistrés
+        sont effacés (c'est le cas à chaque fois que vous quittez un foyer).
+        Vous êtes retiré des tâches partagées ; vos tâches solo sont mises en
+        pause.
       </li>
       <li>
         <strong>Pendant 30 jours</strong> : votre code de récupération
@@ -218,25 +374,66 @@
       </li>
       <li>
         <strong>Après 30 jours</strong> (tâche nocturne) : le compte est
-        <em>anonymisé</em>, pas supprimé de la base. Votre nom devient
-        « Ancien membre », le code de récupération est effacé (plus aucun
-        retour possible), et sont supprimés vos appareils, vos jetons de
-        notification, vos réglages personnels, vos séries et vos tâches
-        personnelles. Les tâches que vous avez accomplies restent dans
-        l'historique du foyer, sous le nom « Ancien membre ».
+        <em>pseudonymisé</em>, pas supprimé de la base. Ce n'est pas une
+        anonymisation : ce qui reste est rattaché à un identifiant technique,
+        et dans un petit foyer, les autres membres savent qui était « Ancien
+        membre ». Plus aucun retour n'est possible.
+        <ul>
+          <li>
+            <strong>Supprimé</strong> : vos jetons de notification, vos
+            appareils, vos réglages, vos séries, les propositions de
+            fonctionnalités qui vous étaient faites, vos réglages de part
+            équitable, les suggestions que vous aviez écartées, vos préférences
+            par tâche, vos badges, les guides que vous aviez vus, vos
+            propositions d'objectifs (avec les réponses des autres membres), vos
+            réponses aux propositions des autres, vos tâches solo (sauf celles
+            qu'un autre membre a aussi validées, gardées et toujours invisibles
+            pour les autres), et l'historique des modifications que vous avez
+            faites (si la toute dernière modification enregistrée par le serveur
+            est la vôtre, elle reste, détachée de votre compte, pour la
+            synchronisation des téléphones).
+          </li>
+          <li>
+            <strong>Vidé</strong> : les notes de vos validations, votre objectif
+            de minutes par jour (son unité d'affichage revient à la valeur par
+            défaut), et dans votre compte :
+            le nom affiché (remplacé par « Ancien membre »), l'identifiant
+            (remplacé par un identifiant technique), l'avatar, le code de
+            récupération et le dernier foyer utilisé.
+          </li>
+          <li>
+            <strong>Gardé sous le nom « Ancien membre »</strong>, tant que le
+            foyer existe : vos validations (date, points), vos votes d'effort et
+            de fréquence, votre rôle et vos dates d'arrivée et de départ dans le
+            foyer, l'historique de part équitable, et les mentions de vous dans
+            l'historique écrit par les autres membres. Raison : sans elles, les
+            statistiques et la répartition des autres membres seraient fausses.
+          </li>
+        </ul>
       </li>
       <li>
         <strong>Foyers</strong> : un foyer qui n'a plus aucun membre actif
-        est archivé lors de la tâche nocturne suivante, puis supprimé
-        définitivement 365 jours plus tard, avec ses tâches, son historique,
-        son calendrier de présence et les noms de WiFi maison associés. Tant
-        que le foyer existe, ces deux dernières données ne sont pas effacées
-        par la seule suppression d'un compte.
+        est archivé (au départ du dernier membre, ou au plus tard lors de la
+        tâche nocturne suivante), puis supprimé définitivement 365 jours plus
+        tard, avec ses tâches, son historique, son calendrier de présence et ce
+        qui y était gardé sous pseudonyme. La dernière trace de votre compte
+        (son identifiant technique et ses dates) disparaît avec la suppression
+        du dernier foyer dont vous faisiez partie. Tant qu'un foyer continue
+        avec d'autres membres, ce qui y est gardé sous pseudonyme y reste.
+      </li>
+      <li>
+        <strong>Effacement complet sur demande</strong> : si vous voulez que
+        tout soit effacé tout de suite, y compris ce qui est gardé sous
+        pseudonyme, écrivez à
+        <a href="mailto:contact@torchonsetserviettes.app">contact@torchonsetserviettes.app</a>.
+        Les statistiques des autres membres du foyer en seront modifiées.
       </li>
     </ul>
     <p>
-      Les journaux techniques du serveur (adresses IP) ne sont pas liés à
-      un compte et ne sont pas concernés par la suppression du compte.
+      Les journaux techniques du serveur contiennent parfois l'identifiant
+      technique de votre compte. La suppression du compte ne les efface pas :
+      ils disparaissent d'eux-mêmes par rotation, en environ deux semaines au
+      trafic actuel (section 2).
     </p>
 
     <h2>7. Vos droits</h2>
@@ -247,14 +444,25 @@
     </p>
     <ul>
       <li>
-        <strong>Effacement</strong> : réalisable de manière autonome depuis
-        l'application (Réglages › Supprimer mon compte) ; les effets exacts,
-        dont l'anonymisation après 30 jours, sont décrits en section 6.
+        <strong>Effacement</strong> : depuis l'application (Réglages ›
+        Supprimer mon compte), avec les effets décrits en section 6 ; ou
+        complet et immédiat, sur demande par e-mail.
       </li>
       <li>
-        <strong>Autres droits</strong> : exercez-les en écrivant à
+        <strong>Accès et copie de vos données (portabilité)</strong> : sur
+        demande par e-mail.
+      </li>
+      <li>
+        <strong>Opposition</strong> : vous pouvez vous opposer aux traitements
+        fondés sur l'intérêt légitime, c'est-à-dire les journaux techniques et
+        la conservation sous pseudonyme de votre historique après votre départ.
+      </li>
+      <li>
+        <strong>Comment faire</strong> : écrivez à
         <a href="mailto:contact@torchonsetserviettes.app">contact@torchonsetserviettes.app</a>.
-        Une réponse vous sera apportée dans les délais légaux.
+        Une réponse vous est apportée sous un mois. Si la demande est complexe,
+        ce délai peut être prolongé de deux mois ; vous en êtes alors prévenu
+        dans le premier mois.
       </li>
     </ul>
     <p>
@@ -271,19 +479,34 @@
       l'application et le serveur sont chiffrées (HTTPS/TLS).
     </p>
 
-    <h2>9. Âge minimum</h2>
+    <h2>9. Mineurs</h2>
     <p>
-      L'application est destinée aux personnes de <strong>13 ans ou
-      plus</strong>. Elle n'est pas conçue pour les enfants en dessous de
-      cet âge et ne collecte pas sciemment leurs données.
+      L'application est ouverte aux mineurs : un foyer, c'est souvent une
+      famille.
     </p>
+    <ul>
+      <li>
+        <strong>Vous avez moins de 15 ans ?</strong> Demandez l'accord d'un de
+        vos parents (ou de la personne qui a l'autorité parentale) avant de
+        créer ou de rejoindre un foyer.
+      </li>
+      <li>
+        L'application ne demande pas votre âge et ne le vérifie pas : pour le
+        vérifier, il faudrait collecter plus de données sur vous.
+      </li>
+      <li>
+        Un parent peut exercer les droits de son enfant (section 7) en écrivant
+        à <a href="mailto:contact@torchonsetserviettes.app">contact@torchonsetserviettes.app</a>.
+      </li>
+    </ul>
 
     <h2>10. Modifications</h2>
     <p>
       Cette politique peut évoluer (nouvelle fonctionnalité, changement de
       sous-traitant). En cas de modification substantielle, la date de
       « dernière mise à jour » en tête de page est actualisée. Les
-      changements importants pourront être signalés dans l'application.
+      changements importants pourront être signalés dans l'application, qui
+      donne accès à cette page à la création d'un foyer et dans ses Réglages.
     </p>
 
     <h2>11. Contact</h2>

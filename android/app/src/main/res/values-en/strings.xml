@@ -803,6 +803,11 @@
     <string name="support_dev_title">Support / Talk to the dev</string>
     <string name="support_dev_body">This app is made by a solo dev, on spare time. The server and domain have a monthly cost. If you like the app, or if you have an idea, a bug or a remark, feel free to write!</string>
     <string name="support_dev_bmc_button">Buy me a coffee</string>
+    <string name="privacy_policy_url" translatable="false">https://torchonsetserviettes.app/en/privacy</string>
+    <string name="privacy_policy_link_label">privacy policy</string>
+    <string name="privacy_notice_format">By creating a household, you agree to the %1$s.</string>
+    <string name="privacy_notice_join_format">By joining a household, you agree to the %1$s.</string>
+    <string name="settings_privacy_policy">Privacy policy</string>
     <string name="support_dev_email_button">Email me</string>
 
     <!-- Recovery code clipboard / sharing -->
@@ -1657,7 +1662,7 @@
     <string name="task_edit_save_error">Error while saving</string>
     <string name="delete_account_button">Delete my account</string>
     <string name="delete_account_dialog_title">Delete your account?</string>
-    <string name="delete_account_dialog_message">You\'ll leave all your households, your account will be deleted and every phone signed in to it will be signed out. For 30 days, your recovery code lets you get your household back. After that, your account is anonymized: your name disappears, your recovery code is erased and your personal tasks are deleted. The tasks you completed stay in the household history, under the name \"Former member\".</string>
+    <string name="delete_account_dialog_message">You\'ll leave all your households, your account will be deleted and every phone signed in to it will be signed out. For 30 days, your recovery code lets you get your household back. After that, your name is replaced by \"Former member\", your recovery code is erased and your personal data is deleted (details in the privacy policy). The tasks you completed stay in the household history.</string>
     <string name="delete_account_confirm">Delete</string>
     <string name="delete_account_error">Could not delete. Check your connection and try again. Nothing was deleted.</string>
 

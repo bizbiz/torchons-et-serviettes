@@ -80,6 +80,14 @@ services:
         condition: service_healthy
     expose:
       - "8002"
+    # Privacy: container logs hold client IPs. Docker's default json-file
+    # driver never rotates, so they would be kept forever. 5 x 10 MB caps
+    # the retention window (about 16 days at the current traffic).
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   caddy:
     image: caddy:2-alpine
@@ -96,6 +104,13 @@ services:
       - caddy_config:/config
     depends_on:
       - api
+    # Privacy: Caddy's access log holds client IPs; bound how long they stay.
+    # Same cap as `api`: 5 x 10 MB, about 16 days at the current traffic.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
 volumes:
   ts_pgdata_prod:

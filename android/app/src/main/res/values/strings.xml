@@ -811,6 +811,11 @@
     <string name="support_dev_title">Soutenir / Discuter avec le dev</string>
     <string name="support_dev_body">Cette app est faite par un dev solo, sur du temps libre. Le serveur et le domaine ont un coût mensuel. Si l\'app te plaît, ou si tu as une idée, un bug, une remarque, n\'hésite pas à écrire&#160;!</string>
     <string name="support_dev_bmc_button">Payer un café</string>
+    <string name="privacy_policy_url" translatable="false">https://torchonsetserviettes.app/privacy</string>
+    <string name="privacy_policy_link_label">politique de confidentialité</string>
+    <string name="privacy_notice_format">En créant un foyer, tu acceptes la %1$s.</string>
+    <string name="privacy_notice_join_format">En rejoignant un foyer, tu acceptes la %1$s.</string>
+    <string name="settings_privacy_policy">Politique de confidentialité</string>
     <string name="support_dev_email_button">M\'écrire</string>
 
     <!-- Clipboard / sharing du recovery code -->
@@ -1671,7 +1676,7 @@
     <string name="task_edit_save_error">Erreur lors de la sauvegarde</string>
     <string name="delete_account_button">Supprimer mon compte</string>
     <string name="delete_account_dialog_title">Supprimer ton compte&#160;?</string>
-    <string name="delete_account_dialog_message">Tu quittes tous tes foyers, ton compte est supprimé et tous les téléphones connectés à ce compte sont déconnectés. Pendant 30 jours, ton code de récupération te permet de retrouver ton foyer. Passé ce délai, ton compte est anonymisé&#160;: ton nom disparaît, ton code de récupération est effacé et tes tâches personnelles sont supprimées. Les tâches que tu as accomplies restent dans l\'historique du foyer, sous le nom «&#160;Ancien membre&#160;».</string>
+    <string name="delete_account_dialog_message">Tu quittes tous tes foyers, ton compte est supprimé et tous les téléphones connectés à ce compte sont déconnectés. Pendant 30 jours, ton code de récupération te permet de retrouver ton foyer. Passé ce délai, ton nom est remplacé par «&#160;Ancien membre&#160;», ton code de récupération est effacé et tes données personnelles sont supprimées (détail dans la politique de confidentialité). Les tâches que tu as accomplies restent dans l\'historique du foyer.</string>
     <string name="delete_account_confirm">Supprimer</string>
     <string name="delete_account_error">Suppression impossible. Vérifie ta connexion et réessaie. Rien n\'a été supprimé.</string>
 

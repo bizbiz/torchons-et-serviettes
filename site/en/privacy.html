@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy policy — Torchons &amp; Serviettes</title>
-<meta name="description" content="Privacy policy for Torchons & Serviettes: data collected, purposes, retention, GDPR rights.">
+<meta name="description"
+  content="Privacy policy for Torchons & Serviettes: data collected, purposes, retention, GDPR rights.">
 <meta name="theme-color" content="#0f766e">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Torchons & Serviettes">
@@ -32,11 +33,12 @@
 <main>
   <div class="wrap">
     <h1>Privacy policy</h1>
-    <p class="meta">Last updated: November 15, 2026</p>
+    <p class="meta">Last updated: November 16, 2026</p>
     <p class="lead">
       Torchons &amp; Serviettes is designed to collect the bare
       minimum. No e-mail, no password, no phone number, no
-      geolocation, no ads, no tracking, no third-party analytics.
+      geographic position, no ads, no tracking, no audience
+      measurement tool.
     </p>
     <p class="meta">
       <small>This English version is a translation provided for
@@ -44,6 +46,20 @@
       <a href="../privacy.html">French version</a> prevails as the
       legally binding text.</small>
     </p>
+
+    <div class="callout">
+      <strong>In short, in plain words</strong>
+      <ul>
+        <li>We don't ask for your e-mail, a password or your phone number.</li>
+        <li>Your nickname, the tasks and what you have done are shared with the members of
+          your household, and kept on our server, in France.</li>
+        <li>The app does not collect your position. If you turn it on, it only reads the
+          name of your Wi-Fi, to know whether you are at home.</li>
+        <li>Under 15? Ask a parent for permission before using the app.</li>
+        <li>You can delete your account in the app whenever you want. To erase everything
+          right away, write to us.</li>
+      </ul>
+    </div>
 
     <h2>1. Data controller</h2>
     <p>
@@ -56,10 +72,19 @@
     <h2>2. Data collected, purposes and legal basis</h2>
     <p>
       Sign-up does not use a traditional account: no e-mail or
-      password is requested. The data below is the only data
-      processed, all of it required for the service to operate
-      (legal basis: performance of the requested service / legitimate
-      interest in the proper operation of the app).
+      password is requested. The data below is the only data the
+      app's server processes.
+    </p>
+    <p>
+      <strong>Legal basis.</strong> The data needed for the service you use
+      (nickname, household, tasks, completions, preferences and votes,
+      devices, notifications, and the Wi-Fi name if you turn on presence
+      detection) is processed to perform that service (GDPR article 6(1)(b)).
+      The server's technical logs and request rate limiting rely on the
+      legitimate interest in protecting the service against outages and abuse
+      (article 6(1)(f), recital 49). The history kept under a pseudonym after
+      you leave relies on the other household members' legitimate interest in
+      keeping their statistics fair (section 6).
     </p>
     <table>
       <thead>
@@ -70,43 +95,74 @@
           <td>Pseudonym (display name)</td>
           <td>Entered by the user</td>
           <td>Identify members within a household</td>
-          <td>As long as the account/household is active</td>
+          <td>As long as the account is active; replaced by "Former member" on
+            pseudonymization (section 6)</td>
         </tr>
         <tr>
-          <td>Tasks, completions, votes, ratings</td>
+          <td>Free text: household name, names of tasks and rooms, task
+            descriptions, notes left when completing a task</td>
+          <td>Entered by members</td>
+          <td>Organise the household's tasks</td>
+          <td>As long as the household exists; your completion notes are emptied
+            on pseudonymization (section 6)</td>
+        </tr>
+        <tr>
+          <td>Task completions (who, when, points) and change history</td>
           <td>Generated through use</td>
-          <td>Manage and share household tasks, shared history</td>
-          <td>As long as the account/household is active</td>
+          <td>Shared history, statistics, fair sharing, sync between phones</td>
+          <td>As long as the household exists; your completions are kept under a
+            pseudonym after you leave (section 6)</td>
+        </tr>
+        <tr>
+          <td>Preferences and votes: effort and frequency votes, per-task
+            preferences, minutes-per-day objective, fair-share settings,
+            notification settings, badges, streaks</td>
+          <td>Entered by the user or generated through use</td>
+          <td>Share out tasks, personalise the app</td>
+          <td>As long as the account is active; deleted or emptied on
+            pseudonymization, except effort and frequency votes, kept under a
+            pseudonym (section 6)</td>
         </tr>
         <tr>
           <td>Device identifier (technical UUID)</td>
           <td>Generated at install</td>
           <td>Authentication and offline sync</td>
-          <td>As long as the account is active</td>
+          <td>As long as the account is active; deleted on pseudonymization</td>
         </tr>
         <tr>
-          <td>Notification token (Firebase Cloud Messaging)</td>
-          <td>Generated by the system</td>
-          <td>Send task notifications / reminders</td>
-          <td>Until uninstall or notifications are disabled</td>
+          <td>Notification token (Firebase Cloud Messaging, or Firebase
+            installation ID)</td>
+          <td>Generated by the phone's system</td>
+          <td>Send task notifications and reminders</td>
+          <td>Erased when Google declares it invalid (app uninstalled, phone
+            reset) and on pseudonymization of the account</td>
         </tr>
         <tr>
           <td>Recovery code (hashed)</td>
           <td>Generated when creating/joining a household</td>
           <td>Allow recovery of a household after phone loss</td>
-          <td>Stored as an <code>argon2id</code> hash; never in clear</td>
+          <td>Stored as an <code>argon2id</code> hash, never in clear; erased on
+            pseudonymization</td>
         </tr>
         <tr>
-          <td>Name of your home Wi-Fi (SSID), if you enter it</td>
-          <td>Entered by the user in the household settings</td>
-          <td>Detect presence at home, to pause tasks during absences</td>
-          <td>As long as the household exists: the name stays attached to your
-            household membership, even after account deletion, until the
-            household is purged (section 6)</td>
+          <td>Name of your home Wi-Fi (SSID), if you turn on presence
+            detection</td>
+          <td>Read from the phone's Wi-Fi connection when you add it in the
+            household settings (Android requires the "location" permission for
+            this)</td>
+          <td>Recognise that you are at home, to pause tasks during absences. The
+            comparison happens on the phone: the server only receives "present
+            today"</td>
+          <td>As long as you are a member of the household: erased when you remove
+            it, when you leave the household and when you delete your account. It
+            is not copied into the change history</td>
         </tr>
         <tr>
-          <td>Household presence / absence calendar (one status per day)</td>
-          <td>Detected through the home Wi-Fi when the app opens, or entered by hand</td>
+          <td>Household presence / absence calendar (one status per day for the
+            household, without saying which member triggered it)</td>
+          <td>Detected when the app opens while the phone is on the home Wi-Fi, or
+            entered by hand; recorded even when the Absences feature is turned
+            off</td>
           <td>Do not count absence days towards overdue tasks</td>
           <td>As long as the household exists (household purge: section 6)</td>
         </tr>
@@ -115,14 +171,26 @@
             date of first and last connection</td>
           <td>Sent by the app</td>
           <td>Show you your devices and let you cut off access to one</td>
-          <td>Erased when the account is anonymized (section 6)</td>
+          <td>Erased on pseudonymization of the account (section 6)</td>
         </tr>
         <tr>
-          <td>IP address and timestamp of requests, in the server's technical logs</td>
-          <td>Received each time the app connects to the server</td>
-          <td>Operation, troubleshooting, per-address request limiting</td>
-          <td>In operating logs only, never in the database; the rotation
-            period of these logs is not set by the app</td>
+          <td>Server technical logs. Proxy access log: IP address, date, method,
+            requested address (some contain the technical identifier of your
+            account or of a task), response status, technical request headers
+            (User-Agent, language, app version…). API log:
+            application events, some of which carry an account's technical
+            identifier, never an IP address</td>
+          <td>Received with each request from the app to the server</td>
+          <td>Security, troubleshooting, fighting abuse</td>
+          <td>Outside the database. Automatic rotation: at most about 50 MB per
+            log, i.e. about two weeks at current traffic, less if it grows</td>
+        </tr>
+        <tr>
+          <td>IP address, to limit the number of requests</td>
+          <td>Received with each request</td>
+          <td>Curb abuse (too many requests from one address)</td>
+          <td>In memory only, never written to disk or database; erased when the
+            server restarts</td>
         </tr>
         <tr>
           <td>IP address, in the hosting logs of this website</td>
@@ -137,30 +205,50 @@
           <td>According to Google's rules. Everything is backed up (session,
             preferences, home Wi-Fi name, local copy of tasks)
             <strong>except</strong> the device identifier, which is excluded so
-            that two phones restored from one backup can be told apart</td>
+            that two phones restored from one backup can be told apart. The
+            backed-up session can be cut off from "My devices" (section 12)</td>
         </tr>
       </tbody>
     </table>
     <p>
-      Two exchanges with Google do not go through our server. When the app is
-      offline and you open its connection diagnosis, it tests the Internet by
-      calling <code>connectivitycheck.gstatic.com</code> (Google then sees the
-      phone's IP address; nothing else is sent). Also, the app embeds the
+      <strong>Free text.</strong> Names, descriptions and notes accept any
+      text, and most of them are visible to the other household members.
+      Don't write sensitive information there (health, opinions, a third
+      party's contact details…).
+    </p>
+    <p>
+      Three exchanges with Google do not go through our server. When the app
+      is offline and you open its connection diagnosis, it tests the Internet
+      by calling <code>connectivitycheck.gstatic.com</code> (Google then sees
+      the phone's IP address; nothing else is sent). To join a household, you
+      can scan the invitation QR code: the app then uses the camera ("camera"
+      permission) and Google's <strong>ML Kit</strong> code reader, whose
+      model is built into the app. According to Google's documentation, ML Kit
+      sends Google technical information: phone manufacturer and model,
+      Android version, app name and version, a per-installation identifier,
+      performance metrics, the size of the processed images and error codes;
+      the images themselves are not on that list. Finally, the app embeds the
       Google Play Billing component; it is prepared for a possible paid
       option, which does not exist today: no purchase is offered and no
       payment data is collected.
     </p>
     <p>
-      <strong>Not collected:</strong> e-mail, password, phone number,
-      geographic position (GPS or mobile network), photos, contacts, banking
-      or payment data. The home Wi-Fi name is only used to recognise that you
-      are at home.
+      <strong>Not collected:</strong> e-mail (unless you write to us),
+      password, phone number, photos (the camera is only used to read a QR
+      code; no image is sent to our server), contacts, banking or payment
+      data, and <strong>geographic position</strong>: Android files reading
+      the Wi-Fi name under the "location" permission, which is why the app
+      asks for it, but it neither reads nor sends any coordinates (neither
+      GPS nor mobile network). This permission is optional: without it, you
+      confirm your presence by hand.
     </p>
 
     <h2>3. No tracking, no cookies</h2>
     <p>
       The app embeds no audience analytics tool, no third-party
-      crash reporter, no advertising tracker. This website sets no
+      crash reporter, no advertising tracker. The only technical exception:
+      the diagnostic information that the ML Kit QR code reader itself sends
+      to Google (section 2); we have no access to it. This website sets no
       cookies and loads no external resources (fonts, scripts, CDN).
     </p>
     <div class="callout">
@@ -175,17 +263,58 @@
     <h2>4. Recipients and processors</h2>
     <p>
       Data is not sold, rented or shared for advertising. It is
-      processed by the strictly necessary technical processors:
+      processed by the strictly necessary technical providers:
     </p>
     <table>
-      <thead><tr><th>Processor</th><th>Role</th><th>Location</th></tr></thead>
+      <thead>
+        <tr><th>Provider</th><th>Role</th><th>Location</th><th>Transfer safeguard</th></tr>
+      </thead>
       <tbody>
-        <tr><td>Scaleway</td><td>Server and database hosting</td><td>France (European Union)</td></tr>
-        <tr><td>Google (Firebase Cloud Messaging)</td><td>Push notification delivery</td><td>United States</td></tr>
-        <tr><td>Cloudflare</td><td>Hosting and delivery of this website (not of the app)</td>
-          <td>Global network (US company)</td></tr>
+        <tr>
+          <td>Scaleway</td>
+          <td>Server and database hosting</td>
+          <td>France (European Union)</td>
+          <td>No transfer outside the EU</td>
+        </tr>
+        <tr>
+          <td>Google (Firebase Cloud Messaging)</td>
+          <td>Push notification delivery</td>
+          <td>United States</td>
+          <td>EU–US Data Privacy Framework; Standard Contractual Clauses</td>
+        </tr>
+        <tr>
+          <td>Google (ML Kit)</td>
+          <td>QR code reader built into the app; receives the diagnostic
+            information described in section 2</td>
+          <td>United States</td>
+          <td>EU–US Data Privacy Framework; Standard Contractual Clauses</td>
+        </tr>
+        <tr>
+          <td>Cloudflare</td>
+          <td>Hosting and delivery of this website (not of the app)</td>
+          <td>Global network (US company)</td>
+          <td>EU–US Data Privacy Framework; Standard Contractual Clauses</td>
+        </tr>
+        <tr>
+          <td>Cloudflare (Email Routing)</td>
+          <td>Forwarding e-mails sent to the contact address to the controller's
+            mailbox</td>
+          <td>Global network (US company)</td>
+          <td>EU–US Data Privacy Framework; Standard Contractual Clauses</td>
+        </tr>
+        <tr>
+          <td>Google (Gmail)</td>
+          <td>Inbox for contact messages, to which Cloudflare Email Routing
+            forwards them</td>
+          <td>United States</td>
+          <td>EU–US Data Privacy Framework; Standard Contractual Clauses</td>
+        </tr>
       </tbody>
     </table>
+    <p>
+      If you write to us, your e-mail address and your message are only used
+      to reply to you.
+    </p>
     <p>
       The "Buy Me a Coffee" donation service is an external
       third-party service: if you choose to make a donation there,
@@ -195,28 +324,44 @@
 
     <h2>5. Transfers outside the European Union</h2>
     <p>
-      The app's data is hosted in France (Scaleway). One transfer
-      outside the EU concerns the delivery of push notifications via
-      Google Firebase Cloud Messaging (United States). This transfer
-      is governed by the European Commission's Standard Contractual
-      Clauses. The content transmitted is limited to what's strictly
-      necessary to display a notification. This website is delivered by
-      Cloudflare (a US company), and the Android backup and connectivity
-      test described in section 2 are Google's: they follow their own
-      policies.
+      The app's data is hosted in France (Scaleway). Three flows leave the
+      European Union for US companies: push notifications (Google Firebase
+      Cloud Messaging), the QR code reader's diagnostic information (Google
+      ML Kit), and this website as well as e-mails sent to the contact
+      address (Cloudflare, then the Google Gmail inbox that receives them). These transfers rely on the
+      European Commission's adequacy decision of July 10, 2023 (EU–US Data Privacy Framework), and
+      failing that on the Commission's Standard Contractual Clauses provided
+      for in these providers' terms. The Android backup and the connectivity
+      test described in section 2 are Google's and follow its own policies.
+    </p>
+    <p>
+      <strong>What Google sees in a notification.</strong> Visible
+      notifications are passed in clear to Google, which delivers them. Their
+      text contains the pseudonym of the member concerned and the task name
+      (for example "Alex did: Vacuum"), sometimes the date of the completion.
+      For a re-vote, it also contains the task's room(s) or category(ies),
+      the kind of vote and, in the answer, its value (for example "from 15 to
+      10 min"). Other, invisible messages keep the app up to date live: they
+      carry technical identifiers (of a proposal, a task or a member) and,
+      for the answer to a re-vote, the pseudonym of whoever answered and the
+      vote values.
     </p>
 
-    <h2>6. Retention and deletion</h2>
+    <h2 id="deletion">6. Retention and deletion</h2>
     <p>
       You can delete your account directly from the app
-      (<strong>Settings › Delete my account</strong>). Here is what
-      happens, as the server does it:
+      (<strong>Settings › Delete my account</strong>). Leaving your last
+      household has the same effects, without the account being marked
+      deleted. Here is what happens, as the server does it:
     </p>
     <ul>
       <li>
         <strong>Immediately</strong>: you leave all your households, the
         account is marked deleted, and every phone connected to the account is
         signed out and erases its local data on its next call to the server.
+        The Wi-Fi names you had saved are erased (this happens every time you
+        leave a household). You are removed from shared tasks; your solo tasks
+        are paused.
       </li>
       <li>
         <strong>For 30 days</strong>: your recovery code ("Recover my
@@ -224,23 +369,63 @@
       </li>
       <li>
         <strong>After 30 days</strong> (nightly job): the account is
-        <em>anonymized</em>, not removed from the database. Your name becomes
-        "Former member", the recovery code is erased (no return possible any
-        more), and your devices, notification tokens, personal settings,
-        streaks and personal tasks are deleted. The tasks you completed stay
-        in the household history, under the name "Former member".
+        <em>pseudonymized</em>, not removed from the database. This is not
+        anonymization: what remains is tied to a technical identifier, and in
+        a small household the other members know who "Former member" was. No
+        return is possible any more.
+        <ul>
+          <li>
+            <strong>Deleted</strong>: your notification tokens, your devices,
+            your settings, your streaks, the feature suggestions made to you,
+            your fair-share settings, the suggestions you had dismissed, your
+            per-task preferences, your badges, the guides you had seen, your
+            objective proposals (with the other members' answers to them), your
+            answers to other members' proposals, your solo tasks (except those
+            another member also completed, kept and still invisible to the
+            others), and the history of the changes you made (if the very last
+            change recorded by the server is yours, it stays, detached from your
+            account, for phone sync).
+          </li>
+          <li>
+            <strong>Emptied</strong>: the notes of your completions, your
+            minutes-per-day objective (its display unit goes back to the
+            default), and in your
+            account: the display name (replaced by "Former member"), the
+            username (replaced by a technical identifier), the avatar, the
+            recovery code and the last household used.
+          </li>
+          <li>
+            <strong>Kept under the name "Former member"</strong>, as long as
+            the household exists: your completions (date, points), your effort
+            and frequency votes, your role and your dates of arrival and
+            departure in the household, the fair-share history, and mentions of
+            you in the history written by other members. Reason: without them,
+            the other members' statistics and task sharing would be wrong.
+          </li>
+        </ul>
       </li>
       <li>
         <strong>Households</strong>: a household with no active member left is
-        archived by the next nightly job, then permanently deleted 365 days
-        later, with its tasks, history, presence calendar and the associated
-        home Wi-Fi names. While the household exists, those last two items are
-        not erased by an account deletion alone.
+        archived (when the last member leaves, or at the latest by the next
+        nightly job), then permanently deleted 365 days later, with its tasks,
+        history, presence calendar and whatever was kept there under a
+        pseudonym. The last trace of your account (its technical identifier
+        and dates) disappears when the last household you belonged to is
+        deleted. As long as a household carries on with other members, what is
+        kept there under a pseudonym stays there.
+      </li>
+      <li>
+        <strong>Full erasure on request</strong>: if you want everything
+        erased right away, including what is kept under a pseudonym, write to
+        <a href="mailto:contact@torchonsetserviettes.app">contact@torchonsetserviettes.app</a>.
+        The other household members' statistics will change as a result.
       </li>
     </ul>
     <p>
-      The server's technical logs (IP addresses) are not tied to an account
-      and are not affected by account deletion.
+      The server's technical logs sometimes contain your account's technical
+      identifier. Deleting the account does not erase them: they disappear on
+      their own through rotation, in about two weeks at current traffic
+      (section 2).
     </p>
 
     <h2>7. Your rights</h2>
@@ -251,14 +436,25 @@
     </p>
     <ul>
       <li>
-        <strong>Erasure</strong>: can be done autonomously from the app
-        (Settings › Delete my account); the exact effects, including
-        anonymization after 30 days, are described in section 6.
+        <strong>Erasure</strong>: from the app (Settings › Delete my account),
+        with the effects described in section 6; or full and immediate, on
+        request by e-mail.
       </li>
       <li>
-        <strong>Other rights</strong>: exercise them by writing to
+        <strong>Access and a copy of your data (portability)</strong>: on
+        request by e-mail.
+      </li>
+      <li>
+        <strong>Objection</strong>: you can object to the processing based on
+        legitimate interest, that is the technical logs and keeping your
+        history under a pseudonym after you leave.
+      </li>
+      <li>
+        <strong>How</strong>: write to
         <a href="mailto:contact@torchonsetserviettes.app">contact@torchonsetserviettes.app</a>.
-        A reply will be provided within the legal time limits.
+        You get an answer within one month. If the request is complex, this
+        period may be extended by two months; you are then told so within the
+        first month.
       </li>
     </ul>
     <p>
@@ -276,19 +472,33 @@
       encrypted (HTTPS/TLS).
     </p>
 
-    <h2>9. Minimum age</h2>
+    <h2>9. Minors</h2>
     <p>
-      The app is intended for people aged <strong>13 or
-      older</strong>. It is not designed for children below this age
-      and does not knowingly collect their data.
+      The app is open to minors: a household is often a family.
     </p>
+    <ul>
+      <li>
+        <strong>Under 15?</strong> Ask one of your parents (or the person
+        with parental authority) for permission before creating or joining a
+        household.
+      </li>
+      <li>
+        The app does not ask your age and does not check it: checking it would
+        mean collecting more data about you.
+      </li>
+      <li>
+        A parent can exercise their child's rights (section 7) by writing to
+        <a href="mailto:contact@torchonsetserviettes.app">contact@torchonsetserviettes.app</a>.
+      </li>
+    </ul>
 
     <h2>10. Changes</h2>
     <p>
       This policy may evolve (new feature, change of processor). In
       case of a material change, the "last updated" date at the top
       of the page is refreshed. Major changes may be flagged in the
-      app.
+      app, which links to this page when a household is created and in its
+      Settings.
     </p>
 
     <h2>11. Contact</h2>

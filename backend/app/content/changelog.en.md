@@ -1,5 +1,15 @@
 # Release notes
 
+## v0.44.4 — 2026-11-16
+
+### Privacy
+- A link to the privacy policy when creating or joining a
+  household, and in Settings.
+- When a member leaves the household, their personal data is
+  erased more thoroughly after 30 days.
+- The home Wi-Fi name is erased as soon as you leave the
+  household.
+
 ## v0.44.3 — 2026-11-15
 
 ### Completions

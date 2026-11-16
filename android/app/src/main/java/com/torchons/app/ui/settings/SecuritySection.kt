@@ -354,6 +354,7 @@ fun SecuritySection(
 @Composable
 fun SupportDevCard() {
     val context = LocalContext.current
+    val privacyUrl = stringResource(R.string.privacy_policy_url)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -393,6 +394,12 @@ fun SupportDevCard() {
                     Text(stringResource(R.string.support_dev_email_button))
                 }
             }
+            TextButton(
+                onClick = { openUrl(context, privacyUrl) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.settings_privacy_policy))
+            }
         }
     }
 }
@@ -415,7 +422,7 @@ internal fun shareCode(context: Context, code: String) {
     )
 }
 
-private fun openUrl(context: Context, url: String) {
+internal fun openUrl(context: Context, url: String) {
     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
     runCatching { context.startActivity(intent) }
 }

@@ -13,4 +13,7 @@ echo "[entrypoint] alembic upgrade head..."
 python -m alembic upgrade head
 
 echo "[entrypoint] starting uvicorn on :8002..."
-exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8002
+# --no-access-log: uvicorn would log every request with the client IP (taken
+# from X-Forwarded-For). Caddy already keeps an access log, so a second copy of
+# the IPs only widens what must be retained and bounded.
+exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8002 --no-access-log

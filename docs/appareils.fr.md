@@ -126,17 +126,20 @@ et tous les autres appareils sont coupés dans le même geste.
 **Quitter son dernier foyer, ou supprimer son compte : 30 jours pour revenir** (décidé le
 2026-11-02, même règle pour les deux).
 - **Au départ** : le membre est retiré des tâches partagées. Ses tâches solo sont désactivées,
-  mais restent à son nom.
+  mais restent à son nom. Ses noms de Wi-Fi pour ce foyer sont effacés (décidé le 2026-11-15).
 - **Pendant 30 jours** : « Retrouver mon foyer » avec son code le ramène dans le foyer quitté,
   avec ses tâches. Les autres voient son nom barré. Au retour, ses tâches solo se réactivent et
   il est remis sur les tâches partagées qu'il avait au départ (décidé le 2026-11-03), sauf
   celles supprimées depuis. Seul compte le dernier départ.
 - **Ensuite** : le nettoyage de nuit anonymise le compte, sans le supprimer. Son nom devient
   « Ancien membre » et son code est effacé, donc il n'y a plus de retour possible. Ses données
-  personnelles et ses tâches solo sont supprimées. Ses validations restent dans l'historique du
-  foyer.
+  personnelles et ses tâches solo sont supprimées, et ses préférences d'objectif quotidien
+  (minutes par jour, unité d'affichage) sont remises à zéro. Ses validations restent dans
+  l'historique du foyer, rattachées au pseudonyme. La ligne `users` part avec la purge de son
+  dernier foyer.
 
-Le détail est dans `backend/app/services/member_departure.py` et `task_departure.py`.
+Le détail est dans `backend/app/services/member_departure.py` et `task_departure.py` ; la liste
+de ce qui est supprimé, vidé ou gardé, table par table, dans `account_erasure.py`.
 L'anonymisation remplace une purge qui échouait sur tout compte ayant agi : six clés
 étrangères vers `users` n'avaient pas de règle `ON DELETE`.
 

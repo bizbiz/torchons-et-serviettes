@@ -49,6 +49,9 @@ async def soft_leave_foyer(
     now = datetime.now(timezone.utc)
     uf.left_at = now
     uf.role = "former_member"
+    # Their Wi-Fi names only serve their own home detection: no use once they are gone, even
+    # inside the return window (privacy decision 3, 2026-11-15). Per member and per household.
+    uf.home_ssids = ""
     # Their tasks: dropped from the shared ones, the solo ones suspended (task_departure.py).
     await detach_member_from_tasks(session, user_id, foyer_id, left_at=now)
 

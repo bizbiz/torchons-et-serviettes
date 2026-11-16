@@ -155,11 +155,14 @@ async def update_settings(
     for key, val in updates.items():
         setattr(settings, key, val)
 
-    await record_change(
-        session, "user_settings", settings.user_id, "UPDATE", current["user_id"],
-        foyer_id=current["foyer_id"],
-        new_data=body.model_dump(mode="json", exclude_unset=True),
-    )
+    # The Wi-Fi names never enter change_log: its rows are served to every member's phone by
+    # /api/sync and outlive the setting itself (privacy decision 3, 2026-11-15).
+    journaled = body.model_dump(mode="json", exclude_unset=True, exclude={"home_ssids"})
+    if journaled:
+        await record_change(
+            session, "user_settings", settings.user_id, "UPDATE", current["user_id"],
+            foyer_id=current["foyer_id"], new_data=journaled,
+        )
     await session.commit()
     await session.refresh(settings)
 

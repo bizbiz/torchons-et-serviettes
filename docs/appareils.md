@@ -122,14 +122,17 @@ cut in the same gesture.
 **Leaving one's last household, or deleting one's account: 30 days to come back** (decided on
 2026-11-02, the same rule for both).
 - **On leaving**: the member is removed from shared tasks. Their solo tasks are deactivated but
-  stay theirs.
+  stay theirs. Their Wi-Fi names for that household are erased (decided on 2026-11-15).
 - **For 30 days**: "Recover my household" with their code brings them back into the household
   they left, with their tasks. The others see their name struck through.
 - **After that**: the nightly cleanup anonymizes the account instead of deleting it. The name
   becomes "Ancien membre" and the code is erased, so no return is possible any more. Their
-  personal data and solo tasks are deleted. Their completions stay in the household history.
+  personal data and solo tasks are deleted, and their daily-objective preferences (minutes per
+  day, display unit) are reset. Their completions stay in the household history,
+  under the pseudonym. The `users` row goes when their last household is purged.
 
-Details are in `backend/app/services/member_departure.py` and `task_departure.py`.
+Details are in `backend/app/services/member_departure.py` and `task_departure.py`; what is
+deleted, emptied or kept, table by table, in `account_erasure.py`.
 Anonymization replaces a purge that failed on any account that had acted: six foreign keys to
 `users` had no `ON DELETE` rule.
 
