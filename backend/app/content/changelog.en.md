@@ -1,5 +1,10 @@
 # Release notes
 
+## v0.45.2 — 2026-11-16
+
+### Maintenance
+- The app is ready for Android 16 and for its release on Google Play.
+
 ## v0.45.1 — 2026-11-16
 
 ### Fixed

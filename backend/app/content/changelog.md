@@ -1,5 +1,10 @@
 # Notes de version
 
+## v0.45.2 — 2026-11-16
+
+### Maintenance
+- L'app est prête pour Android 16 et pour sa publication sur Google Play.
+
 ## v0.45.1 — 2026-11-16
 
 ### Corrigé

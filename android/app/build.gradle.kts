@@ -75,17 +75,17 @@ val tsHasUploadKeystore: Boolean =
 // the build it belongs to: a mapping file without its versionCode is useless.
 // 96: first minified build installed on a phone. 95 names two different APKs
 // (non-minified on 09-02, minified on 09-03), which only their size told apart.
-val tsVersionCode = 117
-val tsVersionName = "0.45.1"
+val tsVersionCode = 118
+val tsVersionName = "0.45.2"
 
 android {
     namespace = "com.torchons.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.torchons.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = tsVersionCode
         versionName = tsVersionName
 
@@ -293,10 +293,6 @@ dependencies {
     // QRCode-Kotlin : generation de QR pure Kotlin pour l'ecran d'invitation.
     implementation(libs.qrcode.kotlin)
 
-    // v0.30.x — Google Play Billing (plomberie premium, pas de paywall).
-    // Usage : restoration silencieuse des achats existants au cold start +
-    // hook pour lancer le flow d'achat plus tard.
-    implementation(libs.billing.ktx)
 
     // JVM unit tests (pure logic only: no Android framework, no Room).
     testImplementation("junit:junit:4.13.2")

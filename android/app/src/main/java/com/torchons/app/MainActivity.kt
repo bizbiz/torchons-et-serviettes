@@ -11,7 +11,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.torchons.app.core.network.VersionGateMonitor
-import com.torchons.app.data.billing.BillingService
 import com.torchons.app.ui.gate.AppUpdateRequiredScreen
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.service.TokenRegistrar
@@ -46,9 +45,6 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var tokenRegistrar: TokenRegistrar
-
-    @Inject
-    lateinit var billingService: BillingService
 
     @Inject
     lateinit var versionGateMonitor: VersionGateMonitor
@@ -106,11 +102,6 @@ class MainActivity : ComponentActivity() {
                 tokenRegistrar.registerFcmToken()
             }
         }
-
-        // v0.30.x — Plomberie Play Billing : init au cold start, restoration
-        // silencieuse des achats existants si JWT present. Aucun paywall
-        // actif a ce stade.
-        billingService.start()
 
         setContent {
             TorchonsServiettesTheme {
