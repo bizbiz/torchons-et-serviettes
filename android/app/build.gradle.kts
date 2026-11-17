@@ -75,8 +75,8 @@ val tsHasUploadKeystore: Boolean =
 // the build it belongs to: a mapping file without its versionCode is useless.
 // 96: first minified build installed on a phone. 95 names two different APKs
 // (non-minified on 09-02, minified on 09-03), which only their size told apart.
-val tsVersionCode = 118
-val tsVersionName = "0.45.2"
+val tsVersionCode = 119
+val tsVersionName = "0.45.3"
 
 android {
     namespace = "com.torchons.app"

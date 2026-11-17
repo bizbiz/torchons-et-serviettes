@@ -1,5 +1,14 @@
 # Release notes
 
+## v0.45.3 — 2026-11-17
+
+### Fixed
+- Home and Stats: with nothing overdue, the household overdue chart says “Nothing overdue over
+  this period” instead of “No data yet”.
+- Stats: tasks with no context are labelled in the phone's language.
+- Presence calendar: months and days now follow the phone's language, and “Uncadenced” reads
+  “As needed”.
+
 ## v0.45.2 — 2026-11-16
 
 ### Maintenance

@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,7 +49,6 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
-import java.util.Locale
 
 /**
  * Grille calendrier de presence MENSUELLE partagee (P2).
@@ -118,8 +118,13 @@ fun PresenceCalendarGrid(
         )
         Spacer(Modifier.height(8.dp))
 
-        // En-tetes jours : semaine demarrant lundi (FR).
-        val dayHeaders = listOf("L", "M", "M", "J", "V", "S", "D")
+        // En-tetes jours : semaine demarrant lundi (la grille est construite ainsi).
+        // Day initials follow the phone's language: they were hardcoded in French
+        // and an English phone read « L M M J V S D » (2026-11-17).
+        val locale = LocalConfiguration.current.locales[0]
+        val dayHeaders = remember(locale) {
+            DayOfWeek.values().map { it.getDisplayName(TextStyle.NARROW, locale) }
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -204,9 +209,11 @@ private fun MonthHeader(
     onPrev: () -> Unit,
     onNext: () -> Unit,
 ) {
+    // Month name in the phone's language (was forced to French).
+    val locale = LocalConfiguration.current.locales[0]
     val title = visibleMonth.month
-        .getDisplayName(TextStyle.FULL, Locale.FRENCH)
-        .replaceFirstChar { it.uppercase() } + " ${visibleMonth.year}"
+        .getDisplayName(TextStyle.FULL, locale)
+        .replaceFirstChar { it.titlecase(locale) } + " ${visibleMonth.year}"
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,

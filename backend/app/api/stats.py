@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from app.utils.locale import pick_locale_from_header
+from app.utils.locale import get_request_locale, pick_locale_from_header
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, or_, select, case, extract
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,9 @@ from app.models.streak import Streak
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.stats_frequency import CategoryFrequencyResponse, CategoryFrequencyUser, ContextFrequencyEntry
+from app.services.context_breakdown import (
+    context_frequency_entries, long_term_context_rows, no_context_label,
+)
 from app.services.presence import get_absent_dates
 from app.services.recurrence import min_completion_gap_seconds
 from app.utils.scoping import current_foyer_uuid, visible_history, visible_to
@@ -825,6 +828,7 @@ async def get_category_frequency(
     period: str = "all",
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
+    locale: str = Depends(get_request_locale),
 ):
     """Repartition des completions par CONTEXTE, breakdown per-user.
 
@@ -842,7 +846,6 @@ async def get_category_frequency(
     Periode (default `all`) : week, month, three_months, all — meme semantique
     que /stats/weekday-frequency.
     """
-    from app.models.context import Context, TaskContext
     from app.models.user_foyer import UserFoyer
 
     foyer_uuid = current_foyer_uuid(current)
@@ -868,65 +871,7 @@ async def get_category_frequency(
     )
     users = list(users_result.scalars().all())
     user_index = {u.id: i for i, u in enumerate(users)}
-
-    # Counts par (user_id, contexte principal ou NULL).
-    # `outerjoin` sur position == 0 : une tache sans rattachement doit rester
-    # comptee, dans le seau « sans contexte », plutot que de disparaitre du
-    # total.
-    base_q = (
-        select(
-            TaskCompletion.completed_by,
-            TaskContext.context_id,
-            func.count(TaskCompletion.id).label("cnt"),
-        )
-        .join(Task, Task.id == TaskCompletion.task_id)
-        .outerjoin(
-            TaskContext,
-            (TaskContext.task_id == Task.id) & (TaskContext.position == 0),
-        )
-        .where(
-            TaskCompletion.deleted_at.is_(None),
-            Task.foyer_id == foyer_uuid,
-        )
-    )
-    if cutoff is not None:
-        base_q = base_q.where(TaskCompletion.completed_at >= cutoff)
-    base_q = base_q.group_by(TaskCompletion.completed_by, TaskContext.context_id)
-    rows = (await session.execute(base_q)).all()
-
-    # Aggreger par categorie : counts[i] = count pour users[i].
-    cat_acc: dict[UUID | None, list[int]] = {}
-    cat_total: dict[UUID | None, int] = {}
-    for completed_by, category_id, cnt in rows:
-        if completed_by not in user_index:
-            continue
-        if category_id not in cat_acc:
-            cat_acc[category_id] = [0] * len(users)
-            cat_total[category_id] = 0
-        cat_acc[category_id][user_index[completed_by]] += int(cnt)
-        cat_total[category_id] += int(cnt)
-
-    # Charger les noms des contextes utilises
-    cat_ids = [cid for cid in cat_acc.keys() if cid is not None]
-    cat_names: dict[UUID, str] = {}
-    if cat_ids:
-        cat_result = await session.execute(
-            select(Context.id, Context.name).where(Context.id.in_(cat_ids))
-        )
-        cat_names = {row[0]: row[1] for row in cat_result.all()}
-
-    # Trier par total desc, top 8.
-    ordered = sorted(cat_acc.items(), key=lambda kv: cat_total[kv[0]], reverse=True)[:8]
-
-    entries: list[ContextFrequencyEntry] = []
-    for cid, counts in ordered:
-        name = cat_names.get(cid, "?") if cid is not None else "Sans contexte"
-        entries.append(ContextFrequencyEntry(
-            context_id=cid,
-            context_name=name,
-            counts=counts,
-            total=cat_total[cid],
-        ))
+    entries = await context_frequency_entries(session, foyer_uuid, user_index, cutoff, locale)
 
     return CategoryFrequencyResponse(
         users=[
@@ -1758,6 +1703,7 @@ async def long_term_stats(
     period: str = Query(default="quarter", pattern="^(month|quarter|year)$"),
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
+    locale: str = Depends(get_request_locale),
 ):
     """Aggregate stats sur une fenetre longue : evolution journaliere +
     repartition par piece. Utilise pour les graphiques analytiques de la
@@ -1767,7 +1713,6 @@ async def long_term_stats(
     de task_efforts.points * 5min). Tasks sans vote effort comptent 0
     minute (on ne devine pas).
     """
-    from app.models.context import Context, TaskContext
     from app.models.task_effort import TaskEffort
 
     foyer_uuid = current_foyer_uuid(current)
@@ -1821,47 +1766,17 @@ async def long_term_stats(
         for row in days_result.all()
     ]
 
-    # 2. Repartition par CONTEXTE principal (position 0). Le `outerjoin` garde
-    # les taches sans rattachement, regroupees dans un seau « sans contexte » :
-    # les perdre ferait un total inferieur au nombre de completions.
-    #
-    # Position 0 seulement : compter tous les contextes ferait peser chaque
-    # completion autant de fois qu'elle a de rattachements, et les parts ne
-    # sommeraient plus au total affiche juste au-dessus.
-    rooms_result = await session.execute(
-        select(
-            Context.id,
-            Context.name,
-            func.count(TaskCompletion.id),
-            func.coalesce(func.sum(TaskCompletion.points_earned), 0),
-            func.coalesce(func.sum(effort_subq.c.avg_minutes), 0),
-        )
-        .select_from(TaskCompletion)
-        .join(Task, Task.id == TaskCompletion.task_id)
-        .outerjoin(
-            TaskContext,
-            (TaskContext.task_id == Task.id) & (TaskContext.position == 0),
-        )
-        .outerjoin(Context, Context.id == TaskContext.context_id)
-        .outerjoin(effort_subq, effort_subq.c.task_id == Task.id)
-        .where(
-            Task.foyer_id == foyer_uuid,
-            TaskCompletion.deleted_at.is_(None),
-            TaskCompletion.completed_at >= since,
-            *absent_filter,
-        )
-        .group_by(Context.id, Context.name)
-        .order_by(func.count(TaskCompletion.id).desc())
-    )
+    # 2. Repartition par CONTEXTE principal (services/context_breakdown.py).
+    rooms = await long_term_context_rows(session, foyer_uuid, since, absent_filter, effort_subq)
     by_room = [
         LongTermRoom(
             room_id=row[0],
-            room_name=row[1] or "Sans contexte",
+            room_name=row[1] or no_context_label(locale),
             completions=int(row[2] or 0),
             points=int(row[3] or 0),
             estimated_minutes=int(row[4] or 0),
         )
-        for row in rooms_result.all()
+        for row in rooms
     ]
 
     return LongTermResponse(

@@ -24,6 +24,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -293,7 +294,7 @@ private fun CardFoyer(
                             text = stringResource(
                                 R.string.projection_card_catchup_date_format,
                                 daysToCatchUp,
-                                catchupDate?.format(DATE_FORMATTER) ?: "-",
+                                catchupDate?.format(catchupDateFormatter()) ?: "-",
                             ),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -340,5 +341,9 @@ private fun formatMinutes(minutes: Int): String {
     else stringResource(R.string.projection_card_hours_minutes_format, h, m)
 }
 
-private val DATE_FORMATTER: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("d MMM", Locale.FRENCH)
+/** « 3 Dec » in the phone's language (was forced to French, « 3 déc. » on an English phone). */
+@Composable
+private fun catchupDateFormatter(): DateTimeFormatter {
+    val locale = LocalConfiguration.current.locales[0]
+    return androidx.compose.runtime.remember(locale) { DateTimeFormatter.ofPattern("d MMM", locale) }
+}

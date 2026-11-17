@@ -1,5 +1,13 @@
 # Notes de version
 
+## v0.45.3 — 2026-11-17
+
+### Corrigé
+- Accueil et Statistiques : sans aucun retard, la courbe « Retard du foyer » dit « Aucun retard
+  sur la période » au lieu de « Pas encore de données ».
+- Statistiques : les tâches sans contexte s'affichent dans la langue du téléphone.
+- Agenda de présence : le mois et les jours s'affichent dans la langue du téléphone.
+
 ## v0.45.2 — 2026-11-16
 
 ### Maintenance

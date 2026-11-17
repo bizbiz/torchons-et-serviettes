@@ -1440,6 +1440,7 @@
     <string name="chart_retard_toggle_minutes">Minutes</string>
     <string name="chart_retard_toggle_tasks">Tâches</string>
     <string name="chart_retard_today">Aujourd\'hui</string>
+    <string name="chart_retard_none">Aucun retard sur la période</string>
     <string name="chart_retard_vs_start">vs début</string>
     <string name="chart_points_format">%1$d pts</string>
     <string name="chart_points_delta_equal">= vs avant</string>

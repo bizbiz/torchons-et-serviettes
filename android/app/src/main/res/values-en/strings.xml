@@ -638,7 +638,7 @@
 
     <!-- HomeScreen — SuggestionCard -->
     <string name="suggestion_reason_urgent">Most urgent</string>
-    <string name="suggestion_reason_uncertain">Uncadenced</string>
+    <string name="suggestion_reason_uncertain">As needed</string>
     <string name="suggestion_reason_affinity">You like it</string>
     <string name="suggestion_bonus_badge_format">🔥 +%1$d%%</string>
     <string name="suggestion_edit_cd">Edit</string>
@@ -1426,6 +1426,7 @@
     <string name="chart_retard_toggle_minutes">Minutes</string>
     <string name="chart_retard_toggle_tasks">Tasks</string>
     <string name="chart_retard_today">Today</string>
+    <string name="chart_retard_none">Nothing overdue over this period</string>
     <string name="chart_retard_vs_start">vs start</string>
     <string name="chart_points_format">%1$d pts</string>
     <string name="chart_points_delta_equal">= vs before</string>
