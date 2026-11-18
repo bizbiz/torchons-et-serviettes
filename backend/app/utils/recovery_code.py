@@ -58,16 +58,17 @@ def verify_code(code: str, code_hash: str) -> bool:
 
 
 def _lookup_secret() -> bytes:
+    """RECOVERY_LOOKUP_SECRET, else JWT_SECRET (app/config.py says why they are apart)."""
     from app.config import settings
 
-    return settings.jwt_secret.encode()
+    return (settings.recovery_lookup_secret or settings.jwt_secret).encode()
 
 
 def lookup_key_id() -> str:
     """Short id of the secret the lookup keys are computed with.
 
-    Stored in front of each key: after a JWT_SECRET rotation, keys made with the
-    old secret no longer carry the current id, so restore treats those accounts as
+    Stored in front of each key: after a rotation of that secret, keys made with the
+    old one no longer carry the current id, so restore treats those accounts as
     unkeyed (full argon2 scan) and re-keys them on the first success, instead of
     never finding them again.
     """
@@ -79,8 +80,8 @@ def lookup_key(code: str) -> str:
 
     HMAC with the server secret, never a bare hash: 31^8 codes are enumerable
     offline, so a plain sha256 stored next to the account would give the codes
-    away to anyone holding a copy of the database. Whoever holds the secret can
-    already forge tokens, so keying on it adds no exposure.
+    away to anyone holding a copy of the database. The secret lives next to
+    JWT_SECRET in the server environment, so keying on it adds no exposure.
     """
     digest = hmac.new(_lookup_secret(), _normalize(code).encode(), hashlib.sha256).hexdigest()
     return f"{lookup_key_id()}:{digest[:40]}"

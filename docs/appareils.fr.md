@@ -188,6 +188,12 @@ présente, reste la rotation de `jwt_secret`.
 dont la signature ne se vérifie pas rend `DEVICE_REVOKED` (`auth.py::decode_token`) : chaque
 téléphone s'efface et revient à l'accueil, au lieu de rester sur des 401 ordinaires.
 
+- **Les codes de récupération n'en dépendent plus si `RECOVERY_LOOKUP_SECRET` est posé.** La
+  clé qui retrouve un compte par son code (`utils/recovery_code.py`) était calculée avec
+  `jwt_secret` : une rotation rendait tous les comptes « sans clé », et chaque code faux
+  vérifiait alors argon2 sur toute la table (~61 ms par compte). Ce secret garde
+  `jwt_secret` par défaut ; le poser une fois à sa valeur courante détache les deux.
+
 - **Faite une fois, le 2026-11-02 en prod.** L'ancien secret était lisible dans le commit
   `5d45e42c` : il est toujours servi par GitHub et était commun avec le dev.
 - **Avant de tourner** : chaque membre doit avoir noté son code de récupération. Ils sont tous

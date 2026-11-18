@@ -5,7 +5,8 @@ Paths, and what covers each:
 - an UNKEYED account (code issued before) — found by the scan, then keyed on the spot;
 - a key made with an OLD secret (after a JWT_SECRET rotation) — scanned like an unkeyed one,
   re-keyed, never lost;
-- a WRONG code — the scan never includes accounts keyed with the current secret.
+- a WRONG code — the scan never includes accounts keyed with the current secret;
+- a JWT_SECRET rotation with RECOVERY_LOOKUP_SECRET set — keyed accounts stay keyed, no scan.
 Each test counts the accounts handed to `_match_code` (the argon2 loop), which is what the
 change is about; the restore answer alone would be the same before and after.
 Not covered: the key written at onboarding, pairing and regeneration, three one-line writes
@@ -95,3 +96,18 @@ async def test_a_wrong_code_never_scans_keyed_accounts(client, scanned):
     r = await client.post("/api/recovery/restore", json={"recovery_code": "WXYZ2345"})
     assert r.status_code == 404, r.text
     assert all(keyed_id not in batch for batch in scanned), scanned
+
+
+@pytest.mark.asyncio
+async def test_a_jwt_rotation_keeps_the_keys_when_the_lookup_secret_is_set(
+    client, scanned, monkeypatch,
+):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "recovery_lookup_secret", "lookup-secret-for-the-tests")
+    code = generate_code()
+    user_id = await _account(code, lookup_key(code))
+    monkeypatch.setattr(settings, "jwt_secret", "a-rotated-jwt-secret-for-the-tests")
+    r = await client.post("/api/recovery/restore", json={"recovery_code": code})
+    assert r.status_code == 200, r.text
+    assert scanned == [[user_id]], scanned

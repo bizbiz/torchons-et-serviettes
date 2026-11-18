@@ -28,6 +28,12 @@ class Settings(BaseSettings):
 
     # Auth — secret JWT, lu depuis .env, vide par defaut.
     jwt_secret: str = ""
+    # Key of the recovery-code lookup (app/utils/recovery_code.py). Kept apart from
+    # JWT_SECRET so that rotating JWT_SECRET (the way to sign every phone out) does not
+    # unkey every account, which would make each wrong code an argon2 scan of the whole
+    # table. Empty falls back to JWT_SECRET: set it to the CURRENT JWT_SECRET value to
+    # keep the keys already stored.
+    recovery_lookup_secret: str = ""
 
     # Backend
     backend_host: str = "0.0.0.0"
@@ -79,6 +85,12 @@ def _validate_required() -> None:
         raise RuntimeError(
             "JWT_SECRET is a placeholder or shorter than 16 characters. Generate one with "
             'python -c "import secrets; print(secrets.token_urlsafe(32))"'
+        )
+    lookup = settings.recovery_lookup_secret
+    if lookup and (lookup.startswith("CHANGE_ME") or len(lookup) < 16):
+        raise RuntimeError(
+            "RECOVERY_LOOKUP_SECRET is a placeholder or shorter than 16 characters: "
+            "leave it empty, or set it to the current JWT_SECRET value."
         )
     if missing:
         raise RuntimeError(

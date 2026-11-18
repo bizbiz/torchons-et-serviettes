@@ -170,7 +170,7 @@ async def restore(
 
     Lookup by `recovery_lookup` first (one argon2 verify). Only accounts with no
     key made with the current secret -- codes issued before 2026-10-12, or keyed
-    before a JWT_SECRET rotation -- are scanned one by one, and the matching one
+    before a rotation of the lookup secret -- are scanned one by one, and the matching one
     is keyed on the spot: that set only shrinks. A wrong code costs the scan of
     that set, no longer of every account.
     """

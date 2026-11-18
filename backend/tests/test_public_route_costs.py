@@ -18,7 +18,13 @@ from app.utils import rate_limit
 
 
 @pytest.mark.asyncio
-async def test_recovery_restore_is_rate_limited_per_ip(client):
+async def test_recovery_restore_is_rate_limited_per_ip(client, monkeypatch):
+    # The limiter is under test, not argon2: a wrong code scans every unkeyed account of the
+    # (shared, growing) test database, ~5 s per call on 2026-11-17, enough for the 60 s window
+    # to expire before the sixth call. Matching nothing instantly keeps the test time-independent.
+    from app.api import recovery
+
+    monkeypatch.setattr(recovery, "_match_code", lambda code, users: None)
     rate_limit.reset()
     statuses = []
     for _ in range(5):

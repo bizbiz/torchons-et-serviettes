@@ -179,6 +179,12 @@ UUID on every call. The remedy, should it ever matter, remains rotating `jwt_sec
 signature does not verify returns `DEVICE_REVOKED` (`auth.py::decode_token`). Every phone wipes
 itself and returns to the welcome screen, instead of sitting on ordinary 401s.
 
+- **Recovery codes no longer depend on it once `RECOVERY_LOOKUP_SECRET` is set.** The key that
+  finds an account from its code (`utils/recovery_code.py`) was computed with `jwt_secret`: a
+  rotation left every account "unkeyed", and each wrong code then ran argon2 over the whole
+  table (~61 ms per account). This secret defaults to `jwt_secret`; setting it once to the
+  current value decouples the two.
+
 - **Done once, on 2026-11-02 in prod.** The old secret was readable in commit `5d45e42c`, which
   GitHub still serves, and it was shared with dev.
 - **Before rotating**: every member must have noted their recovery code. They are all signed
