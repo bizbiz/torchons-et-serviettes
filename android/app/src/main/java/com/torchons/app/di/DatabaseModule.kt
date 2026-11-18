@@ -6,6 +6,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.torchons.app.data.local.AppDatabase
 import com.torchons.app.data.local.dao.CompletionDao
+import com.torchons.app.data.local.dao.DelegationDao
 import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.ContextDao
 import com.torchons.app.data.local.dao.TaskDao
@@ -246,6 +247,18 @@ private val migration14to15 = object : Migration(14, 15) {
     }
 }
 
+private val migration15to16 = object : Migration(15, 16) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // « À faire aujourd'hui »: active delegations, filled by the next GET /api/delegations.
+        // recipientIds holds a JSON list (Converters.stringListToJson), like tasks.assignedToIds.
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `delegations` (" +
+                "`id` TEXT NOT NULL, `taskId` TEXT NOT NULL, `authorId` TEXT NOT NULL, " +
+                "`recipientIds` TEXT NOT NULL, `createdAt` TEXT NOT NULL, PRIMARY KEY(`id`))"
+        )
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -273,6 +286,7 @@ object DatabaseModule {
                 migration12to13,
                 migration13to14,
                 migration14to15,
+                migration15to16,
             )
             .build()
     }
@@ -286,6 +300,9 @@ object DatabaseModule {
 
     @Provides
     fun provideFormerMemberDao(db: AppDatabase): FormerMemberDao = db.formerMemberDao()
+
+    @Provides
+    fun provideDelegationDao(db: AppDatabase): DelegationDao = db.delegationDao()
 
     @Provides
     fun provideUserDao(db: AppDatabase): UserDao = db.userDao()

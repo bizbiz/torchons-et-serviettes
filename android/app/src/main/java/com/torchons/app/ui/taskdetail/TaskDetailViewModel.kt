@@ -43,6 +43,7 @@ class TaskDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     @dagger.hilt.android.qualifiers.ApplicationContext
     private val appContext: android.content.Context,
+    delegationRepository: com.torchons.app.data.repository.DelegationRepository,
 ) : ViewModel() {
 
     private val taskId: String = savedStateHandle.get<String>("taskId")
@@ -50,6 +51,9 @@ class TaskDetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(TaskDetailUiState(isLoading = true))
     val uiState: StateFlow<TaskDetailUiState> = _uiState.asStateFlow()
+
+    /** « À faire aujourd'hui »: delegations by task, hand / cancel (offline-first). */
+    val today = com.torchons.app.ui.today.TodayDelegations(viewModelScope, delegationRepository)
 
     /** Id de l'utilisateur courant — utilise pour identifier sa notation. */
     val currentUserId: StateFlow<String?> = authRepository.userIdFlow
@@ -161,6 +165,7 @@ class TaskDetailViewModel @Inject constructor(
                 async { taskRepository.refreshCompletions(taskId = taskId) },
                 async { taskRepository.refreshUsers() },
                 async { taskRepository.refreshTaskHistory(taskId) },
+                async { today.refresh() },
                 async { taskRepository.refreshContexts() },
             ).awaitAll()
 

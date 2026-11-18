@@ -46,4 +46,6 @@ object Modules {
     const val AUTO_ADJUST = "auto_adjust"
     const val STATISTICS = "statistics"
     const val REMINDERS = "reminders"
+    /** « À faire aujourd'hui », on by default (docs/plans/a-faire-aujourdhui.md). */
+    const val TODAY = "today"
 }

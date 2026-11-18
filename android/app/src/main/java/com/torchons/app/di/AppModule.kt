@@ -154,6 +154,12 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideDelegationApi(retrofit: Retrofit): com.torchons.app.data.api.DelegationApi {
+        return retrofit.create(com.torchons.app.data.api.DelegationApi::class.java)
+    }
+
+    @Provides
+    @Singleton
     fun provideFairShareTargetApi(retrofit: Retrofit): com.torchons.app.data.api.FairShareTargetApi {
         return retrofit.create(com.torchons.app.data.api.FairShareTargetApi::class.java)
     }

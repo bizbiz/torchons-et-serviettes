@@ -41,6 +41,8 @@ class SettingsResponse(BaseModel):
     gamification_enabled: bool
     # Masquer les taches maison de la liste hors WiFi maison (user-level).
     hide_home_tasks_off_wifi: bool
+    # « À faire aujourd'hui » reminders at 12/16/20 h Paris time (personal).
+    notif_today_reminders: bool = True
     # Read-only: may the automatic rating pop-up show now? Moved by
     # POST /api/rating-prompt/outcome, never by the PUT below.
     rating_prompt_due: bool
@@ -60,6 +62,7 @@ class SettingsUpdate(BaseModel):
     home_ssids: list[str] | None = None
     gamification_enabled: bool | None = None
     hide_home_tasks_off_wifi: bool | None = None
+    notif_today_reminders: bool | None = None
 
 
 async def _load_or_create_user_foyer(
@@ -126,6 +129,7 @@ async def get_settings(
         foyer_member_count=member_count,
         gamification_enabled=settings.gamification_enabled,
         hide_home_tasks_off_wifi=settings.hide_home_tasks_off_wifi,
+        notif_today_reminders=settings.notif_today_reminders,
         rating_prompt_due=is_due(settings, datetime.now(timezone.utc)),
     )
 
@@ -185,5 +189,6 @@ async def update_settings(
         foyer_member_count=member_count,
         gamification_enabled=settings.gamification_enabled,
         hide_home_tasks_off_wifi=settings.hide_home_tasks_off_wifi,
+        notif_today_reminders=settings.notif_today_reminders,
         rating_prompt_due=is_due(settings, datetime.now(timezone.utc)),
     )

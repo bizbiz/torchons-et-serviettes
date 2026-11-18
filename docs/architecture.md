@@ -21,6 +21,13 @@ model. Each section points to the detail.
   `tests/test_solo_task_privacy.py` sweeps every GET route.
 - **Completion notifications**: through REST (`send_completion_event`) and through `/sync`
   (`send_sync_completions`, one per member and per call). The app validates through `/sync`.
+- **"To do today"** (delegations): a member hands a task to other members who see it. Written
+  through `/sync` (table `task_delegations`: `INSERT` `{"task_id", "recipient_ids"}`, `DELETE`
+  to cancel, author only), read by `GET /delegations`; any completion dated on or after its
+  day settles it. Grouped notification after 5 quiet minutes and reminders at 12/16/20 h
+  Paris time, state kept in the database (`services/delegation_push.py`). Household switch:
+  the `today` module, on by default. Spec:
+  [`plans/a-faire-aujourdhui.md`](plans/a-faire-aujourdhui.md).
 - **Cache and offline**: the app is offline-first; the rules for the Room cache, refresh and
   derived state are in [`cache-conventions.md`](cache-conventions.md).
 - **Modules and progressive discovery**: a two-level registry (core and modules), described
@@ -36,7 +43,8 @@ Base: `/api`.
 | Tasks | `GET/POST/PUT/DELETE /tasks` |
 | Contexts | `GET /catalog/contexts` (categories and rooms: legacy shim) |
 | Completions | `POST /tasks/{id}/complete`, `GET /completions` |
-| Sync | `POST /sync` |
+| Sync | `POST /sync` (`tasks`, `task_completions`, `user_settings`, `task_delegations`) |
+| To do today | `GET /delegations` (writes through `/sync`) |
 | Gamification | `GET /leaderboard`, `/streaks`, `/stats/*` |
 | Fair-share | `GET /fair-share/status`, `/fair-share/history`, `GET/PUT /fair-share/config` |
 | Notifications | `POST/DELETE /notifications/register` |

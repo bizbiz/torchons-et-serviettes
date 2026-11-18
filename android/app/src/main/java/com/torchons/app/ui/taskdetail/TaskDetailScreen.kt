@@ -88,8 +88,7 @@ import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.TaskHistoryEventType
 import com.torchons.app.ui.common.CelebrationCardContent
 import com.torchons.app.ui.common.CelebrationOverlay
-import com.torchons.app.ui.common.CompletionDialog
-import com.torchons.app.ui.common.CompletionDialogMode
+import com.torchons.app.ui.today.rememberTodayActionState
 import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.common.rememberCelebration
 import com.torchons.app.ui.user.UserProfileDialog
@@ -127,77 +126,14 @@ fun TaskDetailScreen(
         )
     }
 
-    // Dialog unifie "Deja fait" / "Fait ensemble" (v0.11).
-    // Utilise userNames comme source de verite pour les membres du foyer
-    // (alimente par taskRepository.observeUsers() cote ViewModel).
-    var completionDialogMode by remember { mutableStateOf<CompletionDialogMode?>(null) }
-    var showTwoPersonFaitEnsembleDate by remember { mutableStateOf(false) }
-
-    completionDialogMode?.let { mode ->
-        val task = uiState.task
-        val allMembers = uiState.userNames.entries.map { it.key to it.value }
-        val assignedIds = task?.assignedToIds.orEmpty().toSet()
-        CompletionDialog(
-            taskTitle = task?.title.orEmpty(),
-            mode = mode,
-            allMembers = allMembers,
-            assignedMemberIds = assignedIds,
-            currentUserId = currentUserId.orEmpty(),
-            onDismiss = { completionDialogMode = null },
-            onConfirm = { participantIds, isoDate, preview ->
-                if (mode == CompletionDialogMode.Single) {
-                    viewModel.completeTaskAtDate(
-                        isoDate = isoDate,
-                        completedBy = participantIds.firstOrNull(),
-                        previewPoints = preview?.finalPoints,
-                        previewReason = preview?.reason,
-                    )
-                } else {
-                    viewModel.completeTaskCollective(
-                        participantUserIds = participantIds,
-                        isoDate = isoDate,
-                        previewPoints = preview?.finalPoints,
-                        previewReason = preview?.reason,
-                    )
-                }
-                completionDialogMode = null
-            },
-            onSwitchToMulti = if (mode == CompletionDialogMode.Single && task?.assignedToIds?.size != 1) {
-                { completionDialogMode = CompletionDialogMode.Multi }
-            } else null,
-            previewProvider = task?.let { t ->
-                { isoDate, numParticipants ->
-                    viewModel.fetchCompletionPreview(t.id, isoDate, numParticipants)
-                }
-            },
-            gamificationVisible = gamificationVisible,
-        )
-    }
-
-    // Foyer 2-pers : DatePickerDialog direct pour "Fait ensemble" (split auto).
-    if (showTwoPersonFaitEnsembleDate) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
-        androidx.compose.material3.DatePickerDialog(
-            onDismissRequest = { showTwoPersonFaitEnsembleDate = false },
-            confirmButton = {
-                Button(onClick = {
-                    val millis = datePickerState.selectedDateMillis
-                    if (millis != null) {
-                        val date = java.time.Instant.ofEpochMilli(millis)
-                            .atZone(java.time.ZoneOffset.UTC)
-                            .toLocalDate()
-                        val bothIds = uiState.userNames.keys.toList()
-                        viewModel.completeTaskCollective(bothIds, "${date}T12:00:00Z")
-                    }
-                    showTwoPersonFaitEnsembleDate = false
-                }) { Text(stringResource(R.string.common_validate)) }
-            },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showTwoPersonFaitEnsembleDate = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            },
-        ) { DatePicker(state = datePickerState) }
+    // « Date + Qui » and « ! » (TaskDetailTodayAndWho.kt, docs/plans/a-faire-aujourdhui.md).
+    // null = closed; false = « Déjà fait » (me alone checked); true = « Fait ensemble ».
+    var completionTogether by remember { mutableStateOf<Boolean?>(null) }
+    val todayActions = rememberTodayActionState()
+    completionTogether?.let { together ->
+        TaskDetailCompletionDialog(viewModel, currentUserId.orEmpty(), gamificationVisible, together) {
+            completionTogether = null
+        }
     }
 
     LifecycleResumeEffect(Unit) {
@@ -948,10 +884,10 @@ fun TaskDetailScreen(
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
-                                // Secondaires "Deja fait" + "Fait ensemble" cote a cote
+                                // Secondaires « Deja fait » (Date + Qui) + « Fait ensemble », puis le « ! »
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     OutlinedButton(
-                                        onClick = { completionDialogMode = CompletionDialogMode.Single },
+                                        onClick = { completionTogether = false },
                                         modifier = Modifier.weight(1f),
                                     ) {
                                         Icon(
@@ -963,13 +899,7 @@ fun TaskDetailScreen(
                                         Text(stringResource(R.string.suggestion_action_already_done))
                                     }
                                     if (uiState.task?.assignedToIds?.size != 1) OutlinedButton( // not for a solo task
-                                        onClick = {
-                                            if (uiState.userNames.size == 2) {
-                                                showTwoPersonFaitEnsembleDate = true
-                                            } else {
-                                                completionDialogMode = CompletionDialogMode.Multi
-                                            }
-                                        },
+                                        onClick = { completionTogether = true },
                                         modifier = Modifier.weight(1f),
                                     ) {
                                         Icon(
@@ -981,6 +911,9 @@ fun TaskDetailScreen(
                                         Text(stringResource(R.string.suggestion_action_together))
                                     }
                                 }
+                                TaskDetailTodayButton(
+                                    viewModel, currentUserId.orEmpty(), todayActions, Modifier.fillMaxWidth(),
+                                )
                             }
                         }
                     }

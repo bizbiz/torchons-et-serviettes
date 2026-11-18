@@ -42,7 +42,7 @@ serait « l'utilisateur crée une tâche sans récurrence », impossible si
 le module est éteint. Et une ponctuelle n'ajoute aucune surface — c'est
 l'absence de règle de récurrence dans un formulaire existant.
 
-### Les 8 modules
+### Les modules
 
 | # | Module | Sous-options | Portée |
 |---|--------|--------------|--------|
@@ -54,6 +54,7 @@ l'absence de règle de récurrence dans un formulaire existant.
 | 6 | Ajustement automatique | bump effort, vote fréquence | collectif |
 | 7 | Statistiques & historique | courbes, historique enrichi | perso |
 | 8 | Rappels | les 6 notifications | perso |
+| 9 | À faire aujourd'hui (ajouté le 2026-11-18, allumé par défaut) | rappels 12/16/20 h | collectif |
 
 **Règle de portée** : collectif si le module change le modèle partagé,
 perso s'il ne change que ce que je vois ou reçois. Elle s'applique au
@@ -247,6 +248,8 @@ silence et sur ce seul type.
 | Bloc Notifications | reminders | P2 |
 | Popup d'affinité | repartition | P2 |
 | Tout l'UI gamif | motivation | P2, porte centrale |
+| Points dans le texte de l'historique | motivation + `hide_for_me` | serveur, `points_visibility.py` |
+| Lien agenda du profil | motivation **ou** presence | sans points : « agenda de présence » |
 
 Les onglets de Stats sont désormais dispatchés sur une **identité** et non sur
 leur position : cacher un onglet décalait sinon le contenu de tous les

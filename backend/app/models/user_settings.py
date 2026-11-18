@@ -64,6 +64,16 @@ class UserSettings(Base):
     rating_prompt_next_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # « À faire aujourd'hui » reminders at 12:00, 16:00 and 20:00 Paris time (personal switch;
+    # the grouped notification itself cannot be muted alone, docs/plans/a-faire-aujourdhui.md).
+    notif_today_reminders: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False
+    )
+    # Server-owned: when this member last got an « À faire aujourd'hui » notification (grouped
+    # or reminder). A reminder waits until it is more than an hour old. Never written by /sync.
+    today_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # NOTE : home_ssids a ete deplace sur user_foyers (per-foyer) dans la
     # migration h6c7d8e9f0a1 v0.7.2+. Un user dans 2 foyers a 2 lieux physiques
     # differents donc 2 listes de WiFi distinctes.

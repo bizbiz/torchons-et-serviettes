@@ -17,6 +17,7 @@ import org.junit.Test
  *       needs Resources for the countdown label; the calculator it calls has its
  *       own tests, and the function was moved unchanged from the view model.
  *   (5) the widget drawing the rows in that order ............... not covered: Glance.
+ *   (6) « À faire » (isToDo), the widget's filter since 2026-11-18 ........... COVERED
  */
 class TaskUrgencyListTest {
 
@@ -63,12 +64,12 @@ class TaskUrgencyListTest {
     }
 
     /**
-     * The widget lists « À faire » only (Quentin, 2026-11-11): a ticked task, now green, leaves
-     * it; an uncertain task, kept by « À faire », leaves for the day it was done.
+     * « À faire », the Tasks tab's default chip, which the widget copies since 2026-11-18 (it calls
+     * applyFilters with the default filters): a ticked task, now green, leaves; an uncertain task
+     * always stays, even done today (the widget's own exception for it was dropped that day).
      */
     @Test
-    fun `the widget keeps only what is to do`() {
-        val today = java.time.LocalDate.of(2026, 11, 11)
+    fun `to do keeps what is due, never-done and uncertain tasks`() {
         val tasks = listOf(
             item("red", State.RED),
             item("orange", State.ORANGE),
@@ -79,8 +80,8 @@ class TaskUrgencyListTest {
             item("uncertain-today", lastDone = "2026-11-11T12:00:00Z").copy(isUncertain = true),
         )
         assertEquals(
-            listOf("red", "orange", "never-done", "uncertain-yesterday"),
-            tasks.filter { onWidget(it, today) }.map { it.task.id },
+            listOf("red", "orange", "never-done", "uncertain-yesterday", "uncertain-today"),
+            tasks.filter(::isToDo).map { it.task.id },
         )
     }
 }

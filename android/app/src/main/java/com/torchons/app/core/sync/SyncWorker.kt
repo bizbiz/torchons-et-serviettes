@@ -7,8 +7,10 @@ import com.google.gson.Gson
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.local.dao.CompletionDao
+import com.torchons.app.data.local.dao.DelegationDao
 import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.TaskDao
+import com.torchons.app.data.local.entities.DelegationEntity
 import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.TaskEntity
 import com.torchons.app.data.local.entities.toEntity
@@ -40,6 +42,7 @@ interface SyncWorkerEntryPoint {
     fun pendingOperationDao(): PendingOperationDao
     fun taskDao(): TaskDao
     fun completionDao(): CompletionDao
+    fun delegationDao(): DelegationDao
     fun tokenManager(): TokenManager
     fun taskRepository(): TaskRepository
 }
@@ -179,7 +182,7 @@ class SyncWorker(
 
             settleConflicts(body.conflicts, batch, ep)
 
-            body.serverChanges.forEach { applyServerChange(it, taskDao, completionDao) }
+            body.serverChanges.forEach { applyServerChange(it, taskDao, completionDao, ep.delegationDao()) }
 
             tokenManager.setSyncCursor(body.serverVersion)
             true
@@ -268,11 +271,15 @@ class SyncWorker(
         change: ChangeLogEntry,
         taskDao: TaskDao,
         completionDao: CompletionDao,
+        delegationDao: DelegationDao,
     ) {
         try {
             when (change.table) {
                 "tasks" -> applyTaskChange(change, taskDao)
                 "task_completions" -> applyCompletionChange(change, completionDao)
+                "task_delegations" -> delegationEntityFromChange(change)
+                    ?.let { delegationDao.upsertAll(listOf(it)) }
+                    ?: delegationDao.deleteById(change.rowId)
             }
         } catch (_: Exception) {}
     }
@@ -391,6 +398,23 @@ internal fun taskEntityFromChange(existing: TaskEntity?, change: ChangeLogEntry)
         updatedAt = data["updated_at"] as? String ?: change.changedAt,
     )
     return task.toEntity()
+}
+
+/**
+ * A `task_delegations` change_log entry: an INSERT carries the full row (the server replaces
+ * the op's data, api/sync_delegations.py) and is cached; a DELETE (cancelled) or an UPDATE
+ * (settled by a completion) ends it, so null = drop the cached row.
+ */
+internal fun delegationEntityFromChange(change: ChangeLogEntry): DelegationEntity? {
+    val data = change.data ?: return null
+    if (change.operation != "INSERT") return null
+    return DelegationEntity(
+        id = change.rowId,
+        taskId = data["task_id"] as? String ?: return null,
+        authorId = data["author_id"] as? String ?: return null,
+        recipientIds = data.stringList("recipient_ids") ?: return null,
+        createdAt = data["created_at"] as? String ?: change.changedAt,
+    )
 }
 
 private fun Map<String, Any?>.stringList(key: String): List<String>? =

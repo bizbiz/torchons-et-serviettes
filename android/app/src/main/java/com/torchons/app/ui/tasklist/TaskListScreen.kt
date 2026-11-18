@@ -1,8 +1,5 @@
 package com.torchons.app.ui.tasklist
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -55,7 +51,6 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -65,7 +60,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
 import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.CompletionDialog
-import com.torchons.app.ui.common.CompletionDialogMode
+import com.torchons.app.ui.common.Modules
+import com.torchons.app.ui.common.moduleEnabled
+import com.torchons.app.ui.today.TodayActionDialogs
+import com.torchons.app.ui.today.rememberTodayActionState
+import com.torchons.app.ui.today.todayCardState
 import com.torchons.app.ui.common.InfoTooltip
 
 /**
@@ -97,25 +96,22 @@ fun TaskListScreen(
     // (ex. édit présence dans modal). Cache-conventions règle 1.
     LaunchedEffect(Unit) { viewModel.refresh() }
 
-    // Dialog unifie "Deja fait" (Single) / "Fait ensemble" (Multi).
-    // Releve au niveau TaskListScreen pour etre partage entre toutes les cards.
+    // « Date + Qui » (ui/common/CompletionDialog), shared by every card and by the widget.
     var dialogState by remember { mutableStateOf<TaskListCompletionDialogState?>(null) }
-    var twoPersonFaitEnsembleTaskId by remember { mutableStateOf<String?>(null) }
 
     dialogState?.let { ds ->
         CompletionDialog(
             taskTitle = ds.taskTitle,
-            mode = ds.mode,
             allMembers = users.map { it.id to it.displayName },
             assignedMemberIds = ds.assignedIds,
             currentUserId = currentUserId.orEmpty(),
             onDismiss = { dialogState = null },
             onConfirm = { participantIds, isoDate, preview ->
-                if (ds.mode == CompletionDialogMode.Single) {
+                if (participantIds.size == 1) {
                     viewModel.completeTaskAtDate(
                         taskId = ds.taskId,
                         isoDate = isoDate,
-                        completedBy = participantIds.firstOrNull(),
+                        completedBy = participantIds.first(),
                         previewPoints = preview?.finalPoints,
                         previewReason = preview?.reason,
                     )
@@ -130,9 +126,6 @@ fun TaskListScreen(
                 }
                 dialogState = null
             },
-            onSwitchToMulti = if (ds.mode == CompletionDialogMode.Single && ds.assignedIds.size != 1) {
-                { dialogState = ds.copy(mode = CompletionDialogMode.Multi) }
-            } else null,
             previewProvider = { isoDate, numParticipants ->
                 viewModel.fetchCompletionPreview(ds.taskId, isoDate, numParticipants)
             },
@@ -140,18 +133,20 @@ fun TaskListScreen(
         )
     }
 
-    twoPersonFaitEnsembleTaskId?.let { tid ->
-        TwoPersonTogetherDatePicker(
-            onConfirm = { isoDate ->
-                viewModel.completeTaskCollective(
-                    taskId = tid,
-                    participantUserIds = users.map { it.id },
-                    isoDate = isoDate,
-                )
-            },
-            onDismiss = { twoPersonFaitEnsembleTaskId = null },
-        )
-    }
+    // « ! » À faire aujourd'hui (docs/plans/a-faire-aujourdhui.md).
+    val todayOn = moduleEnabled(Modules.TODAY)
+    val delegations by viewModel.today.byTask.collectAsState()
+    val todayActions = rememberTodayActionState()
+    val memberNames = remember(users) { users.associate { it.id to it.displayName } }
+    // Titles of tasks a widget « ! » opened: the tab's filters may hide them from uiState.tasks.
+    val widgetTitles = remember { androidx.compose.runtime.mutableStateMapOf<String, String>() }
+    TodayActionDialogs(
+        state = todayActions,
+        titleOf = { id -> uiState.tasks.firstOrNull { it.task.id == id }?.task?.title ?: widgetTitles[id].orEmpty() },
+        names = memberNames,
+        me = currentUserId.orEmpty(),
+        onHand = viewModel.today::hand,
+    )
 
     // Recharger les donnees quand on revient sur cet ecran
     LifecycleResumeEffect(Unit) {
@@ -489,27 +484,21 @@ fun TaskListScreen(
                         { id ->
                             val task = tasksState.value.firstOrNull { it.task.id == id }?.task
                             dialogState = TaskListCompletionDialogState(
-                                mode = CompletionDialogMode.Single,
                                 taskId = id,
                                 taskTitle = task?.title.orEmpty(),
                                 assignedIds = task?.assignedToIds?.toSet() ?: emptySet(),
                             )
                         }
                     }
-                    val onCardFaitEnsemble: (String) -> Unit = remember {
+                    val delegationsState = androidx.compose.runtime.rememberUpdatedState(delegations)
+                    val meState = androidx.compose.runtime.rememberUpdatedState(currentUserId.orEmpty())
+                    val onCardToday: (String) -> Unit = remember {
                         { id ->
                             val task = tasksState.value.firstOrNull { it.task.id == id }?.task
-                            if (usersState.value.size == 2) {
-                                // Foyer 2-pers : skip le picker, split auto.
-                                twoPersonFaitEnsembleTaskId = id
-                            } else {
-                                dialogState = TaskListCompletionDialogState(
-                                    mode = CompletionDialogMode.Multi,
-                                    taskId = id,
-                                    taskTitle = task?.title.orEmpty(),
-                                    assignedIds = task?.assignedToIds?.toSet() ?: emptySet(),
-                                )
-                            }
+                            todayActions.onTaskTap(
+                                id, task?.assignedToIds.orEmpty(), delegationsState.value[id],
+                                usersState.value.map { it.id }, meState.value, viewModel.today,
+                            )
                         }
                     }
                     // A widget button lands here (WidgetLaunch): same dialog as the card's, its task
@@ -520,8 +509,17 @@ fun TaskListScreen(
                         val req = widgetRequest?.takeIf { users.isNotEmpty() } ?: return@LaunchedEffect
                         val task = findWidgetTask(appContext, req.taskId)
                         com.torchons.app.widget.WidgetLaunch.consume()
-                        if (req.togetherFor(task) && users.size == 2) twoPersonFaitEnsembleTaskId = req.taskId
-                        else dialogState = widgetCompletionDialog(req, task)
+                        when (req.kind) {
+                            com.torchons.app.widget.WidgetLaunch.Kind.DATE_WHO ->
+                                dialogState = widgetCompletionDialog(req, task)
+                            com.torchons.app.widget.WidgetLaunch.Kind.TODAY -> {
+                                task?.let { widgetTitles[it.id] = it.title }
+                                todayActions.onTaskTap(
+                                    req.taskId, task?.assignedToIds.orEmpty(), delegationsState.value[req.taskId],
+                                    users.map { it.id }, meState.value, viewModel.today,
+                                )
+                            }
+                        }
                     }
 
                     // Liste des taches avec pull-to-refresh
@@ -552,7 +550,12 @@ fun TaskListScreen(
                                     onClick = onCardClick,
                                     onComplete = onCardComplete,
                                     onHistorical = onCardHistorical,
-                                    onFaitEnsemble = onCardFaitEnsemble,
+                                    today = todayCardState(
+                                        androidx.compose.ui.platform.LocalContext.current.resources,
+                                        taskWithUrgency.task.assignedToIds, delegations[taskWithUrgency.task.id],
+                                        memberNames, currentUserId.orEmpty(),
+                                    ).takeIf { todayOn },
+                                    onToday = onCardToday,
                                     // Points + attribution seulement sur la carte en
                                     // celebration, et masques si gamif opt-out (v0.32).
                                     celebrationPoints = if (celebrating && gamificationVisible) uiState.celebrationPoints else null,
@@ -577,58 +580,3 @@ fun TaskListScreen(
     } // fin du Box outer (celebration overlay layer)
 }
 
-/**
- * Chip texte tri-state pour les filtres de la liste (v0.26).
- *
- * Cycle des etats au clic : OFF -> HIGH -> LOW -> OFF.
- *  - OFF  : libelle HIGH, sans fond, juste un contour leger. Indique
- *           ce que ferait un clic ("filtrer par X").
- *  - HIGH : libelle HIGH, fond rouge plein. Filtre actif positif.
- *  - LOW  : libelle LOW, fond vert plein. Filtre actif inverse.
- *
- * Le passage HIGH -> LOW change donc a la fois le fond ET le libelle,
- * pour que l'utilisateur lise directement ce qu'il filtre, sans avoir
- * a memoriser un code couleur d'icone.
- */
-@Composable
-private fun FilterTextChip(
-    highLabel: String,
-    lowLabel: String,
-    state: FilterState,
-    onClick: () -> Unit,
-) {
-    val (bgColor, fgColor, showBorder) = when (state) {
-        FilterState.OFF -> Triple(
-            Color.Transparent,
-            MaterialTheme.colorScheme.onSurfaceVariant,
-            true,
-        )
-        FilterState.HIGH -> Triple(Color(0xFFEF4444), Color.White, false)
-        FilterState.LOW -> Triple(Color(0xFF10B981), Color.White, false)
-    }
-    val label = when (state) {
-        FilterState.LOW -> lowLabel
-        else -> highLabel  // HIGH et OFF affichent le libelle positif
-    }
-    val shape = RoundedCornerShape(20.dp)
-    val borderMod = if (showBorder)
-        Modifier.border(1.dp, MaterialTheme.colorScheme.outline, shape)
-    else Modifier
-
-    Box(
-        modifier = Modifier
-            .clip(shape)
-            .background(bgColor)
-            .then(borderMod)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-    ) {
-        Text(
-            text = label,
-            color = fgColor,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-        )
-    }
-}

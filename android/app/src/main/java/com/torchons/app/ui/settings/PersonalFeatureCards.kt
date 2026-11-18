@@ -56,13 +56,14 @@ fun ModuleOffNote(info: ModuleOffInfo) {
 }
 
 /**
- * Personal choice about the household's `motivation` module: hide points and streaks
- * for me only. Checked = hidden. The module itself is a household decision.
+ * Personal choice about the household's `motivation` module: show points and streaks
+ * for me. Checked = shown (a "Hide" switch under a "Gamification" title read as "on =
+ * active" and hid points by surprise). The module itself is a household decision.
  */
 @Composable
-fun HidePointsCard(
-    hidden: Boolean,
-    onHiddenChange: (Boolean) -> Unit,
+fun ShowPointsCard(
+    shown: Boolean,
+    onShownChange: (Boolean) -> Unit,
     moduleOff: ModuleOffInfo?,
     helpLinkVisible: Boolean,
     onWhyNoPoints: () -> Unit,
@@ -95,7 +96,7 @@ fun HidePointsCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Switch(checked = hidden, enabled = moduleOff == null, onCheckedChange = onHiddenChange)
+                Switch(checked = shown, enabled = moduleOff == null, onCheckedChange = onShownChange)
             }
             moduleOff?.let { ModuleOffNote(it) }
             if (helpLinkVisible) WhyNoPointsLink(onWhyNoPoints)

@@ -155,6 +155,7 @@ class SettingsViewModel @Inject constructor(
                         foyerMemberCount = (data["foyer_member_count"] as? Double)?.toInt() ?: 2,
                         gamificationEnabled = data["gamification_enabled"] as? Boolean ?: true,
                         hideHomeTasksOffWifi = data["hide_home_tasks_off_wifi"] as? Boolean ?: true,
+                        notifTodayReminders = data["notif_today_reminders"] as? Boolean ?: true,
                         isLoaded = true,
                     )
                     // Sync tous les reglages vers TokenManager local
@@ -340,6 +341,10 @@ class SettingsViewModel @Inject constructor(
     fun setNotifSolo(v: Boolean) { _settings.value = _settings.value.copy(notifSolo = v); updateSetting("notif_solo", v) }
     fun setNotifCollectiveWithMe(v: Boolean) { _settings.value = _settings.value.copy(notifCollectiveWithMe = v); updateSetting("notif_collective_with_me", v) }
     fun setNotifCollectiveWithoutMe(v: Boolean) { _settings.value = _settings.value.copy(notifCollectiveWithoutMe = v); updateSetting("notif_collective_without_me", v) }
+    fun setNotifTodayReminders(v: Boolean) {
+        _settings.value = _settings.value.copy(notifTodayReminders = v)
+        updateSetting("notif_today_reminders", v)
+    }
     fun setNotifHour(v: Int) {
         _settings.value = _settings.value.copy(notifHour = v)
         updateSetting("notif_hour", v)

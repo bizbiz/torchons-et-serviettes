@@ -18,7 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Groups
+import com.torchons.app.ui.today.TodayButton
+import com.torchons.app.ui.today.TodayCardState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledIconButton
@@ -61,7 +62,9 @@ fun TaskCard(
     onClick: (String) -> Unit,
     onComplete: (String) -> Unit,
     onHistorical: (String) -> Unit,
-    onFaitEnsemble: (String) -> Unit,
+    /** The « ! » (À faire aujourd'hui): null hides it -- feature off, or nobody else sees the task. */
+    today: TodayCardState?,
+    onToday: (String) -> Unit,
     modifier: Modifier = Modifier,
     /** Points affiches dans la celebration (null = inconnu / gamif masquee). */
     celebrationPoints: Int? = null,
@@ -154,11 +157,18 @@ fun TaskCard(
                         fontWeight = FontWeight.Medium,
                     )
                 }
+                today?.line?.let { line ->
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TaskUrgencyCalculator.ROUGE,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
             }
 
-            // Boutons d'action — 3 boutons : deja fait (calendar), fait
-            // ensemble (groups), fait (check). Taille reduite 40dp pour tenir
-            // dans 72dp de hauteur avec 3 actions.
+            // Boutons d'action — 3 boutons : Date + Qui (calendar), « ! » À faire
+            // aujourd'hui, fait (check). Taille reduite 40dp pour tenir dans 72dp.
             FilledIconButton(
                 onClick = { onHistorical(taskId) },
                 modifier = Modifier.size(40.dp),
@@ -173,23 +183,10 @@ fun TaskCard(
                     modifier = Modifier.size(20.dp),
                 )
             }
-            // A solo task (one assignee) is seen and done by that member alone: no « together ».
-            if (task.assignedToIds.size != 1) {
+            // « Fait ensemble » moved into the Date + Qui dialog (2026-11-18): its place is the « ! ».
+            if (today != null) {
                 Spacer(modifier = Modifier.width(6.dp))
-                FilledIconButton(
-                    onClick = { onFaitEnsemble(taskId) },
-                    modifier = Modifier.size(40.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Groups,
-                        contentDescription = stringResource(R.string.suggestion_action_together),
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
+                TodayButton(lit = today.lit, onClick = { onToday(taskId) })
             }
             Spacer(modifier = Modifier.width(6.dp))
             FilledIconButton(

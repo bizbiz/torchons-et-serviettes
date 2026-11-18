@@ -281,11 +281,11 @@ fun SettingsScreen(
 
         ModuleToggleError(viewModel = viewModel)
 
-        // Personal choice on the household's `motivation` module: hide points and streaks
-        // for me only. Shown (disabled, with the reason) even when the household turned it off.
-        HidePointsCard(
-            hidden = !gamifUser,
-            onHiddenChange = { hide -> viewModel.setGamificationEnabled(!hide) },
+        // Personal choice on the household's `motivation` module: show points and streaks
+        // for me. Shown (disabled, with the reason) even when the household turned it off.
+        ShowPointsCard(
+            shown = gamifUser,
+            onShownChange = { show -> viewModel.setGamificationEnabled(show) },
             moduleOff = moduleOffInfo("motivation"),
             helpLinkVisible = helpLinkVisible,
             onWhyNoPoints = { showWhyNoPointsDialog = true },
@@ -416,6 +416,9 @@ fun SettingsScreen(
             }
         }
         }
+
+        // Personal choice on the household's `today` module: the 12/16/20 h reminders.
+        TodayRemindersCard(s.notifTodayReminders, viewModel::setNotifTodayReminders, moduleOffInfo("today"))
 
         // Personal choice on the household's `repartition` module: the affinity popup.
         AffinityPopupCard(

@@ -30,6 +30,8 @@ internal fun syncOpLabel(kind: PendingOpKind, taskTitle: String?, memberName: St
             PendingOpKind.COMPLETION_EDIT -> R.string.sync_op_completion_edit
             PendingOpKind.COMPLETION_DELETE -> R.string.sync_op_completion_delete
             PendingOpKind.FREQUENCY_VOTE -> R.string.sync_op_frequency_vote
+            PendingOpKind.DELEGATION_ADD -> R.string.sync_op_delegation_add
+            PendingOpKind.DELEGATION_CANCEL -> R.string.sync_op_delegation_cancel
             PendingOpKind.OTHER -> R.string.sync_op_other
         }
     )

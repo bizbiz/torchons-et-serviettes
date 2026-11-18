@@ -10,34 +10,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.Image
-import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
-import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.action.ActionCallback
-import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
-import androidx.glance.layout.Alignment
-import androidx.glance.layout.Box
 import androidx.glance.layout.Column
-import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.glance.layout.size
-import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
@@ -49,15 +38,14 @@ import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.util.WifiHelper
-import com.torchons.app.ui.tasklist.computeTasksWithUrgency
-import com.torchons.app.ui.tasklist.onWidget
-import com.torchons.app.ui.tasklist.sortForTaskList
-import com.torchons.app.util.TaskUrgencyCalculator
+import com.torchons.app.ui.tasklist.TaskListFilters
+import com.torchons.app.ui.tasklist.applyFilters
+import com.torchons.app.ui.common.Modules
+import com.torchons.app.data.repository.DelegationRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
-import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -69,10 +57,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * The widget reads the same Room cache as the Tasks tab, through the same
- * repository, so it shows the same tasks in the same order, offline included.
- * Until 2026-10-18 it showed the Home suggestions (red and orange only, a few
- * per tier) fetched online, and its « Fait » called the server directly.
+ * The widget is a copy of the Tasks tab filtered on « À faire » (its default chip): same Room
+ * cache, same repositories, same filter function (applyFilters with the default filters), same
+ * rows and buttons, offline included. Until 2026-10-18 it showed the Home suggestions fetched
+ * online; until 2026-11-18 its own « À faire » rule (onWidget) and a « together » button.
  */
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -81,15 +69,14 @@ interface TaskWidgetEntryPoint {
     fun completionChecks(): com.torchons.app.data.repository.CompletionChecks
     fun pendingOperationDao(): PendingOperationDao
     fun tokenManager(): TokenManager
+    fun delegationRepository(): DelegationRepository
 }
 
 /**
- * What the widget may show, before ranking. Not a setting, both rules always apply:
- * - a task assigned to others only is never shown, whatever the cache holds (the
- *   server already sends only the user's tasks, `GET /tasks`; this is the second lock,
- *   see the todo item on solo tasks) ;
- * - off the home WiFi, tasks that need presence are hidden, as in the Tasks tab
- *   (user setting `hideHomeTasksOffWifi`).
+ * Second lock before the list's own filters: a task assigned to others only is never shown,
+ * whatever the cache holds (the server already sends only the user's tasks, `GET /tasks`).
+ * [hidePresence] hides tasks that need presence; the widget now leaves that to applyFilters,
+ * as the Tasks tab does, and passes false.
  */
 internal fun visibleOnWidget(tasks: List<Task>, userId: String?, hidePresence: Boolean): List<Task> =
     tasks.filter { task ->
@@ -97,18 +84,8 @@ internal fun visibleOnWidget(tasks: List<Task>, userId: String?, hidePresence: B
         mine && !(hidePresence && task.contexts.any { it.requiresPresence })
     }
 
-private fun widgetDeps(context: Context): TaskWidgetEntryPoint =
+internal fun widgetDeps(context: Context): TaskWidgetEntryPoint =
     EntryPointAccessors.fromApplication(context.applicationContext, TaskWidgetEntryPoint::class.java)
-
-/** One task line of the widget. */
-private data class WidgetTask(
-    val taskId: String,
-    val title: String,
-    val state: TaskUrgencyCalculator.State,
-    val countdownLabel: String,
-    /** One assignee: seen and done by that member alone, so no « together » button. */
-    val solo: Boolean,
-)
 
 /**
  * What the widget could read. A failure is NOT an empty list: until 2026-10-17 any
@@ -156,7 +133,8 @@ class TaskWidget : GlanceAppWidget() {
                 if (deps.pendingOperationDao().getAll().isNotEmpty()) return@withContext false
                 val repo = deps.taskRepository()
                 withTimeoutOrNull(REFRESH_TIMEOUT_MS) {
-                    repo.refreshTasks() && repo.refreshCompletions(limit = 2000)
+                    val delegations = deps.delegationRepository().refresh()
+                    repo.refreshTasks() && repo.refreshCompletions(limit = 2000) && delegations
                 } ?: false
             } catch (e: CancellationException) {
                 throw e
@@ -165,27 +143,33 @@ class TaskWidget : GlanceAppWidget() {
             }
         }
 
-    /** The ranked list, recomputed on every change of the Room cache. */
+    /** The Tasks tab's « À faire » list, recomputed on every change of the Room cache. */
     private fun observeTasks(context: Context, deps: TaskWidgetEntryPoint, refreshed: Boolean): Flow<WidgetLoad> {
         val repo = deps.taskRepository()
         val tokens = deps.tokenManager()
-        return combine(repo.observeActiveTasks(), repo.observeRecentCompletions(2000)) { tasks, completions ->
+        return combine(
+            repo.observeActiveTasks(),
+            repo.observeRecentCompletions(2000),
+            deps.delegationRepository().observeActive(),
+            repo.observeUsers(),
+        ) { tasks, completions, delegations, users ->
             if (tasks.isEmpty() && !refreshed) {
                 WidgetLoad.Failed("no cache, refresh failed")
             } else {
                 // Read at each emission: the phone may have left the home WiFi.
-                val hidePresence = tokens.hideHomeTasksOffWifiFlow.first() &&
-                    !WifiHelper.isAtHome(context, tokens.homeSsidsFlow.first())
-                val visible = visibleOnWidget(tasks, tokens.userIdFlow.first(), hidePresence)
-                val today = LocalDate.now()
-                val ranked = sortForTaskList(
-                    computeTasksWithUrgency(visible, completions, today, context.resources)
-                        .filter { onWidget(it, today) },
-                )
+                val me = tokens.userIdFlow.first()
+                val isAtHome = WifiHelper.isAtHome(context, tokens.homeSsidsFlow.first())
+                // The tab's own filter function, with its default filters: « À faire » on.
+                val listed = applyFilters(
+                    visibleOnWidget(tasks, me, hidePresence = false), completions, TaskListFilters(),
+                    isAtHome, me, tokens.hideHomeTasksOffWifiFlow.first(), context.resources,
+                ).tasks
+                val todayOn = tokens.moduleEnabledFlow(Modules.TODAY).first()
+                val names = users.associate { it.id to it.displayName }
+                val byTask = delegations.associateBy { it.taskId }
                 WidgetLoad.Loaded(
-                    ranked.map {
-                        val solo = it.task.assignedToIds.size == 1
-                        WidgetTask(it.task.id, it.task.title, it.state, it.countdownLabel, solo)
+                    listed.map {
+                        widgetTaskOf(it, byTask[it.task.id], names, me.orEmpty(), todayOn, context.resources)
                     },
                     householdEmpty = tasks.isEmpty(),
                 )
@@ -246,122 +230,6 @@ private fun WidgetContent(load: WidgetLoad) {
     }
 }
 
-@Composable
-private fun WidgetTaskRow(task: WidgetTask) {
-    val stateColor = when (task.state) {
-        TaskUrgencyCalculator.State.RED -> Color(0xFFEF4444)
-        TaskUrgencyCalculator.State.ORANGE -> Color(0xFFF97316)
-        TaskUrgencyCalculator.State.GREEN -> Color(0xFF10B981)
-    }
-    val context = LocalContext.current
-
-    Row(
-        modifier = GlanceModifier.fillMaxWidth().padding(vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Indicateur couleur etat d'urgence
-        Box(
-            modifier = GlanceModifier.width(4.dp).height(32.dp).cornerRadius(2.dp).background(stateColor),
-        ) {}
-        Spacer(modifier = GlanceModifier.width(8.dp))
-
-        Column(
-            modifier = GlanceModifier.defaultWeight()
-                .clickable(actionStartActivity<MainActivity>()),
-        ) {
-            Text(
-                text = task.title,
-                style = TextStyle(
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 12.sp,
-                    color = ColorProvider(Color(0xFF1A1A1A)),
-                ),
-                maxLines = 1,
-            )
-            Text(
-                text = task.countdownLabel,
-                style = TextStyle(fontSize = 10.sp, color = ColorProvider(Color(0xFF6B7280))),
-                maxLines = 1,
-            )
-        }
-
-        // Same three actions as a card of the Tasks tab. The two that need a
-        // dialog open the app on it (WidgetLaunch).
-        WidgetButton(
-            icon = R.drawable.ic_widget_already_done,
-            description = context.getString(R.string.suggestion_action_already_done),
-            background = Color(0xFFEEF0FF),
-            action = actionStartActivity<MainActivity>(
-                actionParametersOf(WidgetLaunch.taskIdKey to task.taskId, WidgetLaunch.togetherKey to false),
-            ),
-        )
-        if (!task.solo) {
-            WidgetButton(
-                icon = R.drawable.ic_widget_together,
-                description = context.getString(R.string.suggestion_action_together),
-                background = Color(0xFFEEF0FF),
-                action = actionStartActivity<MainActivity>(
-                    actionParametersOf(WidgetLaunch.taskIdKey to task.taskId, WidgetLaunch.togetherKey to true),
-                ),
-            )
-        }
-        WidgetButton(
-            icon = R.drawable.ic_widget_done,
-            description = context.getString(R.string.suggestion_action_done),
-            background = Color(0xFF10B981),
-            action = actionRunCallback<CompleteTaskAction>(actionParametersOf(taskIdParam to task.taskId)),
-        )
-    }
-}
-
-@Composable
-private fun WidgetButton(
-    icon: Int,
-    description: String,
-    background: Color,
-    action: androidx.glance.action.Action,
-) {
-    Spacer(modifier = GlanceModifier.width(4.dp))
-    Box(
-        modifier = GlanceModifier
-            .size(30.dp)
-            .cornerRadius(15.dp)
-            .background(background)
-            .clickable(action),
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(
-            provider = ImageProvider(icon),
-            contentDescription = description,
-            modifier = GlanceModifier.size(18.dp),
-        )
-    }
-}
-
 class TaskWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = TaskWidget()
-}
-
-val taskIdParam = ActionParameters.Key<String>("task_id")
-
-/**
- * « Fait » from the widget goes through the offline queue, like the app's: the
- * completion is written locally at once and sent by SyncWorker. It used to call
- * the server directly, and failed silently offline.
- */
-class CompleteTaskAction : ActionCallback {
-    override suspend fun onAction(
-        context: Context,
-        glanceId: GlanceId,
-        parameters: ActionParameters,
-    ) {
-        val taskId = parameters[taskIdParam] ?: return
-        withContext(Dispatchers.IO) {
-            // A second tap before the row leaves would be dropped by the server anyway
-            // (CompletionChecks): not written, so the cache never shows it either.
-            val deps = widgetDeps(context)
-            if (deps.completionChecks().refusal(taskId) == null) deps.taskRepository().completeTask(taskId)
-        }
-        TaskWidget().update(context, glanceId)
-    }
 }

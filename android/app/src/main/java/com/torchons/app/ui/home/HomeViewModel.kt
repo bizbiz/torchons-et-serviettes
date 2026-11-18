@@ -17,6 +17,8 @@ import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.UserPace
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.CompletionChecks
+import com.torchons.app.data.repository.DelegationRepository
+import com.torchons.app.ui.today.TodayDelegations
 import com.torchons.app.data.repository.HomeRepository
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.ui.common.RatingRecurrence
@@ -51,7 +53,22 @@ class HomeViewModel @Inject constructor(
     private val ratingCadence: RatingCadence,
     private val tokenManager: TokenManager,
     private val propositionStateHolder: PropositionStateHolder,
+    delegationRepository: DelegationRepository,
 ) : AndroidViewModel(application) {
+
+    /** The red « À faire aujourd'hui » stack (HomeTodayStack.kt), and what leaves the suggestions. */
+    internal val todayStack = HomeTodayStack(
+        viewModelScope,
+        TodayDelegations(viewModelScope, delegationRepository),
+        taskRepository.observeActiveTasks(),
+        taskRepository.observeRecentCompletions(limit = 200),
+        authRepository.userIdFlow,
+    ) { getApplication<Application>().resources }
+
+    /** Member names by id, for « Confiée par Alice ». */
+    val memberNames: StateFlow<Map<String, String>> = taskRepository.observeUsers()
+        .map { users -> users.associate { it.id to it.displayName } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     /** Proposition active (v0.8.1) — forwarded depuis PropositionStateHolder */
     val currentProposition: StateFlow<PropositionView?> = propositionStateHolder.currentProposition
@@ -211,6 +228,8 @@ class HomeViewModel @Inject constructor(
 
             // Settings en premier pour avoir affinity_popup_enabled a jour.
             val settingsOk = homeRepository.refreshUserSettings()
+            // Delegations before the suggestions: the tasks handed by or to me leave them.
+            todayStack.today.refresh()
 
             // Sub-fetches en parallele. On rafraichit aussi rooms/categories/tasks
             // pour que les SuggestionCard puissent resoudre leur piece+categorie
@@ -220,7 +239,7 @@ class HomeViewModel @Inject constructor(
             // refetch arrive pre-filtre et que remainingByTier soit precis.
             val currentDismissed = _uiState.value.dismissedIds
             val suggestionsDeferred = async {
-                homeRepository.refreshSuggestions(excludeIds = currentDismissed)
+                homeRepository.refreshSuggestions(excludeIds = currentDismissed + todayStack.excluded.value)
             }
             val otherResults = listOf(
                 async { homeRepository.refreshFairShare() },
@@ -493,7 +512,7 @@ class HomeViewModel @Inject constructor(
             launch { homeRepository.logSuggestionDismiss(taskId, tier) }
 
             // 3) Refetch avec la dismiss list a jour
-            val result = homeRepository.refreshSuggestions(excludeIds = newDismissed)
+            val result = homeRepository.refreshSuggestions(excludeIds = newDismissed + todayStack.excluded.value)
             if (!result.success) return@launch
             val remaining = result.remainingByTier ?: emptyMap()
             lastRemainingByTier = remaining
@@ -502,7 +521,7 @@ class HomeViewModel @Inject constructor(
             //    proposer hors dismiss)
             if ((remaining[tier] ?: 0) == 0) {
                 _uiState.value = _uiState.value.copy(dismissedIds = emptySet())
-                val recycleResult = homeRepository.refreshSuggestions(excludeIds = emptySet())
+                val recycleResult = homeRepository.refreshSuggestions(excludeIds = todayStack.excluded.value)
                 if (recycleResult.success) {
                     recycleResult.remainingByTier?.let { lastRemainingByTier = it }
                 }
@@ -517,6 +536,13 @@ class HomeViewModel @Inject constructor(
         "affinity" -> getApplication<Application>().getString(R.string.home_recycle_affinity)
         "uncertain" -> getApplication<Application>().getString(R.string.home_recycle_uncertain)
         else -> getApplication<Application>().getString(R.string.home_recycle_other)
+    }
+
+    /** The cross of the red stack: the next card; after the last one, they all come back. */
+    fun passTodayCard(taskId: String) {
+        if (todayStack.pass(taskId)) {
+            _recycleToast.tryEmit(getApplication<Application>().getString(R.string.today_recycle))
+        }
     }
 
     fun clearError() {

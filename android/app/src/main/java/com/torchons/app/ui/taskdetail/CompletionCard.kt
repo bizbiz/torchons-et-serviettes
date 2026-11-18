@@ -92,7 +92,6 @@ import com.torchons.app.data.model.TaskHistoryEventType
 import com.torchons.app.ui.common.CelebrationCardContent
 import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.CompletionDialog
-import com.torchons.app.ui.common.CompletionDialogMode
 import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.common.anniversaryPeriodLabel
 import com.torchons.app.ui.user.UserProfileDialog

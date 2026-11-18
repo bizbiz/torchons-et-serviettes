@@ -5,6 +5,8 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.torchons.app.data.local.converters.Converters
 import com.torchons.app.data.local.dao.CompletionDao
+import com.torchons.app.data.local.dao.DelegationDao
+import com.torchons.app.data.local.entities.DelegationEntity
 import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.TaskHistoryDao
@@ -31,6 +33,7 @@ import com.torchons.app.data.local.entities.ViewSnapshotEntity
         TaskHistoryEntity::class,
         ContextEntity::class,
         FormerMemberEntity::class,
+        DelegationEntity::class,
     ],
     // Raising this ships a Room migration inside a MINIFIED APK (R8 is on since
     // 2026-09-03). No migration has run under R8 yet -- v95 to v96 both carried
@@ -39,7 +42,8 @@ import com.torchons.app.data.local.entities.ViewSnapshotEntity
     // 13 (2026-10-01): tasks.firstCompletedAt, the anniversary anchor.
     // 14 (2026-10-05): pending_operations.foyerId, the household an op was queued in.
     // 15 (2026-11-02): former_members, authors who left the household.
-    version = 15,
+    // 16 (2026-11-18): delegations, the « À faire aujourd'hui » cache.
+    version = 16,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -52,4 +56,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun taskHistoryDao(): TaskHistoryDao
     abstract fun contextDao(): ContextDao
     abstract fun formerMemberDao(): FormerMemberDao
+    abstract fun delegationDao(): DelegationDao
 }

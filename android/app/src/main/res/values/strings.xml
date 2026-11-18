@@ -826,7 +826,7 @@
 
     <!-- Gamification user-level -->
     <string name="settings_gamif_title">Gamification</string>
-    <string name="settings_gamif_switch_label">Masquer points et séries pour moi</string>
+    <string name="settings_gamif_switch_label">Afficher points et séries pour moi</string>
     <string name="settings_gamif_switch_subtitle">Ne change rien pour les autres membres.</string>
     <string name="settings_gamif_why_no_points">Pourquoi je n\'ai pas de points pour certaines tâches&#160;?</string>
 
@@ -1698,4 +1698,52 @@
     <string name="notification_channel_name">Notifications</string>
     <string name="notification_channel_description">Notifications Torchons &amp; Serviettes</string>
     <string name="widget_loading">Chargement…</string>
+
+    <!-- « À faire aujourd'hui » (docs/plans/a-faire-aujourdhui.md) -->
+    <string name="today_title">À faire aujourd\'hui</string>
+    <string name="today_button_cd">À faire aujourd\'hui</string>
+    <string name="today_button_cancel_cd">Annuler « À faire aujourd\'hui »</string>
+    <string name="today_you">toi</string>
+    <string name="today_handed_to_format">Confiée à %1$s</string>
+    <string name="today_handed_to_since_format">Confiée à %1$s depuis %2$s</string>
+    <string name="today_handed_by_format">Confiée par %1$s</string>
+    <string name="today_handed_by_since_format">Confiée par %1$s depuis %2$s</string>
+    <string name="today_info_format">Confiée par %1$s à %2$s</string>
+    <string name="today_pick_title">Confier pour aujourd\'hui</string>
+    <string name="today_pick_who">À qui&#160;?</string>
+    <string name="today_pick_confirm">Confier</string>
+    <string name="today_stack_count_format">%1$d sur %2$d</string>
+    <string name="today_recycle">Tâches à faire aujourd\'hui réaffichées</string>
+    <string name="settings_notif_today_title">Rappels « À faire aujourd\'hui »</string>
+    <string name="settings_notif_today_subtitle">À 12 h, 16 h et 20 h, s\'il te reste des tâches confiées</string>
+    <string name="sync_op_delegation_add">À faire aujourd\'hui</string>
+    <string name="sync_op_delegation_cancel">« À faire aujourd\'hui » annulé</string>
+    <string name="completion_title_who_when">Qui l\'a fait, et quand&#160;?</string>
+    <!-- « Date + Qui » confirm button: « Toi aujourd'hui », « Bob & Toi hier », « 4 personnes mardi » -->
+    <string name="completion_who_you_alone">Toi</string>
+    <string name="completion_who_you_last">Toi</string>
+    <!-- %1$s = who (names), %2$s = when -->
+    <string name="completion_who_day_format">%1$s %2$s</string>
+    <plurals name="completion_people_day">
+        <item quantity="one">%1$d personne %2$s</item>
+        <item quantity="other">%1$d personnes %2$s</item>
+    </plurals>
+    <!-- Points line of « Date + Qui »: %1$s = who, %2$d = points per person -->
+    <plurals name="completion_preview_earn_other">
+        <item quantity="one">💰 %1$s gagnera %2$d pt</item>
+        <item quantity="other">💰 %1$s gagnera %2$d pts</item>
+    </plurals>
+    <plurals name="completion_preview_earn_each">
+        <item quantity="one">💰 %1$s : %2$d pt chacun</item>
+        <item quantity="other">💰 %1$s : %2$d pts chacun</item>
+    </plurals>
+    <plurals name="completion_people_count">
+        <item quantity="one">%1$d personne</item>
+        <item quantity="other">%1$d personnes</item>
+    </plurals>
+    <string name="completion_day_today">aujourd\'hui</string>
+    <string name="completion_day_yesterday">hier</string>
+    <string name="completion_day_weekday_format">%1$s</string>
+    <string name="completion_day_date_format">le %1$s</string>
+    <string name="completion_day_date_pattern">d MMMM</string>
 </resources>

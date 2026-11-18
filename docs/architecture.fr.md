@@ -22,6 +22,13 @@ de déploiement client/serveur et le modèle d'appareils. Chaque section renvoie
   `tests/test_solo_task_privacy.py` balaie toutes les routes GET.
 - **Notifications de validation** : par REST (`send_completion_event`) et par `/sync`
   (`send_sync_completions`, une par membre et par appel). L'application valide par `/sync`.
+- **À faire aujourd'hui** (délégations) : un membre confie une tâche à d'autres membres qui la
+  voient. Écriture par `/sync` (table `task_delegations` : `INSERT`
+  `{"task_id", "recipient_ids"}`, `DELETE` pour annuler, par l'auteur seul), lecture par
+  `GET /delegations` ; toute validation datée de son jour ou après la solde. Notification
+  groupée après 5 minutes de calme et rappels à 12 h, 16 h et 20 h (heure de Paris), état
+  gardé en base (`services/delegation_push.py`). Interrupteur du foyer : le module `today`,
+  allumé par défaut. Spec : [`plans/a-faire-aujourdhui.md`](plans/a-faire-aujourdhui.md).
 - **Cache et hors ligne** : l'application est hors ligne d'abord ; les règles du cache Room, du
   rafraîchissement et de l'état dérivé sont dans
   [`cache-conventions.fr.md`](cache-conventions.fr.md).
@@ -38,7 +45,8 @@ Base : `/api`.
 | Tâches | `GET/POST/PUT/DELETE /tasks` |
 | Contextes | `GET /catalog/contexts` (catégories et pièces : couche de compatibilité) |
 | Validations | `POST /tasks/{id}/complete`, `GET /completions` |
-| Synchronisation | `POST /sync` |
+| Synchronisation | `POST /sync` (`tasks`, `task_completions`, `user_settings`, `task_delegations`) |
+| À faire aujourd'hui | `GET /delegations` (écritures par `/sync`) |
 | Gamification | `GET /leaderboard`, `/streaks`, `/stats/*` |
 | Fair-share | `GET /fair-share/status`, `/fair-share/history`, `GET/PUT /fair-share/config` |
 | Notifications | `POST/DELETE /notifications/register` |

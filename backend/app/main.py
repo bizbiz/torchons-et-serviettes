@@ -17,6 +17,11 @@ from sqlalchemy import text
 from app.database import engine
 from app.services.archiving import daily_archive_job
 from app.services.cleanup import daily_cleanup_job
+from app.services.delegation_push import (
+    flush_today_announcements,
+    reminder_trigger,
+    today_reminders_job,
+)
 from app.services.module_usage_triggers import daily_usage_triggers_job
 from app.services.push import flush_idle_completions
 from app.services.retard_history import daily_retard_job
@@ -79,6 +84,23 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
         max_instances=1,
     )
+    # « À faire aujourd'hui » (app/services/delegation_push.py): the grouped announcement is
+    # looked up in the database every 30 s; reminders at 12/16/20 h PARIS time, the trigger
+    # carries its own timezone so that daylight saving moves them with the clock.
+    _scheduler.add_job(
+        flush_today_announcements,
+        IntervalTrigger(seconds=30),
+        id="flush_today_announcements",
+        replace_existing=True,
+        max_instances=1,
+    )
+    _scheduler.add_job(
+        today_reminders_job,
+        reminder_trigger(),
+        id="today_reminders",
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
     _scheduler.start()
     logger.info(
         "scheduler_started",
@@ -88,6 +110,8 @@ async def lifespan(app: FastAPI):
             "daily_cleanup@03:30 UTC",
             "daily_usage_triggers@03:45 UTC",
             "flush_sync_completions@every 30 s",
+            "flush_today_announcements@every 30 s",
+            "today_reminders@12,16,20 Europe/Paris",
         ],
     )
 
@@ -173,6 +197,7 @@ from app.api.objectives import router as objectives_router
 from app.api.export import router as export_router
 from app.api.modules import router as modules_router
 from app.api.contexts import router as contexts_router
+from app.api.delegations import router as delegations_router
 
 app.include_router(auth_router)
 app.include_router(devices_router)
@@ -205,6 +230,7 @@ app.include_router(objectives_router)
 app.include_router(export_router)
 app.include_router(modules_router)
 app.include_router(contexts_router)
+app.include_router(delegations_router)
 
 
 @app.get("/api/health")

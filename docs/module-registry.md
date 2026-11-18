@@ -41,7 +41,7 @@ user creates a task without recurrence", impossible if the module is off. And a
 one-off task adds no surface — it is the absence of a recurrence rule in an
 existing form.
 
-### The 8 modules
+### The modules
 
 | # | Module | Sub-options | Scope |
 |---|--------|-------------|-------|
@@ -53,6 +53,7 @@ existing form.
 | 6 | Automatic adjustment | effort bump, frequency vote | collective |
 | 7 | Statistics & history | curves, enriched history | personal |
 | 8 | Reminders | the 6 notifications | personal |
+| 9 | To do today (added 2026-11-18, on by default) | noon/4 pm/8 pm reminders | collective |
 
 **Scope rule**: collective if the module changes the shared model, personal if
 it only changes what I see or receive. It applies to the module, not to the
@@ -241,6 +242,8 @@ and for that type alone.
 | Notifications block | reminders | P2 |
 | Affinity popup | repartition | P2 |
 | All gamification UI | motivation | P2, central gate |
+| Points in history text | motivation + `hide_for_me` | server, `points_visibility.py` |
+| Profile calendar link | motivation **or** presence | without points: "presence calendar" |
 
 The Stats tabs are now dispatched on an **identity** and not on their position:
 hiding a tab would otherwise shift the content of all the following ones.

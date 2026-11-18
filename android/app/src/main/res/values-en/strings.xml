@@ -818,7 +818,7 @@
 
     <!-- User-level gamification -->
     <string name="settings_gamif_title">Gamification</string>
-    <string name="settings_gamif_switch_label">Hide points and streaks for me</string>
+    <string name="settings_gamif_switch_label">Show points and streaks for me</string>
     <string name="settings_gamif_switch_subtitle">Changes nothing for the other members.</string>
     <string name="settings_gamif_why_no_points">Why don\'t I get points for some tasks?</string>
 
@@ -1684,4 +1684,52 @@
     <string name="notification_channel_name">Notifications</string>
     <string name="notification_channel_description">Torchons &amp; Serviettes notifications</string>
     <string name="widget_loading">Loading…</string>
+
+    <!-- "To do today" (docs/plans/a-faire-aujourdhui.md) -->
+    <string name="today_title">To do today</string>
+    <string name="today_button_cd">To do today</string>
+    <string name="today_button_cancel_cd">Cancel \"To do today\"</string>
+    <string name="today_you">you</string>
+    <string name="today_handed_to_format">Handed to %1$s</string>
+    <string name="today_handed_to_since_format">Handed to %1$s since %2$s</string>
+    <string name="today_handed_by_format">Handed by %1$s</string>
+    <string name="today_handed_by_since_format">Handed by %1$s since %2$s</string>
+    <string name="today_info_format">Handed by %1$s to %2$s</string>
+    <string name="today_pick_title">Hand over for today</string>
+    <string name="today_pick_who">To whom?</string>
+    <string name="today_pick_confirm">Hand over</string>
+    <string name="today_stack_count_format">%1$d of %2$d</string>
+    <string name="today_recycle">Tasks to do today shown again</string>
+    <string name="settings_notif_today_title">\"To do today\" reminders</string>
+    <string name="settings_notif_today_subtitle">At noon, 4 pm and 8 pm, if tasks handed to you are left</string>
+    <string name="sync_op_delegation_add">To do today</string>
+    <string name="sync_op_delegation_cancel">\"To do today\" cancelled</string>
+    <string name="completion_title_who_when">Who did it, and when?</string>
+    <!-- "Date + Who" confirm button: "You today", "Bob & you yesterday", "4 people on Tuesday" -->
+    <string name="completion_who_you_alone">You</string>
+    <string name="completion_who_you_last">you</string>
+    <!-- %1$s = who (names), %2$s = when -->
+    <string name="completion_who_day_format">%1$s %2$s</string>
+    <plurals name="completion_people_day">
+        <item quantity="one">%1$d person %2$s</item>
+        <item quantity="other">%1$d people %2$s</item>
+    </plurals>
+    <!-- Points line of « Date + Qui »: %1$s = who, %2$d = points per person -->
+    <plurals name="completion_preview_earn_other">
+        <item quantity="one">💰 %1$s will earn %2$d pt</item>
+        <item quantity="other">💰 %1$s will earn %2$d pts</item>
+    </plurals>
+    <plurals name="completion_preview_earn_each">
+        <item quantity="one">💰 %1$s: %2$d pt each</item>
+        <item quantity="other">💰 %1$s: %2$d pts each</item>
+    </plurals>
+    <plurals name="completion_people_count">
+        <item quantity="one">%1$d person</item>
+        <item quantity="other">%1$d people</item>
+    </plurals>
+    <string name="completion_day_today">today</string>
+    <string name="completion_day_yesterday">yesterday</string>
+    <string name="completion_day_weekday_format">on %1$s</string>
+    <string name="completion_day_date_format">on %1$s</string>
+    <string name="completion_day_date_pattern">MMM d</string>
 </resources>

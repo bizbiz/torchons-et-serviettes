@@ -7,7 +7,7 @@ import com.torchons.app.data.local.entities.PendingOperationEntity
 enum class PendingOpKind {
     TASK_CREATE, TASK_EDIT, TASK_DELETE,
     COMPLETION_ADD, COMPLETION_EDIT, COMPLETION_DELETE,
-    FREQUENCY_VOTE, OTHER,
+    FREQUENCY_VOTE, DELEGATION_ADD, DELEGATION_CANCEL, OTHER,
 }
 
 /** One line of the sync dialog: a queued op, what it is about, why it waits. */
@@ -38,6 +38,7 @@ internal fun pendingOpKind(table: String, operation: String): PendingOpKind = wh
         else -> PendingOpKind.OTHER
     }
     "task_frequency_votes" -> PendingOpKind.FREQUENCY_VOTE
+    "task_delegations" -> if (operation == "DELETE") PendingOpKind.DELEGATION_CANCEL else PendingOpKind.DELEGATION_ADD
     else -> PendingOpKind.OTHER
 }
 
@@ -49,7 +50,7 @@ private fun payloadOf(op: PendingOperationEntity): Map<*, *>? =
 /** Task an op is about: its row for task and vote ops, `task_id` in a completion payload. */
 internal fun taskIdOf(op: PendingOperationEntity): String? = when (op.tableName) {
     "tasks", "task_frequency_votes" -> op.rowId
-    "task_completions" -> payloadOf(op)?.get("task_id") as? String
+    "task_completions", "task_delegations" -> payloadOf(op)?.get("task_id") as? String
     else -> null
 }
 

@@ -2,15 +2,13 @@ package com.torchons.app.ui.tasklist
 
 import android.content.Context
 import com.torchons.app.data.model.Task
-import com.torchons.app.ui.common.CompletionDialogMode
 import com.torchons.app.widget.TaskWidgetEntryPoint
 import com.torchons.app.widget.WidgetLaunch
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.flow.first
 
-/** Etat du dialog partage "Deja fait" / "Fait ensemble" sur la tasklist. */
+/** State of the « Date + Qui » dialog of the task list (ui/common/CompletionDialog). */
 internal data class TaskListCompletionDialogState(
-    val mode: CompletionDialogMode,
     val taskId: String,
     val taskTitle: String,
     val assignedIds: Set<String>,
@@ -26,13 +24,9 @@ internal suspend fun findWidgetTask(context: Context, taskId: String): Task? =
     EntryPointAccessors.fromApplication(context.applicationContext, TaskWidgetEntryPoint::class.java)
         .taskRepository().observeTaskById(taskId).first()
 
-/** « Ensemble » asked from the widget, unless the task is solo (one assignee): done alone, never together. */
-internal fun WidgetLaunch.Request.togetherFor(task: Task?): Boolean = together && task?.assignedToIds?.size != 1
-
-/** The dialog a widget request opens, « Déjà fait » (Single) or « Fait ensemble » (Multi). */
+/** The « Date + Qui » dialog a widget request opens: the same as the card's. */
 internal fun widgetCompletionDialog(req: WidgetLaunch.Request, task: Task?): TaskListCompletionDialogState =
     TaskListCompletionDialogState(
-        mode = if (req.togetherFor(task)) CompletionDialogMode.Multi else CompletionDialogMode.Single,
         taskId = req.taskId,
         taskTitle = task?.title.orEmpty(),
         assignedIds = task?.assignedToIds?.toSet() ?: emptySet(),

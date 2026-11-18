@@ -191,6 +191,11 @@ ERROR_MESSAGES: dict[str, dict[str, str]] = {
         "fr": "Un membre choisi n'est pas dans le foyer.",
         "en": "A chosen member is not in the household.",
     },
+    # « À faire aujourd'hui »: a recipient must see the task and be someone else than its author.
+    "DELEGATION_RECIPIENTS_INVALID": {
+        "fr": "Cette tâche ne peut être confiée qu'à un autre membre qui la voit.",
+        "en": "This task can only be handed to another member who can see it.",
+    },
     "COMPLETION_PARTICIPANTS_OUTSIDE_FOYER": {
         "fr": "Plus dans le foyer : {names}",
         "en": "No longer in the household: {names}",

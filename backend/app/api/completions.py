@@ -38,6 +38,7 @@ from app.services.recurrence import (
     min_completion_gap_seconds,
 )
 from app.services.task_flags import NO_FLAGS, resolve_flags_for_tasks
+from app.services.delegations import settle_task_delegations
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
 from app.utils.scoping import (
@@ -161,6 +162,14 @@ async def _recompute_inferred_interval(
     task.version += 1
 
 
+async def _after_completion(
+    session: AsyncSession, task: Task, foyer_id: UUID, user_id: str, completed_at: datetime,
+) -> None:
+    """What a REST completion changes beyond its rows: the inferred interval of an uncertain
+    task, and the end of the task's « À faire aujourd'hui » delegation (services/delegations.py).
+    """
+    await _recompute_inferred_interval(session, task, foyer_id)
+    await settle_task_delegations(session, task.id, user_id, foyer_id, completed_at)
 
 
 @router.post("/api/tasks/{task_id}/complete", response_model=CompletionResponse, status_code=201)
@@ -247,7 +256,7 @@ async def complete_task(
 
     # Uncertain : recalculer inferred_interval_days a partir de l'historique
     # complet (la completion qu'on vient de creer est deja flush).
-    await _recompute_inferred_interval(session, task, current_foyer_uuid(current))
+    await _after_completion(session, task, current_foyer_uuid(current), current["user_id"], completed_at_effective)
 
     await record_change(
         session, "task_completions", completion.id, "INSERT", current["user_id"],
@@ -389,7 +398,7 @@ async def complete_task_collective(
         task.version += 1
 
     # 8bis. Uncertain : recalculer inferred_interval_days sur tout l'historique.
-    await _recompute_inferred_interval(session, task, foyer_uuid)
+    await _after_completion(session, task, foyer_uuid, current["user_id"], completed_at)
 
     # 9. Changelog : une entree par ligne pour que la sync offline rapatrie tout.
     for comp in created:

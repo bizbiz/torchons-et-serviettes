@@ -26,6 +26,7 @@ from app.models.objective import Objective
 from app.models.module_state import ModuleState
 from app.models.module_guide_view import ModuleGuideView
 from app.models.context import Context, TaskContext
+from app.models.task_delegation import TaskDelegation, TaskDelegationRecipient
 
 __all__ = [
     "Base", "User", "Foyer", "UserFoyer", "Task",
@@ -42,4 +43,5 @@ __all__ = [
     "Objective",
     "ModuleState", "ModuleGuideView",
     "Context", "TaskContext",
+    "TaskDelegation", "TaskDelegationRecipient",
 ]

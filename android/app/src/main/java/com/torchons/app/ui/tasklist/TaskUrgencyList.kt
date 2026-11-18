@@ -136,21 +136,3 @@ internal fun isToDo(t: TaskWithUrgency): Boolean = when {
     t.group == RecurrenceGroup.CADENCE -> t.state != TaskUrgencyCalculator.State.GREEN
     else -> t.lastCompletedAt == null
 }
-
-/**
- * What the widget lists: « À faire » only, so a ticked task leaves it at once and a second ✓
- * has nothing to land on (Quentin, 2026-11-11: three ✓ in 6 s on a green task gave three
- * completions). An « uncertain » task, which « À faire » always keeps, leaves for the day it
- * was done.
- */
-internal fun onWidget(t: TaskWithUrgency, today: LocalDate): Boolean =
-    isToDo(t) && !(t.isUncertain && localDay(t.lastCompletedAt) == today)
-
-private fun localDay(iso: String?): LocalDate? {
-    if (iso.isNullOrBlank()) return null
-    val instant = runCatching { java.time.Instant.parse(iso) }
-        .recoverCatching { java.time.OffsetDateTime.parse(iso).toInstant() }
-        .recoverCatching { java.time.Instant.parse("${iso}Z") }
-        .getOrNull() ?: return null
-    return instant.atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-}

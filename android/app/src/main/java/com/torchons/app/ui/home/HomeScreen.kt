@@ -1,7 +1,5 @@
 package com.torchons.app.ui.home
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,60 +12,35 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.SelectableDates
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material3.rememberDatePickerState
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -78,17 +51,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
 import com.torchons.app.ui.common.Modules
 import com.torchons.app.ui.common.moduleEnabled
-import com.torchons.app.data.model.PendingAffinity
-import com.torchons.app.data.model.TaskContextRef
-import com.torchons.app.data.model.Suggestion
-import com.torchons.app.ui.common.CelebrationCardContent
 import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.RatingDialog
-import com.torchons.app.ui.common.SoloPointsInfoDialog
-import com.torchons.app.ui.common.RatingRecurrence
-import com.torchons.app.ui.common.rememberCelebration
-import com.torchons.app.util.CompletionDateLabels
-import com.torchons.app.util.TaskUrgencyCalculator
 
 @Composable
 fun HomeScreen(
@@ -412,6 +376,17 @@ fun HomeScreen(
             onSeeFoyer = onFoyerClick,
         )
 
+        // « À faire aujourd'hui »: the red stack, one card at a time, on top (HomeTodayStack.kt).
+        val todayOn = moduleEnabled(Modules.TODAY)
+        val todayCard by viewModel.todayStack.current.collectAsState()
+        val todayExcluded by viewModel.todayStack.excluded.collectAsState()
+        val memberNames by viewModel.memberNames.collectAsState()
+        if (todayOn) todayCard?.let { card ->
+            HomeTodayCard(
+                viewModel, card, memberNames.toList(), memberNames, gamificationVisible, onTaskClick, onEditTask,
+            )
+        }
+
         // 2 cards projection (v0.8.0 magic buttons)
         // P3 — retard, rythme et objectif appartiennent au module `objectives`.
         if (moduleEnabled(Modules.OBJECTIVES)) {
@@ -436,7 +411,9 @@ fun HomeScreen(
         // au cold start — preserve a travers LifecycleResumeEffect.
         val visibleSuggestions = uiState.suggestions.filter { s ->
             s.taskId == uiState.celebratingTaskId ||
-                (s.taskId !in uiState.justCompletedIds && s.taskId !in uiState.dismissedIds)
+                (s.taskId !in uiState.justCompletedIds && s.taskId !in uiState.dismissedIds &&
+                    // Handed by me or to me: in no suggestion pile (also passed to /suggestions).
+                    !(todayOn && s.taskId in todayExcluded))
         }
         // Top 1 par tier : urgent + affinity + uncertain (3 cards max).
         // La 3e section "Sans cadence" (v0.14, Q3) ne s'affiche que si le
@@ -583,580 +560,5 @@ fun HomeScreen(
         modifier = Modifier.align(Alignment.BottomCenter),
     )
     } // fin du Box outer (celebration overlay layer)
-}
-
-@Composable
-private fun SuggestionCard(
-    suggestion: Suggestion,
-    room: TaskContextRef?,
-    category: TaskContextRef?,
-    lastCompletedAt: String? = null,
-    isCelebrating: Boolean,
-    celebrationPoints: Int? = null,
-    celebrationReason: String? = null,
-    /** v0.32 : si false, masque la pastille bonus, la ligne "💰 N pts" et
-     *  le "+X pts" dans la celebration. Le reste (titre, countdown, piece,
-     *  bouton "Fait !") reste inchange. */
-    gamificationVisible: Boolean = true,
-    /** Per-participant attribution shown in the celebration (name, points). */
-    celebrationEarnedBy: List<Pair<String, Int>>? = null,
-    /** Household members as (userId, displayName) pairs, deduplicated. */
-    members: List<Pair<String, String>> = emptyList(),
-    currentUserId: String = "",
-    /** Server points preview for (isoDate, numParticipants); null offline. */
-    previewProvider: suspend (isoDate: String, numParticipants: Int) -> com.torchons.app.data.model.CompletionPreview? = { _, _ -> null },
-    onClick: () -> Unit,
-    /** Immediate completion by the current user, dated now (J-0 path). */
-    onCompleteToday: (previewPoints: Int?, previewReason: String?) -> Unit,
-    /** Backdated single completion; completedBy null = current user. */
-    onCompleteAtDate: (isoDate: String, completedBy: String?, previewPoints: Int?, previewReason: String?) -> Unit,
-    /** Collective completion by the given participants at the given date. */
-    onCompleteCollective: (participantIds: List<String>, isoDate: String) -> Unit,
-    onEdit: () -> Unit,
-    onDismiss: () -> Unit = {},
-) {
-    val reasonLabel = when (suggestion.reason) {
-        "urgent" -> stringResource(R.string.suggestion_reason_urgent)
-        "uncertain" -> stringResource(R.string.suggestion_reason_uncertain)
-        else -> stringResource(R.string.suggestion_reason_affinity)
-    }
-    val reasonIcon = when (suggestion.reason) {
-        "urgent" -> Icons.Default.Warning
-        "uncertain" -> Icons.Default.Refresh
-        else -> Icons.Default.Favorite
-    }
-    val reasonColor = when (suggestion.reason) {
-        "urgent" -> TaskUrgencyCalculator.ROUGE
-        else -> TaskUrgencyCalculator.VERT
-    }
-    // Pickee une seule fois pour cette celebration (key suggestion.taskId).
-    val celebration = if (isCelebrating) rememberCelebration(suggestion.taskId) else null
-
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        // Mode celebration : on remplace tout le contenu par les emoji de
-        // felicitations. Le confetti est gere au niveau du Box parent.
-        if (celebration != null) {
-            CelebrationCardContent(
-                emoji = celebration.first,
-                text = celebration.second,
-                points = celebrationPoints,
-                reason = celebrationReason,
-                earnedBy = celebrationEarnedBy,
-            )
-            return@Card
-        }
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Badge raison + pastille bonus + bouton edit
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = reasonIcon,
-                    contentDescription = null,
-                    tint = reasonColor,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = reasonLabel,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = reasonColor,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                if (gamificationVisible && suggestion.bonusEligible && suggestion.bonusPct > 0f) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFFFFE8D6))
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.suggestion_bonus_badge_format, (suggestion.bonusPct * 100).toInt()),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFC2410C),
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                }
-                IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = stringResource(R.string.suggestion_edit_cd),
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                // v0.16+ : ignorer cette suggestion (session only, reset au
-                // cold start). La suivante du meme tier prend la place.
-                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(R.string.suggestion_dismiss_cd),
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = suggestion.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            // Countdown text (dans Nj / aujourd'hui / en retard de Nj). Couleur
-            // selon l'etat (vert/orange/rouge) renvoye par /api/suggestions.
-            // Pour uncertain (v0.14) : libelle factuel "Fait il y a X j" au lieu
-            // du countdown (pas de notion de retard, Q2/Q9).
-            val urgencyRes = androidx.compose.ui.platform.LocalContext.current.resources
-            val countdownLabel = if (suggestion.reason == "uncertain") {
-                TaskUrgencyCalculator.uncertainCountdownLabel(
-                    res = urgencyRes,
-                    lastCompletedAt = lastCompletedAt,
-                    today = java.time.LocalDate.now(),
-                )
-            } else {
-                TaskUrgencyCalculator.countdownLabelFromDays(urgencyRes, suggestion.daysUntilDue)
-            }
-            if (countdownLabel.isNotEmpty()) {
-                Text(
-                    text = countdownLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TaskUrgencyCalculator.stateColor(suggestion.state),
-                    fontWeight = FontWeight.Medium,
-                )
-            }
-
-            // Piece + categorie (ligne discrete sous le titre)
-            TaskMetaRow(room = room, category = category)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Completion controls state — declared before the points line
-            // because the predicted points follow the selected date. One
-            // selectedDate per card, shared by both buttons; keyed on taskId
-            // so it resets to "today / everyone" whenever the suggested task
-            // changes or the screen leaves composition.
-            val today = java.time.LocalDate.now()
-            var selectedDate by remember(suggestion.taskId) { mutableStateOf(today) }
-            // Defensive clamp if the app crossed midnight while in memory.
-            if (selectedDate.isAfter(today)) selectedDate = today
-            val memberIds = remember(members) { members.map { it.first } }
-            var selectedParticipantIds by remember(suggestion.taskId, memberIds) {
-                mutableStateOf(memberIds.toSet())
-            }
-            var showDatePicker by remember(suggestion.taskId) { mutableStateOf(false) }
-            var showParticipantsMenu by remember(suggestion.taskId) { mutableStateOf(false) }
-
-            val dayOffset = java.time.temporal.ChronoUnit.DAYS
-                .between(selectedDate, today).toInt()
-            val dayLabel = CompletionDateLabels.relativeDayLabel(urgencyRes, selectedDate, today)
-
-            // Date-aware points preview: backdating changes bonus/malus, so
-            // the points line must follow the selected date (a late bonus
-            // disappears when the completion is dated back before the due
-            // date). J-0 keeps the /suggestions prediction; null on fetch
-            // failure (offline) falls back to it too.
-            var datePreview by remember(suggestion.taskId) {
-                mutableStateOf<com.torchons.app.data.model.CompletionPreview?>(null)
-            }
-            LaunchedEffect(suggestion.taskId, selectedDate) {
-                datePreview = if (dayOffset == 0) null
-                else previewProvider(CompletionDateLabels.toIsoNoonUtc(selectedDate), 1)
-            }
-            // Best-known single-completion points for the current selection,
-            // passed to the celebration so it can attribute exact points.
-            val singlePreviewPoints = datePreview?.finalPoints
-                ?: suggestion.predictedFinalPoints.takeIf { dayOffset == 0 }
-            val singlePreviewReason = datePreview?.reason
-                ?: "BONUS_RETARD".takeIf {
-                    dayOffset == 0 && suggestion.bonusEligible &&
-                        suggestion.predictedFinalPoints > suggestion.predictedBasePoints
-                }
-
-            // Ligne points predits : "💰 N pts" (+ delta bonus si applicable).
-            // Pour les taches solo (predicted = 0) : "💰 0 pt" + icone (i)
-            // cliquable qui ouvre SoloPointsInfoDialog (pedago "pourquoi 0 ?").
-            // Cachee en mode opt-out (v0.32).
-            if (gamificationVisible) {
-                SuggestionPointsLine(suggestion = suggestion, preview = datePreview)
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-            // Left slot: -1 day arrow, becomes a calendar shortcut past 15
-            // days back. Right slot: +1 day arrow, calendar shortcut at J-0
-            // (there is never a future date to navigate to).
-            val atCalendarDepth = dayOffset >= MAX_ARROW_NAV_DAYS
-            val leftIcon =
-                if (atCalendarDepth) Icons.Default.CalendarMonth
-                else Icons.AutoMirrored.Filled.KeyboardArrowLeft
-            val leftCd = stringResource(
-                if (atCalendarDepth) R.string.home_date_open_calendar_cd
-                else R.string.home_date_prev_day_cd
-            )
-            val onLeftSlot: () -> Unit = {
-                if (dayOffset >= MAX_ARROW_NAV_DAYS) showDatePicker = true
-                else selectedDate = selectedDate.minusDays(1)
-            }
-            val rightIcon =
-                if (dayOffset == 0) Icons.Default.CalendarMonth
-                else Icons.AutoMirrored.Filled.KeyboardArrowRight
-            val rightCd = stringResource(
-                if (dayOffset == 0) R.string.home_date_open_calendar_cd
-                else R.string.home_date_next_day_cd
-            )
-            val onRightSlot: () -> Unit = {
-                if (dayOffset == 0) showDatePicker = true
-                else selectedDate = selectedDate.plusDays(1)
-            }
-
-            // Button 1 — "Done <day>": immediate completion by me.
-            SegmentedCompletionButton(
-                centerLabel = stringResource(R.string.home_done_day_format, dayLabel),
-                leftIcon = leftIcon,
-                leftContentDescription = leftCd,
-                onLeftClick = onLeftSlot,
-                rightIcon = rightIcon,
-                rightContentDescription = rightCd,
-                onRightClick = onRightSlot,
-                onCenterClick = {
-                    if (dayOffset == 0) {
-                        onCompleteToday(singlePreviewPoints, singlePreviewReason)
-                    } else {
-                        onCompleteAtDate(
-                            CompletionDateLabels.toIsoNoonUtc(selectedDate),
-                            null,
-                            singlePreviewPoints,
-                            singlePreviewReason,
-                        )
-                    }
-                },
-                filled = true,
-            )
-
-            // Button 2 — "Together <day>" with participant chevron. Hidden
-            // for single-member households (no one to share with).
-            if (members.size >= 2) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val allSelected = selectedParticipantIds.size == memberIds.size
-                val centerLabel = when {
-                    allSelected -> stringResource(R.string.home_together_day_format, dayLabel)
-                    selectedParticipantIds.size == 1 -> stringResource(
-                        R.string.home_done_by_one_day_format,
-                        members.firstOrNull { it.first == selectedParticipantIds.first() }?.second.orEmpty(),
-                        dayLabel,
-                    )
-                    else -> pluralStringResource(
-                        R.plurals.home_done_by_people_day,
-                        selectedParticipantIds.size,
-                        selectedParticipantIds.size,
-                        dayLabel,
-                    )
-                }
-                SegmentedCompletionButton(
-                    centerLabel = centerLabel,
-                    leftIcon = leftIcon,
-                    leftContentDescription = leftCd,
-                    onLeftClick = onLeftSlot,
-                    rightIcon = rightIcon,
-                    rightContentDescription = rightCd,
-                    onRightClick = onRightSlot,
-                    onCenterClick = {
-                        val iso = CompletionDateLabels.toIsoNoonUtc(selectedDate)
-                        if (selectedParticipantIds.size == 1) {
-                            onCompleteAtDate(
-                                iso,
-                                selectedParticipantIds.first(),
-                                singlePreviewPoints,
-                                singlePreviewReason,
-                            )
-                        } else {
-                            // Collective: the server response corrects the
-                            // celebration with the exact per-participant split.
-                            onCompleteCollective(selectedParticipantIds.toList(), iso)
-                        }
-                    },
-                    filled = false,
-                    chevronContentDescription = stringResource(R.string.home_participants_chevron_cd),
-                    onChevronClick = if (members.size > 1) ({ showParticipantsMenu = true }) else null,
-                    chevronMenu = {
-                        ParticipantsMenu(
-                            expanded = showParticipantsMenu,
-                            members = members,
-                            currentUserId = currentUserId,
-                            selectedIds = selectedParticipantIds,
-                            onSelectionChange = { selectedParticipantIds = it },
-                            onDismiss = { showParticipantsMenu = false },
-                        )
-                    },
-                )
-            }
-
-            if (showDatePicker) {
-                PastOnlyDatePickerDialog(
-                    initialDate = selectedDate,
-                    onDateSelected = {
-                        selectedDate = it.coerceAtMost(today)
-                        showDatePicker = false
-                    },
-                    onDismiss = { showDatePicker = false },
-                )
-            }
-        }
-    }
-}
-
-/** Arrow navigation depth: past this many days back, the left slot turns
- *  into a calendar shortcut (the picker becomes the only way further). */
-private const val MAX_ARROW_NAV_DAYS = 15
-
-/**
- * Participant selector anchored to the chevron slot of the "Together"
- * button. Two-member household: radio choice between "Together" (both)
- * and "Just <other>". Three or more: one checkbox row per member (at
- * least one must stay selected), menu stays open while toggling.
- */
-@Composable
-private fun ParticipantsMenu(
-    expanded: Boolean,
-    members: List<Pair<String, String>>,
-    currentUserId: String,
-    selectedIds: Set<String>,
-    onSelectionChange: (Set<String>) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val memberIds = members.map { it.first }
-    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
-        if (members.size == 2) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.home_participants_together)) },
-                leadingIcon = {
-                    RadioButton(selected = selectedIds.size == memberIds.size, onClick = null)
-                },
-                onClick = {
-                    onSelectionChange(memberIds.toSet())
-                    onDismiss()
-                },
-            )
-            val other = members.firstOrNull { it.first != currentUserId }
-            if (other != null) {
-                DropdownMenuItem(
-                    text = {
-                        Text(stringResource(R.string.home_participants_just_other_format, other.second))
-                    },
-                    leadingIcon = {
-                        RadioButton(selected = selectedIds == setOf(other.first), onClick = null)
-                    },
-                    onClick = {
-                        onSelectionChange(setOf(other.first))
-                        onDismiss()
-                    },
-                )
-            }
-        } else {
-            members.forEach { (id, name) ->
-                val checked = id in selectedIds
-                DropdownMenuItem(
-                    text = { Text(name) },
-                    leadingIcon = { Checkbox(checked = checked, onCheckedChange = null) },
-                    onClick = {
-                        val next = when {
-                            !checked -> selectedIds + id
-                            selectedIds.size > 1 -> selectedIds - id
-                            else -> selectedIds // never allow an empty selection
-                        }
-                        onSelectionChange(next)
-                    },
-                )
-            }
-        }
-    }
-}
-
-/**
- * Material3 DatePickerDialog restricted to past dates (today included).
- * Only sets the shared selected date — completion stays on the center tap.
- * Millis are interpreted as UTC calendar days, consistent with
- * [CompletionDateLabels.millisToIsoNoonUtc].
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PastOnlyDatePickerDialog(
-    initialDate: java.time.LocalDate,
-    onDateSelected: (java.time.LocalDate) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    // Bound by the user's local "today": no future day can be picked.
-    val maxDate = java.time.LocalDate.now()
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = initialDate
-            .atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(),
-        selectableDates = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                val date = java.time.Instant.ofEpochMilli(utcTimeMillis)
-                    .atOffset(java.time.ZoneOffset.UTC).toLocalDate()
-                return !date.isAfter(maxDate)
-            }
-
-            override fun isSelectableYear(year: Int): Boolean = year <= maxDate.year
-        },
-    )
-
-    androidx.compose.material3.DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            Button(onClick = {
-                datePickerState.selectedDateMillis?.let { millis ->
-                    onDateSelected(
-                        java.time.Instant.ofEpochMilli(millis)
-                            .atOffset(java.time.ZoneOffset.UTC).toLocalDate()
-                    )
-                }
-            }) {
-                Text(stringResource(R.string.common_validate))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.common_cancel))
-            }
-        }
-    ) {
-        DatePicker(state = datePickerState)
-    }
-}
-
-/**
- * Ligne "💰 N pts" sous la card home, juste au-dessus du bouton "Fait !".
- *
- * Affiche les points predits par /api/suggestions (predicted_final_points)
- * pour rendre la gamification lisible AVANT la completion (l'utilisateur
- * sait combien il va gagner avant de cliquer).
- *
- * Trois cas visuels :
- *  - Solo (predicted = 0) : "💰 0 pt" en gris + icone (i) qui ouvre
- *    SoloPointsInfoDialog (pedago "pourquoi 0 ?").
- *  - Bonus retard eligible (bonusEligible) : "💰 N pts" en vert avec un
- *    suffixe "+M pts bonus retard" pour rendre le bonus tangible.
- *  - Cas standard : "💰 N pts" neutre.
- */
-@Composable
-private fun SuggestionPointsLine(
-    suggestion: Suggestion,
-    /** Date-aware server preview; overrides the /suggestions prediction
-     *  when the user navigated to a past day (late bonus may disappear,
-     *  an early malus may appear). Null = J-0 or offline fallback. */
-    preview: com.torchons.app.data.model.CompletionPreview? = null,
-) {
-    var showInfo by remember { mutableStateOf(false) }
-    val finalPts = preview?.finalPoints ?: suggestion.predictedFinalPoints
-    val basePts = preview?.basePoints ?: suggestion.predictedBasePoints
-    val delta = finalPts - basePts
-    // Solo detection stays on the suggestion values: a solo task predicts
-    // 0 whatever the date, while a preview could legitimately reach 0.
-    val isSolo = suggestion.predictedFinalPoints == 0 && suggestion.predictedBasePoints == 0
-    val bonusShown = delta > 0 && (preview?.reason == "BONUS_RETARD" || (preview == null && suggestion.bonusEligible))
-    val malusShown = delta < 0
-    val color = when {
-        isSolo -> MaterialTheme.colorScheme.onSurfaceVariant
-        bonusShown -> Color(0xFF2E7D32)
-        malusShown -> Color(0xFFEF6C00)
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = "💰 ",
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Text(
-            text = pluralStringResource(R.plurals.suggestion_predicted_points, finalPts, finalPts),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = color,
-        )
-        if (!isSolo && bonusShown) {
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = pluralStringResource(R.plurals.suggestion_bonus_delta_points, delta, delta),
-                style = MaterialTheme.typography.labelSmall,
-                color = color,
-            )
-        }
-        if (!isSolo && malusShown) {
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = pluralStringResource(R.plurals.suggestion_malus_delta_points, -delta, -delta),
-                style = MaterialTheme.typography.labelSmall,
-                color = color,
-            )
-        }
-        if (isSolo) {
-            Spacer(Modifier.width(4.dp))
-            Icon(
-                imageVector = Icons.Outlined.Info,
-                contentDescription = stringResource(R.string.suggestion_solo_points_info_cd),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier
-                    .size(18.dp)
-                    .clickable { showInfo = true },
-            )
-        }
-    }
-
-    if (showInfo) {
-        SoloPointsInfoDialog(onDismiss = { showInfo = false })
-    }
-}
-
-/**
- * Ligne de meta sous un titre de tache : emoji+nom de la piece + nom de
- * la categorie en pastille discrete. Affiche rien si les deux sont null.
- *
- * Pattern utilise par SuggestionCard pour rappeler le contexte (ou est
- * la tache, dans quel "univers" elle vit).
- */
-@Composable
-private fun TaskMetaRow(room: TaskContextRef?, category: TaskContextRef?) {
-    if (room == null && category == null) return
-    Spacer(modifier = Modifier.height(4.dp))
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        if (room != null) {
-            val label = if (!room.emoji.isNullOrBlank()) "${room.emoji} ${room.name}" else room.name
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (category != null) {
-            val catColor = remember(category.color) {
-                try { Color(android.graphics.Color.parseColor(category.color)) }
-                catch (_: Exception) { Color.Gray }
-            }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(catColor.copy(alpha = 0.15f))
-                    .padding(horizontal = 6.dp, vertical = 1.dp),
-            ) {
-                Text(
-                    text = category.name,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = catColor,
-                )
-            }
-        }
-    }
 }
 

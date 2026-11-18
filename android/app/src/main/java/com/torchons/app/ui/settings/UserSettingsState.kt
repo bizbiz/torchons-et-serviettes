@@ -24,5 +24,7 @@ data class UserSettingsState(
     // Defaut true = comportement historique (avant ce reglage etait
     // implicite et toujours actif).
     val hideHomeTasksOffWifi: Boolean = true,
+    // « À faire aujourd'hui » reminders at 12/16/20 h (personal, on by default).
+    val notifTodayReminders: Boolean = true,
     val isLoaded: Boolean = false
 )

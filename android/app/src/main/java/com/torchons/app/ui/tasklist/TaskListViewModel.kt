@@ -9,7 +9,9 @@ import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.CompletionChecks
+import com.torchons.app.data.repository.DelegationRepository
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.ui.today.TodayDelegations
 import com.torchons.app.util.CompletionDateLabels
 import com.torchons.app.util.WifiHelper
 import java.time.LocalDate
@@ -43,7 +45,8 @@ class TaskListViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
     private val apiService: ApiService,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    delegationRepository: DelegationRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TaskListUiState(isLoading = true))
@@ -54,6 +57,9 @@ class TaskListViewModel @Inject constructor(
 
     val userId: StateFlow<String?> = authRepository.userIdFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** « À faire aujourd'hui »: delegations by task, hand / cancel (offline-first). */
+    val today = TodayDelegations(viewModelScope, delegationRepository)
 
     val allUsers: StateFlow<List<User>> = taskRepository.observeUsers()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -147,6 +153,7 @@ class TaskListViewModel @Inject constructor(
                 // aligne.
                 async { taskRepository.refreshCompletions(limit = 2000) },
                 async { taskRepository.refreshUsers() },
+                async { today.refresh() },
             ).awaitAll()
 
             try {
