@@ -4,7 +4,6 @@ import com.torchons.app.R
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
@@ -44,7 +43,6 @@ class TaskListViewModel @Inject constructor(
     private val completionChecks: CompletionChecks,
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
-    private val apiService: ApiService,
     @ApplicationContext private val context: Context,
     delegationRepository: DelegationRepository,
 ) : ViewModel() {
@@ -93,11 +91,9 @@ class TaskListViewModel @Inject constructor(
             ) { tasks, completions, filters ->
                 val homeSsids = tokenManager.homeSsidsFlow.first()
                 val isAtHome = WifiHelper.isAtHome(context, homeSsids)
-                val currentUserId = tokenManager.userIdFlow.first()
                 val hideHomeTasksOffWifi = tokenManager.hideHomeTasksOffWifiFlow.first()
                 val filtered = applyFilters(
-                    tasks, completions, filters,
-                    isAtHome, currentUserId, hideHomeTasksOffWifi, context.resources,
+                    tasks, completions, filters, isAtHome, hideHomeTasksOffWifi, context.resources,
                 )
                 ProcessedTaskList(
                     filtered = filtered,
@@ -105,24 +101,20 @@ class TaskListViewModel @Inject constructor(
                     filters = filters,
                 )
             }.flowOn(Dispatchers.Default).collect { processed ->
-                // Attention : on ne recopie PAS searchQuery / searchRespectFilters
-                // ici. Ces champs sont mis a jour synchroniquement dans
-                // updateSearchQuery / toggleSearchRespectFilters pour eviter que
+                // Attention : on ne recopie PAS searchQuery
+                // ici. Ce champ est mis a jour synchroniquement dans
+                // updateSearchQuery pour eviter que
                 // le pipeline async (qui fait applyFilters sur Dispatchers.Default)
                 // ne remette une version en retard dans le TextField. Sans ca,
                 // le curseur "revient en arriere" quand l'utilisateur tape vite.
                 _uiState.value = _uiState.value.copy(
                     tasks = processed.filtered.tasks,
+                    blocks = processed.filtered.blocks,
+                    searching = processed.filtered.searching,
                     availableContexts = processed.filtered.contexts,
                     isAtHome = processed.filtered.isAtHome,
                     homeTasksHidden = processed.filtered.homeTasksHidden,
                     showAllTasks = processed.filters.showAllTasks,
-                    filterTodo = processed.filters.filterTodo,
-                    filterAffinity = processed.filters.filterAffinity,
-                    filterEffort = processed.filters.filterEffort,
-                    filterRecurrence = processed.filters.filterRecurrence,
-                    filterHome = processed.filters.filterHome,
-                    filterAssignment = processed.filters.filterAssignment,
                     selectedContextIds = processed.filters.selectedContextIds,
                     hasCachedData = processed.hasCache,
                     isLoading = if (processed.hasCache) false else _uiState.value.isLoading,
@@ -155,16 +147,6 @@ class TaskListViewModel @Inject constructor(
                 async { taskRepository.refreshUsers() },
                 async { today.refresh() },
             ).awaitAll()
-
-            try {
-                val affResp = apiService.getMyAffinities()
-                if (affResp.isSuccessful) {
-                    val affinities = (affResp.body() ?: emptyList()).associate {
-                        (it["task_id"] as? String ?: "") to ((it["score"] as? Double)?.toInt() ?: 5)
-                    }
-                    filtersFlow.value = filtersFlow.value.copy(myAffinities = affinities)
-                }
-            } catch (_: Exception) {}
 
             val allOk = results.all { it }
 
@@ -401,30 +383,12 @@ class TaskListViewModel @Inject constructor(
     suspend fun fetchCompletionPreview(taskId: String, isoDate: String, numParticipants: Int) =
         completionChecks.preview(taskId, isoDate, numParticipants)
 
-    fun toggleFilterTodo() {
-        filtersFlow.value = filtersFlow.value.copy(
-            filterTodo = nextFilterState(filtersFlow.value.filterTodo)
-        )
-    }
-
-    fun toggleFilterAffinity() {
-        filtersFlow.value = filtersFlow.value.copy(filterAffinity = nextFilterState(filtersFlow.value.filterAffinity))
-    }
-
-    fun toggleFilterEffort() {
-        filtersFlow.value = filtersFlow.value.copy(filterEffort = nextFilterState(filtersFlow.value.filterEffort))
-    }
-
-    fun toggleFilterRecurrence() {
-        filtersFlow.value = filtersFlow.value.copy(filterRecurrence = nextFilterState(filtersFlow.value.filterRecurrence))
-    }
-
-    fun toggleFilterHome() {
-        filtersFlow.value = filtersFlow.value.copy(filterHome = nextFilterState(filtersFlow.value.filterHome))
-    }
-
-    fun toggleFilterAssignment() {
-        filtersFlow.value = filtersFlow.value.copy(filterAssignment = nextFilterState(filtersFlow.value.filterAssignment))
+    /**
+     * « Afficher / Masquer les tâches à jour ». Lives in this ViewModel: kept while the app runs,
+     * folded again at a cold start (the tab opens on what is to do).
+     */
+    fun toggleUpToDate() {
+        _uiState.value = _uiState.value.copy(showUpToDate = !_uiState.value.showUpToDate)
     }
 
     /**
@@ -457,21 +421,10 @@ class TaskListViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isSearchBarExpanded = true)
     }
 
-    /**
-     * Ferme la barre de recherche : vide la query et reset le toggle.
-     * La prochaine ouverture repart donc sur les valeurs par defaut
-     * (query vide, filtres ignores).
-     */
+    /** Ferme la barre de recherche et vide la query. */
     fun closeSearchBar() {
-        _uiState.value = _uiState.value.copy(
-            isSearchBarExpanded = false,
-            searchQuery = "",
-            searchRespectFilters = false,
-        )
-        filtersFlow.value = filtersFlow.value.copy(
-            searchQuery = "",
-            searchRespectFilters = false,
-        )
+        _uiState.value = _uiState.value.copy(isSearchBarExpanded = false, searchQuery = "")
+        filtersFlow.value = filtersFlow.value.copy(searchQuery = "")
     }
 
     /**
@@ -484,19 +437,7 @@ class TaskListViewModel @Inject constructor(
         filtersFlow.value = filtersFlow.value.copy(searchQuery = query)
     }
 
-    fun toggleSearchRespectFilters() {
-        val next = !filtersFlow.value.searchRespectFilters
-        _uiState.value = _uiState.value.copy(searchRespectFilters = next)
-        filtersFlow.value = filtersFlow.value.copy(searchRespectFilters = next)
-    }
-
     suspend fun logout() {
         authRepository.logout()
-    }
-
-    private fun nextFilterState(current: FilterState): FilterState = when (current) {
-        FilterState.OFF -> FilterState.HIGH
-        FilterState.HIGH -> FilterState.LOW
-        FilterState.LOW -> FilterState.OFF
     }
 }

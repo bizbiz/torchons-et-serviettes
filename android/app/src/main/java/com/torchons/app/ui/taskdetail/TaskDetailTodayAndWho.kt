@@ -31,6 +31,13 @@ import com.torchons.app.util.TaskUrgencyCalculator
  * kept out of TaskDetailScreen, which is at its size cap.
  */
 
+/** The state dot and label of the task page: grey instead of green for a task without cadence. */
+@Composable
+internal fun taskPageStateColor(
+    state: com.torchons.app.util.TaskUrgencyCalculator.State,
+    rule: com.torchons.app.data.model.RecurrenceRule?,
+): Color = com.torchons.app.ui.common.taskStateColor(state, com.torchons.app.ui.common.hasNoCadence(rule))
+
 /**
  * « Date + Qui »: one completion for one member checked, a collective one for several.
  * [together] (the page's « Fait ensemble »): every assignee checked at opening, and in a

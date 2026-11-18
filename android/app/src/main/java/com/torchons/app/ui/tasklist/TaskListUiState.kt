@@ -22,8 +22,8 @@ import com.torchons.app.util.TaskUrgencyCalculator
  * - CADENCE : recurrence definie (interval/weekdays/monthly/custom/monthly_variable)
  * - SANS_CADENCE : non-recurrente OU type "uncertain" (cadence libre/inconnue)
  *
- * Pilote le chip 🔁 (HIGH = CADENCE seul, LOW = SANS_CADENCE seul) et la
- * semantique adaptative du filtre "a faire" (voir applyFilters).
+ * Pilote la regle « a faire » (isToDo), les blocs de l'onglet (TaskListBlocks.kt) et le
+ * liseré gris des taches sans frequence.
  */
 enum class RecurrenceGroup { CADENCE, SANS_CADENCE }
 
@@ -37,35 +37,32 @@ data class TaskWithUrgency(
     val categoryColor: String?,
     val roomName: String?,
     val roomEmoji: String?,
-    val myAffinity: Int? = null,
     val group: RecurrenceGroup = RecurrenceGroup.CADENCE,
     /** Date ISO de la derniere completion, null si jamais completee. Sert au tri
      *  du Groupe B (buckets jamais-faite / deja-faite) et a la semantique
      *  "a faire" pour les non-recurrentes. */
     val lastCompletedAt: String? = null,
     /** true uniquement pour les taches de type "uncertain" (v0.14) : par
-     *  convention elles ne sont jamais cachees par le filtre "a faire". */
+     *  convention elles sont toujours « a faire ». */
     val isUncertain: Boolean = false,
 )
-
-/** Etat tri-state pour les filtres : Off / High / Low */
-enum class FilterState { OFF, HIGH, LOW }
 
 data class TaskListUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
+    /** Every task the list may show (context and search applied), in sortForTaskList order. */
     val tasks: List<TaskWithUrgency> = emptyList(),
+    /** The same tasks, split into the tab's blocks (TaskListBlocks.kt). */
+    val blocks: TaskListBlocks = TaskListBlocks(),
+    /** « Afficher les tâches à jour » pressed. Kept while the app runs, folded at a cold start. */
+    val showUpToDate: Boolean = false,
+    /** A search is typed: every match shows, up to date included. */
+    val searching: Boolean = false,
     /** Contextes coches dans la barre de filtres. Vide = tout. */
     val selectedContextIds: Set<String> = emptySet(),
     val isAtHome: Boolean = true,
     val showAllTasks: Boolean = false,
     val homeTasksHidden: Int = 0,
-    val filterTodo: FilterState = FilterState.HIGH,
-    val filterAffinity: FilterState = FilterState.OFF,
-    val filterEffort: FilterState = FilterState.OFF,
-    val filterRecurrence: FilterState = FilterState.OFF,
-    val filterHome: FilterState = FilterState.OFF,
-    val filterAssignment: FilterState = FilterState.OFF,
     /** Contextes proposes en filtre : ceux presents sur AU MOINS une tache
      *  du foyer, calcules avant filtrage pour rester stables. */
     val availableContexts: List<TaskContextRef> = emptyList(),
@@ -83,36 +80,20 @@ data class TaskListUiState(
     val celebrationReason: String? = null,
     /** Attribution par participant (displayName, points) dans la celebration. */
     val celebrationEarnedBy: List<Pair<String, Int>>? = null,
-    /** Barre de recherche ouverte : masque les chips et affiche un champ texte. */
+    /** Barre de recherche ouverte : remplace la barre des contextes par un champ texte. */
     val isSearchBarExpanded: Boolean = false,
     /** Texte saisi dans la barre de recherche. */
     val searchQuery: String = "",
-    /** Toggle "garder filtres" : par defaut la recherche ignore tous les filtres UI. */
-    val searchRespectFilters: Boolean = false,
 )
 
 /**
  * Etat des filtres en memoire. Stocke dans un Flow pour reactiver le
  * combine automatiquement a chaque changement de filtre.
- *
- * Note : filterTodo est tri-state, defaut HIGH ("A faire"). Au demarrage,
- * on n'affiche que les taches en etat ORANGE ou RED (du / en retard), ce
- * qui reduit drastiquement le nombre d'items rendu et donne un scroll
- * fluide d'emblee. LOW ("Pas a faire") est l'inverse pour explorer ce qui
- * est deja a jour. OFF affiche tout.
  */
 internal data class TaskListFilters(
-    val filterTodo: FilterState = FilterState.HIGH,
-    val filterAffinity: FilterState = FilterState.OFF,
-    val filterEffort: FilterState = FilterState.OFF,
-    val filterRecurrence: FilterState = FilterState.OFF,
-    val filterHome: FilterState = FilterState.OFF,
-    val filterAssignment: FilterState = FilterState.OFF,
     val selectedContextIds: Set<String> = emptySet(),
     val showAllTasks: Boolean = false,
-    val myAffinities: Map<String, Int> = emptyMap(),
     val searchQuery: String = "",
-    val searchRespectFilters: Boolean = false,
 )
 
 /** Conteneur interne pour le combine des flows. */
@@ -135,4 +116,6 @@ internal data class FilteredResult(
     val contexts: List<TaskContextRef>,
     val isAtHome: Boolean,
     val homeTasksHidden: Int,
+    val blocks: TaskListBlocks = taskListBlocks(tasks),
+    val searching: Boolean = false,
 )

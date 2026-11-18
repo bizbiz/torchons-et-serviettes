@@ -1,7 +1,8 @@
 # « À faire aujourd'hui » : confier une tâche à un autre membre
 
-Décidé le 18/11/2026 (grill). Statut : implémenté le 18/11 (non commité, non déployé) ; restent
-l'écran d'onboarding, le site et le test sur appareil.
+Décidé le 18/11/2026 (grill). Statut : livré en beta le 18/11 (`ee2419c`), dogfoodé sur un
+téléphone (liste, modal, « ! », fiche, widget) ; restent l'écran d'onboarding, la ligne du site,
+la pile rouge vue chez un destinataire, et la release prod.
 
 ## Pourquoi
 

@@ -160,16 +160,19 @@ class TaskWidget : GlanceAppWidget() {
                 val me = tokens.userIdFlow.first()
                 val isAtHome = WifiHelper.isAtHome(context, tokens.homeSsidsFlow.first())
                 // The tab's own filter function, with its default filters: « À faire » on.
-                val listed = applyFilters(
+                // Only the two « to do » blocks: no « show the tasks up to date » button here.
+                val blocks = applyFilters(
                     visibleOnWidget(tasks, me, hidePresence = false), completions, TaskListFilters(),
-                    isAtHome, me, tokens.hideHomeTasksOffWifiFlow.first(), context.resources,
-                ).tasks
+                    isAtHome, tokens.hideHomeTasksOffWifiFlow.first(), context.resources,
+                ).blocks
+                val firstWithoutCadence = blocks.withoutCadence.firstOrNull()
                 val todayOn = tokens.moduleEnabledFlow(Modules.TODAY).first()
                 val names = users.associate { it.id to it.displayName }
                 val byTask = delegations.associateBy { it.taskId }
                 WidgetLoad.Loaded(
-                    listed.map {
+                    (blocks.toDo + blocks.withoutCadence).map {
                         widgetTaskOf(it, byTask[it.task.id], names, me.orEmpty(), todayOn, context.resources)
+                            .copy(headerBefore = it === firstWithoutCadence)
                     },
                     householdEmpty = tasks.isEmpty(),
                 )
@@ -223,7 +226,8 @@ private fun WidgetContent(load: WidgetLoad) {
             // Scrolls: as many tasks as the widget holds, the rest below.
             load is WidgetLoad.Loaded -> LazyColumn {
                 items(load.tasks, itemId = { it.taskId.hashCode().toLong() }) { task ->
-                    WidgetTaskRow(task)
+                    // A Column: an item may stack its « Tâches sans fréquence » header above its row.
+                    Column(modifier = GlanceModifier.fillMaxWidth()) { WidgetTaskRow(task) }
                 }
             }
         }

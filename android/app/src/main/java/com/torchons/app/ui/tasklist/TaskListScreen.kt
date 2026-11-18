@@ -1,6 +1,5 @@
 package com.torchons.app.ui.tasklist
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,19 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.FilterListOff
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -259,10 +253,8 @@ fun TaskListScreen(
                 }
             }
 
-            // Barre de recherche OU chips de filtres. Par defaut les chips
-            // sont affichees ; au clic sur la loupe, elles sont remplacees par
-            // un OutlinedTextField qui prend toute la largeur (et qui, par
-            // defaut, ignore les filtres UI — cf. applyFilters cote VM).
+            // Barre de recherche OU barre des contextes (avec la loupe a droite). La recherche
+            // atteint toutes les taches, a jour comprises, sans filtre de contexte (applyFilters).
             val searchFocusRequester = remember { FocusRequester() }
             LaunchedEffect(uiState.isSearchBarExpanded) {
                 if (uiState.isSearchBarExpanded) {
@@ -281,124 +273,23 @@ fun TaskListScreen(
                     placeholder = { Text(stringResource(R.string.task_list_search_placeholder)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { viewModel.toggleSearchRespectFilters() }) {
-                                Icon(
-                                    imageVector = if (uiState.searchRespectFilters) Icons.Default.FilterList else Icons.Default.FilterListOff,
-                                    contentDescription = if (uiState.searchRespectFilters)
-                                        stringResource(R.string.task_list_search_filters_applied_cd)
-                                    else stringResource(R.string.task_list_search_filters_ignored_cd),
-                                    tint = if (uiState.searchRespectFilters) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            IconButton(onClick = { viewModel.closeSearchBar() }) {
-                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.task_list_search_close_cd))
-                            }
+                        IconButton(onClick = { viewModel.closeSearchBar() }) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.task_list_search_close_cd),
+                            )
                         }
                     },
                     singleLine = true,
                 )
             } else {
-                // Chips de filtres avances en texte tri-state (v0.26 — feedback
-                // UX, les icones seules etaient ambigues). Carrousel a defilement
-                // horizontal pour gagner de la place ; loupe fixee a droite.
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        FilterTextChip(
-                            highLabel = stringResource(R.string.task_list_filter_todo_high),
-                            lowLabel = stringResource(R.string.task_list_filter_todo_low),
-                            state = uiState.filterTodo,
-                            onClick = { viewModel.toggleFilterTodo() },
-                        )
-                        FilterTextChip(
-                            highLabel = stringResource(R.string.task_list_filter_affinity_high),
-                            lowLabel = stringResource(R.string.task_list_filter_affinity_low),
-                            state = uiState.filterAffinity,
-                            onClick = { viewModel.toggleFilterAffinity() },
-                        )
-                        FilterTextChip(
-                            highLabel = stringResource(R.string.task_list_filter_effort_high),
-                            lowLabel = stringResource(R.string.task_list_filter_effort_low),
-                            state = uiState.filterEffort,
-                            onClick = { viewModel.toggleFilterEffort() },
-                        )
-                        FilterTextChip(
-                            highLabel = stringResource(R.string.task_list_filter_recurrence_high),
-                            lowLabel = stringResource(R.string.task_list_filter_recurrence_low),
-                            state = uiState.filterRecurrence,
-                            onClick = { viewModel.toggleFilterRecurrence() },
-                        )
-                        FilterTextChip(
-                            highLabel = stringResource(R.string.task_list_filter_home_high),
-                            lowLabel = stringResource(R.string.task_list_filter_home_low),
-                            state = uiState.filterHome,
-                            onClick = { viewModel.toggleFilterHome() },
-                        )
-                        FilterTextChip(
-                            highLabel = stringResource(R.string.task_list_filter_assignment_high),
-                            lowLabel = stringResource(R.string.task_list_filter_assignment_low),
-                            state = uiState.filterAssignment,
-                            onClick = { viewModel.toggleFilterAssignment() },
-                        )
-                    }
-
-                    IconButton(onClick = { viewModel.openSearchBar() }) {
-                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.task_list_search_open_cd))
-                    }
-                }
-
-                // Filtres par CONTEXTE — une seule barre la ou il y en avait
-                // deux (categories, puis pieces). Elles posaient deux questions
-                // sur le meme objet et se combinaient en ET sans le dire, ce
-                // qui produisait des listes vides inexplicables des qu'on
-                // touchait aux deux.
-                val contextesPresents = uiState.availableContexts
-                if (contextesPresents.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilterChip(
-                            selected = uiState.selectedContextIds.isEmpty(),
-                            onClick = { viewModel.clearContextFilter() },
-                            label = { Text(stringResource(R.string.task_list_filter_all_contexts)) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        )
-                        contextesPresents.forEach { ctx ->
-                            val couleur = try {
-                                Color(android.graphics.Color.parseColor(ctx.color))
-                            } catch (e: Exception) {
-                                MaterialTheme.colorScheme.primary
-                            }
-                            FilterChip(
-                                selected = ctx.id in uiState.selectedContextIds,
-                                onClick = { viewModel.toggleContextFilter(ctx.id) },
-                                label = { Text(ctx.label) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = couleur,
-                                    selectedLabelColor = Color.White
-                                )
-                            )
-                        }
-                    }
-                }
+                TaskListContextBar(
+                    contexts = uiState.availableContexts,
+                    selectedIds = uiState.selectedContextIds,
+                    onClear = viewModel::clearContextFilter,
+                    onToggle = viewModel::toggleContextFilter,
+                    onSearch = viewModel::openSearchBar,
+                )
             }
 
             // Contenu principal — pas de loading central, c'est la barre fine
@@ -419,7 +310,10 @@ fun TaskListScreen(
                     }
                 }
 
-                uiState.tasks.isEmpty() && !uiState.isRefreshing -> {
+                // Nothing to do (the tasks up to date folded): the empty state, and under it the
+                // button that unfolds them when there are any.
+                !uiState.searching && !uiState.isRefreshing && uiState.blocks.toDoCount == 0 &&
+                    !(uiState.showUpToDate && uiState.blocks.upToDate.isNotEmpty()) -> {
                     val backendUnreachable = uiState.lastRefreshFailed && !uiState.hasCachedData
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -459,6 +353,14 @@ fun TaskListScreen(
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center
+                                )
+                            }
+                            if (uiState.blocks.upToDate.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                UpToDateToggleButton(
+                                    count = uiState.blocks.upToDate.size, expanded = false,
+                                    onClick = viewModel::toggleUpToDate,
+                                    modifier = Modifier.padding(horizontal = 16.dp),
                                 )
                             }
                         }
@@ -538,11 +440,17 @@ fun TaskListScreen(
                             ),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            val rows = taskListRows(uiState.blocks, uiState.showUpToDate, uiState.searching)
                             items(
-                                items = uiState.tasks,
-                                key = { it.task.id },
-                                contentType = { "task_card" },
-                            ) { taskWithUrgency ->
+                                items = rows,
+                                key = { row -> rowKey(row) },
+                                contentType = { row -> row::class.simpleName },
+                            ) { row ->
+                                if (row !is TaskListRow.Item) {
+                                    TaskListRowExtra(row, onToggleUpToDate = viewModel::toggleUpToDate)
+                                    return@items
+                                }
+                                val taskWithUrgency = row.task
                                 val celebrating = uiState.celebratingTaskId == taskWithUrgency.task.id
                                 TaskCard(
                                     taskWithUrgency = taskWithUrgency,

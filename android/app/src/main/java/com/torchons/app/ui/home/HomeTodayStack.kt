@@ -13,6 +13,7 @@ import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.Delegation
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.Task
+import com.torchons.app.ui.tasklist.RecurrenceGroup
 import com.torchons.app.ui.tasklist.computeTasksWithUrgency
 import com.torchons.app.ui.today.TodayDelegations
 import com.torchons.app.ui.today.handedByLine
@@ -38,6 +39,8 @@ internal data class TodayStackCard(
     val suggestion: Suggestion,
     val position: Int,
     val total: Int,
+    /** One-off or « uncertain »: grey instead of green (TaskStateColor.kt). */
+    val withoutCadence: Boolean = false,
 )
 
 internal class HomeTodayStack(
@@ -65,7 +68,7 @@ internal class HomeTodayStack(
                     taskId = t.task.id, title = t.task.title, weight = t.task.weight,
                     state = t.state.name, daysUntilDue = t.daysUntilDue, reason = TODAY_REASON,
                 )
-                TodayStackCard(d, suggestion, i + 1, mine.size)
+                TodayStackCard(d, suggestion, i + 1, mine.size, t.group == RecurrenceGroup.SANS_CADENCE)
             }
         }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
@@ -134,5 +137,6 @@ internal fun HomeTodayCard(
         onDismiss = { viewModel.passTodayCard(taskId) },
         todayHeader = header,
         todaySubline = handedByLine(res, card.delegation, memberNames),
+        withoutCadence = card.withoutCadence,
     )
 }

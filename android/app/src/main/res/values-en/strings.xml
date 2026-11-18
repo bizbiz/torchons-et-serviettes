@@ -754,24 +754,14 @@
 
     <!-- TaskListScreen — search bar -->
     <string name="task_list_search_placeholder">Search…</string>
-    <string name="task_list_search_filters_applied_cd">Filters applied</string>
-    <string name="task_list_search_filters_ignored_cd">Filters ignored</string>
     <string name="task_list_search_close_cd">Close search</string>
     <string name="task_list_search_open_cd">Search</string>
 
-    <!-- TaskListScreen — tri-state filter chips -->
-    <string name="task_list_filter_todo_high">To do</string>
-    <string name="task_list_filter_todo_low">Not to do</string>
-    <string name="task_list_filter_affinity_high">Liked</string>
-    <string name="task_list_filter_affinity_low">Disliked</string>
-    <string name="task_list_filter_effort_high">Long</string>
-    <string name="task_list_filter_effort_low">Short</string>
-    <string name="task_list_filter_recurrence_high">Recurring</string>
-    <string name="task_list_filter_recurrence_low">One-off</string>
-    <string name="task_list_filter_home_high">Home</string>
-    <string name="task_list_filter_home_low">Off-home</string>
-    <string name="task_list_filter_assignment_high">Solo</string>
-    <string name="task_list_filter_assignment_low">Group</string>
+    <!-- TaskListScreen — blocks (the six tri-state chips were removed on 2026-11-18) -->
+    <string name="task_list_header_without_cadence">Tasks without a frequency</string>
+    <string name="task_list_header_up_to_date">Up-to-date tasks</string>
+    <string name="task_list_show_up_to_date_format">Show up-to-date tasks (%1$d)</string>
+    <string name="task_list_hide_up_to_date">Hide up-to-date tasks</string>
 
     <!-- TaskListScreen — category & room chips -->
     <string name="task_list_filter_all_categories">All</string>

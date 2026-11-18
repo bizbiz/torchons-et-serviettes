@@ -49,6 +49,7 @@ import com.torchons.app.data.model.Suggestion
 import com.torchons.app.ui.common.CelebrationCardContent
 import com.torchons.app.ui.common.SoloPointsInfoDialog
 import com.torchons.app.ui.common.rememberCelebration
+import com.torchons.app.ui.common.taskStateColor
 import com.torchons.app.util.CompletionDateLabels
 import com.torchons.app.util.TaskUrgencyCalculator
 
@@ -89,6 +90,8 @@ internal fun SuggestionCard(
     todayHeader: String? = null,
     /** Reason `today`: « Confiée par Alice », under the title. */
     todaySubline: String? = null,
+    /** No cadence (one-off, « uncertain »): its countdown is grey, never green (TaskStateColor.kt). */
+    withoutCadence: Boolean = suggestion.reason == "uncertain",
 ) {
     val reasonLabel = when (suggestion.reason) {
         "urgent" -> stringResource(R.string.suggestion_reason_urgent)
@@ -216,7 +219,7 @@ internal fun SuggestionCard(
                 Text(
                     text = countdownLabel,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TaskUrgencyCalculator.stateColor(suggestion.state),
+                    color = taskStateColor(suggestion.state, withoutCadence),
                     fontWeight = FontWeight.Medium,
                 )
             }

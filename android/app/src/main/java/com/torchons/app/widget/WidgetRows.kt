@@ -31,6 +31,7 @@ import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
+import androidx.glance.text.FontStyle
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
@@ -41,6 +42,7 @@ import com.torchons.app.core.today.TodayTap
 import com.torchons.app.core.today.handOffRecipients
 import com.torchons.app.core.today.todayTap
 import com.torchons.app.data.model.Delegation
+import com.torchons.app.ui.tasklist.RecurrenceGroup
 import com.torchons.app.ui.tasklist.TaskWithUrgency
 import com.torchons.app.ui.today.todayCardState
 import com.torchons.app.util.TaskUrgencyCalculator
@@ -67,6 +69,10 @@ internal data class WidgetTask(
     val todayLit: Boolean?,
     val todayLine: String?,
     val todayTap: WidgetTodayTap?,
+    /** One-off or « uncertain »: grey instead of green. */
+    val withoutCadence: Boolean = false,
+    /** First task without cadence: the italic « Tâches sans fréquence » header goes above it. */
+    val headerBefore: Boolean = false,
 )
 
 /** A Tasks-tab row as the widget draws it; [names] = the household's members by id. */
@@ -90,13 +96,15 @@ internal fun widgetTaskOf(
     val place = t.roomName?.let { name -> if (!t.roomEmoji.isNullOrBlank()) "${t.roomEmoji} $name" else name }
     return WidgetTask(
         t.task.id, t.task.title, t.state, t.countdownLabel, place, today?.lit, today?.line, tap,
+        withoutCadence = t.group == RecurrenceGroup.SANS_CADENCE,
     )
 }
 
-private fun stateColor(state: TaskUrgencyCalculator.State): Color = when (state) {
+/** The widget's background is always white: a fixed grey stands for the theme's onSurfaceVariant. */
+private fun stateColor(state: TaskUrgencyCalculator.State, withoutCadence: Boolean): Color = when (state) {
     TaskUrgencyCalculator.State.RED -> Color(0xFFEF4444)
     TaskUrgencyCalculator.State.ORANGE -> Color(0xFFF97316)
-    TaskUrgencyCalculator.State.GREEN -> Color(0xFF10B981)
+    TaskUrgencyCalculator.State.GREEN -> if (withoutCadence) Color(0xFF6B7280) else Color(0xFF10B981)
 }
 
 private val muted = ColorProvider(Color(0xFF6B7280))
@@ -108,7 +116,14 @@ private fun smallBold(color: Color) =
 
 @Composable
 internal fun WidgetTaskRow(task: WidgetTask) {
-    val stateColor = stateColor(task.state)
+    if (task.headerBefore) {
+        Text(
+            text = LocalContext.current.getString(R.string.task_list_header_without_cadence),
+            style = TextStyle(fontSize = 10.sp, fontStyle = FontStyle.Italic, color = muted),
+            modifier = GlanceModifier.padding(top = 4.dp, bottom = 2.dp),
+        )
+    }
+    val stateColor = stateColor(task.state, task.withoutCadence)
     val context = LocalContext.current
     Row(
         modifier = GlanceModifier.fillMaxWidth().padding(vertical = 3.dp),

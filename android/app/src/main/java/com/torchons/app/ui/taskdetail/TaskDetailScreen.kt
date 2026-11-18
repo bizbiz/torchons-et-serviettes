@@ -391,7 +391,7 @@ fun TaskDetailScreen(
 
             else -> {
                 val task = uiState.task!!
-                val stateColor = TaskUrgencyCalculator.stateColor(uiState.urgencyState)
+                val stateColor = taskPageStateColor(uiState.urgencyState, task.recurrenceRule)
                 val stateLabel = when (uiState.urgencyState) {
                     TaskUrgencyCalculator.State.GREEN -> stringResource(R.string.task_detail_state_green)
                     TaskUrgencyCalculator.State.ORANGE -> stringResource(R.string.task_detail_state_orange)

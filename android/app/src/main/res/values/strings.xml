@@ -762,24 +762,14 @@
 
     <!-- TaskListScreen — search bar -->
     <string name="task_list_search_placeholder">Rechercher…</string>
-    <string name="task_list_search_filters_applied_cd">Filtres appliqués</string>
-    <string name="task_list_search_filters_ignored_cd">Filtres ignorés</string>
     <string name="task_list_search_close_cd">Fermer la recherche</string>
     <string name="task_list_search_open_cd">Rechercher</string>
 
-    <!-- TaskListScreen — tri-state filter chips -->
-    <string name="task_list_filter_todo_high">À faire</string>
-    <string name="task_list_filter_todo_low">Pas à faire</string>
-    <string name="task_list_filter_affinity_high">Aimées</string>
-    <string name="task_list_filter_affinity_low">Détestées</string>
-    <string name="task_list_filter_effort_high">Long</string>
-    <string name="task_list_filter_effort_low">Court</string>
-    <string name="task_list_filter_recurrence_high">Récurrentes</string>
-    <string name="task_list_filter_recurrence_low">Ponctuelles</string>
-    <string name="task_list_filter_home_high">Maison</string>
-    <string name="task_list_filter_home_low">Hors maison</string>
-    <string name="task_list_filter_assignment_high">Solo</string>
-    <string name="task_list_filter_assignment_low">Groupe</string>
+    <!-- TaskListScreen — blocks (the six tri-state chips were removed on 2026-11-18) -->
+    <string name="task_list_header_without_cadence">Tâches sans fréquence</string>
+    <string name="task_list_header_up_to_date">Tâches à jour</string>
+    <string name="task_list_show_up_to_date_format">Afficher les tâches à jour (%1$d)</string>
+    <string name="task_list_hide_up_to_date">Masquer les tâches à jour</string>
 
     <!-- TaskListScreen — category & room chips -->
     <string name="task_list_filter_all_categories">Toutes</string>
