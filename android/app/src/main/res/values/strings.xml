@@ -1861,4 +1861,18 @@
     <string name="support_dev_title">Un mot de Quentin</string>
     <string name="support_dev_body">C\'est moi qui fais cette appli, sur mon temps libre. Un bug, une idée, un truc pas clair ? Écris-moi, je lis tout.</string>
     <string name="support_dev_body_coffee">Et si elle te rend service, tu peux m\'offrir un café ☕</string>
+
+    <!-- Error translator (UserError) and the "send to Quentin" report -->
+    <string name="user_error_unreachable">Impossible de joindre le serveur. Vérifie ta connexion.</string>
+    <string name="user_error_server_code">Une erreur est survenue (code %1$s).</string>
+    <string name="user_error_server_status">Une erreur est survenue (erreur %1$d).</string>
+    <string name="user_error_unexpected">Une erreur inattendue est survenue.</string>
+    <string name="user_error_send_to_quentin">Envoyer à Quentin</string>
+    <string name="user_error_mail_subject_code">Erreur %1$s</string>
+    <string name="user_error_mail_subject_generic">Erreur dans l\'app</string>
+    <string name="user_error_mail_line_code">Code : %1$s</string>
+    <string name="user_error_mail_line_version">Version de l\'app : %1$s</string>
+    <string name="user_error_mail_line_screen">Écran : %1$s</string>
+    <string name="user_error_mail_line_date">Date : %1$s</string>
+    <string name="user_error_mail_line_screenshot">Si tu as une capture d\'écran de l\'erreur, elle m\'aidera beaucoup.\n\nMerci beaucoup de prendre le temps de me faire remonter les erreurs,\nvraiment merci !!</string>
 </resources>

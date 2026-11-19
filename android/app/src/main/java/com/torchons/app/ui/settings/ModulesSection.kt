@@ -24,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.ui.common.ModuleGuideDialog
 import com.torchons.app.ui.common.ModuleGuideViewModel
+import com.torchons.app.ui.common.UserErrorReportButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -73,16 +74,19 @@ fun ModulesSection(viewModel: SettingsViewModel, collective: Boolean) {
 @Composable
 fun ModuleToggleError(viewModel: SettingsViewModel) {
     val moduleError by viewModel.moduleError.collectAsState()
-    moduleError?.let { message ->
-        Text(
-            text = stringResource(R.string.settings_modules_toggle_failed_format, message),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { viewModel.dismissModuleError() }
-                .padding(horizontal = 4.dp),
-        )
+    moduleError?.let { error ->
+        Column {
+            Text(
+                text = stringResource(R.string.settings_modules_toggle_failed_format, error.message),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { viewModel.dismissModuleError() }
+                    .padding(horizontal = 4.dp),
+            )
+            UserErrorReportButton(error, "SettingsModules")
+        }
     }
 }
 

@@ -1,5 +1,33 @@
 # Notes de version
 
+## v0.46.0 — 2026-11-19
+
+### À faire aujourd'hui
+- Le « ! » d'une tâche la confie aux autres membres qui la voient : elle s'affiche en rouge en
+  tête de leur accueil jusqu'à ce que quelqu'un la fasse, avec des rappels à 12 h, 16 h et 20 h.
+- Les rappels se coupent dans les Réglages ; la fonctionnalité, elle, est toujours là.
+
+### Une aide sur chaque écran
+- Un « ? » en haut à droite explique l'écran que tu as sous les yeux, en ne parlant que de ce
+  qui est allumé dans ton foyer.
+- À la première ouverture, un mot de bienvenue. En bas des Réglages, « Un mot de Quentin » pour
+  m'écrire un bug, une idée, ou m'offrir un café.
+- Sur l'accueil, « Noter une tâche » passe sur l'icône de bulle.
+
+### Onglet Tâches
+- Les filtres par contexte se cochent simplement, et les tâches à jour s'affichent à la demande,
+  en bas de la liste.
+
+### Erreurs
+- Les messages d'erreur sont lisibles : « Impossible de joindre le serveur », ou un code à me
+  transmettre. Un bouton « Envoyer à Quentin » prépare le mail.
+- Le message d'erreur reste visible au-dessus du clavier, et le clavier se ferme quand on
+  valide un texte.
+
+### Plus discrète
+- Les réglages et graphiques d'une fonctionnalité éteinte ne s'affichent plus.
+- Le scan du QR d'invitation passe par Google : l'app n'a plus besoin de la caméra.
+
 ## v0.45.3 — 2026-11-17
 
 ### Corrigé

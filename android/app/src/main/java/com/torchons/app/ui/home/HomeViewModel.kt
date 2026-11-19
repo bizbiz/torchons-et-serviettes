@@ -22,6 +22,8 @@ import com.torchons.app.ui.today.TodayDelegations
 import com.torchons.app.data.repository.HomeRepository
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.ui.common.RatingRecurrence
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.util.PopupSessionGate
 import com.torchons.app.util.WifiHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -73,7 +75,7 @@ class HomeViewModel @Inject constructor(
     /** Proposition active (v0.8.1) — forwarded depuis PropositionStateHolder */
     val currentProposition: StateFlow<PropositionView?> = propositionStateHolder.currentProposition
     val propositionCelebration: StateFlow<PropositionView?> = propositionStateHolder.celebration
-    val propositionError: StateFlow<String?> = propositionStateHolder.error
+    val propositionError: StateFlow<UserError?> = propositionStateHolder.error
 
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -351,7 +353,7 @@ class HomeViewModel @Inject constructor(
                 apiService.updateObjective(ObjectiveUpdate(dailyObjectiveMinutes = minutes, displayUnit = unit))
                 refreshProjection()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
+                _uiState.value = _uiState.value.copy(error = UserErrors.from(getApplication(), e))
             }
         }
     }
@@ -399,7 +401,7 @@ class HomeViewModel @Inject constructor(
                 ratingCadence.onRated()
                 refresh()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
+                _uiState.value = _uiState.value.copy(error = UserErrors.from(getApplication(), e))
             }
         }
     }
@@ -428,11 +430,11 @@ class HomeViewModel @Inject constructor(
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
-                        error = getApplication<Application>().getString(R.string.home_all_rated),
+                        error = UserError(getApplication<Application>().getString(R.string.home_all_rated)),
                     )
                 }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
+                _uiState.value = _uiState.value.copy(error = UserErrors.from(getApplication(), e))
             }
         }
     }
@@ -457,7 +459,7 @@ class HomeViewModel @Inject constructor(
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
-                        error = getApplication<Application>().getString(R.string.home_all_rated),
+                        error = UserError(getApplication<Application>().getString(R.string.home_all_rated)),
                     )
                 }
             } catch (_: Exception) {

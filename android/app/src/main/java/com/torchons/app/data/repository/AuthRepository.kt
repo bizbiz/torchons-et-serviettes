@@ -1,5 +1,6 @@
 package com.torchons.app.data.repository
 
+import com.torchons.app.data.api.ApiHttpException
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.User
@@ -45,7 +46,7 @@ class AuthRepository @Inject constructor(
                 tokenManager.updateTokenAndFoyer(body.token, body.foyerId)
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Switch echoue: ${response.code()}"))
+                Result.failure(ApiHttpException.from(response))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -56,7 +57,7 @@ class AuthRepository @Inject constructor(
         return try {
             val response = apiService.getMe()
             if (response.isSuccessful) Result.success(response.body()!!)
-            else Result.failure(Exception("Erreur: ${response.code()}"))
+            else Result.failure(ApiHttpException.from(response))
         } catch (e: Exception) { Result.failure(e) }
     }
 

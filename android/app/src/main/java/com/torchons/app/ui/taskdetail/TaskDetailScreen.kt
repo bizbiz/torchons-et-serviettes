@@ -49,10 +49,11 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
+import com.torchons.app.ui.common.ImeSnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import com.torchons.app.ui.common.PrimaryTopBar
+import com.torchons.app.ui.common.showUserError
 import com.torchons.app.ui.help.HelpButton
 import com.torchons.app.ui.help.HelpScreen
 import androidx.compose.runtime.Composable
@@ -117,7 +118,7 @@ fun TaskDetailScreen(
     val currentUserId by viewModel.currentUserId.collectAsState()
     val gamificationVisible by viewModel.gamificationVisible.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-
+    val appContext = androidx.compose.ui.platform.LocalContext.current
     // Etat du modal de profil utilisateur (ouvert au clic sur un nom).
     var userProfileRequest by remember { mutableStateOf<UserProfileRequest?>(null) }
     userProfileRequest?.let { req ->
@@ -149,10 +150,9 @@ fun TaskDetailScreen(
             viewModel.clearCompletionMessage()
         }
     }
-
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showUserError(appContext, it, "TaskDetail")
             viewModel.clearError()
         }
     }
@@ -298,7 +298,7 @@ fun TaskDetailScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { ImeSnackbarHost(snackbarHostState) },
         topBar = {
             PrimaryTopBar(
                 title = {

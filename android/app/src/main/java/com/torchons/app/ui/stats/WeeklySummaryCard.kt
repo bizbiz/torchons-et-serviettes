@@ -40,6 +40,9 @@ import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrorBlock
+import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.data.model.WeeklySummaryResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -67,7 +70,7 @@ class WeeklySummaryViewModel @Inject constructor(
         val weekOffset: Int = 0,
         val data: WeeklySummaryResponse? = null,
         val isLoading: Boolean = false,
-        val error: String? = null,
+        val error: UserError? = null,
     )
 
     private val _uiState = MutableStateFlow(State())
@@ -85,14 +88,14 @@ class WeeklySummaryViewModel @Inject constructor(
                 } else {
                     _uiState.update {
                         it.copy(isLoading = false,
-                            error = context.getString(R.string.common_error_http_format, resp.code()),
+                            error = UserErrors.fromResponse(context, resp),
                         )
                     }
                 }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(isLoading = false,
-                        error = e.message ?: context.getString(R.string.common_error_network),
+                        error = UserErrors.from(context, e),
                     )
                 }
             }
@@ -170,10 +173,10 @@ fun WeeklySummaryCard(
                 }
 
                 state.error != null && state.data == null -> {
-                    Text(
-                        text = state.error!!,
+                    UserErrorBlock(
+                        error = state.error!!,
+                        screen = "StatsWeekly",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
                     )
                 }
 

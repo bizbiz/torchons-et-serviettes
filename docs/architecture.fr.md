@@ -113,6 +113,23 @@ chaque environnement.
 travail, donc du non commité. Vérifier ce qui tourne, les pièges mesurés et la lecture d'une
 trace de l'APK minifié : [`self-hosting.fr.md`](self-hosting.fr.md).
 
+## Codes d'erreur
+
+Toute réponse de statut >= 400 porte l'en-tête `X-Error-Id: E-7K3QX` (`E-` puis 5 caractères
+de `23456789ABCDEFGHJKMNPQRSTVWXYZ`, tirés au hasard). Un corps JSON objet reçoit aussi
+`"error_id"` avec la même valeur ; les clés existantes (`detail`, `code`) ne changent pas.
+Cela couvre `HTTPException`, `LocalizedHTTPException`, 422, le 426 du version gate et les
+exceptions non gérées, qui répondent `{"detail": "internal_error", "error_id": ...}` (ni
+trace, ni message). Implémentation : `ErrorIdMiddleware`, `backend/app/utils/error_ids.py`,
+au plus externe.
+
+Chaque erreur écrit une ligne `request_error error_id=E-7K3QX status=404 method=POST
+path=/api/... user_id=<uuid ou -> detail=...` (WARNING pour 4xx, ERROR avec trace pour 5xx).
+Ni corps, ni jeton, ni en-tête n'y figurent ; une erreur 422 garde l'emplacement et le type.
+
+Retrouver un code à partir d'une capture : `docker logs ts_api_prod 2>&1 | grep E-7K3QX` sur
+le serveur prod, `docker logs ts_api_beta 2>&1 | grep E-7K3QX` (via `ssh fanless`) pour la beta.
+
 ## Appareils
 
 Le JWT n'a pas d'`exp`, et c'est assumé : une application de foyer ne redemande pas un code

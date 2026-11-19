@@ -3,6 +3,8 @@ package com.torchons.app.ui.taskdetail
 import com.torchons.app.R
 import com.torchons.app.data.repository.CompletionChecks
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.util.CompletionDateLabels
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
@@ -46,9 +48,7 @@ internal class TaskDetailCompletionActions(
                         )
                     },
                     onFailure = { error ->
-                        uiState.value = uiState.value.copy(
-                            error = error.message ?: appContext.getString(R.string.common_error_complete),
-                        )
+                        uiState.value = uiState.value.copy(error = UserErrors.from(appContext, error))
                     },
                 )
             },
@@ -74,7 +74,7 @@ internal class TaskDetailCompletionActions(
                         )
                     },
                     onFailure = { error ->
-                        uiState.value = uiState.value.copy(error = error.message)
+                        uiState.value = uiState.value.copy(error = UserErrors.from(appContext, error))
                     },
                 )
             },
@@ -121,12 +121,8 @@ internal class TaskDetailCompletionActions(
                         )
                     },
                     onFailure = { err ->
-                        val msg = when (err) {
-                            is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
-                                409 -> appContext.getString(R.string.common_collective_conflict)
-                                else -> appContext.getString(R.string.common_error_code_format, err.httpCode)
-                            }
-                            else -> err.message ?: appContext.getString(R.string.common_error_network)
+                        val msg = UserErrors.from(appContext, err) {
+                            if (it.httpCode == 409) appContext.getString(R.string.common_collective_conflict) else null
                         }
                         uiState.value = uiState.value.copy(error = msg)
                     },
@@ -212,7 +208,7 @@ internal class TaskDetailCompletionActions(
     private fun unlessDuplicate(at: String? = null, by: List<String>? = null, go: () -> Unit) {
         scope.launch {
             val refusal = completionChecks.refusal(taskId, at, by)
-            if (refusal == null) go() else uiState.value = uiState.value.copy(error = refusal)
+            if (refusal == null) go() else uiState.value = uiState.value.copy(error = UserError(refusal))
         }
     }
 

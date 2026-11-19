@@ -26,7 +26,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
+import com.torchons.app.ui.common.ImeSnackbarHost
+import com.torchons.app.ui.common.dismissKeyboardThen
+import com.torchons.app.ui.common.submitKeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,14 +52,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.core.clipboard.copySensitiveToClipboard
 import com.torchons.app.R
 import com.torchons.app.ui.settings.PrivacyNoticeLine
-import io.github.g00fy2.quickie.QRResult
-import io.github.g00fy2.quickie.ScanQRCode
+import com.torchons.app.ui.common.showUserError
+import com.torchons.app.ui.common.startQrScan
 
 /**
  * Ecran "Rejoindre un foyer" (v0.30, Phase B4).
  *
  * 3 phases visuelles :
- *  1. Pas de scan -> bouton "Scanner le QR code" qui lance Quickie.
+ *  1. Pas de scan -> bouton "Scanner le QR code" qui lance le scanner Google.
  *  2. Scan reussi + saisie display_name -> bouton "Rejoindre".
  *  3. Apres /pairing/join reussi -> ecran recovery code identique au
  *     wizard create (StepRecovery reutilise).
@@ -70,22 +74,15 @@ fun JoinFoyerScreen(
     val state by viewModel.uiState.collectAsState()
     val snackbar = remember { SnackbarHostState() }
 
-    val scanLauncher = rememberLauncherForActivityResult(ScanQRCode()) { result ->
-        when (result) {
-            is QRResult.QRSuccess -> {
-                viewModel.setInviteToken(result.content.rawValue ?: "")
-            }
-            is QRResult.QRError -> {
-                /* erreur silencieuse pour l'instant — l'user peut re-tap */
-            }
-            QRResult.QRMissingPermission -> { /* l'OS gere le rationale */ }
-            QRResult.QRUserCanceled -> { /* no-op */ }
-        }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // Failure and cancellation stay silent, as before: the user can tap again.
+    val startScan: () -> Unit = {
+        startQrScan(context, onResult = { viewModel.setInviteToken(it) })
     }
 
     LaunchedEffect(state.done) { if (state.done) onSuccess() }
     LaunchedEffect(state.error) {
-        state.error?.let { snackbar.showSnackbar(it) }
+        state.error?.let { snackbar.showUserError(context, it, "JoinFoyer") }
     }
 
     Scaffold(
@@ -102,7 +99,7 @@ fun JoinFoyerScreen(
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { ImeSnackbarHost(snackbar) },
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -119,7 +116,7 @@ fun JoinFoyerScreen(
                 )
 
                 state.inviteToken == null -> ScanInvitation(
-                    onScanClick = { scanLauncher.launch(null) },
+                    onScanClick = startScan,
                     onCodePasted = viewModel::setInviteToken,
                 )
 
@@ -171,11 +168,13 @@ private fun ScanInvitation(onScanClick: () -> Unit, onCodePasted: (String) -> Un
         supportingText = if (invalid) {
             { Text(stringResource(R.string.join_paste_invalid)) }
         } else null,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardActions = submitKeyboardActions(),
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(8.dp))
     OutlinedButton(
-        onClick = {
+        onClick = dismissKeyboardThen {
             val token = extractInviteToken(pasted)
             if (token == null) invalid = true else onCodePasted(token)
         },
@@ -216,11 +215,13 @@ private fun EnterDisplayName(
         onValueChange = onChange,
         label = { Text(stringResource(R.string.onboarding_your_name_label)) },
         singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardActions = submitKeyboardActions { if (!isSubmitting && displayName.isNotBlank()) onSubmit() },
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(32.dp))
     Button(
-        onClick = onSubmit,
+        onClick = dismissKeyboardThen(onSubmit),
         enabled = !isSubmitting && displayName.isNotBlank(),
         modifier = Modifier.fillMaxWidth(),
     ) {

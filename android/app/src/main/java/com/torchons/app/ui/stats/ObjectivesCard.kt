@@ -45,10 +45,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import android.content.Context
 import com.torchons.app.R
+import com.torchons.app.ui.common.dismissKeyboardThen
+import com.torchons.app.ui.common.submitKeyboardActions
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.data.model.Objective
 import com.torchons.app.data.model.ObjectiveCreateRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -76,7 +80,7 @@ class ObjectivesViewModel @Inject constructor(
         val objectives: List<Objective> = emptyList(),
         val isLoading: Boolean = false,
         val isCreating: Boolean = false,
-        val error: String? = null,
+        val error: UserError? = null,
     )
 
     private val _uiState = MutableStateFlow(State())
@@ -97,14 +101,14 @@ class ObjectivesViewModel @Inject constructor(
                 } else {
                     _uiState.update {
                         it.copy(isLoading = false,
-                            error = context.getString(R.string.common_error_http_format, resp.code()),
+                            error = UserErrors.fromResponse(context, resp),
                         )
                     }
                 }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(isLoading = false,
-                        error = e.message ?: context.getString(R.string.common_error_network),
+                        error = UserErrors.from(context, e),
                     )
                 }
             }
@@ -130,14 +134,14 @@ class ObjectivesViewModel @Inject constructor(
                 } else {
                     _uiState.update {
                         it.copy(isCreating = false,
-                            error = context.getString(R.string.common_error_http_format, resp.code()),
+                            error = UserErrors.fromResponse(context, resp),
                         )
                     }
                 }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(isCreating = false,
-                        error = e.message ?: context.getString(R.string.common_error_network),
+                        error = UserErrors.from(context, e),
                     )
                 }
             }
@@ -327,6 +331,7 @@ private fun CreateObjectiveDialog(
                     label = { Text(stringResource(R.string.objectives_dialog_title_label)) },
                     placeholder = { Text(stringResource(R.string.objectives_dialog_title_placeholder)) },
                     singleLine = true,
+                    keyboardActions = submitKeyboardActions(),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(12.dp))
@@ -360,7 +365,7 @@ private fun CreateObjectiveDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onCreate(title, period, target.roundToInt()) },
+                onClick = dismissKeyboardThen { onCreate(title, period, target.roundToInt()) },
                 enabled = !isCreating && title.isNotBlank(),
             ) { Text(stringResource(R.string.objectives_dialog_button_create)) }
         },

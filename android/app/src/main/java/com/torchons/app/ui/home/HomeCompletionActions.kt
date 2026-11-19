@@ -4,6 +4,8 @@ import android.app.Application
 import com.torchons.app.R
 import com.torchons.app.data.repository.CompletionChecks
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -31,7 +33,7 @@ internal class HomeCompletionActions(
         celebrateThen(taskId, previewPoints, previewReason, earnedByFor(null, previewPoints)) {
             taskRepository.completeTask(taskId).fold(
                 onSuccess = { refresh() },
-                onFailure = { uiState.value = uiState.value.copy(error = it.message) },
+                onFailure = { uiState.value = uiState.value.copy(error = UserErrors.from(application, it)) },
             )
         }
     }
@@ -63,7 +65,7 @@ internal class HomeCompletionActions(
         celebrateThen(taskId, previewPoints, previewReason, earnedByFor(completedBy, previewPoints)) {
             taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
                 onSuccess = { refresh() },
-                onFailure = { uiState.value = uiState.value.copy(error = it.message) },
+                onFailure = { uiState.value = uiState.value.copy(error = UserErrors.from(application, it)) },
             )
         }
     }
@@ -102,13 +104,8 @@ internal class HomeCompletionActions(
                     refresh()
                 },
                 onFailure = { err ->
-                    val msg = when (err) {
-                        is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
-                            409 -> application.getString(R.string.home_collective_conflict)
-                            else -> application
-                                .getString(R.string.common_error_code_format, err.httpCode)
-                        }
-                        else -> err.message ?: application.getString(R.string.common_error_network)
+                    val msg = UserErrors.from(application, err) {
+                        if (it.httpCode == 409) application.getString(R.string.home_collective_conflict) else null
                     }
                     uiState.value = uiState.value.copy(error = msg)
                 },
@@ -160,7 +157,7 @@ internal class HomeCompletionActions(
     private fun unlessDuplicate(taskId: String, at: String? = null, by: List<String>? = null, go: () -> Unit) {
         scope.launch {
             val refusal = completionChecks.refusal(taskId, at, by)
-            if (refusal == null) go() else uiState.value = uiState.value.copy(error = refusal)
+            if (refusal == null) go() else uiState.value = uiState.value.copy(error = UserError(refusal))
         }
     }
 

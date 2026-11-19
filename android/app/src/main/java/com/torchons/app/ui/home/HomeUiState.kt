@@ -7,6 +7,7 @@ import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.RetardResponse
 import com.torchons.app.data.model.Suggestion
 import com.torchons.app.data.model.UserPrompt
+import com.torchons.app.ui.common.UserError
 
 /**
  * Etat UI de l'accueil.
@@ -37,7 +38,7 @@ data class HomeUiState(
     val showAffinityPopup: Boolean = false,
     val hasCachedData: Boolean = false,
     val lastRefreshFailed: Boolean = false,
-    val error: String? = null,
+    val error: UserError? = null,
     /** Id de la tache en cours de "celebration" (animation post-completion). */
     val celebratingTaskId: String? = null,
     /** Compteur incremente a chaque celebration pour relancer l'animation konfetti. */

@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.core.clipboard.copySensitiveToClipboard
 import com.torchons.app.R
+import com.torchons.app.ui.common.UserErrorBlock
 import qrcode.QRCode
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -131,8 +132,9 @@ fun InviteQrScreen(
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(
-                            text = state.error!!,
+                        UserErrorBlock(
+                            error = state.error!!,
+                            screen = "InviteQr",
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.padding(16.dp),
                         )

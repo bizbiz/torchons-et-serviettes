@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskContextRef
+import com.torchons.app.ui.common.UserError
 import com.torchons.app.util.TaskUrgencyCalculator
 
 /**
@@ -66,7 +67,7 @@ data class TaskListUiState(
     /** Contextes proposes en filtre : ceux presents sur AU MOINS une tache
      *  du foyer, calcules avant filtrage pour rester stables. */
     val availableContexts: List<TaskContextRef> = emptyList(),
-    val error: String? = null,
+    val error: UserError? = null,
     val completionMessage: String? = null,
     val hasCachedData: Boolean = false,
     val lastRefreshFailed: Boolean = false,

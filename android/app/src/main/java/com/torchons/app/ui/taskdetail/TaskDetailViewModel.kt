@@ -12,6 +12,8 @@ import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.CompletionChecks
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.ui.common.RatingRecurrence
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.util.TaskUrgencyCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
@@ -138,7 +140,7 @@ class TaskDetailViewModel @Inject constructor(
                     hasCachedData = hasCache,
                     isLoading = if (hasCache) false else _uiState.value.isLoading,
                     error = if (!hasCache && !_uiState.value.isLoading && _uiState.value.lastRefreshFailed)
-                        appContext.getString(R.string.task_detail_not_found) else _uiState.value.error,
+                        UserError(appContext.getString(R.string.task_detail_not_found)) else _uiState.value.error,
                 )
             }
         }
@@ -260,7 +262,7 @@ class TaskDetailViewModel @Inject constructor(
             _uiState.value = if (res.isSuccess) {
                 _uiState.value.copy(completionMessage = appContext.getString(R.string.task_detail_completion_deleted))
             } else {
-                _uiState.value.copy(error = appContext.getString(R.string.common_error_delete))
+                _uiState.value.copy(error = UserError(appContext.getString(R.string.common_error_delete)))
             }
         }
     }
@@ -277,7 +279,9 @@ class TaskDetailViewModel @Inject constructor(
             _uiState.value = if (res.isSuccess) {
                 _uiState.value.copy(completionMessage = appContext.getString(R.string.task_detail_collective_deleted))
             } else {
-                _uiState.value.copy(error = appContext.getString(R.string.task_detail_collective_delete_error))
+                _uiState.value.copy(
+                    error = UserError(appContext.getString(R.string.task_detail_collective_delete_error)),
+                )
             }
         }
     }
@@ -304,7 +308,7 @@ class TaskDetailViewModel @Inject constructor(
                     completionMessage = appContext.getString(R.string.task_detail_completion_edited),
                 )
             } else {
-                _uiState.value.copy(error = appContext.getString(R.string.task_detail_edit_error))
+                _uiState.value.copy(error = UserError(appContext.getString(R.string.task_detail_edit_error)))
             }
         }
     }
@@ -407,7 +411,7 @@ class TaskDetailViewModel @Inject constructor(
                 onFailure = { e ->
                     _uiState.value = _uiState.value.copy(
                         showFrequencyVoteDialog = false,
-                        error = e.message ?: appContext.getString(R.string.common_error_vote),
+                        error = UserErrors.from(appContext, e),
                     )
                 },
             )
@@ -429,13 +433,13 @@ class TaskDetailViewModel @Inject constructor(
                 } else {
                     _uiState.value = _uiState.value.copy(
                         showEffortVoteDialog = false,
-                        error = appContext.getString(R.string.common_error_code_format, resp.code()),
+                        error = UserErrors.fromResponse(appContext, resp),
                     )
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     showEffortVoteDialog = false,
-                    error = e.message ?: appContext.getString(R.string.common_error_network),
+                    error = UserErrors.from(appContext, e),
                 )
             }
         }
@@ -481,7 +485,7 @@ class TaskDetailViewModel @Inject constructor(
                 )
                 refresh()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
+                _uiState.value = _uiState.value.copy(error = UserErrors.from(appContext, e))
             }
         }
     }

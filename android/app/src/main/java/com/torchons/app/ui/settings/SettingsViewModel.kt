@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.core.network.DeviceRevocationMonitor
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.BonusConfig
 import com.torchons.app.data.model.Foyer
@@ -78,8 +80,8 @@ class SettingsViewModel @Inject constructor(
     val loadingAll: StateFlow<Boolean> = _loadingAll.asStateFlow()
 
     // Message d'erreur transitoire d'une bascule refusee (409 dependance).
-    private val _moduleError = MutableStateFlow<String?>(null)
-    val moduleError: StateFlow<String?> = _moduleError.asStateFlow()
+    private val _moduleError = MutableStateFlow<UserError?>(null)
+    val moduleError: StateFlow<UserError?> = _moduleError.asStateFlow()
 
     private val _currentFoyer = MutableStateFlow<Foyer?>(null)
     val currentFoyer: StateFlow<Foyer?> = _currentFoyer.asStateFlow()
@@ -295,22 +297,18 @@ class SettingsViewModel @Inject constructor(
                     if (enabled) _modules.value.firstOrNull { it.key == key }?.let(onEnabled)
                 } else {
                     _modules.value = before
-                    // Le corps est du JSON localise par le serveur
-                    // ({"detail": "Activez d'abord : motivation"}) : on en
-                    // extrait `detail`, sinon on afficherait l'accolade brute.
-                    val raw = runCatching { resp.errorBody()?.string() }.getOrNull()
-                    val detail = raw
-                        ?.let { Regex(""""detail"\s*:\s*"([^"]*)""").find(it)?.groupValues?.get(1) }
-                        ?.takeIf { it.isNotBlank() }
-                    _moduleError.value = detail ?: appContext.getString(R.string.common_error_http_format, resp.code())
+                    // A 400/409 body is JSON localised by the server
+                    // ({"detail": "Activez d'abord : motivation"}): that sentence
+                    // is the readable message. Any other refusal (5xx: the detail
+                    // is a technical key) goes through the generic translator.
+                    _moduleError.value = UserErrors.fromResponse(appContext, resp) {
+                        it.detail?.takeIf { d -> d.isNotBlank() && it.httpCode in listOf(400, 409) }
+                    }
                     Log.w("SettingsViewModel", "toggleModule $key refuse: ${resp.code()}")
                 }
             } catch (e: Exception) {
                 _modules.value = before
-                // e.message peut etre null (IOException nue) : un message vide
-                // ferait disparaitre l'erreur au lieu de la signaler.
-                _moduleError.value = e.message ?: e::class.java.simpleName
-                Log.w("SettingsViewModel", "toggleModule $key: ${e.message}")
+                _moduleError.value = UserErrors.from(appContext, e)
             }
         }
     }
@@ -449,7 +447,7 @@ class SettingsViewModel @Inject constructor(
         data object Idle : RegenerateState()
         data object Loading : RegenerateState()
         data class Success(val recoveryCode: String) : RegenerateState()
-        data class Error(val message: String) : RegenerateState()
+        data class Error(val error: UserError) : RegenerateState()
     }
 
     private val _regenerateState = MutableStateFlow<RegenerateState>(RegenerateState.Idle)
@@ -467,15 +465,13 @@ class SettingsViewModel @Inject constructor(
                         _regenerateState.value = RegenerateState.Success(body.recoveryCode)
                     } else {
                         _regenerateState.value =
-                            RegenerateState.Error(appContext.getString(R.string.common_empty_response))
+                            RegenerateState.Error(UserError(appContext.getString(R.string.common_empty_response)))
                     }
                 } else {
-                    _regenerateState.value =
-                        RegenerateState.Error(appContext.getString(R.string.common_error_code_format, resp.code()))
+                    _regenerateState.value = RegenerateState.Error(UserErrors.fromResponse(appContext, resp))
                 }
             } catch (e: Exception) {
-                _regenerateState.value =
-                    RegenerateState.Error(e.message ?: appContext.getString(R.string.common_error_network))
+                _regenerateState.value = RegenerateState.Error(UserErrors.from(appContext, e))
             }
         }
     }
@@ -495,7 +491,7 @@ class SettingsViewModel @Inject constructor(
         data object Loading : LeaveState()
         data object SwitchedFoyer : LeaveState()
         data object LoggedOut : LeaveState()
-        data class Error(val message: String) : LeaveState()
+        data class Error(val error: UserError) : LeaveState()
     }
 
     private val _leaveState = MutableStateFlow<LeaveState>(LeaveState.Idle)

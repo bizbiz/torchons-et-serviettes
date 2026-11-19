@@ -167,6 +167,12 @@ from app.utils.errors import register_localized_error_handler
 
 register_localized_error_handler(app)
 
+# Added last = outermost: stamps `X-Error-Id` / `error_id` on every response >= 400,
+# including the version gate's 426 and unhandled exceptions (app/utils/error_ids.py).
+from app.utils.error_ids import ErrorIdMiddleware
+
+app.add_middleware(ErrorIdMiddleware)
+
 # Routers
 from app.api.auth import router as auth_router
 from app.api.devices import router as devices_router

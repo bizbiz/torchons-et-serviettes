@@ -27,7 +27,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
+import com.torchons.app.ui.common.ImeSnackbarHost
+import com.torchons.app.ui.common.dismissKeyboardThen
+import com.torchons.app.ui.common.submitKeyboardActions
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
+import com.torchons.app.ui.common.showUserError
 import com.torchons.app.ui.settings.PrivacyNoticeLine
 import kotlinx.coroutines.launch
 import com.torchons.app.data.model.CatalogContextView
@@ -73,6 +76,7 @@ fun CreateFoyerWizardScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbar = remember { SnackbarHostState() }
+    val androidContext = androidx.compose.ui.platform.LocalContext.current
     // Le defilement est partage par toutes les etapes : sans remise a zero, on
     // arrive sur l'etape suivante a la hauteur ou on avait quitte la
     // precedente — donc sous son titre, parfois au milieu d'une liste.
@@ -94,7 +98,7 @@ fun CreateFoyerWizardScreen(
 
     LaunchedEffect(state.done) { if (state.done) onSuccess() }
     LaunchedEffect(state.error) {
-        state.error?.let { snackbar.showSnackbar(it) }
+        state.error?.let { snackbar.showUserError(androidContext, it, "CreateFoyerWizard") }
     }
 
     Scaffold(
@@ -116,7 +120,7 @@ fun CreateFoyerWizardScreen(
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { ImeSnackbarHost(snackbar) },
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -228,6 +232,7 @@ private fun StepIdentite(
         onValueChange = onDisplayNameChange,
         label = { Text(stringResource(R.string.onboarding_your_name_label)) },
         singleLine = true,
+        keyboardActions = submitKeyboardActions(),
         modifier = Modifier.fillMaxWidth(),
     )
 
@@ -244,12 +249,13 @@ private fun StepIdentite(
         label = { Text(stringResource(R.string.foyer_name_label)) },
         placeholder = { Text(suggestion) },
         singleLine = true,
+        keyboardActions = submitKeyboardActions(),
         modifier = Modifier.fillMaxWidth(),
     )
 
     Spacer(Modifier.height(32.dp))
     Button(
-        onClick = onNext,
+        onClick = dismissKeyboardThen(onNext),
         modifier = Modifier.fillMaxWidth(),
     ) { Text(stringResource(R.string.wizard_continue)) }
 }
@@ -284,11 +290,12 @@ private fun StepFoyer(
         label = { Text(stringResource(R.string.foyer_name_label)) },
         placeholder = { Text(defaultHint) },
         singleLine = true,
+        keyboardActions = submitKeyboardActions(),
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(32.dp))
     Button(
-        onClick = onNext,
+        onClick = dismissKeyboardThen(onNext),
         modifier = Modifier.fillMaxWidth(),
     ) { Text(stringResource(R.string.wizard_continue)) }
 }
@@ -367,11 +374,12 @@ private fun StepContextes(
             onValueChange = { newRoom = it },
             label = { Text(stringResource(R.string.wizard_contexts_custom_label)) },
             singleLine = true,
+            keyboardActions = submitKeyboardActions(),
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(8.dp))
         Button(
-            onClick = {
+            onClick = dismissKeyboardThen {
                 onAddCustomRoom(newRoom)
                 newRoom = ""
             },
@@ -397,7 +405,7 @@ private fun StepContextes(
 
     Spacer(Modifier.height(32.dp))
     Button(
-        onClick = onNext,
+        onClick = dismissKeyboardThen(onNext),
         modifier = Modifier.fillMaxWidth(),
     ) { Text(stringResource(R.string.wizard_continue)) }
     Spacer(Modifier.height(8.dp))

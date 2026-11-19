@@ -123,3 +123,19 @@ Two rules not to break:
   otherwise a cut-off phone would hand itself access again.
 
 Decisions, measurements and pitfalls: [`appareils.md`](appareils.md).
+
+## Error codes
+
+Every response with status >= 400 carries the header `X-Error-Id: E-7K3QX` (`E-` plus 5
+characters of `23456789ABCDEFGHJKMNPQRSTVWXYZ`, random). A JSON object body also gets
+`"error_id"` with the same value; existing keys (`detail`, `code`) are unchanged. This covers
+`HTTPException`, `LocalizedHTTPException`, 422, the 426 of the version gate and unhandled
+exceptions, which answer `{"detail": "internal_error", "error_id": ...}` (no trace, no message).
+Implementation: `ErrorIdMiddleware` in `backend/app/utils/error_ids.py`, outermost.
+
+Each error writes one log line `request_error error_id=E-7K3QX status=404 method=POST
+path=/api/... user_id=<uuid or -> detail=...` (WARNING for 4xx, ERROR with traceback for 5xx).
+No body, token or header is logged; validation errors keep location and type only.
+
+To find a code from a user's screenshot: `docker logs ts_api_prod 2>&1 | grep E-7K3QX` on the
+prod server, `docker logs ts_api_beta 2>&1 | grep E-7K3QX` (via `ssh fanless`) for the beta.

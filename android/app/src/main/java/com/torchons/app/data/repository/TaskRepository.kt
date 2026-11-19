@@ -2,6 +2,7 @@ package com.torchons.app.data.repository
 
 import com.google.gson.Gson
 import com.torchons.app.core.sync.SyncTrigger
+import com.torchons.app.data.api.ApiHttpException
 import com.torchons.app.core.sync.opsToDiscard
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.dao.CompletionDao
@@ -487,9 +488,8 @@ class TaskRepository @Inject constructor(
                 Result.success(body)
             } else {
                 rollback()
-                val code = resp.code()
-                val errorBody = resp.errorBody()?.string().orEmpty()
-                Result.failure(CollectiveCompletionException(code, errorBody))
+                val http = ApiHttpException.from(resp)
+                Result.failure(CollectiveCompletionException(http.httpCode, http.errorBody, http.errorId))
             }
         } catch (e: Exception) {
             rollback()
@@ -497,10 +497,8 @@ class TaskRepository @Inject constructor(
         }
     }
 
-    class CollectiveCompletionException(
-        val httpCode: Int,
-        val errorBody: String,
-    ) : Exception("HTTP $httpCode: $errorBody")
+    class CollectiveCompletionException(httpCode: Int, errorBody: String, errorId: String? = null) :
+        ApiHttpException(httpCode, errorBody, errorId)
 
     // -------------------------------------------------------------------
     // Historique de modification — observe / refresh / vote frequence
@@ -640,7 +638,7 @@ class TaskRepository @Inject constructor(
                 }
                 Result.success(completions)
             } else {
-                Result.failure(Exception("Erreur lors du chargement des completions: ${response.code()}"))
+                Result.failure(ApiHttpException.from(response))
             }
         } catch (e: Exception) {
             Result.failure(e)

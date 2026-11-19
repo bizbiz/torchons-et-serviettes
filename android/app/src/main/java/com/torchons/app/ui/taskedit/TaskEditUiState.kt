@@ -5,6 +5,7 @@ import com.torchons.app.data.model.ContextView
 import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.RecurrenceRule
 import com.torchons.app.data.model.User
+import com.torchons.app.ui.common.UserError
 import com.torchons.app.util.DurationUnit
 
 /**
@@ -53,7 +54,7 @@ data class TaskEditUiState(
     /** Titre de la proposition appliquee, pour l'afficher et pouvoir l'annuler. */
     val appliedSuggestion: String? = null,
     val users: List<User> = emptyList(),
-    val error: String? = null,
+    val error: UserError? = null,
     val saved: Boolean = false,
     val deleted: Boolean = false,
     /**

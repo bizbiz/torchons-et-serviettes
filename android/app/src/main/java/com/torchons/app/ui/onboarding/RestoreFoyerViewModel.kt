@@ -11,6 +11,8 @@ import com.torchons.app.data.model.RecoveryRestoreConfirmRequest
 import com.torchons.app.data.model.RecoveryRestoreRequest
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.service.TokenRegistrar
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,7 +34,7 @@ data class RestoreState(
     val code: String = "",
     val isSubmitting: Boolean = false,
     val preview: PreviewData? = null,
-    val error: String? = null,
+    val error: UserError? = null,
     val done: Boolean = false,
 )
 
@@ -73,16 +75,19 @@ class RestoreFoyerViewModel @Inject constructor(
             try {
                 val resp = apiService.recoveryRestore(RecoveryRestoreRequest(code.trim()))
                 if (!resp.isSuccessful) {
-                    val msg = if (resp.code() == 404) {
-                        context.getString(R.string.onboarding_error_code_not_found)
-                    } else context.getString(R.string.common_error_code_format, resp.code())
-                    _uiState.update { it.copy(isSubmitting = false, error = msg) }
+                    val err = UserErrors.fromResponse(context, resp) {
+                        if (it.httpCode == 404) context.getString(R.string.onboarding_error_code_not_found) else null
+                    }
+                    _uiState.update { it.copy(isSubmitting = false, error = err) }
                     return@launch
                 }
                 val body = resp.body()
                 if (body == null) {
                     _uiState.update {
-                        it.copy(isSubmitting = false, error = context.getString(R.string.common_empty_response))
+                        it.copy(
+                            isSubmitting = false,
+                            error = UserError(context.getString(R.string.common_empty_response)),
+                        )
                     }
                     return@launch
                 }
@@ -100,9 +105,8 @@ class RestoreFoyerViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(isSubmitting = false, error = e.message ?: context.getString(R.string.common_error_network))
-                }
+                val err = UserErrors.from(context, e)
+                _uiState.update { it.copy(isSubmitting = false, error = err) }
             }
         }
     }
@@ -121,16 +125,19 @@ class RestoreFoyerViewModel @Inject constructor(
                     )
                 )
                 if (!resp.isSuccessful) {
-                    val msg = if (resp.code() == 401) {
-                        context.getString(R.string.onboarding_error_code_expired)
-                    } else context.getString(R.string.common_error_code_format, resp.code())
-                    _uiState.update { it.copy(isSubmitting = false, error = msg) }
+                    val err = UserErrors.fromResponse(context, resp) {
+                        if (it.httpCode == 401) context.getString(R.string.onboarding_error_code_expired) else null
+                    }
+                    _uiState.update { it.copy(isSubmitting = false, error = err) }
                     return@launch
                 }
                 val body = resp.body()
                 if (body == null) {
                     _uiState.update {
-                        it.copy(isSubmitting = false, error = context.getString(R.string.common_empty_response))
+                        it.copy(
+                            isSubmitting = false,
+                            error = UserError(context.getString(R.string.common_empty_response)),
+                        )
                     }
                     return@launch
                 }
@@ -144,9 +151,8 @@ class RestoreFoyerViewModel @Inject constructor(
                 tokenRegistrar.registerFcmToken()
                 _uiState.update { it.copy(isSubmitting = false, done = true) }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(isSubmitting = false, error = e.message ?: context.getString(R.string.common_error_network))
-                }
+                val err = UserErrors.from(context, e)
+                _uiState.update { it.copy(isSubmitting = false, error = err) }
             }
         }
     }

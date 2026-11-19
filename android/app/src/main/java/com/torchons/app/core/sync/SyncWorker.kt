@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.google.gson.Gson
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.local.dao.CompletionDao
 import com.torchons.app.data.local.dao.DelegationDao
@@ -91,6 +92,10 @@ class SyncWorker(
 
     private val gson = Gson()
 
+    /** Failure text stored on an op and shown in the sync dialog: translated, never the raw message. */
+    private fun shown(t: Throwable) = UserErrors.from(applicationContext, t).message
+    private fun shown(resp: retrofit2.Response<*>) = UserErrors.fromResponse(applicationContext, resp).message
+
     override suspend fun doWork(): Result {
         val ep = EntryPointAccessors.fromApplication(
             applicationContext, SyncWorkerEntryPoint::class.java
@@ -130,13 +135,14 @@ class SyncWorker(
                         // le bandeau "Synchronisation en cours" affiche a vie. On drop.
                         resp.code() in 400..499 -> pendingDao.delete(op.clientOpId)
                         // 5xx / reseau via onFailure : on retry normalement.
-                        else -> pendingDao.incrementAttempt(op.clientOpId, "HTTP ${resp.code()}")
+                        else -> pendingDao.incrementAttempt(op.clientOpId, shown(resp))
                     }
                 } else {
                     pendingDao.delete(op.clientOpId)
                 }
             }.onFailure {
-                pendingDao.incrementAttempt(op.clientOpId, it.message ?: "error")
+                // Shown under the op in the sync dialog: the translated sentence, never the raw message.
+                pendingDao.incrementAttempt(op.clientOpId, shown(it))
             }
         }
 
@@ -171,11 +177,12 @@ class SyncWorker(
                 // requestSync REPLACEs a running pass: not a failure of the ops.
                 throw e
             } catch (e: Exception) {
-                return@sendInBatches failed(e.javaClass.simpleName)
+                return@sendInBatches failed(shown(e))
             }
 
-            if (!resp.isSuccessful) return@sendInBatches failed("HTTP ${resp.code()}")
-            val body = resp.body() ?: return@sendInBatches failed("HTTP ${resp.code()}: empty body")
+            if (!resp.isSuccessful) return@sendInBatches failed(shown(resp))
+            val body = resp.body()
+                ?: return@sendInBatches failed(shown(IllegalStateException("empty body")))
 
             body.applied.forEach { pendingDao.delete(it.clientOpId) }
             if (body.applied.isNotEmpty()) tokenManager.setLastSyncPushAt(System.currentTimeMillis())

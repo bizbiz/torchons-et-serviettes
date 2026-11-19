@@ -1,5 +1,32 @@
 # Release notes
 
+## v0.46.0 — 2026-11-19
+
+### To do today
+- A task's "!" hands it to the other members who can see it: it shows in red at the top of
+  their home screen until someone does it, with reminders at 12:00, 16:00 and 20:00.
+- The reminders can be turned off in Settings; the feature itself is always there.
+
+### Help on every screen
+- A "?" at the top right explains the screen you are looking at, covering only what is turned
+  on in your household.
+- A welcome note on first launch. At the bottom of Settings, "A word from Quentin" to send me a
+  bug or an idea, or buy me a coffee.
+- On the home screen, "Rate a task" moves to the bubble icon.
+
+### Tasks tab
+- Context filters are simple ticks, and up-to-date tasks show on demand at the bottom of the
+  list.
+
+### Errors
+- Error messages are readable: "Can't reach the server", or a code to send me. A "Send to
+  Quentin" button prepares the email.
+- The error message stays above the keyboard, and the keyboard closes when you submit a text.
+
+### Leaner
+- Settings and charts of a feature that is turned off no longer show.
+- Scanning the invitation QR code goes through Google: the app no longer needs the camera.
+
 ## v0.45.3 — 2026-11-17
 
 ### Fixed

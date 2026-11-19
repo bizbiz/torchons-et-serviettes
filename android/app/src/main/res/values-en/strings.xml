@@ -1847,4 +1847,18 @@
     <string name="support_dev_title">A word from Quentin</string>
     <string name="support_dev_body">I build this app in my spare time. A bug, an idea, something unclear? Write to me, I read everything.</string>
     <string name="support_dev_body_coffee">And if it helps you out, you can buy me a coffee ☕</string>
+
+    <!-- Error translator (UserError) and the "send to Quentin" report -->
+    <string name="user_error_unreachable">Can\'t reach the server. Check your connection.</string>
+    <string name="user_error_server_code">Something went wrong (code %1$s).</string>
+    <string name="user_error_server_status">Something went wrong (error %1$d).</string>
+    <string name="user_error_unexpected">An unexpected error occurred.</string>
+    <string name="user_error_send_to_quentin">Send to Quentin</string>
+    <string name="user_error_mail_subject_code">Error %1$s</string>
+    <string name="user_error_mail_subject_generic">Error in the app</string>
+    <string name="user_error_mail_line_code">Code: %1$s</string>
+    <string name="user_error_mail_line_version">App version: %1$s</string>
+    <string name="user_error_mail_line_screen">Screen: %1$s</string>
+    <string name="user_error_mail_line_date">Date: %1$s</string>
+    <string name="user_error_mail_line_screenshot">If you have a screenshot of the error, it will help me a lot.\n\nThank you so much for taking the time to report errors to me,\nreally, thank you!!</string>
 </resources>

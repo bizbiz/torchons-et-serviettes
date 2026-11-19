@@ -71,8 +71,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.filled.Favorite
 import com.torchons.app.R
-import com.torchons.app.ui.common.Modules
-import com.torchons.app.ui.common.moduleEnabled
+import com.torchons.app.ui.common.*
 import com.torchons.app.data.model.BadgeInfo
 import com.torchons.app.data.model.FairShareStatus
 import com.torchons.app.data.model.LeaderboardEntry
@@ -846,7 +845,7 @@ private fun HistoryTab(
                     }
                 }
             },
-            singleLine = true,
+            singleLine = true, keyboardActions = submitKeyboardActions(),
         )
 
         Spacer(modifier = Modifier.height(8.dp))

@@ -8,6 +8,7 @@ import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskContextRef
 import com.torchons.app.data.model.TaskHistoryEvent
+import com.torchons.app.ui.common.UserError
 import com.torchons.app.util.TaskUrgencyCalculator
 
 data class TaskRating(
@@ -36,7 +37,7 @@ data class TaskDetailUiState(
     /** Contexte de notation pour le modal unifie. Non-null = modal ouvert. */
     val ratingContext: PendingAffinity? = null,
     val editingCompletion: Completion? = null,
-    val error: String? = null,
+    val error: UserError? = null,
     val completionMessage: String? = null,
     val hasCachedData: Boolean = false,
     val lastRefreshFailed: Boolean = false,

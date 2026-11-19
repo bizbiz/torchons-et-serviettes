@@ -49,6 +49,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.torchons.app.core.clipboard.copySensitiveToClipboard
 import com.torchons.app.R
+import com.torchons.app.ui.common.UserErrorDialogText
+import com.torchons.app.ui.common.sendSupportEmail
 
 /**
  * Donation page, opened via Intent.ACTION_VIEW. Comes from BuildConfig
@@ -56,11 +58,8 @@ import com.torchons.app.R
  */
 private val DONATE_URL: String = com.torchons.app.BuildConfig.DONATE_URL
 
-/** Email de contact du dev pour le bouton "M'ecrire". Source = BuildConfig
- *  (cf. build.gradle.kts > `tsSupportEmail`). Configurable via
- *  `ts.support.email=...` dans `local.properties` (gitignored) pour ne
- *  pas exposer un email perso dans le repo public. */
-private val SUPPORT_EMAIL: String = com.torchons.app.BuildConfig.SUPPORT_EMAIL
+/* The support address (button "M'ecrire") lives in ui/common/SupportEmail.kt:
+ * BuildConfig.SUPPORT_EMAIL, set by `ts.support.email=...` in local.properties. */
 
 /**
  * Card "Securite du foyer" affichant 2 actions critiques (v0.30) :
@@ -268,7 +267,7 @@ fun SecuritySection(
         AlertDialog(
             onDismissRequest = { viewModel.dismissRegenerate() },
             title = { Text(stringResource(R.string.recovery_dialog_error_title)) },
-            text = { Text(regenError.message) },
+            text = { UserErrorDialogText(regenError.error, "SettingsRecovery") },
             confirmButton = {
                 Button(onClick = { viewModel.dismissRegenerate() }) { Text(stringResource(R.string.common_ok)) }
             },
@@ -336,7 +335,7 @@ fun SecuritySection(
         AlertDialog(
             onDismissRequest = { viewModel.dismissLeave() },
             title = { Text(stringResource(R.string.recovery_dialog_error_title)) },
-            text = { Text(leaveError.message) },
+            text = { UserErrorDialogText(leaveError.error, "SettingsLeaveFoyer") },
             confirmButton = {
                 Button(onClick = { viewModel.dismissLeave() }) { Text(stringResource(R.string.common_ok)) }
             },
@@ -430,13 +429,5 @@ internal fun shareCode(context: Context, code: String) {
 
 internal fun openUrl(context: Context, url: String) {
     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-    runCatching { context.startActivity(intent) }
-}
-
-private fun sendSupportEmail(context: Context) {
-    val intent = Intent(Intent.ACTION_SENDTO).apply {
-        data = Uri.parse("mailto:$SUPPORT_EMAIL")
-        putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.support_email_subject))
-    }
     runCatching { context.startActivity(intent) }
 }

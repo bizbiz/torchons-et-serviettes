@@ -6,6 +6,7 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.ContextView
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.ui.common.UserError
 import com.torchons.app.util.DurationUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -103,7 +104,7 @@ internal class TaskEditLoader(
                     )
                 } else {
                     uiState.value = uiState.value.copy(
-                        isLoading = false, error = context.getString(R.string.task_detail_not_found)
+                        isLoading = false, error = UserError(context.getString(R.string.task_detail_not_found))
                     )
                 }
             } else if (cloneFromId != null) {
@@ -158,7 +159,7 @@ internal class TaskEditLoader(
         if (source == null) {
             uiState.value = uiState.value.copy(
                 isLoading = false,
-                error = context.getString(R.string.task_edit_source_not_found),
+                error = UserError(context.getString(R.string.task_edit_source_not_found)),
                 contexts = contexts,
                 users = users,
                 assignedToIds = if (uiState.value.assignedToIds.isEmpty()) {

@@ -36,6 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.torchons.app.R
+import com.torchons.app.ui.common.dismissKeyboardThen
+import com.torchons.app.ui.common.submitKeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import com.torchons.app.data.model.FairShareHistoryEntry
 import com.torchons.app.ui.common.InfoTooltip
 
@@ -125,7 +128,8 @@ private fun MemberRow(member: FairShareMember, onChange: (String) -> Unit) {
             onValueChange = onChange,
             singleLine = true,
             suffix = { Text("%") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            keyboardActions = submitKeyboardActions(),
             modifier = Modifier.width(112.dp),
         )
     }
@@ -162,7 +166,7 @@ private fun SharesEditor(state: FairShareTargetUiState, viewModel: FairShareTarg
     }
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Button(onClick = viewModel::save, enabled = canSave, modifier = Modifier.weight(1f)) {
+        Button(onClick = dismissKeyboardThen(viewModel::save), enabled = canSave, modifier = Modifier.weight(1f)) {
             Text(
                 if (canSave || state.saving) {
                     stringResource(R.string.common_save)

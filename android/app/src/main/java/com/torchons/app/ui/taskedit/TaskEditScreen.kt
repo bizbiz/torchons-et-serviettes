@@ -42,11 +42,11 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.torchons.app.ui.common.PrimaryTopBar
+import com.torchons.app.ui.common.showUserError
 import com.torchons.app.ui.help.HelpButton
 import com.torchons.app.ui.help.HelpScreen
 import androidx.compose.runtime.Composable
@@ -72,9 +72,7 @@ import com.torchons.app.R
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-import com.torchons.app.ui.common.FrequencyVoteDialog
-import com.torchons.app.ui.common.recurrenceSentence
-import com.torchons.app.ui.common.InfoTooltip
+import com.torchons.app.ui.common.*
 import com.torchons.app.util.DurationFormat
 import com.torchons.app.util.DurationUnit
 
@@ -119,16 +117,15 @@ fun TaskEditScreen(
     LaunchedEffect(uiState.saved) {
         if (uiState.saved) onSaved()
     }
-
     // Naviguer a la liste apres suppression
     LaunchedEffect(uiState.deleted) {
         if (uiState.deleted) onDeleted()
     }
 
-    // Afficher les erreurs
+    val errorContext = LocalContext.current
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showUserError(errorContext, it, "TaskEdit")
             viewModel.clearError()
         }
     }
@@ -173,7 +170,7 @@ fun TaskEditScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { ImeSnackbarHost(snackbarHostState) },
         topBar = {
             PrimaryTopBar(
                 title = {
@@ -272,7 +269,7 @@ fun TaskEditScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(titleFocusRequester),
-                singleLine = true,
+                singleLine = true, keyboardActions = submitKeyboardActions(),
             )
 
             // Dropdown des suggestions de duplication. Visible uniquement en
@@ -501,7 +498,7 @@ fun TaskEditScreen(
                     onValueChange = { it.toIntOrNull()?.let(viewModel::updateRecurrenceDay) },
                     label = { Text(stringResource(R.string.task_edit_calendar_day_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
+                    singleLine = true, keyboardActions = submitKeyboardActions(),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -513,7 +510,7 @@ fun TaskEditScreen(
                         Text(stringResource(R.string.task_edit_calendar_grace_help))
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
+                    singleLine = true, keyboardActions = submitKeyboardActions(),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -531,7 +528,7 @@ fun TaskEditScreen(
                         onValueChange = { it.toIntOrNull()?.let(viewModel::updateAnniversaryAmount) },
                         label = { Text(stringResource(R.string.task_edit_anniversary_period_label)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
+                        singleLine = true, keyboardActions = submitKeyboardActions(),
                         modifier = Modifier.weight(1f),
                     )
                     FilterChip(
@@ -598,7 +595,7 @@ fun TaskEditScreen(
                     onValueChange = { viewModel.updateRecurrenceFieldText(it) },
                     label = { Text(stringResource(R.string.task_edit_every_n_format, stringResource(unit.labelRes).lowercase())) },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
+                    singleLine = true, keyboardActions = submitKeyboardActions(),
                     enabled = !isVoteLocked,
                 )
                 // Breakdown smart sous le champ — seulement si la valeur
@@ -671,7 +668,7 @@ fun TaskEditScreen(
                                 value = uiState.daysPerMonth[m.toString()] ?: "",
                                 onValueChange = { viewModel.updateDaysPerMonth(m.toString(), it) },
                                 label = { Text(monthNames[m - 1]) },
-                                singleLine = true
+                                singleLine = true, keyboardActions = submitKeyboardActions()
                             )
                         }
                     }
@@ -681,7 +678,7 @@ fun TaskEditScreen(
                                 value = uiState.daysPerMonth[m.toString()] ?: "",
                                 onValueChange = { viewModel.updateDaysPerMonth(m.toString(), it) },
                                 label = { Text(monthNames[m - 1]) },
-                                singleLine = true
+                                singleLine = true, keyboardActions = submitKeyboardActions()
                             )
                         }
                     }
@@ -751,7 +748,7 @@ fun TaskEditScreen(
 
             // Bouton sauvegarder
             Button(
-                onClick = { viewModel.save(taskId) },
+                onClick = dismissKeyboardThen { viewModel.save(taskId) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),

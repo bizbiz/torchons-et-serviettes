@@ -10,6 +10,8 @@ import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.CompletionChecks
 import com.torchons.app.data.repository.DelegationRepository
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.ui.today.TodayDelegations
 import com.torchons.app.util.CompletionDateLabels
 import com.torchons.app.util.WifiHelper
@@ -187,7 +189,7 @@ class TaskListViewModel @Inject constructor(
                     },
                     onFailure = { error ->
                         _uiState.value = _uiState.value.copy(
-                            error = error.message ?: context.getString(R.string.common_error_complete),
+                            error = UserErrors.from(context, error),
                         )
                     },
                 )
@@ -220,7 +222,7 @@ class TaskListViewModel @Inject constructor(
                         )
                     },
                     onFailure = { error ->
-                        _uiState.value = _uiState.value.copy(error = error.message)
+                        _uiState.value = _uiState.value.copy(error = UserErrors.from(context, error))
                     },
                 )
             },
@@ -270,12 +272,8 @@ class TaskListViewModel @Inject constructor(
                         )
                     },
                     onFailure = { err ->
-                        val msg = when (err) {
-                            is TaskRepository.CollectiveCompletionException -> when (err.httpCode) {
-                                409 -> context.getString(R.string.common_collective_conflict)
-                                else -> context.getString(R.string.common_error_code_format, err.httpCode)
-                            }
-                            else -> err.message ?: context.getString(R.string.common_error_network)
+                        val msg = UserErrors.from(context, err) {
+                            if (it.httpCode == 409) context.getString(R.string.common_collective_conflict) else null
                         }
                         _uiState.value = _uiState.value.copy(error = msg)
                     },
@@ -375,7 +373,7 @@ class TaskListViewModel @Inject constructor(
     private fun unlessDuplicate(taskId: String, at: String? = null, by: List<String>? = null, go: () -> Unit) {
         viewModelScope.launch {
             val refusal = completionChecks.refusal(taskId, at, by)
-            if (refusal == null) go() else _uiState.value = _uiState.value.copy(error = refusal)
+            if (refusal == null) go() else _uiState.value = _uiState.value.copy(error = UserError(refusal))
         }
     }
 

@@ -5,7 +5,10 @@ import android.content.Context
 import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.torchons.app.data.api.ApiHttpException
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.PairingJoinRequest
 import kotlinx.coroutines.flow.first
@@ -35,7 +38,7 @@ data class JoinState(
     val isSubmitting: Boolean = false,
     val recoveryCode: String? = null,
     val foyerName: String? = null,
-    val error: String? = null,
+    val error: UserError? = null,
     val done: Boolean = false,
     /** v0.31 : "foyer_join" (par defaut) ou "add_device" — connu apres
      * le probe /pairing/info qui suit le scan QR. */
@@ -65,14 +68,9 @@ class JoinFoyerViewModel @Inject constructor(
             try {
                 val resp = apiService.pairingInfo(mapOf("invite_token" to token))
                 if (!resp.isSuccessful) {
-                    val msg = when (resp.code()) {
-                        404 -> context.getString(R.string.onboarding_error_invite_invalid)
-                        409 -> context.getString(R.string.onboarding_error_invite_used)
-                        410 -> context.getString(R.string.onboarding_error_invite_expired)
-                        else -> context.getString(R.string.common_error_code_format, resp.code())
-                    }
+                    val err = UserErrors.fromResponse(context, resp, ::knownInviteError)
                     _uiState.update {
-                        it.copy(error = msg, inviteToken = null)
+                        it.copy(error = err, inviteToken = null)
                     }
                     return@launch
                 }
@@ -107,7 +105,9 @@ class JoinFoyerViewModel @Inject constructor(
         // Pour foyer_join : display_name requis ; pour add_device : pas requis.
         val isAddDevice = s.kind == "add_device"
         if (!isAddDevice && s.displayName.isBlank()) {
-            _uiState.update { it.copy(error = context.getString(R.string.onboarding_error_name_required)) }
+            _uiState.update {
+                it.copy(error = UserError(context.getString(R.string.onboarding_error_name_required)))
+            }
             return
         }
         _uiState.update { it.copy(isSubmitting = true, error = null) }
@@ -122,20 +122,17 @@ class JoinFoyerViewModel @Inject constructor(
                     )
                 )
                 if (!resp.isSuccessful) {
-                    val msg = when (resp.code()) {
-                        400 -> context.getString(R.string.onboarding_error_data_invalid)
-                        404 -> context.getString(R.string.onboarding_error_invite_invalid)
-                        409 -> context.getString(R.string.onboarding_error_invite_used)
-                        410 -> context.getString(R.string.onboarding_error_invite_expired)
-                        else -> context.getString(R.string.common_error_code_format, resp.code())
-                    }
-                    _uiState.update { it.copy(isSubmitting = false, error = msg) }
+                    val err = UserErrors.fromResponse(context, resp, ::knownInviteError)
+                    _uiState.update { it.copy(isSubmitting = false, error = err) }
                     return@launch
                 }
                 val body = resp.body()
                 if (body == null) {
                     _uiState.update {
-                        it.copy(isSubmitting = false, error = context.getString(R.string.common_empty_response))
+                        it.copy(
+                            isSubmitting = false,
+                            error = UserError(context.getString(R.string.common_empty_response)),
+                        )
                     }
                     return@launch
                 }
@@ -161,10 +158,18 @@ class JoinFoyerViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(isSubmitting = false, error = e.message ?: context.getString(R.string.common_error_network))
-                }
+                val err = UserErrors.from(context, e, ::knownInviteError)
+                _uiState.update { it.copy(isSubmitting = false, error = err) }
             }
         }
+    }
+
+    /** Server answers this screen can name; anything else goes to the generic translator. */
+    private fun knownInviteError(e: ApiHttpException): String? = when (e.httpCode) {
+        400 -> context.getString(R.string.onboarding_error_data_invalid)
+        404 -> context.getString(R.string.onboarding_error_invite_invalid)
+        409 -> context.getString(R.string.onboarding_error_invite_used)
+        410 -> context.getString(R.string.onboarding_error_invite_expired)
+        else -> null
     }
 }

@@ -49,6 +49,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
+import com.torchons.app.ui.common.dismissKeyboardThen
+import com.torchons.app.ui.common.submitKeyboardActions
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.ui.help.HelpButton
 import com.torchons.app.ui.help.HelpScreen
@@ -302,6 +304,7 @@ private fun ContextEditDialog(
                     onValueChange = { nom = it },
                     label = { Text(stringResource(R.string.common_name_label)) },
                     singleLine = true,
+                    keyboardActions = submitKeyboardActions(),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(8.dp))
@@ -311,6 +314,7 @@ private fun ContextEditDialog(
                     label = { Text(stringResource(R.string.rooms_dialog_emoji_label)) },
                     placeholder = { Text(stringResource(R.string.rooms_dialog_emoji_placeholder)) },
                     singleLine = true,
+                    keyboardActions = submitKeyboardActions(),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(16.dp))
@@ -331,7 +335,9 @@ private fun ContextEditDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(nom.trim(), emoji.trim().ifBlank { null }, presence, accrues) },
+                onClick = dismissKeyboardThen {
+                    onConfirm(nom.trim(), emoji.trim().ifBlank { null }, presence, accrues)
+                },
                 enabled = nom.isNotBlank(),
             ) { Text(stringResource(R.string.common_save)) }
         },

@@ -46,6 +46,9 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.CoupleTotalsResponse
 import com.torchons.app.data.model.LeaderboardEntry
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrorBlock
+import com.torchons.app.ui.common.UserErrors
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -109,7 +112,7 @@ fun UserProfileDialog(
     var leaderboardAll by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
     // v0.31 — totaux foyer + couple_streak (item roadmap "Stats globales du couple").
     var coupleTotals by remember { mutableStateOf<CoupleTotalsResponse?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<UserError?>(null) }
 
     LaunchedEffect(request.userId) {
         loading = true
@@ -121,7 +124,7 @@ fun UserProfileDialog(
             if (resp.isSuccessful) {
                 history = resp.body() ?: emptyList()
             } else {
-                error = context.getString(R.string.common_error_code_format, resp.code())
+                error = UserErrors.fromResponse(context, resp)
             }
             // Fetchs paralleles pour les leaderboards (best-effort).
             try {
@@ -138,7 +141,7 @@ fun UserProfileDialog(
                 if (ct.isSuccessful) coupleTotals = ct.body()
             } catch (_: Exception) { /* silencieux */ }
         } catch (e: Exception) {
-            error = e.message ?: context.getString(R.string.common_error_network)
+            error = UserErrors.from(context, e)
         } finally {
             loading = false
         }
@@ -277,12 +280,7 @@ fun UserProfileDialog(
                             CircularProgressIndicator()
                         }
                     }
-                    error != null -> {
-                        Text(
-                            text = error ?: "",
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
+                    error != null -> error?.let { UserErrorBlock(it, "UserProfile") }
                     history.isEmpty() -> {
                         Text(
                             text = stringResource(R.string.user_profile_empty_history),

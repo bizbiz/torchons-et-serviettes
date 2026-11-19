@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.core.network.DeviceRevocationMonitor
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.DeviceDto
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +20,7 @@ import javax.inject.Inject
 data class DevicesUiState(
     val loading: Boolean = true,
     val devices: List<DeviceDto> = emptyList(),
-    val error: String? = null,
+    val error: UserError? = null,
     /** Passe a true quand CET appareil s'est deconnecte : l'UI doit sortir. */
     val signedOut: Boolean = false,
 )
@@ -58,13 +60,13 @@ class DevicesViewModel @Inject constructor(
                 } else {
                     _uiState.value = _uiState.value.copy(
                         loading = false,
-                        error = context.getString(R.string.common_error_http_format, response.code()),
+                        error = UserErrors.fromResponse(context, response),
                     )
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     loading = false,
-                    error = e.javaClass.simpleName,
+                    error = UserErrors.from(context, e),
                 )
             }
         }
@@ -77,10 +79,10 @@ class DevicesViewModel @Inject constructor(
                 val response = api.revokeDevice(deviceId)
                 if (response.isSuccessful) refresh()
                 else _uiState.value = _uiState.value.copy(
-                    error = context.getString(R.string.common_error_http_format, response.code()),
+                    error = UserErrors.fromResponse(context, response),
                 )
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.javaClass.simpleName)
+                _uiState.value = _uiState.value.copy(error = UserErrors.from(context, e))
             }
         }
     }

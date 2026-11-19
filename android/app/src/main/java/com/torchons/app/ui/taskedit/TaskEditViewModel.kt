@@ -13,6 +13,8 @@ import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.UpdateTaskRequest
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.util.DurationUnit
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
@@ -268,7 +270,7 @@ class TaskEditViewModel @Inject constructor(
     fun save(taskId: String?) {
         val state = _uiState.value
         if (state.title.isBlank()) {
-            _uiState.value = state.copy(error = context.getString(R.string.task_edit_title_required))
+            _uiState.value = state.copy(error = UserError(context.getString(R.string.task_edit_title_required)))
             return
         }
 
@@ -336,7 +338,7 @@ class TaskEditViewModel @Inject constructor(
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
                         isSaving = false,
-                        error = error.message ?: context.getString(R.string.task_edit_save_error)
+                        error = UserErrors.from(context, error)
                     )
                 }
             )
@@ -355,7 +357,7 @@ class TaskEditViewModel @Inject constructor(
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
                         isSaving = false,
-                        error = error.message ?: context.getString(R.string.common_error_delete)
+                        error = UserErrors.from(context, error)
                     )
                 }
             )
@@ -405,7 +407,7 @@ class TaskEditViewModel @Inject constructor(
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
                         showFrequencyVoteDialog = false,
-                        error = error.message ?: context.getString(R.string.common_error_vote),
+                        error = UserErrors.from(context, error),
                     )
                 },
             )

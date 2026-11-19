@@ -41,6 +41,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.torchons.app.R
 import com.torchons.app.data.model.DeviceDto
+import com.torchons.app.ui.common.UserErrorBlock
 import com.torchons.app.ui.help.HelpButton
 import com.torchons.app.ui.help.HelpScreen
 
@@ -89,7 +90,7 @@ fun DevicesScreen(
             when {
                 state.loading -> CircularProgressIndicator()
                 state.error != null -> Column {
-                    Text(stringResource(R.string.mydevices_error, state.error ?: ""))
+                    state.error?.let { UserErrorBlock(it, "Devices", color = MaterialTheme.colorScheme.onSurface) }
                     TextButton(onClick = viewModel::refresh) {
                         Text(stringResource(R.string.mydevices_retry))
                     }

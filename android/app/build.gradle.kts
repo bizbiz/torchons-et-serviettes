@@ -75,8 +75,8 @@ val tsHasUploadKeystore: Boolean =
 // the build it belongs to: a mapping file without its versionCode is useless.
 // 96: first minified build installed on a phone. 95 names two different APKs
 // (non-minified on 09-02, minified on 09-03), which only their size told apart.
-val tsVersionCode = 119
-val tsVersionName = "0.45.3"
+val tsVersionCode = 120
+val tsVersionName = "0.46.0"
 
 android {
     namespace = "com.torchons.app"
@@ -287,9 +287,8 @@ dependencies {
     implementation("nl.dionsegijn:konfetti-compose:2.0.5")
 
     // v0.30 — onboarding sans compte
-    // Quickie : scan QR via CameraX + ML Kit, API Compose-friendly
-    // (registerForActivityResult avec ScanQRCode contract).
-    implementation(libs.quickie.bundled)
+    // Google code scanner : scan QR delegue aux services Google Play, sans permission CAMERA.
+    implementation(libs.play.services.code.scanner)
     // QRCode-Kotlin : generation de QR pure Kotlin pour l'ecran d'invitation.
     implementation(libs.qrcode.kotlin)
 

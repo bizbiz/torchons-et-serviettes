@@ -26,7 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
+import com.torchons.app.ui.common.ImeSnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import android.widget.Toast
@@ -53,6 +53,7 @@ import com.torchons.app.ui.common.Modules
 import com.torchons.app.ui.common.moduleEnabled
 import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.RatingDialog
+import com.torchons.app.ui.common.showUserError
 
 @Composable
 fun HomeScreen(
@@ -81,16 +82,21 @@ fun HomeScreen(
     // c'est autant d'etat derive en moins a garder synchrone.
     val tasksById = remember(activeTasks) { activeTasks.associateBy { it.id } }
 
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            Toast.makeText(toastContext, it, Toast.LENGTH_SHORT).show()
-            viewModel.clearError()
-        }
-    }
-
     // v0.16+ : Snackbar du recycle dismiss (tier-aware). Le SharedFlow
     // n'emet qu'une fois par recycle, pas de replay sur recomposition.
     val snackbarHostState = remember { SnackbarHostState() }
+    // A reportable error needs its "Send to Quentin" button: snackbar (cleared
+    // once it goes away, clearing first would cancel it). Others stay a toast.
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            if (it.reportable) {
+                snackbarHostState.showUserError(toastContext, it, "Home")
+            } else {
+                Toast.makeText(toastContext, it.message, Toast.LENGTH_SHORT).show()
+            }
+            viewModel.clearError()
+        }
+    }
     LaunchedEffect(Unit) {
         viewModel.recycleToast.collect { msg ->
             snackbarHostState.showSnackbar(
@@ -157,7 +163,11 @@ fun HomeScreen(
     // Toast pour les erreurs propositions (expiration, decline, ...)
     LaunchedEffect(propositionError) {
         propositionError?.let {
-            Toast.makeText(toastContext, it, Toast.LENGTH_SHORT).show()
+            if (it.reportable) {
+                snackbarHostState.showUserError(toastContext, it, "Home")
+            } else {
+                Toast.makeText(toastContext, it.message, Toast.LENGTH_SHORT).show()
+            }
             viewModel.dismissPropositionError()
         }
     }
@@ -556,8 +566,8 @@ fun HomeScreen(
 
     // v0.16+ : SnackbarHost pour messages de recycle dismiss (tier-aware).
     // Aligne en bas de l'ecran, au-dessus de la BottomNav si presente.
-    SnackbarHost(
-        hostState = snackbarHostState,
+    ImeSnackbarHost(
+        state = snackbarHostState,
         modifier = Modifier.align(Alignment.BottomCenter),
     )
     } // fin du Box outer (celebration overlay layer)

@@ -9,6 +9,8 @@ import com.torchons.app.data.model.Foyer
 import com.torchons.app.data.model.FoyerCreateRequest
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.ui.settings.SettingsViewModel.LeaveState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -174,7 +176,9 @@ internal class SettingsFoyerActions(
             try {
                 val foyerId = authRepository.foyerIdFlow.first()
                 if (foyerId.isNullOrEmpty()) {
-                    leaveState.value = LeaveState.Error(appContext.getString(R.string.settings_leave_no_active_foyer))
+                    leaveState.value = LeaveState.Error(
+                        UserError(appContext.getString(R.string.settings_leave_no_active_foyer)),
+                    )
                     return@launch
                 }
                 val resp = apiService.leaveFoyer(foyerId)
@@ -195,13 +199,12 @@ internal class SettingsFoyerActions(
                     return@launch
                 }
                 if (!resp.isSuccessful) {
-                    leaveState.value =
-                        LeaveState.Error(appContext.getString(R.string.common_error_code_format, resp.code()))
+                    leaveState.value = LeaveState.Error(UserErrors.fromResponse(appContext, resp))
                     return@launch
                 }
                 val body = resp.body()
                 if (body == null) {
-                    leaveState.value = LeaveState.Error(appContext.getString(R.string.common_empty_response))
+                    leaveState.value = LeaveState.Error(UserError(appContext.getString(R.string.common_empty_response)))
                     return@launch
                 }
                 // P4a.1 Bug B : retrait OPTIMISTE immediat du foyer quitte
@@ -223,8 +226,7 @@ internal class SettingsFoyerActions(
                     leaveState.value = LeaveState.LoggedOut
                 }
             } catch (e: Exception) {
-                leaveState.value =
-                    LeaveState.Error(e.message ?: appContext.getString(R.string.common_error_network))
+                leaveState.value = LeaveState.Error(UserErrors.from(appContext, e))
             }
         }
     }

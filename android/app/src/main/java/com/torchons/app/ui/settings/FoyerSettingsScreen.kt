@@ -53,6 +53,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.torchons.app.ui.common.PrimaryTopBar
+import com.torchons.app.ui.common.UserErrorDialogText
 import com.torchons.app.ui.help.HelpButton
 import com.torchons.app.ui.help.HelpScreen
 import androidx.compose.runtime.Composable
@@ -69,9 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
-import com.torchons.app.ui.common.InfoTooltip
-import com.torchons.app.ui.common.Modules
-import com.torchons.app.ui.common.moduleEnabled
+import com.torchons.app.ui.common.*
 import com.torchons.app.ui.home.ProjectionSimulationDialog
 import com.torchons.app.ui.stats.StreakCalendarModal
 import com.torchons.app.ui.stats.StreakMember
@@ -692,13 +691,13 @@ fun FoyerSettingsScreen(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.common_name_label)) },
-                    singleLine = true,
+                    singleLine = true, keyboardActions = submitKeyboardActions(),
                     modifier = Modifier.fillMaxWidth(),
                 )
             },
             confirmButton = {
                 Button(
-                    onClick = {
+                    onClick = dismissKeyboardThen {
                         viewModel.renameCurrentFoyer(name)
                         showRenameDialog = false
                     },
@@ -952,13 +951,12 @@ private fun RecoveryAndLeaveDialogs(
             },
         )
     }
-
     val regenError = regenerateState as? SettingsViewModel.RegenerateState.Error
     if (regenError != null) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissRegenerate() },
             title = { Text(stringResource(R.string.recovery_dialog_error_title)) },
-            text = { Text(regenError.message) },
+            text = { UserErrorDialogText(regenError.error, "SettingsRecovery") },
             confirmButton = {
                 Button(onClick = { viewModel.dismissRegenerate() }) { Text(stringResource(R.string.common_ok)) }
             },
@@ -1022,7 +1020,7 @@ private fun RecoveryAndLeaveDialogs(
         AlertDialog(
             onDismissRequest = { viewModel.dismissLeave() },
             title = { Text(stringResource(R.string.recovery_dialog_error_title)) },
-            text = { Text(leaveError.message) },
+            text = { UserErrorDialogText(leaveError.error, "SettingsLeaveFoyer") },
             confirmButton = {
                 Button(onClick = { viewModel.dismissLeave() }) { Text(stringResource(R.string.common_ok)) }
             },

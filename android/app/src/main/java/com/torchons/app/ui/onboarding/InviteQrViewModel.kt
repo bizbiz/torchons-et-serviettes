@@ -7,6 +7,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +35,7 @@ data class InviteQrState(
     /** Mode actuel : "foyer_join" ou "add_device" (echo du backend). */
     val kind: String = "foyer_join",
     val isLoading: Boolean = false,
-    val error: String? = null,
+    val error: UserError? = null,
 )
 
 @HiltViewModel
@@ -65,18 +67,17 @@ class InviteQrViewModel @Inject constructor(
                 val resp = if (addDevice) apiService.pairingInitAddDevice()
                 else apiService.pairingInit()
                 if (!resp.isSuccessful) {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = context.getString(R.string.common_error_code_format, resp.code()),
-                        )
-                    }
+                    val err = UserErrors.fromResponse(context, resp)
+                    _uiState.update { it.copy(isLoading = false, error = err) }
                     return@launch
                 }
                 val body = resp.body()
                 if (body == null) {
                     _uiState.update {
-                        it.copy(isLoading = false, error = context.getString(R.string.common_empty_response))
+                        it.copy(
+                            isLoading = false,
+                            error = UserError(context.getString(R.string.common_empty_response)),
+                        )
                     }
                     return@launch
                 }
@@ -90,9 +91,8 @@ class InviteQrViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(isLoading = false, error = e.message ?: context.getString(R.string.common_error_network))
-                }
+                val err = UserErrors.from(context, e)
+                _uiState.update { it.copy(isLoading = false, error = err) }
             }
         }
     }

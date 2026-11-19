@@ -36,11 +36,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.torchons.app.R
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrorBlock
+import com.torchons.app.ui.common.UserErrors
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -75,7 +79,7 @@ fun ChangelogScreen(onBack: () -> Unit) {
     var changelogText by remember { mutableStateOf<String?>(null) }
     var roadmapText by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<UserError?>(null) }
 
     LaunchedEffect(Unit) {
         loading = true
@@ -91,17 +95,15 @@ fun ChangelogScreen(onBack: () -> Unit) {
                 roadmapText = r.body()?.get("content") as? String
             }
             if (!c.isSuccessful && !r.isSuccessful) {
-                error = "load_error"  // signal interne, resolu en stringResource a l'affichage
+                error = UserErrors.fromResponse(context, c)
             }
         } catch (e: Exception) {
-            error = e.message ?: "network_error"
+            error = UserErrors.from(context, e)
         } finally {
             loading = false
         }
     }
 
-    val loadErrorText = stringResource(R.string.changelog_load_error)
-    val networkErrorText = stringResource(R.string.common_error_network)
     Scaffold(
         topBar = {
             TopAppBar(
@@ -146,19 +148,11 @@ fun ChangelogScreen(onBack: () -> Unit) {
                     ) { CircularProgressIndicator() }
                 }
                 error != null -> {
-                    val msg = when (error) {
-                        "load_error" -> loadErrorText
-                        "network_error" -> networkErrorText
-                        else -> error ?: ""
-                    }
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = msg,
-                            color = MaterialTheme.colorScheme.error
-                        )
+                        error?.let { UserErrorBlock(it, "Changelog", textAlign = TextAlign.Center) }
                     }
                 }
                 else -> {

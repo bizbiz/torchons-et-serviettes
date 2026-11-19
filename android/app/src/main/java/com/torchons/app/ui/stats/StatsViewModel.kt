@@ -1,6 +1,10 @@
 package com.torchons.app.ui.stats
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
+import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
@@ -88,7 +92,7 @@ data class StatsUiState(
     val retardPeriod: RetardPeriod = RetardPeriod.ALL,
     val isRetardLoading: Boolean = false,
     val selectedTab: Int = 0,
-    val error: String? = null,
+    val error: UserError? = null,
     // False = gamification off for this user: the gamification data below is
     // never fetched and stays empty/null, and the screen hides its sections.
     val gamificationVisible: Boolean = true,
@@ -98,6 +102,7 @@ data class StatsUiState(
 class StatsViewModel @Inject constructor(
     private val apiService: ApiService,
     private val tokenManager: TokenManager,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     val userId: StateFlow<String?> = tokenManager.userIdFlow
@@ -160,7 +165,7 @@ class StatsViewModel @Inject constructor(
                     retardTimeline = if (retardResp.isSuccessful) retardResp.body() else null,
                 )
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = UserErrors.from(context, e))
             }
         }
     }

@@ -18,6 +18,8 @@ import com.torchons.app.data.model.ContextCreateRequest
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.service.TokenRegistrar
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -69,7 +71,7 @@ data class WizardState(
     val catalogStatus: CatalogStatus = CatalogStatus.LOADING,
     val recoveryCode: String? = null,
     val isSubmitting: Boolean = false,
-    val error: String? = null,
+    val error: UserError? = null,
     val done: Boolean = false,
     // P4a.2 — variante "ajouter un foyer" (user déjà connecté) : on saute
     // l'étape Toi (prénom) et l'étape Recovery (code compte déjà existant),
@@ -312,22 +314,18 @@ class CreateFoyerWizardViewModel @Inject constructor(
         )
         val created = createResp.body()
         if (!createResp.isSuccessful || created == null) {
-            _uiState.update {
-                it.copy(
-                    isSubmitting = false,
-                    error = context.getString(R.string.onboarding_error_create_foyer_format, createResp.code()),
-                )
+            val err = if (createResp.isSuccessful) {
+                UserError(context.getString(R.string.common_empty_response))
+            } else {
+                UserErrors.fromResponse(context, createResp)
             }
+            _uiState.update { it.copy(isSubmitting = false, error = err) }
             return
         }
         val switched = authRepository.switchFoyer(created.id)
         if (switched.isFailure) {
-            _uiState.update {
-                it.copy(
-                    isSubmitting = false,
-                    error = context.getString(R.string.onboarding_error_switch_foyer),
-                )
-            }
+            val err = UserErrors.from(context, switched.exceptionOrNull() ?: IllegalStateException("switch failed"))
+            _uiState.update { it.copy(isSubmitting = false, error = err) }
             return
         }
         // Contextes libres saisis a l'etape 2 — best-effort : le foyer est
@@ -352,15 +350,12 @@ class CreateFoyerWizardViewModel @Inject constructor(
                 )
                 val resolved = resolveResp.body()
                 if (!resolveResp.isSuccessful || resolved == null) {
-                    _uiState.update {
-                        it.copy(
-                            isSubmitting = false,
-                            error = context.getString(
-                                R.string.onboarding_error_import_resolve_format,
-                                resolveResp.code(),
-                            ),
-                        )
+                    val err = if (resolveResp.isSuccessful) {
+                        UserError(context.getString(R.string.common_empty_response))
+                    } else {
+                        UserErrors.fromResponse(context, resolveResp)
                     }
+                    _uiState.update { it.copy(isSubmitting = false, error = err) }
                     return
                 }
                 val contextDecisions = resolved.contexts.map {
@@ -374,21 +369,13 @@ class CreateFoyerWizardViewModel @Inject constructor(
                     )
                 )
                 if (!applyResp.isSuccessful) {
-                    _uiState.update {
-                        it.copy(
-                            isSubmitting = false,
-                            error = context.getString(R.string.onboarding_error_import_apply_format, applyResp.code()),
-                        )
-                    }
+                    val err = UserErrors.fromResponse(context, applyResp)
+                    _uiState.update { it.copy(isSubmitting = false, error = err) }
                     return
                 }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isSubmitting = false,
-                        error = context.getString(R.string.onboarding_error_import_failed_format, e.message ?: ""),
-                    )
-                }
+                val err = UserErrors.from(context, e)
+                _uiState.update { it.copy(isSubmitting = false, error = err) }
                 return
             }
         }
@@ -429,18 +416,17 @@ class CreateFoyerWizardViewModel @Inject constructor(
                     )
                 )
                 if (!createResp.isSuccessful) {
-                    _uiState.update {
-                        it.copy(
-                            isSubmitting = false,
-                            error = context.getString(R.string.onboarding_error_create_foyer_format, createResp.code()),
-                        )
-                    }
+                    val err = UserErrors.fromResponse(context, createResp)
+                    _uiState.update { it.copy(isSubmitting = false, error = err) }
                     return@launch
                 }
                 val createBody = createResp.body()
                 if (createBody == null) {
                     _uiState.update {
-                        it.copy(isSubmitting = false, error = context.getString(R.string.common_empty_response))
+                        it.copy(
+                            isSubmitting = false,
+                            error = UserError(context.getString(R.string.common_empty_response)),
+                        )
                     }
                     return@launch
                 }
@@ -503,12 +489,8 @@ class CreateFoyerWizardViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isSubmitting = false,
-                        error = e.message ?: context.getString(R.string.common_error_network),
-                    )
-                }
+                val err = UserErrors.from(context, e)
+                _uiState.update { it.copy(isSubmitting = false, error = err) }
             }
         }
     }

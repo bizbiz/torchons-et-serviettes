@@ -29,7 +29,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
+import com.torchons.app.ui.common.ImeSnackbarHost
+import com.torchons.app.ui.common.submitKeyboardActions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -58,6 +61,7 @@ import com.torchons.app.ui.today.TodayActionDialogs
 import com.torchons.app.ui.today.rememberTodayActionState
 import com.torchons.app.ui.today.todayCardState
 import com.torchons.app.ui.common.InfoTooltip
+import com.torchons.app.ui.common.showUserError
 
 /**
  * Ecran principal affichant la liste des taches.
@@ -153,16 +157,17 @@ fun TaskListScreen(
         }
     }
 
+    val errorContext = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showUserError(errorContext, it, "TaskList")
             viewModel.clearError()
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { ImeSnackbarHost(snackbarHostState) },
         floatingActionButton = {
             // Un seul bouton : les propositions du catalogue vivent desormais
             // DANS l'ecran de creation, filtrees par les contextes du foyer.
@@ -278,6 +283,8 @@ fun TaskListScreen(
                         }
                     },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = submitKeyboardActions(),
                 )
             } else {
                 TaskListContextBar(

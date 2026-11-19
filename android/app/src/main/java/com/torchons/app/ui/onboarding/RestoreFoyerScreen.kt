@@ -22,7 +22,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
+import com.torchons.app.ui.common.ImeSnackbarHost
+import com.torchons.app.ui.common.dismissKeyboardThen
+import com.torchons.app.ui.common.submitKeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
+import com.torchons.app.ui.common.showUserError
 
 /**
  * Ecran "Retrouver mon foyer" (v0.30, Phase B5).
@@ -62,10 +66,11 @@ fun RestoreFoyerScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbar = remember { SnackbarHostState() }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(state.done) { if (state.done) onSuccess() }
     LaunchedEffect(state.error) {
-        state.error?.let { snackbar.showSnackbar(it) }
+        state.error?.let { snackbar.showUserError(context, it, "RestoreFoyer") }
     }
 
     Scaffold(
@@ -82,7 +87,7 @@ fun RestoreFoyerScreen(
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { ImeSnackbarHost(snackbar) },
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -139,12 +144,14 @@ private fun EnterCode(
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.Characters,
             keyboardType = KeyboardType.Ascii,
+            imeAction = ImeAction.Done,
         ),
+        keyboardActions = submitKeyboardActions { if (!isSubmitting && code.isNotBlank()) onLookup() },
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(32.dp))
     Button(
-        onClick = onLookup,
+        onClick = dismissKeyboardThen(onLookup),
         enabled = !isSubmitting && code.isNotBlank(),
         modifier = Modifier.fillMaxWidth(),
     ) {

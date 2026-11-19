@@ -2,7 +2,10 @@ package com.torchons.app.core.proposition
 
 import android.content.Context
 import com.torchons.app.R
+import com.torchons.app.data.api.ApiHttpException
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.ObjectiveUpdate
 import com.torchons.app.data.model.PropositionCreate
@@ -50,8 +53,8 @@ class PropositionStateHolder @Inject constructor(
     private val _celebration = MutableStateFlow<PropositionView?>(null)
     val celebration: StateFlow<PropositionView?> = _celebration.asStateFlow()
 
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
+    private val _error = MutableStateFlow<UserError?>(null)
+    val error: StateFlow<UserError?> = _error.asStateFlow()
 
     /** Set initial value apres creation par le proposer (retour synchrone de POST /create). */
     fun setCurrent(proposition: PropositionView?) {
@@ -70,9 +73,9 @@ class PropositionStateHolder @Inject constructor(
                 // Save the member's display unit first, as the home flow always did.
                 apiService.updateObjective(ObjectiveUpdate(displayUnit = unit))
                 val resp = apiService.createProposition(PropositionCreate(sliderValues))
-                check(resp.isSuccessful) { "Erreur proposition (${resp.code()})" }
+                if (!resp.isSuccessful) throw ApiHttpException.from(resp)
                 resp.body()?.let { _currentProposition.value = it }
-            }.onFailure { _error.value = it.message }
+            }.onFailure { _error.value = UserErrors.from(context, it) }
         }
     }
 
@@ -94,9 +97,9 @@ class PropositionStateHolder @Inject constructor(
                     }
                 } else if (resp.code() == 410) {
                     _currentProposition.value = null
-                    _error.value = context.getString(R.string.proposition_expired)
+                    _error.value = UserError(context.getString(R.string.proposition_expired))
                 }
-            }.onFailure { _error.value = it.message }
+            }.onFailure { _error.value = UserErrors.from(context, it) }
         }
     }
 
@@ -112,7 +115,7 @@ class PropositionStateHolder @Inject constructor(
                     // instead of leaving the waiting dialog stuck.
                     refreshById(propositionId)
                 }
-            }.onFailure { _error.value = it.message }
+            }.onFailure { _error.value = UserErrors.from(context, it) }
         }
     }
 
@@ -135,7 +138,7 @@ class PropositionStateHolder @Inject constructor(
                 "objective_proposition_cancelled" -> {
                     // Le proposer a annule : tous les users ferment leur modal
                     _currentProposition.value = null
-                    _error.value = context.getString(R.string.proposition_cancelled)
+                    _error.value = UserError(context.getString(R.string.proposition_cancelled))
                 }
                 "objective_proposition_accepted_all" -> {
                     if (propositionId != null) {
@@ -218,15 +221,15 @@ class PropositionStateHolder @Inject constructor(
             }
             "declined" -> {
                 _currentProposition.value = null
-                _error.value = context.getString(R.string.proposition_declined)
+                _error.value = UserError(context.getString(R.string.proposition_declined))
             }
             "expired" -> {
                 _currentProposition.value = null
-                _error.value = context.getString(R.string.proposition_expired)
+                _error.value = UserError(context.getString(R.string.proposition_expired))
             }
             "cancelled" -> {
                 _currentProposition.value = null
-                _error.value = context.getString(R.string.proposition_cancelled)
+                _error.value = UserError(context.getString(R.string.proposition_cancelled))
             }
         }
     }
