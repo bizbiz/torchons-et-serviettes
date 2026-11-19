@@ -345,11 +345,11 @@ fun SecuritySection(
 }
 
 /**
- * Card "Soutenir / Discuter avec le dev" (v0.30, narratif solo-dev).
+ * Card "Un mot de Quentin" (v0.30, narratif solo-dev ; retitled 2026-11-19).
  *
- * Deux boutons :
- *  - Payer un cafe au dev -> ouvre BMC dans le navigateur
+ * Deux boutons, dans cet ordre :
  *  - M'ecrire -> ouvre l'app mail avec un brouillon vers SUPPORT_EMAIL
+ *  - M'offrir un cafe -> ouvre BMC dans le navigateur
  */
 @Composable
 fun SupportDevCard() {
@@ -373,8 +373,22 @@ fun SupportDevCard() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.support_dev_body_coffee),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { sendSupportEmail(context) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Default.Email, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.support_dev_email_button))
+                }
                 if (DONATE_URL.isNotBlank()) {
                     OutlinedButton(
                         onClick = { openUrl(context, DONATE_URL) },
@@ -384,14 +398,6 @@ fun SupportDevCard() {
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.support_dev_bmc_button))
                     }
-                }
-                OutlinedButton(
-                    onClick = { sendSupportEmail(context) },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Default.Email, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.support_dev_email_button))
                 }
             }
             TextButton(

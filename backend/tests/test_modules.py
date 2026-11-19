@@ -25,9 +25,9 @@ from app.services.modules import (
 # --- Registry invariants (no database) ---
 
 
-def test_registry_loads_nine_modules():
+def test_registry_loads_eight_modules():
     registry = get_registry()
-    assert len(registry.modules) == 9, registry.keys
+    assert len(registry.modules) == 8, registry.keys
 
 
 def test_orders_are_unique_and_contiguous():
@@ -64,10 +64,10 @@ def test_scope_is_derived_from_nature():
             )
 
 
-def test_only_reminders_and_today_are_on_for_a_new_foyer():
-    """J0: core, Reminders, and « À faire aujourd'hui » (on by default, docs/plans/a-faire-aujourdhui.md)."""
+def test_only_reminders_is_on_for_a_new_foyer():
+    """J0: core and Reminders. « À faire aujourd'hui » is core since 2026-11-18, not a module."""
     on_by_default = [m.key for m in get_registry().modules if m.default_new]
-    assert on_by_default == ["reminders", "today"]
+    assert on_by_default == ["reminders"]
 
 
 def test_requirements_point_to_known_modules():
@@ -517,7 +517,7 @@ async def test_get_modules_returns_the_whole_registry(client, auth_headers):
     resp = await client.get("/api/modules", headers=auth_headers)
     assert resp.status_code == 200
     payload = resp.json()["modules"]
-    assert len(payload) == 9
+    assert len(payload) == 8
     assert [m["order"] for m in payload] == sorted(m["order"] for m in payload)
     for module in payload:
         assert module["title"]

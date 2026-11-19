@@ -16,7 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -47,8 +46,9 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.torchons.app.ui.common.PrimaryTopBar
+import com.torchons.app.ui.help.HelpButton
+import com.torchons.app.ui.help.HelpScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -175,7 +175,7 @@ fun TaskEditScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
+            PrimaryTopBar(
                 title = {
                     Text(
                         text = if (uiState.isEditMode) stringResource(R.string.task_edit_title_edit)
@@ -184,15 +184,7 @@ fun TaskEditScreen(
                         fontWeight = FontWeight.Bold
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back),
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                },
+                onBack = onBack,
                 actions = {
                     if (uiState.isEditMode && taskId != null) {
                         IconButton(onClick = { showDeleteDialog = true }) {
@@ -203,11 +195,8 @@ fun TaskEditScreen(
                             )
                         }
                     }
+                    HelpButton(HelpScreen.TASK_EDIT, tint = MaterialTheme.colorScheme.onPrimary)
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
             )
         }
     ) { paddingValues ->

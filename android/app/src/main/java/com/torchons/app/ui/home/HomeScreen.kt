@@ -377,11 +377,10 @@ fun HomeScreen(
         )
 
         // « À faire aujourd'hui »: the red stack, one card at a time, on top (HomeTodayStack.kt).
-        val todayOn = moduleEnabled(Modules.TODAY)
         val todayCard by viewModel.todayStack.current.collectAsState()
         val todayExcluded by viewModel.todayStack.excluded.collectAsState()
         val memberNames by viewModel.memberNames.collectAsState()
-        if (todayOn) todayCard?.let { card ->
+        todayCard?.let { card ->
             HomeTodayCard(
                 viewModel, card, memberNames.toList(), memberNames, gamificationVisible, onTaskClick, onEditTask,
             )
@@ -413,7 +412,7 @@ fun HomeScreen(
             s.taskId == uiState.celebratingTaskId ||
                 (s.taskId !in uiState.justCompletedIds && s.taskId !in uiState.dismissedIds &&
                     // Handed by me or to me: in no suggestion pile (also passed to /suggestions).
-                    !(todayOn && s.taskId in todayExcluded))
+                    s.taskId !in todayExcluded)
         }
         // Top 1 par tier : urgent + affinity + uncertain (3 cards max).
         // La 3e section "Sans cadence" (v0.14, Q3) ne s'affiche que si le
@@ -513,7 +512,9 @@ fun HomeScreen(
         // en bas (apres les taches urgentes) car c'est une lecture
         // contextuelle, pas une action a entreprendre. Carte cachee si la
         // timeline est vide (foyer fraichement cree, aucun snapshot).
-        uiState.retardTimelineMonth?.takeIf { it.points.size >= 2 }?.let { timeline ->
+        // Tracking the household backlog belongs to `objectives`: hidden with it.
+        val retardCurveOn = moduleEnabled(Modules.OBJECTIVES)
+        uiState.retardTimelineMonth?.takeIf { retardCurveOn && it.points.size >= 2 }?.let { timeline ->
             Spacer(modifier = Modifier.height(16.dp))
             Card(
                 modifier = Modifier.fillMaxWidth(),

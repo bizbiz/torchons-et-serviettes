@@ -36,6 +36,22 @@ fun moduleEnabled(key: String, fallback: Boolean = true): Boolean {
     return enabled
 }
 
+/**
+ * Points and streaks as the screens show them: module `motivation` on AND the personal
+ * "hide points" preference not set. Same flow as the Home / Stats screens.
+ */
+@Composable
+fun gamificationVisible(): Boolean {
+    val context = LocalContext.current
+    val tokenManager: TokenManager = remember(context) {
+        EntryPointAccessors
+            .fromApplication(context.applicationContext, TokenManagerEntryPoint::class.java)
+            .tokenManager()
+    }
+    val visible by tokenManager.gamificationVisibleFlow.collectAsState(initial = true)
+    return visible
+}
+
 /** Cles du registre, pour eviter les chaines libres aux points d'appel. */
 object Modules {
     const val REPARTITION = "repartition"
@@ -46,6 +62,4 @@ object Modules {
     const val AUTO_ADJUST = "auto_adjust"
     const val STATISTICS = "statistics"
     const val REMINDERS = "reminders"
-    /** « À faire aujourd'hui », on by default (docs/plans/a-faire-aujourdhui.md). */
-    const val TODAY = "today"
 }

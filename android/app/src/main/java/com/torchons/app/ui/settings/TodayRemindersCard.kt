@@ -30,7 +30,6 @@ import com.torchons.app.util.TaskUrgencyCalculator
 fun TodayRemindersCard(
     enabled: Boolean,
     onEnabledChange: (Boolean) -> Unit,
-    moduleOff: ModuleOffInfo?,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -58,9 +57,7 @@ fun TodayRemindersCard(
                 subtitle = stringResource(R.string.settings_notif_today_subtitle),
                 checked = enabled,
                 onCheckedChange = onEnabledChange,
-                enabled = moduleOff == null,
             )
-            moduleOff?.let { ModuleOffNote(it) }
         }
     }
 }

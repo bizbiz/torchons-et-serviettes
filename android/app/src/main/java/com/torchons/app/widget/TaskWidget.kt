@@ -40,7 +40,6 @@ import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.util.WifiHelper
 import com.torchons.app.ui.tasklist.TaskListFilters
 import com.torchons.app.ui.tasklist.applyFilters
-import com.torchons.app.ui.common.Modules
 import com.torchons.app.data.repository.DelegationRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -166,12 +165,11 @@ class TaskWidget : GlanceAppWidget() {
                     isAtHome, tokens.hideHomeTasksOffWifiFlow.first(), context.resources,
                 ).blocks
                 val firstWithoutCadence = blocks.withoutCadence.firstOrNull()
-                val todayOn = tokens.moduleEnabledFlow(Modules.TODAY).first()
                 val names = users.associate { it.id to it.displayName }
                 val byTask = delegations.associateBy { it.taskId }
                 WidgetLoad.Loaded(
                     (blocks.toDo + blocks.withoutCadence).map {
-                        widgetTaskOf(it, byTask[it.task.id], names, me.orEmpty(), todayOn, context.resources)
+                        widgetTaskOf(it, byTask[it.task.id], names, me.orEmpty(), context.resources)
                             .copy(headerBefore = it === firstWithoutCadence)
                     },
                     householdEmpty = tasks.isEmpty(),

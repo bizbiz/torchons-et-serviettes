@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -18,9 +18,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Arrangement
 import com.torchons.app.R
 import com.torchons.app.ui.common.ModuleOffNoticeHost
+import com.torchons.app.ui.help.HelpButton
+import com.torchons.app.ui.help.HelpScreen
 
 /**
- * Top of Home: greeting + sync icon + "rate a task" button, then the notice card(s)
+ * Top of Home: greeting + sync icon + "rate a task" bubble + "?" help button, then the notice card(s)
  * telling that another member turned a household feature off (nothing when none).
  */
 @Composable
@@ -42,11 +44,12 @@ fun HomeGreeting(displayName: String?, onRate: () -> Unit, onSeeFoyer: () -> Uni
             com.torchons.app.ui.components.SyncStatusIcon()
             IconButton(onClick = onRate) {
                 Icon(
-                    imageVector = Icons.Default.QuestionMark,
+                    imageVector = Icons.Default.ChatBubbleOutline,
                     contentDescription = stringResource(R.string.home_rate_task_cd),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
+            HelpButton(HelpScreen.HOME, tint = MaterialTheme.colorScheme.primary)
         }
         ModuleOffNoticeHost(onSee = onSeeFoyer)
     }

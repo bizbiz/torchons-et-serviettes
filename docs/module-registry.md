@@ -53,7 +53,6 @@ existing form.
 | 6 | Automatic adjustment | effort bump, frequency vote | collective |
 | 7 | Statistics & history | curves, enriched history | personal |
 | 8 | Reminders | the 6 notifications | personal |
-| 9 | To do today (added 2026-11-18, on by default) | noon/4 pm/8 pm reminders | collective |
 
 **Scope rule**: collective if the module changes the shared model, personal if
 it only changes what I see or receive. It applies to the module, not to the

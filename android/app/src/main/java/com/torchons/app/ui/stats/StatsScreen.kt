@@ -46,8 +46,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -151,21 +149,7 @@ fun StatsScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            TabRow(selectedTabIndex = selectedIndex) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedIndex == index,
-                        onClick = { viewModel.selectTab(index) },
-                        text = {
-                            Text(
-                                text = title,
-                                maxLines = 1,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                    )
-                }
-            }
+            StatsTabBar(tabs, selectedIndex, onSelect = viewModel::selectTab)
 
             val onUserClick: (UserProfileRequest) -> Unit = { req -> userProfileRequest = req }
             val currentUserId by viewModel.userId.collectAsState()

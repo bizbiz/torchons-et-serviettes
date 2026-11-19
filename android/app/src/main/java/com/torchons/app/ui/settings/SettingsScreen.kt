@@ -46,6 +46,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import com.torchons.app.ui.help.HelpButton
+import com.torchons.app.ui.help.HelpScreen
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -180,11 +182,15 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = stringResource(R.string.settings_title),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.settings_title),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            HelpButton(HelpScreen.SETTINGS)
+        }
 
         // Profil
         Card(
@@ -418,7 +424,7 @@ fun SettingsScreen(
         }
 
         // Personal choice on the household's `today` module: the 12/16/20 h reminders.
-        TodayRemindersCard(s.notifTodayReminders, viewModel::setNotifTodayReminders, moduleOffInfo("today"))
+        TodayRemindersCard(s.notifTodayReminders, viewModel::setNotifTodayReminders)
 
         // Personal choice on the household's `repartition` module: the affinity popup.
         AffinityPopupCard(

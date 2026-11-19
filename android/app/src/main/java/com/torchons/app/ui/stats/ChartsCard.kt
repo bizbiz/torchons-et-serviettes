@@ -30,6 +30,8 @@ import com.torchons.app.data.model.CategoryFrequencyResponse
 import com.torchons.app.data.model.PointsTimelineResponse
 import com.torchons.app.data.model.RetardTimelineResponse
 import com.torchons.app.data.model.WeekdayFrequencyResponse
+import com.torchons.app.ui.common.Modules
+import com.torchons.app.ui.common.moduleEnabled
 import kotlinx.coroutines.launch
 
 /**
@@ -68,7 +70,10 @@ internal fun ChartsCard(
         stringResource(R.string.stats_charts_tab_category),
     )
     // Without gamification the three points-race pages (1..3) are dropped.
-    val pageIds = if (gamificationVisible) allTitles.indices.toList() else listOf(0, 4, 5)
+    // The backlog page (0) belongs to `objectives`, like the home curve: dropped with it.
+    val retardOn = moduleEnabled(Modules.OBJECTIVES)
+    val pageIds = (if (gamificationVisible) allTitles.indices.toList() else listOf(0, 4, 5))
+        .filter { it != 0 || retardOn }
     val titles = pageIds.map { allTitles[it] }
     val pagerState = rememberPagerState(pageCount = { titles.size })
     val scope = rememberCoroutineScope()

@@ -24,6 +24,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
 import com.torchons.app.data.model.TaskContextRef
+import com.torchons.app.ui.help.HelpButton
+import com.torchons.app.ui.help.HelpScreen
 
 /*
  * Pieces of the Tasks tab (2026-11-18): the context bar with the search button, the italic
@@ -83,6 +85,7 @@ internal fun TaskListContextBar(
         IconButton(onClick = onSearch) {
             Icon(Icons.Default.Search, contentDescription = stringResource(R.string.task_list_search_open_cd))
         }
+        HelpButton(HelpScreen.TASK_LIST)
     }
 }
 

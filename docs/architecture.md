@@ -25,9 +25,9 @@ model. Each section points to the detail.
   through `/sync` (table `task_delegations`: `INSERT` `{"task_id", "recipient_ids"}`, `DELETE`
   to cancel, author only), read by `GET /delegations`; any completion dated on or after its
   day settles it. Grouped notification after 5 quiet minutes and reminders at 12/16/20 h
-  Paris time, state kept in the database (`services/delegation_push.py`). Household switch:
-  the `today` module, on by default. Spec:
-  [`plans/a-faire-aujourdhui.md`](plans/a-faire-aujourdhui.md).
+  Paris time, state kept in the database (`services/delegation_push.py`). Core feature
+  (since 2026-11-18): no household switch, always on. Only the personal reminders switch
+  remains. Spec: [`plans/a-faire-aujourdhui.md`](plans/a-faire-aujourdhui.md).
 - **Cache and offline**: the app is offline-first; the rules for the Room cache, refresh and
   derived state are in [`cache-conventions.md`](cache-conventions.md).
 - **Modules and progressive discovery**: a two-level registry (core and modules), described

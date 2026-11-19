@@ -81,10 +81,9 @@ internal fun widgetTaskOf(
     delegation: Delegation?,
     names: Map<String, String>,
     me: String,
-    todayOn: Boolean,
     res: Resources,
 ): WidgetTask {
-    val today = if (todayOn) todayCardState(res, t.task.assignedToIds, delegation, names, me) else null
+    val today = todayCardState(res, t.task.assignedToIds, delegation, names, me)
     val tap = today?.let {
         when (todayTap(delegation, handOffRecipients(t.task.assignedToIds, names.keys.toList(), me), me)) {
             is TodayTap.HandTo -> WidgetTodayTap.HAND

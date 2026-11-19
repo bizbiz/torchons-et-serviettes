@@ -54,7 +54,6 @@ l'absence de règle de récurrence dans un formulaire existant.
 | 6 | Ajustement automatique | bump effort, vote fréquence | collectif |
 | 7 | Statistiques & historique | courbes, historique enrichi | perso |
 | 8 | Rappels | les 6 notifications | perso |
-| 9 | À faire aujourd'hui (ajouté le 2026-11-18, allumé par défaut) | rappels 12/16/20 h | collectif |
 
 **Règle de portée** : collectif si le module change le modèle partagé,
 perso s'il ne change que ce que je vois ou reçois. Elle s'applique au

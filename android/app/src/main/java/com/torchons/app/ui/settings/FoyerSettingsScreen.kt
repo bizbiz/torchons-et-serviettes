@@ -18,7 +18,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Balance
@@ -53,8 +52,9 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.torchons.app.ui.common.PrimaryTopBar
+import com.torchons.app.ui.help.HelpButton
+import com.torchons.app.ui.help.HelpScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -144,7 +144,7 @@ fun FoyerSettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            PrimaryTopBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -157,19 +157,8 @@ fun FoyerSettingsScreen(
                         Text(foyerName, fontWeight = FontWeight.Bold)
                     }
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            stringResource(R.string.common_back),
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                onBack = onBack,
+                actions = { HelpButton(HelpScreen.FOYER_SETTINGS, tint = MaterialTheme.colorScheme.onPrimary) },
             )
         },
     ) { padding ->
@@ -380,6 +369,8 @@ fun FoyerSettingsScreen(
             }
 
             // (8) Simuler le rattrapage du foyer (-> ProjectionSimulationDialog)
+            // Sub-option `simulation` of the `objectives` module: hidden with it.
+            if (moduleEnabled(Modules.OBJECTIVES)) {
             SettingCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -412,6 +403,7 @@ fun FoyerSettingsScreen(
                 ) {
                     Text(stringResource(R.string.foyer_simulation_button))
                 }
+            }
             }
 
             // (9) Bonus / Malus de points (replie par defaut, complexe)
@@ -648,56 +640,15 @@ fun FoyerSettingsScreen(
             }
 
             // (13) Renouvellement affinite/effort (slider + (i))
-            SettingCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.foyer_affinity_title_format, affinityExpiry),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    InfoTooltip(
-                        title = stringResource(R.string.foyer_affinity_tooltip_title),
-                        description = stringResource(R.string.foyer_affinity_tooltip_description),
-                    )
-                }
-                Slider(
-                    value = affinityExpiry.toFloat(),
-                    onValueChange = { viewModel.setAffinityExpiry(it.toInt()) },
-                    valueRange = 1f..12f,
-                    steps = 10,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            // Affinity and effort ratings belong to `repartition`: hidden with it.
+            if (moduleEnabled(Modules.REPARTITION)) {
+                AffinityRenewalCard(affinityExpiry, viewModel::setAffinityExpiry)
             }
 
             // (14) Tolerance fair-share (slider + (i))
-            SettingCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Balance,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.foyer_fair_share_title_format, fairShareTolerance),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    InfoTooltip(
-                        title = stringResource(R.string.foyer_fair_share_tooltip_title),
-                        description = stringResource(R.string.foyer_fair_share_tooltip_description),
-                    )
-                }
-                Slider(
-                    value = fairShareTolerance.toFloat(),
-                    onValueChange = { viewModel.setFairShareTolerance(it.toInt()) },
-                    valueRange = 0f..100f,
-                    steps = 19,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            // Sub-option `fair_share` of `repartition`: hidden with it.
+            if (moduleEnabled(Modules.REPARTITION)) {
+                FairShareToleranceCard(fairShareTolerance, viewModel::setFairShareTolerance)
             }
 
             if (moduleEnabled(Modules.REPARTITION)) FairShareTargetSection() // (15) part visee
@@ -1092,7 +1043,7 @@ private fun GroupHeader(title: String, modifier: Modifier = Modifier) {
 
 /** Card conteneur standard (meme pattern visuel que SettingsScreen). */
 @Composable
-private fun SettingCard(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+internal fun SettingCard(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),

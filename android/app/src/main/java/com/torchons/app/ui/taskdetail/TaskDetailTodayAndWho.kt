@@ -17,8 +17,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
 import com.torchons.app.ui.common.CompletionDialog
-import com.torchons.app.ui.common.Modules
-import com.torchons.app.ui.common.moduleEnabled
 import com.torchons.app.ui.today.TodayActionDialogs
 import com.torchons.app.ui.today.TodayActionState
 import com.torchons.app.ui.today.todayCardState
@@ -107,7 +105,6 @@ internal fun TaskDetailTodayButton(
     val uiState by viewModel.uiState.collectAsState()
     val delegations by viewModel.today.byTask.collectAsState()
     val task = uiState.task ?: return
-    if (!moduleEnabled(Modules.TODAY)) return
     val res = LocalContext.current.resources
     val delegation = delegations[task.id]
     val state = todayCardState(res, task.assignedToIds, delegation, uiState.userNames, currentUserId) ?: return

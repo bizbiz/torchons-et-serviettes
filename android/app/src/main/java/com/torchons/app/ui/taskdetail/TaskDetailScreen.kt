@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Check
@@ -53,8 +52,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.torchons.app.ui.common.PrimaryTopBar
+import com.torchons.app.ui.help.HelpButton
+import com.torchons.app.ui.help.HelpScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -90,6 +90,8 @@ import com.torchons.app.ui.common.CelebrationCardContent
 import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.today.rememberTodayActionState
 import com.torchons.app.ui.common.RatingDialog
+import com.torchons.app.ui.common.Modules
+import com.torchons.app.ui.common.moduleEnabled
 import com.torchons.app.ui.common.rememberCelebration
 import com.torchons.app.ui.user.UserProfileDialog
 import com.torchons.app.ui.user.UserProfileRequest
@@ -298,7 +300,7 @@ fun TaskDetailScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
+            PrimaryTopBar(
                 title = {
                     Text(
                         text = uiState.task?.title ?: stringResource(R.string.task_detail_title_fallback),
@@ -306,15 +308,7 @@ fun TaskDetailScreen(
                         fontWeight = FontWeight.Bold
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back),
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                },
+                onBack = onBack,
                 actions = {
                     IconButton(onClick = { uiState.task?.let { onClone(it.id) } }) {
                         Icon(
@@ -330,11 +324,8 @@ fun TaskDetailScreen(
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
+                    HelpButton(HelpScreen.TASK_DETAIL, tint = MaterialTheme.colorScheme.onPrimary)
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
             )
         }
     ) { paddingValues ->
@@ -631,122 +622,11 @@ fun TaskDetailScreen(
                                     Spacer(modifier = Modifier.height(12.dp))
                                 }
 
-                                // Effort & Affinite par user. Bouton "Modifier"
-                                // uniquement pour les users assignes (coherent avec
-                                // la gate backend _ensure_user_assigned).
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = stringResource(R.string.task_detail_section_effort_affinity),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    if (isCurrentUserAssigned) {
-                                        androidx.compose.material3.TextButton(
-                                            onClick = { viewModel.openRatingDialog(currentUserId) }
-                                        ) { Text(stringResource(R.string.task_detail_edit_action)) }
-                                    }
+                                // Effort & Affinite par user (TaskRatingsSection.kt).
+                                // Affinity and effort ratings belong to `repartition`: hidden with it.
+                                if (moduleEnabled(Modules.REPARTITION)) {
+                                    TaskRatingsSection(uiState, isCurrentUserAssigned, currentUserId, viewModel)
                                 }
-                                Spacer(modifier = Modifier.height(4.dp))
-
-                                if (uiState.ratings.isNotEmpty()) {
-                                    uiState.ratings.forEach { rating ->
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = rating.displayName,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Medium,
-                                                modifier = Modifier.width(80.dp)
-                                            )
-                                            if (rating.effortTimeMin != null) {
-                                                val timeLabel = formatMinutes(rating.effortTimeMin)
-                                                Text(
-                                                    text = timeLabel,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.width(50.dp)
-                                                )
-                                            } else {
-                                                Text(stringResource(R.string.task_detail_no_value_dash), modifier = Modifier.width(50.dp), style = MaterialTheme.typography.bodySmall)
-                                            }
-                                            if (rating.affinity != null) {
-                                                Text(
-                                                    text = stringResource(R.string.task_detail_affinity_value_format, rating.affinity),
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            } else {
-                                                Text(stringResource(R.string.task_detail_affinity_value_none), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            }
-                                        }
-                                    }
-                                }
-
-                                val avgMin = uiState.avgEffortTimeMin
-                                if (avgMin != null) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    val avgLabel = formatMinutes(avgMin)
-                                    Text(
-                                        text = stringResource(
-                                            R.string.task_detail_avg_score_format,
-                                            avgLabel,
-                                            uiState.scorePoints?.toString() ?: stringResource(R.string.task_detail_avg_score_unknown),
-                                        ),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                // v0.29 — sous-texte adaptatif effort avec lien "+ d'info".
-                                if (uiState.effortVotes != null && uiState.effortVotes!!.votesCount > 0) {
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    val effortPrefix = stringResource(R.string.task_detail_effort_points_label)
-                                    val moreInfo = stringResource(R.string.task_detail_more_info_link)
-                                    androidx.compose.foundation.text.ClickableText(
-                                        text = androidx.compose.ui.text.buildAnnotatedString {
-                                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-                                                append(effortPrefix)
-                                            }
-                                            withStyle(SpanStyle(
-                                                color = MaterialTheme.colorScheme.primary,
-                                                textDecoration = TextDecoration.Underline,
-                                            )) {
-                                                append(moreInfo)
-                                            }
-                                        },
-                                        style = MaterialTheme.typography.labelSmall,
-                                        onClick = { viewModel.openEffortInfo() },
-                                    )
-                                }
-
-                                // v0.28 — sous-texte adaptatif affinite avec lien "+ d'info".
-                                if (uiState.ratings.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    val affinityPrefix = stringResource(R.string.task_detail_affinity_label)
-                                    val moreInfoAff = stringResource(R.string.task_detail_more_info_link)
-                                    androidx.compose.foundation.text.ClickableText(
-                                        text = androidx.compose.ui.text.buildAnnotatedString {
-                                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-                                                append(affinityPrefix)
-                                            }
-                                            withStyle(SpanStyle(
-                                                color = MaterialTheme.colorScheme.primary,
-                                                textDecoration = TextDecoration.Underline,
-                                            )) {
-                                                append(moreInfoAff)
-                                            }
-                                        },
-                                        style = MaterialTheme.typography.labelSmall,
-                                        onClick = { viewModel.openAffinityInfo() },
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-                                HorizontalDivider()
-                                Spacer(modifier = Modifier.height(12.dp))
 
                                 // Recurrence
                                 if (task.recurrenceRule != null) {

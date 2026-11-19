@@ -41,6 +41,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.torchons.app.R
 import com.torchons.app.data.model.DeviceDto
+import com.torchons.app.ui.help.HelpButton
+import com.torchons.app.ui.help.HelpScreen
 
 /**
  * « Mes appareils » : la liste des sessions de ce compte, et de quoi les couper.
@@ -79,17 +81,11 @@ fun DevicesScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                     }
                 },
+                actions = { HelpButton(HelpScreen.DEVICES) },
             )
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.mydevices_intro),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.padding(4.dp))
-
             when {
                 state.loading -> CircularProgressIndicator()
                 state.error != null -> Column {

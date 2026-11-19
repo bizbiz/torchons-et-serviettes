@@ -88,6 +88,9 @@ class TokenManager @Inject constructor(
         // Acknowledged "module turned off by another member" notices, keys
         // "<foyerId>:<moduleKey>:<changedAt>" (a new change gives a new key).
         private val ACKED_MODULE_NOTICES_KEY = stringSetPreferencesKey("acked_module_off_notices")
+        // The first-run welcome screen was dismissed on this phone. Not an auth key: clearAuthData
+        // leaves it alone, so a sign-out and a new sign-in do not show the screen again.
+        private val FIRST_RUN_WELCOME_SEEN_KEY = booleanPreferencesKey("first_run_welcome_seen")
     }
 
     /** Flow du token JWT. Emet null si aucun token stocke. */
@@ -193,6 +196,15 @@ class TokenManager @Inject constructor(
     /** Notice keys the user has already dismissed (see ModuleOffNotice.kt). */
     val ackedModuleNoticesFlow: Flow<Set<String>> = context.dataStore.data.map { prefs ->
         prefs[ACKED_MODULE_NOTICES_KEY] ?: emptySet()
+    }
+
+    /** Whether the first-run welcome screen (FirstRunWelcome.kt) was already dismissed here. */
+    val firstRunWelcomeSeenFlow: Flow<Boolean> = context.dataStore.data.map {
+        it[FIRST_RUN_WELCOME_SEEN_KEY] ?: false
+    }
+
+    suspend fun markFirstRunWelcomeSeen() {
+        context.dataStore.edit { it[FIRST_RUN_WELCOME_SEEN_KEY] = true }
     }
 
     suspend fun ackModuleNotice(key: String) {

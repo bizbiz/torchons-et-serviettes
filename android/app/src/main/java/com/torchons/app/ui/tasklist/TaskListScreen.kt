@@ -54,8 +54,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
 import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.CompletionDialog
-import com.torchons.app.ui.common.Modules
-import com.torchons.app.ui.common.moduleEnabled
 import com.torchons.app.ui.today.TodayActionDialogs
 import com.torchons.app.ui.today.rememberTodayActionState
 import com.torchons.app.ui.today.todayCardState
@@ -128,7 +126,6 @@ fun TaskListScreen(
     }
 
     // « ! » À faire aujourd'hui (docs/plans/a-faire-aujourdhui.md).
-    val todayOn = moduleEnabled(Modules.TODAY)
     val delegations by viewModel.today.byTask.collectAsState()
     val todayActions = rememberTodayActionState()
     val memberNames = remember(users) { users.associate { it.id to it.displayName } }
@@ -462,7 +459,7 @@ fun TaskListScreen(
                                         androidx.compose.ui.platform.LocalContext.current.resources,
                                         taskWithUrgency.task.assignedToIds, delegations[taskWithUrgency.task.id],
                                         memberNames, currentUserId.orEmpty(),
-                                    ).takeIf { todayOn },
+                                    ),
                                     onToday = onCardToday,
                                     // Points + attribution seulement sur la carte en
                                     // celebration, et masques si gamif opt-out (v0.32).

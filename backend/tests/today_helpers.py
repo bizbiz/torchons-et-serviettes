@@ -115,12 +115,11 @@ async def drop_household_tokens() -> None:
     await reset_state()
 
 
-async def reset_state(module_on: bool = True) -> None:
-    """End every delegation left by an earlier test, clear the reminder clocks, set the switch."""
+async def reset_state() -> None:
+    """End every delegation left by an earlier test and clear the reminder clocks."""
     from sqlalchemy import delete
 
     from app.database import async_session
-    from app.models.module_state import ModuleState
     from app.models.task_delegation import TaskDelegation
     from app.models.user_settings import UserSettings
     from app.utils.user_settings import get_or_create_user_settings
@@ -138,14 +137,6 @@ async def reset_state(module_on: bool = True) -> None:
             .where(UserSettings.user_id.in_([uuid.UUID(u) for u in NAMES]))
             .values(today_notified_at=None, notif_today_reminders=True)
         )
-        await session.execute(delete(ModuleState).where(
-            ModuleState.foyer_id == uuid.UUID(HOUSE_ID), ModuleState.module_key == "today",
-        ))
-        if not module_on:
-            session.add(ModuleState(
-                foyer_id=uuid.UUID(HOUSE_ID), module_key="today", enabled=False,
-                updated_by_user_id=uuid.UUID(ALICE),
-            ))
         await session.commit()
 
 

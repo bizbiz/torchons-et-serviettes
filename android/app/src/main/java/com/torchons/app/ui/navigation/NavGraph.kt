@@ -42,6 +42,7 @@ import com.torchons.app.ui.stats.StatsScreen
 import com.torchons.app.ui.taskdetail.TaskDetailScreen
 import com.torchons.app.ui.taskedit.TaskEditScreen
 import com.torchons.app.ui.tasklist.TaskListScreen
+import com.torchons.app.ui.welcome.FirstRunWelcomeHost
 import com.torchons.app.ui.welcome.WelcomeScreen
 import com.torchons.app.ui.onboarding.CreateFoyerWizardScreen
 import com.torchons.app.ui.onboarding.InviteQrScreen
@@ -223,38 +224,40 @@ fun NavGraph(
 
         // Ecran principal avec bottom nav
         composable(Routes.MAIN) {
-            MainScreen(
-                onNavigateToTaskDetail = { taskId ->
-                    navController.navigate(Routes.taskDetail(taskId))
-                },
-                onNavigateToCreateTask = {
-                    navController.navigate(Routes.TASK_CREATE)
-                },
-                onNavigateToEditTask = { taskId ->
-                    navController.navigate(Routes.taskEdit(taskId))
-                },
-                onNavigateToFoyerSettings = {
-                    navController.navigate(Routes.FOYER_SETTINGS)
-                },
-                onNavigateToChangelog = {
-                    navController.navigate(Routes.CHANGELOG)
-                },
-                onNavigateToCreateFoyer = {
-                    navController.navigate(Routes.createFoyerWizardAdd())
-                },
-                onNavigateToInviteSomeone = {
-                    navController.navigate(Routes.inviteQr(addDevice = false))
-                },
-                onNavigateToAddDevice = {
-                    navController.navigate(Routes.inviteQr(addDevice = true))
-                },
-                onLogout = {
-                    // v0.30 — bascule sur Welcome (les 3 boutons).
-                    navController.navigate(Routes.WELCOME) {
-                        popUpTo(Routes.MAIN) { inclusive = true }
+            FirstRunWelcomeHost {
+                MainScreen(
+                    onNavigateToTaskDetail = { taskId ->
+                        navController.navigate(Routes.taskDetail(taskId))
+                    },
+                    onNavigateToCreateTask = {
+                        navController.navigate(Routes.TASK_CREATE)
+                    },
+                    onNavigateToEditTask = { taskId ->
+                        navController.navigate(Routes.taskEdit(taskId))
+                    },
+                    onNavigateToFoyerSettings = {
+                        navController.navigate(Routes.FOYER_SETTINGS)
+                    },
+                    onNavigateToChangelog = {
+                        navController.navigate(Routes.CHANGELOG)
+                    },
+                    onNavigateToCreateFoyer = {
+                        navController.navigate(Routes.createFoyerWizardAdd())
+                    },
+                    onNavigateToInviteSomeone = {
+                        navController.navigate(Routes.inviteQr(addDevice = false))
+                    },
+                    onNavigateToAddDevice = {
+                        navController.navigate(Routes.inviteQr(addDevice = true))
+                    },
+                    onLogout = {
+                        // v0.30 — bascule sur Welcome (les 3 boutons).
+                        navController.navigate(Routes.WELCOME) {
+                            popUpTo(Routes.MAIN) { inclusive = true }
+                        }
                     }
-                }
-            )
+                )
+            }
         }
 
         // Notes de version + Roadmap

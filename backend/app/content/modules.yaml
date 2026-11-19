@@ -562,63 +562,6 @@ modules:
         state_field: user_settings.notif_hour
         title: { fr: "Heure du récapitulatif", en: "Digest hour" }
 
-  # « À faire aujourd'hui » (docs/plans/a-faire-aujourdhui.md). On by default, for new and
-  # existing foyers alike: no module_states row falls back to default_new.
-  - key: today
-    scope: collective
-    default_new: true
-    order: 9
-    title:
-      fr: "À faire aujourd'hui"
-      en: "To do today"
-    pitch:
-      fr: "Confier une tâche à un autre membre, pour aujourd'hui."
-      en: "Hand a task to another member, for today."
-    details:
-      fr: >-
-        Le bouton « ! » d'une tâche la confie aux autres membres qui la voient. Elle
-        s'affiche en tête de leur accueil jusqu'à ce que quelqu'un la fasse, et une
-        notification les prévient, avec des rappels à 12 h, 16 h et 20 h.
-      en: >-
-        The "!" button of a task hands it to the other members who can see it. It
-        shows at the top of their home screen until someone does it, and a
-        notification tells them, with reminders at noon, 4 pm and 8 pm.
-    example:
-      fr: >-
-        Les poubelles partent demain matin. Un appui sur « ! » et elles sont en tête
-        de l'accueil de Bob, avec un rappel à 20 h s'il ne les a pas encore sorties.
-      en: >-
-        The bins go out tomorrow morning. One tap on "!" and they are at the top of
-        Bob's home screen, with a reminder at 8 pm if he has not taken them out yet.
-    guide:
-      why:
-        fr: >-
-          Souvent, un membre du foyer sait ce qu'il reste à faire et doit le dire aux
-          autres. « À faire aujourd'hui » le dit pour lui, sans message à écrire ni à
-          répéter.
-        en: >-
-          Often one member of the household knows what is left to do and has to tell
-          the others. "To do today" says it for them, with no message to write or
-          repeat.
-      how:
-        fr: >-
-          Touchez « ! » sur une tâche de la liste ou sur sa fiche. Seul celui qui l'a
-          confiée peut l'annuler, en touchant de nouveau « ! ». Celui qui la reçoit la
-          trouve en tête de son accueil ; la croix passe à la suivante. Les rappels se
-          coupent dans vos réglages perso.
-        en: >-
-          Tap "!" on a task in the list or on its page. Only the member who handed it
-          can cancel it, by tapping "!" again. The member who receives it finds it at
-          the top of the home screen; the cross moves on to the next one. Reminders
-          can be turned off in your personal settings.
-    trigger:
-      kind: none
-    sub_options:
-      - key: reminders
-        scope: personal
-        state_field: user_settings.notif_today_reminders
-        title: { fr: "Rappels à 12 h, 16 h et 20 h", en: "Reminders at noon, 4 pm and 8 pm" }
-
 # --- Cartes du site public (P5) ---
 #
 # Le site ne montre PAS les modules un a un. Il montre des BENEFICES, et chaque

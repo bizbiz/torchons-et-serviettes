@@ -12,7 +12,6 @@ Spec: docs/plans/a-faire-aujourdhui.md § Notifications.
 Unlike the completions of /sync (services/push.py, an in-memory queue), the state lives in the
 database (`task_delegation_recipients.announced_at`, `user_settings.today_notified_at`): the
 30-second scheduler job finds the due groups there, and a restart loses nothing.
-Nothing at all while the household's `today` module is off.
 """
 
 from __future__ import annotations
@@ -31,7 +30,7 @@ from app.models.task_delegation import TaskDelegation, TaskDelegationRecipient
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
 from app.services import push
-from app.services.delegations import is_active, today_enabled
+from app.services.delegations import is_active
 from app.utils.scoping import hidden_among
 from app.utils.user_settings import get_or_create_user_settings
 
@@ -96,10 +95,6 @@ async def _visible_titles(session: AsyncSession, recipient: UUID, items: list) -
     return [title for tid, title in items if str(tid) not in hidden]
 
 
-async def _enabled_foyers(session: AsyncSession, foyer_ids: set) -> set:
-    return {f for f in foyer_ids if await today_enabled(session, f)}
-
-
 async def _names(session: AsyncSession, ids: set) -> dict:
     rows = await session.execute(select(User.id, User.display_name).where(User.id.in_(ids)))
     return dict(rows.all())
@@ -134,14 +129,11 @@ async def announce_due_delegations(session: AsyncSession, now: datetime | None =
     due = await _due_announcements(session, now)
     if not due:
         return 0
-    enabled = await _enabled_foyers(session, {foyer for foyer, _, _ in due})
     names = await _names(session, {author for _, author, _ in due})
     allowed: list[tuple[UUID, str, str]] = []
-    for (foyer, author, recipient), items in due.items():
+    for (_foyer, author, recipient), items in due.items():
         for rec, _, _ in items:
-            rec.announced_at = now  # switched off or hidden: dropped, never announced later
-        if foyer not in enabled:
-            continue
+            rec.announced_at = now  # hidden: dropped, never announced later
         titles = await _visible_titles(session, recipient, [(d.task_id, t) for _, d, t in items])
         if titles:
             allowed.append((recipient, TITLE, announcement_body(names.get(author, "?"), titles)))
@@ -155,11 +147,9 @@ async def send_today_reminders(session: AsyncSession, now: datetime | None = Non
     """Remind every recipient with tasks still handed to them; returns the number reminded."""
     now = now or datetime.now(timezone.utc)
     rows = (await session.execute(_live_delegations())).all()
-    enabled = await _enabled_foyers(session, {d.foyer_id for _, d, _ in rows})
     pending: dict = {}
-    for rec, deleg, title in rows:
-        if deleg.foyer_id in enabled:
-            pending.setdefault(rec.user_id, {})[deleg.task_id] = title
+    for rec, _deleg, title in rows:
+        pending.setdefault(rec.user_id, {})[_deleg.task_id] = title
     allowed: list[tuple[UUID, str, str]] = []
     for recipient, tasks in pending.items():
         settings = await get_or_create_user_settings(session, recipient)

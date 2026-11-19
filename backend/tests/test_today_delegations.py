@@ -8,7 +8,6 @@ PATHS by which a delegation is written or ended (grep of TaskDelegation writes):
       - to members who see the task: written, served by GET /api/delegations to all
       - to the author herself, or to a member a solo task is hidden from: `rejected`
       - a second one on a task that already has one: acknowledged, not written
-      - household switch (`today` module) off: acknowledged, not written, GET empty
       - a task already completed today: acknowledged, not written
   (2) /sync DELETE (cancel_delegation): the author's ends it, another member's does not ... COVERED
   (3) completion through /sync INSERT, by a recipient or a third member .................... COVERED
@@ -138,18 +137,6 @@ async def test_the_pull_carries_the_whole_row_then_its_end(client):
     assert [c["operation"] for c in rows] == ["INSERT", "UPDATE"], rows
     assert rows[0]["data"]["author_id"] == ALICE and rows[0]["data"]["recipient_ids"] == [BOB]
     assert rows[1]["data"]["settled_at"]
-
-
-@pytest.mark.asyncio
-async def test_household_switch_off_writes_and_serves_nothing(client):
-    task = await new_task(client, "Lit", [ALICE, BOB])
-    await delegate(client, task, [BOB])
-    await reset_state(module_on=False)
-    assert await listed(client, BOB) == {}, "an existing delegation is no longer served"
-    other = await new_task(client, "Salle de bain", [ALICE, BOB])
-    _, out = await delegate(client, other, [BOB])
-    assert not out["conflicts"], out
-    assert await rows_of(other) == 0, "written while off"
 
 
 async def rows_of(task_id: str) -> int:

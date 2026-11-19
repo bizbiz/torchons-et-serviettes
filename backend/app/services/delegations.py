@@ -2,8 +2,7 @@
 
 Spec: docs/plans/a-faire-aujourdhui.md. Writes arrive through /sync (table `task_delegations`,
 INSERT to hand a task, DELETE to cancel it), the app's offline queue; reads through
-GET /api/delegations. The household switch is the `today` module (modules.yaml, on by default):
-off, nothing is written, served or notified.
+GET /api/delegations. A core feature since 2026-11-18: no module switch, always on.
 
 Rules enforced here, whatever the client sends:
 - the possible recipients are the members who SEE the task (app/utils/scoping.py), minus its
@@ -24,12 +23,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.task import Task
 from app.models.task_delegation import TaskDelegation, TaskDelegationRecipient
-from app.services.modules import is_module_enabled
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
 from app.utils.scoping import active_member_ids, hidden_among, visible_to
 
-TODAY_MODULE = "today"
 TABLE = "task_delegations"
 #: Refused for good by /sync (`rejected`, dropped by the app): no replay makes a recipient valid.
 DELEGATION_REFUSALS = frozenset({"DELEGATION_RECIPIENTS_INVALID"})
@@ -42,10 +39,6 @@ def _uuid(value) -> uuid.UUID:
 def is_active():
     """WHERE clause: the delegation is neither cancelled nor settled."""
     return TaskDelegation.cancelled_at.is_(None), TaskDelegation.settled_at.is_(None)
-
-
-async def today_enabled(session: AsyncSession, foyer_id) -> bool:
-    return await is_module_enabled(session, _uuid(foyer_id), TODAY_MODULE)
 
 
 async def possible_recipients(session: AsyncSession, task: Task, author_id) -> set[uuid.UUID]:
@@ -94,8 +87,6 @@ async def create_delegation(
     and the 400 `DELEGATION_RECIPIENTS_INVALID` when a recipient may not receive it.
     """
     foyer = _uuid(foyer_id)
-    if not await today_enabled(session, foyer):
-        return None
     if task_id is None:
         raise LookupError("no task_id")
     task = (
@@ -197,9 +188,7 @@ async def recipients_by_delegation(session: AsyncSession, ids: list) -> dict:
 
 
 async def visible_delegations(session: AsyncSession, foyer_id, user_id) -> list[dict]:
-    """Active delegations of the household's live tasks the user sees ([] when switched off)."""
-    if not await today_enabled(session, foyer_id):
-        return []
+    """Active delegations of the household's live tasks the user sees."""
     rows = (
         await session.execute(
             select(TaskDelegation)
@@ -217,8 +206,6 @@ async def visible_delegations(session: AsyncSession, foyer_id, user_id) -> list[
 
 async def delegated_task_ids(session: AsyncSession, foyer_id, user_id) -> set[uuid.UUID]:
     """Tasks the user handed or received, still to do: out of the user's suggestions."""
-    if not await today_enabled(session, foyer_id):
-        return set()
     user = _uuid(user_id)
     received = select(TaskDelegationRecipient.delegation_id).where(
         TaskDelegationRecipient.user_id == user

@@ -12,7 +12,6 @@ PATHS by which a recipient could be told wrongly (or not told):
   (4) reminders: sent when the last notification is older than 1 h, not when younger ...... COVERED
   (5) reminders: personal switch off ........................................................ COVERED
   (6) reminders fire at 12, 16 and 20 h PARIS time, summer and winter (the trigger) ........ COVERED
-  (7) household switch off: neither grouped nor reminder ..................................... COVERED
   non couvert : the scheduler itself calling the jobs (app/main.py), not started under pytest;
                 the trigger it registers is the one (6) reads.
   non couvert : a hidden task's title in the text: same `hidden_among` filter as the sync
@@ -138,15 +137,6 @@ async def test_reminders_follow_the_personal_switch(client, sent):
             update(UserSettings).where(UserSettings.user_id == uuid.UUID(BOB)).values(notif_today_reminders=False)
         )
         await session.commit()
-    await _remind(_after_window() + timedelta(hours=2))
-    assert to_household(sent) == []
-
-
-@pytest.mark.asyncio
-async def test_household_switch_off_silences_everything(client, sent):
-    await delegate(client, await new_task(client, "Cuisine", [ALICE, BOB]), [BOB])
-    await reset_state(module_on=False)
-    await _announce(_after_window())
     await _remind(_after_window() + timedelta(hours=2))
     assert to_household(sent) == []
 

@@ -1,8 +1,10 @@
 # « À faire aujourd'hui » : confier une tâche à un autre membre
 
 Décidé le 18/11/2026 (grill). Statut : livré en beta le 18/11 (`ee2419c`), dogfoodé sur un
-téléphone (liste, modal, « ! », fiche, widget) ; restent l'écran d'onboarding, la ligne du site,
-la pile rouge vue chez un destinataire, et la release prod.
+téléphone (liste, modal, « ! », fiche, widget) ; restent le retrait de l'interrupteur de foyer,
+la ligne du site, la pile rouge vue chez un destinataire, et la release prod. L'écran
+d'onboarding propre à la fonctionnalité est abandonné le 18/11 au profit de l'aide par écran
+(`aide-et-bienvenue.md`).
 
 ## Pourquoi
 
@@ -18,8 +20,9 @@ calculé (liseré rouge/orange/vert, carte « La plus urgente » de l'accueil).
 ## Cible et discours (décisions)
 
 - Le site garde son titre ; « À faire aujourd'hui » s'ajoute à la liste des fonctionnalités.
-- Pas de question de profil à l'onboarding. Un écran d'onboarding présente la fonctionnalité à
-  tout le monde.
+- Pas de question de profil à l'onboarding. Pas d'écran d'onboarding propre non plus (revu le
+  18/11) : la fonctionnalité s'explique dans l'aide « ? » de l'accueil et de la liste des tâches
+  (`aide-et-bienvenue.md`).
 - Le partage équitable ne change pas : une tâche confiée compte pour qui la fait. Aucune trace de
   qui l'a confiée en V1.
 
@@ -79,9 +82,11 @@ peut annuler en retouchant le « ! ». Chez un autre membre, le « ! » allumé 
 
 ### Réglages
 
-- Foyer : interrupteur « À faire aujourd'hui », **allumé par défaut**. Éteint : plus de « ! »,
-  plus de pile, plus de notification.
-- Perso : interrupteur des rappels.
+- Foyer : **pas d'interrupteur** (décidé le 18/11, revenant sur « allumé par défaut ») : la
+  fonctionnalité fait partie du noyau, elle sort du registre des modules (clé `today` de
+  `modules.yaml`). Raison : on l'a voulue présente dès le départ pour ne pas compliquer l'app.
+- Perso : interrupteur des rappels de 12 h, 16 h et 20 h, gardé. La notification groupée au
+  moment où l'on te confie une tâche ne se coupe pas.
 
 ## Choix techniques
 

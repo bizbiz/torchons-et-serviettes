@@ -27,8 +27,9 @@ de déploiement client/serveur et le modèle d'appareils. Chaque section renvoie
   `{"task_id", "recipient_ids"}`, `DELETE` pour annuler, par l'auteur seul), lecture par
   `GET /delegations` ; toute validation datée de son jour ou après la solde. Notification
   groupée après 5 minutes de calme et rappels à 12 h, 16 h et 20 h (heure de Paris), état
-  gardé en base (`services/delegation_push.py`). Interrupteur du foyer : le module `today`,
-  allumé par défaut. Spec : [`plans/a-faire-aujourdhui.md`](plans/a-faire-aujourdhui.md).
+  gardé en base (`services/delegation_push.py`). Noyau depuis le 2026-11-18 : pas
+  d'interrupteur de foyer, toujours active ; seul l'interrupteur perso des rappels reste.
+  Spec : [`plans/a-faire-aujourdhui.md`](plans/a-faire-aujourdhui.md).
 - **Cache et hors ligne** : l'application est hors ligne d'abord ; les règles du cache Room, du
   rafraîchissement et de l'état dérivé sont dans
   [`cache-conventions.fr.md`](cache-conventions.fr.md).

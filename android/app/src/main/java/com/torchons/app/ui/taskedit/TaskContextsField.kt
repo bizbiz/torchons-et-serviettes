@@ -51,11 +51,6 @@ fun TaskContextsField(
                 description = stringResource(R.string.task_contexts_tooltip_description),
             )
         }
-        Text(
-            text = stringResource(R.string.task_contexts_help),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         Spacer(Modifier.height(4.dp))
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
