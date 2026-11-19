@@ -1363,10 +1363,11 @@
     <string name="bump_effort_stats_format">%1$d%% of completions are late over the last %2$d days</string>
     <string name="bump_effort_last_completions">Latest completions</string>
     <string name="bump_effort_late_tag">late</string>
-    <string name="bump_effort_help">This task might not be worth enough points. Bump effort by one notch?</string>
-    <string name="bump_effort_button_bump">⬆ Bump effort (+1)</string>
-    <string name="bump_effort_button_edit_rating">Edit ratings</string>
+    <string name="bump_effort_help">Its frequency or its effort may no longer be right. Re-vote both?</string>
+    <string name="bump_effort_button_revote">Re-vote</string>
     <string name="bump_effort_button_later">Later</string>
+    <string name="bump_effort_button_ignore">Ignore</string>
+    <string name="bump_revote_intro">Often late: %1$d%% over %2$d days · %3$d/2</string>
 
     <!-- ChangelogScreen -->
     <string name="changelog_screen_title">What\'s new</string>

@@ -381,25 +381,25 @@ modules:
       en: "A task always late? The app offers to revisit its settings."
     details:
       fr: >-
-        Repère les tâches systématiquement faites en retard et propose d'augmenter
-        leur pénibilité. Chaque membre peut aussi demander aux autres de revoter
-        la pénibilité ou la fréquence d'une tâche.
+        Repère les tâches systématiquement faites en retard et propose de revoter
+        leur fréquence et leur pénibilité. Chaque membre peut aussi demander aux
+        autres de revoter la pénibilité ou la fréquence d'une tâche.
       en: >-
-        Spots tasks that are chronically done late and offers to raise their
-        effort. Any member can also ask the others to re-vote a task's effort or
-        frequency.
+        Spots tasks that are chronically done late and offers to re-vote their
+        frequency and effort. Any member can also ask the others to re-vote a
+        task's effort or frequency.
     example:
       fr: >-
         « Nettoyer le four » est faite en retard presque à chaque fois : l'app
-        propose d'augmenter sa pénibilité, pour qu'elle rapporte ce qu'elle coûte
-        vraiment. Vous trouvez qu'une fois par mois, c'est trop souvent : depuis la
-        fiche de la tâche, vous demandez à votre colocataire de revoter sa
-        fréquence.
+        propose de revoter sa fréquence et sa pénibilité, pour qu'elle revienne au
+        bon rythme et rapporte ce qu'elle coûte vraiment. Vous trouvez qu'une fois
+        par mois, c'est trop souvent : depuis la fiche de la tâche, vous demandez à
+        votre colocataire de revoter sa fréquence.
       en: >-
-        "Clean the oven" is done late almost every time: the app offers to raise
-        its effort, so it earns what it really costs. You think once a month is
-        too often: from the task's page, you ask your flatmate to re-vote its
-        frequency.
+        "Clean the oven" is done late almost every time: the app offers to re-vote
+        its frequency and effort, so it comes back at the right pace and earns what
+        it really costs. You think once a month is too often: from the task's page,
+        you ask your flatmate to re-vote its frequency.
     guide:
       why:
         fr: >-

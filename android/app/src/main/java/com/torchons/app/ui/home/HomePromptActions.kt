@@ -113,7 +113,21 @@ internal class HomePromptActions(
      * Ouvre le FrequencyVoteDialog en reponse a un prompt VOTE_FREQUENCY.
      * Fetch le state a la volee, garde le promptId pour resolve apres submit.
      */
-    fun openFrequencyVoteFromPrompt(taskId: String, requesterName: String) {
+    /**
+     * « Tâche souvent en retard » → Revoter: frequency vote, then effort vote,
+     * the BUMP_EFFORT prompt staying current (so unresolved) until the end.
+     */
+    fun startBumpRevote() {
+        val ctx = uiState.value.currentPrompt?.context ?: return
+        val taskId = ctx["task_id"]?.toString() ?: return
+        val bump = BumpRevote(
+            latePercent = (((ctx["bonus_ratio"] as? Number)?.toFloat() ?: 0f) * 100).toInt(),
+            windowDays = (ctx["window_days"] as? Number)?.toInt() ?: 0,
+        )
+        openFrequencyVoteFromPrompt(taskId, requesterName = "", bump = bump)
+    }
+
+    fun openFrequencyVoteFromPrompt(taskId: String, requesterName: String, bump: BumpRevote? = null) {
         val prompt = uiState.value.currentPrompt ?: return
         scope.launch {
             try {
@@ -129,6 +143,7 @@ internal class HomePromptActions(
                                 header = com.torchons.app.ui.common.voteHeader(task),
                                 requesterName = requesterName,
                                 frequencyState = state,
+                                bump = bump,
                             ),
                             // On garde currentPrompt pour pouvoir resolve, mais on
                             // cache le PromptModal de queue (le dialog vote prend la main).
@@ -140,7 +155,7 @@ internal class HomePromptActions(
         }
     }
 
-    fun openEffortVoteFromPrompt(taskId: String, requesterName: String) {
+    fun openEffortVoteFromPrompt(taskId: String, requesterName: String, bump: BumpRevote? = null) {
         val prompt = uiState.value.currentPrompt ?: return
         scope.launch {
             try {
@@ -156,7 +171,12 @@ internal class HomePromptActions(
                                 header = com.torchons.app.ui.common.voteHeader(task),
                                 requesterName = requesterName,
                                 effortState = state,
+                                bump = bump,
                             ),
+                            // Same update as the effort dialog: in the « souvent en
+                            // retard » chain no instant shows neither dialog, so the
+                            // queue never fetches another prompt in between.
+                            pendingFrequencyVoteContext = null,
                             showPromptModal = false,
                         )
                     }
@@ -167,6 +187,14 @@ internal class HomePromptActions(
 
     fun submitPromptFrequencyVote(request: com.torchons.app.data.model.FrequencyRequest) {
         val ctx = uiState.value.pendingFrequencyVoteContext ?: return
+        if (ctx.bump != null) {
+            // Step 1 of 2: the prompt stays open, the effort vote follows at once.
+            scope.launch {
+                taskRepository.voteFrequency(ctx.taskId, request)
+                openEffortVoteFromPrompt(ctx.taskId, ctx.requesterName, ctx.bump)
+            }
+            return
+        }
         scope.launch {
             taskRepository.voteFrequency(ctx.taskId, request)
             try {
@@ -185,7 +213,12 @@ internal class HomePromptActions(
         scope.launch {
             try {
                 apiService.setEffort(ctx.taskId, mapOf("points" to points))
-                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest.effortAnswer(points))
+                val answer = if (ctx.bump != null) {
+                    PromptResolveRequest("ANSWERED", mapOf("action" to "revote"))
+                } else {
+                    PromptResolveRequest.effortAnswer(points)
+                }
+                apiService.resolvePrompt(ctx.promptId, answer)
             } catch (_: Exception) {}
             uiState.value = uiState.value.copy(
                 pendingEffortVoteContext = null,
@@ -197,6 +230,7 @@ internal class HomePromptActions(
 
     fun dismissPromptFrequencyVote() {
         val ctx = uiState.value.pendingFrequencyVoteContext ?: return
+        if (ctx.bump != null) return backToBumpDialog()
         scope.launch {
             try {
                 apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("DISMISSED"))
@@ -208,6 +242,7 @@ internal class HomePromptActions(
 
     fun dismissPromptEffortVote() {
         val ctx = uiState.value.pendingEffortVoteContext ?: return
+        if (ctx.bump != null) return backToBumpDialog()
         scope.launch {
             try {
                 apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("DISMISSED"))
@@ -215,6 +250,15 @@ internal class HomePromptActions(
             uiState.value = uiState.value.copy(pendingEffortVoteContext = null, currentPrompt = null)
             refresh() // chain to the next queued re-vote, as a submit does
         }
+    }
+
+    /** Cancel inside the chain: back to « Tâche souvent en retard », still open. */
+    private fun backToBumpDialog() {
+        uiState.value = uiState.value.copy(
+            pendingFrequencyVoteContext = null,
+            pendingEffortVoteContext = null,
+            showPromptModal = true,
+        )
     }
 
     /** Reouvrir le prompt RESOLVE_PRESENCE depuis le bandeau. */

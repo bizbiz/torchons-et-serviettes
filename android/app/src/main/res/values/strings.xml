@@ -1377,10 +1377,11 @@
     <string name="bump_effort_stats_format">%1$d%% des complétions sont en retard sur les %2$d derniers jours</string>
     <string name="bump_effort_last_completions">Dernières complétions</string>
     <string name="bump_effort_late_tag">en retard</string>
-    <string name="bump_effort_help">Cette tâche rapporte peut-être pas assez de points. Augmenter l\'effort d\'un cran&#160;?</string>
-    <string name="bump_effort_button_bump">⬆ Bumper l\'effort (+1)</string>
-    <string name="bump_effort_button_edit_rating">Modifier les notes</string>
+    <string name="bump_effort_help">Sa fréquence ou son effort ne sont peut-être plus justes. Revoter les deux&#160;?</string>
+    <string name="bump_effort_button_revote">Revoter</string>
     <string name="bump_effort_button_later">Plus tard</string>
+    <string name="bump_effort_button_ignore">Ignorer</string>
+    <string name="bump_revote_intro">Souvent en retard&#160;: %1$d&#160;%% sur %2$d&#160;jours · %3$d/2</string>
 
     <!-- ChangelogScreen -->
     <string name="changelog_screen_title">Nouveautés</string>

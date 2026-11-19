@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,7 +32,8 @@ import com.torchons.app.data.model.UserPrompt
  * composable selon le type du prompt.
  *
  * Types :
- * - BUMP_EFFORT : modal dedie avec liste completions + +1 effort.
+ * - BUMP_EFFORT : modal dedie avec liste completions ; Revoter enchaine les
+ *   votes de frequence et d'effort (HomePromptActions.startBumpRevote).
  * - RESOLVE_PRESENCE : delegue au caller via onOpenPresenceCalendar qui
  *   ouvre StreakCalendarModal (one modal to rule them all). Le modal
  *   edite la presence directement via PUT /presence (taps); a la
@@ -52,8 +52,9 @@ import com.torchons.app.data.model.UserPrompt
 fun PromptModal(
     prompt: UserPrompt,
     onDismiss: () -> Unit,
-    onBumpEffort: () -> Unit,
-    onOpenRating: (taskId: String) -> Unit,
+    onBumpRevote: () -> Unit,
+    onBumpLater: () -> Unit,
+    onBumpIgnore: () -> Unit,
     onOpenPresenceCalendar: () -> Unit = {},
     onOpenFrequencyVote: (taskId: String, requesterName: String) -> Unit = { _, _ -> },
     onOpenEffortVote: (taskId: String, requesterName: String) -> Unit = { _, _ -> },
@@ -65,9 +66,9 @@ fun PromptModal(
     when (prompt.type) {
         "BUMP_EFFORT" -> BumpEffortDialog(
             prompt = prompt,
-            onDismiss = onDismiss,
-            onBump = onBumpEffort,
-            onEditRating = { onOpenRating(prompt.context["task_id"]?.toString().orEmpty()) },
+            onRevote = onBumpRevote,
+            onLater = onBumpLater,
+            onIgnore = onBumpIgnore,
         )
         "RESOLVE_PRESENCE" -> {
             // P4b.2 (one modal to rule them all) : delegue au caller pour
@@ -103,16 +104,19 @@ fun PromptModal(
  * - Titre + nom de la tache
  * - Liste des N dernieres completions (qui, quand, en retard ?)
  * - Stats : "X% des completions sont en zone bonus sur Y jours"
- * - Bouton "+1 effort" (action rapide)
- * - Bouton "Modifier les notes" (ouvre le popup notation)
- * - Bouton "Plus tard" (dismiss)
+ * - Revoter : votes de frequence puis d'effort, enchaines (grill du 2026-11-19 ;
+ *   « +1 effort » et « Modifier les notes » retires, le second n'ouvrait rien
+ *   et laissait la question suivante s'afficher a sa place).
+ * - Plus tard : reposee au prochain passage en retard. Aussi le retour et le
+ *   tap hors de la boite, le geste le plus doux.
+ * - Ignorer : close jusqu'a la fin du delai de grace.
  */
 @Composable
 private fun BumpEffortDialog(
     prompt: UserPrompt,
-    onDismiss: () -> Unit,
-    onBump: () -> Unit,
-    onEditRating: () -> Unit,
+    onRevote: () -> Unit,
+    onLater: () -> Unit,
+    onIgnore: () -> Unit,
 ) {
     val ctx = prompt.context
     val taskTitle = ctx["task_title"]?.toString() ?: "?"
@@ -122,13 +126,13 @@ private fun BumpEffortDialog(
     val completions = (ctx["completions"] as? List<Map<String, Any?>>) ?: emptyList()
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = onLater,
         title = {
             Column {
                 Text(
                     text = stringResource(R.string.bump_effort_title),
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFC2410C),
+                    color = MaterialTheme.colorScheme.error,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -180,7 +184,7 @@ private fun BumpEffortDialog(
                             Text(
                                 text = stringResource(R.string.bump_effort_late_tag),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFFC2410C),
+                                color = MaterialTheme.colorScheme.error,
                             )
                         }
                     }
@@ -201,19 +205,19 @@ private fun BumpEffortDialog(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Button(
-                    onClick = onBump,
+                    onClick = onRevote,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text(stringResource(R.string.bump_effort_button_bump)) }
+                ) { Text(stringResource(R.string.bump_effort_button_revote)) }
 
                 OutlinedButton(
-                    onClick = onEditRating,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text(stringResource(R.string.bump_effort_button_edit_rating)) }
-
-                TextButton(
-                    onClick = onDismiss,
+                    onClick = onLater,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.bump_effort_button_later)) }
+
+                TextButton(
+                    onClick = onIgnore,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.bump_effort_button_ignore)) }
             }
         },
         dismissButton = {},

@@ -227,12 +227,11 @@ fun HomeScreen(
         com.torchons.app.ui.common.PromptModal(
             prompt = uiState.currentPrompt!!,
             onDismiss = { viewModel.dismissCurrentPrompt() },
-            onBumpEffort = {
-                viewModel.resolveCurrentPrompt("ANSWERED", mapOf("action" to "bump_effort"))
-            },
-            onOpenRating = { taskId ->
-                viewModel.resolveCurrentPrompt("ANSWERED")
-            },
+            // « Souvent en retard »: later = asked again at the next late completion,
+            // ignore = DISMISSED with the grace period (backend api/prompts.py).
+            onBumpRevote = { viewModel.startBumpRevote() },
+            onBumpLater = { viewModel.resolveCurrentPrompt("DISMISSED", mapOf("action" to "later")) },
+            onBumpIgnore = { viewModel.resolveCurrentPrompt("DISMISSED", mapOf("action" to "ignore")) },
             onOpenPresenceCalendar = {
                 // Ouvre StreakCalendarModal pre-positionne sur l'user
                 // courant. Le prompt reste 'active' en backend tant que le
@@ -309,6 +308,9 @@ fun HomeScreen(
                 requesterName = ctx.requesterName,
                 onSubmit = { request -> viewModel.submitPromptFrequencyVote(request) },
                 onDismiss = { viewModel.dismissPromptFrequencyVote() },
+                introText = ctx.bump?.let {
+                    stringResource(R.string.bump_revote_intro, it.latePercent, it.windowDays, 1)
+                },
             )
         }
     }
@@ -320,6 +322,9 @@ fun HomeScreen(
                 requesterName = ctx.requesterName,
                 onSubmit = { points -> viewModel.submitPromptEffortVote(points) },
                 onDismiss = { viewModel.dismissPromptEffortVote() },
+                introText = ctx.bump?.let {
+                    stringResource(R.string.bump_revote_intro, it.latePercent, it.windowDays, 2)
+                },
             )
         }
     }

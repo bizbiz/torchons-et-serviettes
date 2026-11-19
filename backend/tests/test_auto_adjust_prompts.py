@@ -13,6 +13,8 @@ Paths, and what covers each:
 - generate_bump_prompts: module on -> one BUMP_EFFORT per active member; module
   off -> a DISCOVER_MODULE proposal for auto_adjust instead; below the late
   ratio -> nothing.
+- Grace period per member (2026-11-19): « Plus tard » (action "later") is asked
+  again on the next late completion only, the others keep their grace.
 Not covered: the client side (dialogs, home modal), left to the emulator run.
 """
 
@@ -73,14 +75,14 @@ async def _late_completions(h, late: int, neutral: int) -> None:
         await session.commit()
 
 
-async def _bump(h) -> None:
+async def _bump(h, late: bool = False) -> None:
     from app.database import async_session
     from app.models.task import Task
     from app.services.prompts import generate_bump_prompts
 
     async with async_session() as session:
         task = await session.get(Task, h.task_id)
-        await generate_bump_prompts(session, task, h.foyer_id)
+        await generate_bump_prompts(session, task, h.foyer_id, just_completed_late=late)
         await session.commit()
 
 
@@ -204,3 +206,50 @@ async def test_task_late_only_now_and_then_asks_nothing(client):
         await _bump(h)
 
         assert await _bump_prompts(h) == []
+
+
+async def _resolve_bump(client, h, member: int, resolution: str, action: str | None) -> None:
+    mine = [p for p in await _bump_prompts(h) if p.user_id == h.user_ids[member]]
+    payload = {"action": action} if action else None
+    resp = await client.post(
+        f"/api/prompts/{mine[-1].id}/resolve",
+        json={"resolution": resolution, "payload": payload},
+        headers=h.headers(member),
+    )
+    assert resp.status_code == 200, resp.text
+
+
+async def _count_per_member(h) -> list[int]:
+    prompts = await _bump_prompts(h)
+    return [sum(1 for p in prompts if p.user_id == uid) for uid in h.user_ids]
+
+
+@pytest.mark.asyncio
+async def test_later_is_asked_again_on_the_next_late_completion_only(client):
+    async with house(members=2) as h:
+        await _make_weekly(h)
+        await set_module(h, "auto_adjust", True)
+        await _late_completions(h, late=3, neutral=1)
+        await _bump(h)
+        await _resolve_bump(client, h, 0, "DISMISSED", "later")
+        await _resolve_bump(client, h, 1, "ANSWERED", "revote")
+
+        await _bump(h, late=False)  # on time: nobody
+        assert await _count_per_member(h) == [1, 1]
+
+        await _bump(h, late=True)  # late: only the one who postponed
+        assert await _count_per_member(h) == [2, 1]
+
+
+@pytest.mark.asyncio
+async def test_ignore_keeps_the_grace_period(client):
+    async with house(members=2) as h:
+        await _make_weekly(h)
+        await set_module(h, "auto_adjust", True)
+        await _late_completions(h, late=3, neutral=1)
+        await _bump(h)
+        await _resolve_bump(client, h, 0, "DISMISSED", "ignore")
+        await _resolve_bump(client, h, 1, "DISMISSED", None)  # older client
+
+        await _bump(h, late=True)
+        assert await _count_per_member(h) == [1, 1]

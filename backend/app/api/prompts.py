@@ -248,6 +248,12 @@ async def resolve_prompt(
                     )
                     session.add(new_effort)
 
+    elif prompt.type == PromptType.BUMP_EFFORT and payload.get("action") == "later":
+        # « Plus tard »: asked again on the next late completion, without the
+        # grace period (services/prompts.py, _members_to_ask). « Ignorer » and
+        # an older client send DISMISSED without it and keep the grace.
+        prompt.context = {**(prompt.context or {}), "postponed": True}
+
     elif prompt.type == PromptType.RESOLVE_PRESENCE and resolution == "ANSWERED":
         await _handle_resolve_presence(session, foyer_uuid, user_id, payload)
 

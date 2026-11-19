@@ -96,7 +96,11 @@ fun FrequencyVoteDialog(
     onSubmit: (FrequencyRequest) -> Unit,
     onDismiss: () -> Unit,
     requesterName: String? = null,
+    /** Replaces the requester banner (« souvent en retard » re-vote chain). */
+    introText: String? = null,
 ) {
+    val intro = introText
+        ?: requesterName?.let { stringResource(R.string.frequency_vote_requester_format, it) }
     val consensusInt = state.consensusAverageDays ?: 7
     val initialIsVariable = isVariableDpm(state.myDaysPerMonth)
     var voteMode by remember(state.taskId) {
@@ -117,9 +121,9 @@ fun FrequencyVoteDialog(
                     .heightIn(max = 540.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
-                if (requesterName != null) {
+                if (intro != null) {
                     Text(
-                        text = stringResource(R.string.frequency_vote_requester_format, requesterName),
+                        text = intro,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                     )

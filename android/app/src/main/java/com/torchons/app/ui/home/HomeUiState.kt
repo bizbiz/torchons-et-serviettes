@@ -27,7 +27,16 @@ data class PromptVoteContext(
     val requesterName: String,
     val frequencyState: com.torchons.app.data.model.FrequencyVotesState? = null,
     val effortState: com.torchons.app.data.model.EffortVotesState? = null,
+    /** Non-null: step of the « souvent en retard » chain (frequency, then effort). */
+    val bump: BumpRevote? = null,
 )
+
+/**
+ * « Tâche souvent en retard » → Revoter: frequency vote (step 1), then effort
+ * vote (step 2). The BUMP_EFFORT prompt is resolved only after step 2, so no
+ * other queued prompt can slip in between (Lo's bug of 2026-11-17).
+ */
+data class BumpRevote(val latePercent: Int, val windowDays: Int)
 
 data class HomeUiState(
     val isLoading: Boolean = true,

@@ -48,7 +48,11 @@ fun EffortVoteDialog(
     requesterName: String? = null,
     onSubmit: (points: Int) -> Unit,
     onDismiss: () -> Unit,
+    /** Replaces the requester banner (« souvent en retard » re-vote chain). */
+    introText: String? = null,
 ) {
+    val intro = introText
+        ?: requesterName?.let { stringResource(R.string.effort_vote_requester_format, it) }
     val initial = state.myPoints ?: state.consensusPoints ?: 3
     var pointsValue by remember(state.taskId) { mutableFloatStateOf(initial.toFloat().coerceIn(1f, 12f)) }
     val pointsInt = pointsValue.roundToInt().coerceIn(1, 12)
@@ -58,9 +62,9 @@ fun EffortVoteDialog(
         title = { Text(stringResource(R.string.effort_vote_title)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                if (requesterName != null) {
+                if (intro != null) {
                     Text(
-                        text = stringResource(R.string.effort_vote_requester_format, requesterName),
+                        text = intro,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                     )

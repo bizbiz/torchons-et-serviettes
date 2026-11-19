@@ -31,16 +31,77 @@ from app.services.modules import is_module_enabled
 from app.services.recurrence import interval_hours, is_uncertain
 
 
+async def bump_after_completion(
+    session: AsyncSession, task: Task, foyer_id: uuid.UUID, reasons: list,
+) -> None:
+    """Run the chronic-lateness check after a completion; never raises.
+
+    `reasons` are those of the completion rows just written: one late row is
+    what lets a member who answered « Plus tard » be asked again.
+    """
+    try:
+        late = any(r == CompletionReason.BONUS_RETARD for r in reasons)
+        await generate_bump_prompts(session, task, foyer_id, just_completed_late=late)
+        await session.commit()
+    except Exception:
+        pass  # never break the completion
+
+
+async def _members_to_ask(
+    session: AsyncSession, task: Task, foyer_id: uuid.UUID, now: datetime,
+    just_completed_late: bool,
+) -> list[uuid.UUID]:
+    """Active members who may receive a BUMP_EFFORT for this task now.
+
+    The grace period is per member (grill of 2026-11-19), read on that member's
+    LATEST BUMP_EFFORT for the task:
+    - none, or its grace is over: may be asked;
+    - still pending: not asked twice;
+    - answered « Plus tard » (context.postponed): asked again on the next LATE
+      completion, whoever made it, without waiting for the grace;
+    - re-voted or « Ignorer »: keeps its grace.
+    """
+    members = (await session.execute(
+        select(UserFoyer.user_id).where(
+            UserFoyer.foyer_id == foyer_id, UserFoyer.left_at.is_(None),
+        )
+    )).scalars().all()
+    rows = (await session.execute(
+        select(UserPrompt).where(
+            UserPrompt.foyer_id == foyer_id,
+            UserPrompt.type == PromptType.BUMP_EFFORT,
+            UserPrompt.context["task_id"].astext == str(task.id),
+        ).order_by(UserPrompt.created_at)
+    )).scalars().all()
+    latest = {p.user_id: p for p in rows}  # ordered by date: the last one wins
+
+    eligible = []
+    for uid in members:
+        prev = latest.get(uid)
+        if prev is None:
+            eligible.append(uid)
+        elif prev.resolved_at is None:
+            continue
+        elif (prev.context or {}).get("postponed"):
+            if just_completed_late:
+                eligible.append(uid)
+        elif prev.grace_until is None or prev.grace_until <= now:
+            eligible.append(uid)
+    return eligible
+
+
 async def generate_bump_prompts(
     session: AsyncSession,
     task: Task,
     foyer_id: uuid.UUID,
+    just_completed_late: bool = False,
 ) -> None:
     """Verifie si la tache est 'systematiquement en retard' et dispatche un
-    prompt BUMP_EFFORT pour chaque user du foyer si le critere est atteint.
+    prompt BUMP_EFFORT pour chaque membre qui peut la recevoir (cf
+    `_members_to_ask`) si le critere est atteint.
 
-    Appele apres chaque POST /complete (solo ou collective). Fire-and-forget
-    — les erreurs sont logguees mais ne cassent pas la completion.
+    Appele apres chaque POST /complete (solo ou collective), via
+    `bump_after_completion`.
     """
     # P4 — le module peut etre eteint. On ne sort PAS tout de suite pour
     # autant : le critere "systematiquement en retard" est exactement le signal
@@ -63,19 +124,10 @@ async def generate_bump_prompts(
     config = await load_or_create_bonus_config(session, foyer_id)
     now = datetime.now(timezone.utc)
 
-    # 1. Verifier grace period : un prompt BUMP_EFFORT deja dispatche pour
-    # cette tache avec grace_until > now ?
-    grace_check = await session.execute(
-        select(UserPrompt.id).where(
-            UserPrompt.foyer_id == foyer_id,
-            UserPrompt.type == PromptType.BUMP_EFFORT,
-            UserPrompt.grace_until > now,
-            # Filtre par task_id dans le JSONB context
-            UserPrompt.context["task_id"].astext == str(task.id),
-        ).limit(1)
-    )
-    if grace_check.scalar_one_or_none() is not None:
-        return  # encore en grace period
+    # 1. Grace period, now per member (was per task until 2026-11-19).
+    user_ids = await _members_to_ask(session, task, foyer_id, now, just_completed_late)
+    if not user_ids:
+        return
 
     # 2. Fenetre d'analyse Y = clamp(K * interval, y_min, y_max)
     y_raw = config.bump_interval_factor_k * interval_days
@@ -152,29 +204,8 @@ async def generate_bump_prompts(
         await session.flush()
         return
 
-    # 6. Inserer un prompt par membre ACTIF du foyer (si pas deja pending) :
-    # un ancien membre recevait aussi la question.
-    foyer_users = await session.execute(
-        select(UserFoyer.user_id).where(
-            UserFoyer.foyer_id == foyer_id, UserFoyer.left_at.is_(None),
-        )
-    )
-    user_ids = [row[0] for row in foyer_users.all()]
-
+    # 6. One prompt per member selected in step 1 (active, none pending).
     for uid in user_ids:
-        # Check dedup : pas de prompt BUMP pending pour cet user + task
-        existing = await session.execute(
-            select(UserPrompt.id).where(
-                UserPrompt.user_id == uid,
-                UserPrompt.foyer_id == foyer_id,
-                UserPrompt.type == PromptType.BUMP_EFFORT,
-                UserPrompt.resolved_at.is_(None),
-                UserPrompt.context["task_id"].astext == str(task.id),
-            ).limit(1)
-        )
-        if existing.scalar_one_or_none() is not None:
-            continue  # deja pending
-
         prompt = UserPrompt(
             user_id=uid,
             foyer_id=foyer_id,

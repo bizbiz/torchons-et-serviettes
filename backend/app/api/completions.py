@@ -275,13 +275,9 @@ async def complete_task(
         foyer_id=current_foyer_uuid(current),
     )
 
-    # Trigger analyse bump (fire-and-forget)
-    try:
-        from app.services.prompts import generate_bump_prompts
-        await generate_bump_prompts(session, task, current_foyer_uuid(current))
-        await session.commit()
-    except Exception:
-        pass  # ne jamais casser la completion
+    # « Souvent en retard » check, never breaks the completion.
+    from app.services.prompts import bump_after_completion
+    await bump_after_completion(session, task, current_foyer_uuid(current), [completion.reason])
 
     return completion
 
@@ -420,13 +416,9 @@ async def complete_task_collective(
         foyer_id=foyer_uuid,
     )
 
-    # 11. Trigger analyse bump (fire-and-forget)
-    try:
-        from app.services.prompts import generate_bump_prompts
-        await generate_bump_prompts(session, task, foyer_uuid)
-        await session.commit()
-    except Exception:
-        pass
+    # 11. « Souvent en retard » check, never breaks the completion.
+    from app.services.prompts import bump_after_completion
+    await bump_after_completion(session, task, foyer_uuid, [c.reason for c in created])
 
     return CollectiveCompletionResponse(
         collective_id=collective_id,

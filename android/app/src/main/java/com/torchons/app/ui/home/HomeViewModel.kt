@@ -560,6 +560,8 @@ class HomeViewModel @Inject constructor(
     /** User ferme le prompt (DISMISSED). */
     fun dismissCurrentPrompt() = prompts.dismissCurrentPrompt()
 
+    fun startBumpRevote() = prompts.startBumpRevote()
+
     fun openFrequencyVoteFromPrompt(taskId: String, requesterName: String) =
         prompts.openFrequencyVoteFromPrompt(taskId, requesterName)
 
