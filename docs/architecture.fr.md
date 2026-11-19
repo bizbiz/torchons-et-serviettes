@@ -88,6 +88,12 @@ seulement de niveau de priorité pour le sélecteur « la plus urgente » de l'a
 Strict, puis Normal, puis Souple (en cascade), puis repli sur les Orange à plat. Le tri à
 l'intérieur d'un niveau se fait par ratio retard / intervalle décroissant.
 
+**Gel pendant une absence.** Une tâche gèle si au moins un de ses contextes demande « Il faut
+être sur place » et qu'aucun ne dit « Ça continue sans nous », et seulement si le foyer a le gel
+activé (`home_freeze_enabled`) ; une tâche sans contexte ne gèle pas. La règle vit dans
+`backend/app/services/task_flags.py` et a une copie côté app, `util/AbsenceFreeze.kt` (feuille
+« Pendant une absence ») : changer l'une, c'est changer l'autre, aucun test ne les relie.
+
 ## Ordre de synchronisation
 
 Un client qui émet un **nouveau type** d'opération `/sync` exige que le gestionnaire serveur

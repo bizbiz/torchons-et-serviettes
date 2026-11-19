@@ -83,6 +83,12 @@ as a priority tier for the home screen's "most urgent" picker: Strict tier, then
 Souple (cascade), then a fallback on flat Orange tasks. Sorting inside a tier is by
 lateness / interval ratio, descending.
 
+**Freeze during an absence.** A task freezes when at least one of its contexts requires being
+on site and none says it keeps going without us, and only when the household has the freeze
+on (`home_freeze_enabled`); a task with no context never freezes. The rule lives in
+`backend/app/services/task_flags.py` and has an app-side copy, `util/AbsenceFreeze.kt` (the
+"During an absence" sheet): changing one means changing the other, no test ties them.
+
 ## Sync ordering
 
 A client that emits a **new type** of `/sync` operation requires the matching server handler
