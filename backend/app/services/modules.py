@@ -242,12 +242,17 @@ async def is_module_enabled(
 #: hors du filtre normal" (DISCOVER_MODULE).
 INVERTED_PROMPT_TYPES: set[str] = {"DISCOVER_MODULE"}
 
+#: Core types: owned by no module, never muted. VOTE_RATING collects affinity
+#: and effort ratings, which are core (suggestions use affinity unconditionally).
+#: Listing it here, rather than leaving it out, keeps "deliberately core" apart
+#: from "someone forgot" for the drift guard.
+CORE_PROMPT_TYPES: set[str] = {"VOTE_RATING"}
+
 
 PROMPT_TYPE_MODULE: dict[str, str] = {
     "BUMP_EFFORT": "auto_adjust",
     "VOTE_FREQUENCY": "auto_adjust",
     "VOTE_EFFORT": "auto_adjust",
-    "VOTE_RATING": "repartition",
     "RESOLVE_PRESENCE": "presence",
 }
 

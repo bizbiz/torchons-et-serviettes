@@ -623,10 +623,8 @@ fun TaskDetailScreen(
                                 }
 
                                 // Effort & Affinite par user (TaskRatingsSection.kt).
-                                // Affinity and effort ratings belong to `repartition`: hidden with it.
-                                if (moduleEnabled(Modules.REPARTITION)) {
-                                    TaskRatingsSection(uiState, isCurrentUserAssigned, currentUserId, viewModel)
-                                }
+                                // Affinity and effort ratings are core: no module condition.
+                                TaskRatingsSection(uiState, isCurrentUserAssigned, currentUserId, viewModel)
 
                                 // Recurrence
                                 if (task.recurrenceRule != null) {

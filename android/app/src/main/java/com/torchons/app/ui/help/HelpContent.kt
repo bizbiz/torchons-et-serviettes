@@ -113,9 +113,7 @@ internal enum class HelpScreen(@StringRes val title: Int, val sections: List<Hel
         listOf(
             HelpSection(R.string.help_task_detail_1_title, R.string.help_task_detail_1_text, Always),
             HelpSection(R.string.help_task_detail_2_title, R.string.help_task_detail_2_text, Always),
-            HelpSection(
-                R.string.help_task_detail_3_title, R.string.help_task_detail_3_text, Module(Modules.REPARTITION),
-            ),
+            HelpSection(R.string.help_task_detail_3_title, R.string.help_task_detail_3_text, Always),
             HelpSection(R.string.help_task_detail_4_title, R.string.help_task_detail_4_text, Always),
             HelpSection(R.string.help_task_detail_5_title, R.string.help_task_detail_5_text, Always),
             HelpSection(R.string.help_task_detail_6_title, R.string.help_task_detail_6_text, Always),

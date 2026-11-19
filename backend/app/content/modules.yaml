@@ -41,61 +41,50 @@ modules:
     pitch:
       fr: "Qui fait quoi, et une charge qui peut être équitable sans être égale."
       en: "Who does what, and a load that can be fair without being equal."
+    # Reframed on 2026-11-19 (Quentin): this module only COUNTS each member's share.
+    # Affinity and effort votes moved to the core: the suggestions already used
+    # affinity whatever this module's state, only their collection was gated here.
     details:
       fr: >-
-        Attribue les tâches, tient compte de ce que chacun préfère faire, pondère
-        par la pénibilité, et suit la part de chacun sur les 30 derniers jours.
+        Compte la part de chacun sur les 30 derniers jours, pondérée par la
+        pénibilité des tâches, et la compare à une part visée, équitable sans être
+        forcément égale.
       en: >-
-        Assigns tasks, accounts for what each person prefers doing, weights by
-        effort, and tracks each member's share over the last 30 days.
+        Counts each member's share over the last 30 days, weighted by how much
+        effort the tasks take, and compares it with a target share that is fair
+        without having to be equal.
     example:
       fr: >-
-        J'aime arroser les plantes, mon colocataire déteste ça. L'app me les propose
-        en priorité, et lui en suggère d'autres : chacun fait ce qu'il préfère.
+        Mon colocataire travaille à mi-temps : on vise 60 % pour lui, 40 % pour
+        moi. L'app suit où on en est sur le mois, et dit à chacun s'il en fait plus
+        que sa part.
       en: >-
-        I like watering the plants, my flatmate hates it. The app offers them to me
-        first and suggests other tasks to them: everyone does what they prefer.
+        My flatmate works part-time: we aim for 60% for him and 40% for me. The app
+        tracks where we stand over the month, and tells each of us when we do more
+        than our share.
     guide:
       why:
         fr: >-
-          Pour ne plus avoir à se demander qui fait quoi. Torchons & Serviettes
-          propose à chacun les tâches en retard et, parmi elles, celles qu'il aime
-          faire. Et quand on a l'impression d'en faire plus que l'autre, l'app répond
-          par des faits : la part réelle de chacun, comparée à une part visée
-          équitable, pas forcément égale.
+          Quand on a l'impression d'en faire plus que l'autre, l'app répond par des
+          faits : la part réelle de chacun sur 30 jours, comparée à une part visée,
+          équitable mais pas forcément égale.
         en: >-
-          So you no longer have to work out who does what. Torchons & Serviettes
-          offers everyone the overdue tasks and, among them, the ones they enjoy.
-          And when you feel you do more than the other, the app answers with facts:
-          each person's real share, compared with a fair target share, not
-          necessarily an equal one.
+          When you feel you do more than the other, the app answers with facts: each
+          person's real share over 30 days, compared with a target share that is fair
+          but not necessarily equal.
       how:
         fr: >-
-          Notez les tâches que vous aimez ou détestez, et réglez leur pénibilité et
-          leur fréquence. De temps en temps, l'app vous présente une tâche à évaluer :
-          répondez au mieux, c'est ce qui affine les suggestions. Si vous passez, elle
-          vous en demandera moins souvent.
+          Réglez la part visée de chacun dans la carte du foyer, et la marge tolérée
+          avant que l'app ne signale un écart. Plus l'effort de chaque tâche est
+          juste, plus le décompte l'est : il se vote dans la fiche de la tâche.
         en: >-
-          Rate the tasks you like or dislike, and set their effort and frequency.
-          Now and then the app shows you a task to rate: answer as best you can, it
-          is what sharpens the suggestions. If you skip, it will ask you less often.
+          Set each member's target share in your household's card, and the margin
+          allowed before the app points out a gap. The more accurate each task's
+          effort, the more accurate the count: it is voted in the task's details.
     trigger:
       kind: signal
       key: second_member_joined
     sub_options:
-      - key: assignment
-        scope: collective
-        title: { fr: "Attribution", en: "Assignment" }
-      - key: affinity
-        scope: collective
-        title: { fr: "Préférences", en: "Preferences" }
-      - key: affinity_popup
-        scope: personal
-        state_field: user_settings.affinity_popup_enabled
-        title: { fr: "Me demander de noter", en: "Ask me to rate" }
-      - key: effort
-        scope: collective
-        title: { fr: "Pénibilité", en: "Effort" }
       - key: fair_share
         scope: collective
         title: { fr: "Part équitable", en: "Fair share" }

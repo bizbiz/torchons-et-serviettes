@@ -205,9 +205,7 @@ async def generate_vote_prompts_for_task(
     - A la creation d'une tache avec assignments (priority=6).
     - Par le cron nightly pour les votes expires (priority=3).
     """
-    if not await is_module_enabled(session, foyer_id, "repartition"):
-        return
-
+    # No module gate: VOTE_RATING is a core prompt type (see CORE_PROMPT_TYPES).
     from app.services.recurrence import interval_hours as _ih
 
     # Uncertain : pas de vote de frequence (la cadence est inferee, Q2).
@@ -258,9 +256,7 @@ async def generate_expired_vote_prompts(
 
     Appele par le cron nightly. Retourne le nombre de prompts generes.
     """
-    if not await is_module_enabled(session, foyer_id, "repartition"):
-        return 0
-
+    # No module gate: VOTE_RATING is a core prompt type (see CORE_PROMPT_TYPES).
     expiry_cutoff = datetime.now(timezone.utc) - timedelta(days=expiry_months * 30)
     generated = 0
 

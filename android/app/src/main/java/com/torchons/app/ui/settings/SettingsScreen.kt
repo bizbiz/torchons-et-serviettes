@@ -426,11 +426,10 @@ fun SettingsScreen(
         // Personal choice on the household's `today` module: the 12/16/20 h reminders.
         TodayRemindersCard(s.notifTodayReminders, viewModel::setNotifTodayReminders)
 
-        // Personal choice on the household's `repartition` module: the affinity popup.
+        // Personal choice on the core rating questions: the affinity popup (no module).
         AffinityPopupCard(
             enabled = affinityPopup,
             onEnabledChange = { viewModel.setAffinityPopup(it) },
-            moduleOff = moduleOffInfo("repartition"),
         )
 
         // Personal choice on the household's `presence` module.

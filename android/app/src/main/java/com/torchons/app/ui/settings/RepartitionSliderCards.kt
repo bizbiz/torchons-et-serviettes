@@ -21,36 +21,11 @@ import com.torchons.app.R
 import com.torchons.app.ui.common.InfoTooltip
 
 /*
- * Household settings cards that belong to the `repartition` module (affinity and
- * effort renewal, fair-share tolerance). The caller shows them only when the module
- * is on; they are moved out of FoyerSettingsScreen, which is over its size budget.
+ * Household settings card that belongs to the `repartition` module (fair-share
+ * tolerance). The caller shows it only when the module is on; it is moved out of
+ * FoyerSettingsScreen, which is over its size budget. The affinity renewal card is
+ * core and lives in AffinityRenewalCard.kt.
  */
-
-/** Months after which affinity and effort ratings are asked again (1 to 12). */
-@Composable
-internal fun AffinityRenewalCard(months: Int, onChange: (Int) -> Unit) {
-    SettingCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(R.string.foyer_affinity_title_format, months),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f),
-            )
-            InfoTooltip(
-                title = stringResource(R.string.foyer_affinity_tooltip_title),
-                description = stringResource(R.string.foyer_affinity_tooltip_description),
-            )
-        }
-        Slider(
-            value = months.toFloat(),
-            onValueChange = { onChange(it.toInt()) },
-            valueRange = 1f..12f,
-            steps = 10,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
 
 /** Gap, in percent, tolerated between a member's share and their target share. */
 @Composable

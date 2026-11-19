@@ -178,12 +178,11 @@ fun HomeWifiCard(
     }
 }
 
-/** Personal choice about the household's `repartition` module: the affinity popup. */
+/** Personal choice about the core rating questions: the affinity popup (no module owns it). */
 @Composable
 fun AffinityPopupCard(
     enabled: Boolean,
     onEnabledChange: (Boolean) -> Unit,
-    moduleOff: ModuleOffInfo?,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -211,9 +210,7 @@ fun AffinityPopupCard(
                 subtitle = stringResource(R.string.settings_affinity_switch_subtitle),
                 checked = enabled,
                 onCheckedChange = onEnabledChange,
-                enabled = moduleOff == null,
             )
-            moduleOff?.let { ModuleOffNote(it) }
         }
     }
 }

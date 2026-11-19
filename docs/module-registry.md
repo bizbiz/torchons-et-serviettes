@@ -45,7 +45,7 @@ existing form.
 
 | # | Module | Sub-options | Scope |
 |---|--------|-------------|-------|
-| 1 | Distribution | assignment, affinities, effort, fair-share | collective |
+| 1 | Distribution | fair-share (counts each member's share) | collective |
 | 2 | Motivation | points, badges, streaks, leaderboard | collective |
 | 3 | Bonus / penalty | advance thresholds, lateness thresholds | collective |
 | 4 | Objectives & catching up | personal goal, cockpit, simulation, proposals | collective |
@@ -183,8 +183,8 @@ window.
 | 1 | Recurring tasks | core |
 | 2 | Urgency at a glance | core |
 | 3 | Fair share | Distribution |
-| 4 | Everyone's preferences | Distribution |
-| 5 | Arduousness | Distribution |
+| 4 | Everyone's preferences | core (affinity, since 19/11) |
+| 5 | Arduousness | core (effort vote, since 19/11) |
 | 6 | Absence handling | Absences |
 | 7 | Catching up | Objectives — new |
 | 8 | Motivation, if you want it | Motivation — new |
@@ -224,7 +224,9 @@ Two guards, not one:
 
 `PROMPT_TYPE_MODULE` holds the mapping, and a test checks that **every**
 `PromptType` appears in it: an unmapped type would never be filtered, silently
-and for that type alone.
+and for that type alone. Since 19/11, `VOTE_RATING` (affinity and effort, both
+core) has no module: it is declared in `CORE_PROMPT_TYPES`, which the same test
+counts as "classified, deliberately outside the filter".
 
 ### Client side
 
@@ -239,7 +241,7 @@ and for that type alone.
 | Presence block (foyer) | presence | |
 | Bonus/penalty thresholds (foyer) | bonus_malus | |
 | Notifications block | reminders | P2 |
-| Affinity popup | repartition | P2 |
+| Affinity popup | core (no module) | P2; tied to `repartition` until 19/11 |
 | All gamification UI | motivation | P2, central gate |
 | Points in history text | motivation + `hide_for_me` | server, `points_visibility.py` |
 | Profile calendar link | motivation **or** presence | without points: "presence calendar" |

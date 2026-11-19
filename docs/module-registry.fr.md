@@ -46,7 +46,7 @@ l'absence de règle de récurrence dans un formulaire existant.
 
 | # | Module | Sous-options | Portée |
 |---|--------|--------------|--------|
-| 1 | Répartition | assignation, affinités, effort, fair-share | collectif |
+| 1 | Répartition | fair-share (compte la part de chacun) | collectif |
 | 2 | Motivation | points, badges, streaks, classement | collectif |
 | 3 | Bonus / malus | seuils avance, seuils retard | collectif |
 | 4 | Objectifs & rattrapage | objectif perso, cockpit, simulation, propositions | collectif |
@@ -189,8 +189,8 @@ catégorie, et mettrait « Bonus / malus » et ses 13 seuils en vitrine.
 | 1 | Tâches récurrentes | noyau |
 | 2 | Urgence en un coup d'œil | noyau |
 | 3 | Part équitable | Répartition |
-| 4 | Préférences de chacun | Répartition |
-| 5 | Pénibilité | Répartition |
+| 4 | Préférences de chacun | noyau (affinité, depuis le 19/11) |
+| 5 | Pénibilité | noyau (vote d'effort, depuis le 19/11) |
 | 6 | Gestion des absences | Absences |
 | 7 | Rattraper le retard | Objectifs — nouvelle |
 | 8 | Motivation, si vous voulez | Motivation — nouvelle |
@@ -230,7 +230,9 @@ Deux gardes, pas une :
 
 `PROMPT_TYPE_MODULE` fait la correspondance, et un test vérifie que **tout**
 `PromptType` y figure : un type non rattaché ne serait jamais filtré, en
-silence et sur ce seul type.
+silence et sur ce seul type. Depuis le 19/11, `VOTE_RATING` (affinité et effort,
+du noyau) n'a plus de module : il est déclaré dans `CORE_PROMPT_TYPES`, que le
+même test compte comme « classé volontairement hors filtre ».
 
 ### Côté client
 
@@ -245,7 +247,7 @@ silence et sur ce seul type.
 | Bloc Présence (foyer) | presence | |
 | Seuils bonus/malus (foyer) | bonus_malus | |
 | Bloc Notifications | reminders | P2 |
-| Popup d'affinité | repartition | P2 |
+| Popup d'affinité | noyau (aucun module) | P2 ; rattaché à `repartition` jusqu'au 19/11 |
 | Tout l'UI gamif | motivation | P2, porte centrale |
 | Points dans le texte de l'historique | motivation + `hide_for_me` | serveur, `points_visibility.py` |
 | Lien agenda du profil | motivation **ou** presence | sans points : « agenda de présence » |

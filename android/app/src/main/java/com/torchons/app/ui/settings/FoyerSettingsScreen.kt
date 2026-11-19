@@ -639,10 +639,8 @@ fun FoyerSettingsScreen(
             }
 
             // (13) Renouvellement affinite/effort (slider + (i))
-            // Affinity and effort ratings belong to `repartition`: hidden with it.
-            if (moduleEnabled(Modules.REPARTITION)) {
-                AffinityRenewalCard(affinityExpiry, viewModel::setAffinityExpiry)
-            }
+            // Affinity and effort ratings are core: no module condition.
+            AffinityRenewalCard(affinityExpiry, viewModel::setAffinityExpiry)
 
             // (14) Tolerance fair-share (slider + (i))
             // Sub-option `fair_share` of `repartition`: hidden with it.

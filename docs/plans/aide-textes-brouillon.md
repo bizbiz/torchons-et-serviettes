@@ -153,7 +153,7 @@ Tes appareils connectés, ton code de récupération : ils valent pour tous tes 
 **Pour qui** `[toujours]`
 Tout le foyer, ou seulement certains membres.
 
-**Effort et affinité** `[repartition]`
+**Effort et affinité** `[toujours]`
 Chacun vote, l'app fait la moyenne. L'effort compte pour les points, l'affinité pour te
 proposer ce que tu aimes. Les « + d'info » donnent le détail.
 
@@ -244,8 +244,9 @@ navigation, les messages d'état vide.
 Cinq blocs s'affichaient même module éteint. Ils sont désormais cachés avec lui, et leur aide
 suit : simulation de rattrapage, courbe du bas de l'accueil et graphique du retard des Stats
 avec `objectives` ; curseurs
-« Renouvellement » et « Tolérance fair-share », bloc « Effort et affinité » de la fiche avec
-`repartition`. La fréquence de la fiche reste visible : elle fait partie du noyau.
+« Tolérance fair-share » avec `repartition`. Depuis le 19/11, l'affinité et le vote d'effort sont
+du noyau : le curseur « Renouvellement » et le bloc « Effort et affinité » de la fiche sont
+toujours visibles, comme la fréquence.
 
 ---
 
@@ -396,7 +397,7 @@ Up to date, due soon, or overdue, and how long until it comes back.
 **Who for** `[always]`
 The whole household, or only some members.
 
-**Effort and affinity** `[repartition]`
+**Effort and affinity** `[always]`
 Everyone votes, the app takes the average. Effort counts for points, affinity for suggesting
 what you like. The "more info" links give the details.
 

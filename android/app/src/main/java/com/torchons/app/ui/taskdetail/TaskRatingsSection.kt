@@ -25,8 +25,8 @@ import com.torchons.app.R
 
 /**
  * "Effort & Affinity" block of the task detail: each member's effort and affinity
- * ratings, the average, and the "+ info" links. These ratings belong to the
- * `repartition` module, so the caller shows the block only when it is on.
+ * ratings, the average, and the "+ info" links. These ratings are core (no module
+ * owns them), so the caller always shows the block.
  * Moved out of TaskDetailScreen, which is over its size budget.
  *
  * The "Edit" button is offered only to assigned members, consistent with the
