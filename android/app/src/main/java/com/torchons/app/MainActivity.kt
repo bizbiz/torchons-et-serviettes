@@ -4,8 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -112,10 +117,15 @@ class MainActivity : ComponentActivity() {
                 // l'app se comporte exactement comme avant.
                 val blocked by versionGateMonitor.blocked.collectAsStateWithLifecycle()
                 val gate = blocked
-                if (gate != null) {
-                    AppUpdateRequiredScreen(blocked = gate)
-                } else {
-                    TorchonsApp(initialToken = initialToken)
+                // Exposes test tags as resource ids for the Play pre-launch robot (RobotTags).
+                @OptIn(ExperimentalComposeUiApi::class)
+                val robotIds = Modifier.semantics { testTagsAsResourceId = true }
+                Box(robotIds) {
+                    if (gate != null) {
+                        AppUpdateRequiredScreen(blocked = gate)
+                    } else {
+                        TorchonsApp(initialToken = initialToken)
+                    }
                 }
             }
         }

@@ -20,11 +20,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
+import com.torchons.app.ui.common.RobotTags
 
 /**
  * Ecran d'accueil v0.30 — onboarding sans compte.
@@ -89,7 +91,10 @@ fun WelcomeScreen(
                 Text(stringResource(R.string.welcome_join_foyer))
             }
             Spacer(Modifier.height(20.dp))
-            TextButton(onClick = onRestoreFoyerClick) {
+            TextButton(
+                onClick = onRestoreFoyerClick,
+                modifier = Modifier.testTag(RobotTags.RESTORE_OPEN),
+            ) {
                 Text(
                     text = stringResource(R.string.welcome_restore_foyer),
                     style = MaterialTheme.typography.labelLarge,

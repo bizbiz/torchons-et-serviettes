@@ -36,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
+import com.torchons.app.ui.common.RobotTags
 import com.torchons.app.ui.common.showUserError
 
 /**
@@ -147,13 +149,13 @@ private fun EnterCode(
             imeAction = ImeAction.Done,
         ),
         keyboardActions = submitKeyboardActions { if (!isSubmitting && code.isNotBlank()) onLookup() },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag(RobotTags.RESTORE_CODE),
     )
     Spacer(Modifier.height(32.dp))
     Button(
         onClick = dismissKeyboardThen(onLookup),
         enabled = !isSubmitting && code.isNotBlank(),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag(RobotTags.RESTORE_VERIFY),
     ) {
         if (isSubmitting) {
             CircularProgressIndicator(
@@ -230,7 +232,7 @@ private fun ConfirmIdentity(
     Button(
         onClick = onConfirm,
         enabled = !isSubmitting,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag(RobotTags.RESTORE_CONFIRM),
     ) {
         if (isSubmitting) {
             CircularProgressIndicator(
