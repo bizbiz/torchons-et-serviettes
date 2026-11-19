@@ -25,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -199,55 +200,23 @@ private fun SimpleModeBody(
     }?.first()
     val initial = myUniform ?: consensusInt
 
-    val baseMin = max(1, (consensusInt * 0.3f).roundToInt())
-    val baseMax = max(baseMin + 1, min(365, (consensusInt * 3f).roundToInt()))
-    val sliderMin = min(baseMin, initial).coerceAtLeast(1)
-    val sliderMax = max(baseMax, initial).coerceAtMost(365).coerceAtLeast(sliderMin + 1)
-    val sliderSteps = (sliderMax - sliderMin - 1).coerceAtLeast(0)
-
-    var daysValue by remember(state.taskId) { mutableFloatStateOf(initial.toFloat()) }
-    var unit by remember(state.taskId) { mutableStateOf(DurationUnit.bestFor(initial)) }
+    var daysValue by remember(state.taskId) { mutableIntStateOf(initial) }
 
     val res = LocalContext.current.resources
-    val daysInt = daysValue.toInt()
-    val daysLabel = DurationFormat.formatDaysHuman(res, daysInt, long = true)
+    val daysLabel = DurationFormat.formatDaysHuman(res, daysValue, long = true)
 
-    registerGetter { daysValue.toInt() }
+    registerGetter { daysValue }
 
-    val units = DurationUnit.values().toList()
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        units.forEachIndexed { idx, u ->
-            SegmentedButton(
-                selected = unit == u,
-                onClick = {
-                    unit = u
-                    val snapped = u.toDays(u.fromDays(daysInt))
-                        .coerceIn(sliderMin, sliderMax)
-                    daysValue = snapped.toFloat()
-                },
-                shape = SegmentedButtonDefaults.itemShape(idx, units.size),
-                enabled = sliderMax >= u.days,
-            ) { Text(stringResource(u.labelRes)) }
-        }
+    FrequencyScaleSlider(
+        days = daysValue,
+        onDaysChange = { daysValue = it },
+        resetKey = state.taskId,
+    ) {
+        Text(
+            stringResource(R.string.frequency_vote_every_format, daysLabel),
+            style = MaterialTheme.typography.titleMedium,
+        )
     }
-    Spacer(Modifier.height(8.dp))
-
-    Text(
-        stringResource(R.string.frequency_vote_every_format, daysLabel),
-        style = MaterialTheme.typography.titleMedium,
-    )
-    Slider(
-        value = daysValue,
-        onValueChange = { v ->
-            val raw = v.roundToInt()
-            val snapped = if (unit == DurationUnit.JOURS) raw
-            else unit.toDays(unit.fromDays(raw))
-            daysValue = snapped.coerceIn(sliderMin, sliderMax).toFloat()
-        },
-        valueRange = sliderMin.toFloat()..sliderMax.toFloat(),
-        steps = sliderSteps,
-        modifier = Modifier.fillMaxWidth(),
-    )
     Spacer(Modifier.height(8.dp))
     ConsensusFooter(state)
 }

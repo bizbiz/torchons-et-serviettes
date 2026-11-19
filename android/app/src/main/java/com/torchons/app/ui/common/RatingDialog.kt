@@ -92,22 +92,9 @@ fun RatingDialog(
     val currentDays = currentRecurrence?.everyNDays ?: 7
 
     var makeRecurring by remember(pending.taskId) { mutableStateOf(isAlreadyInterval) }
-    val minDays = if (isAlreadyInterval) (currentDays * 0.5f).coerceAtLeast(1f) else 1f
-    // Cap le haut du slider a 365j pour rester dans la fenetre acceptee par
-    // le backend (FrequencyUpdate.every_n_days: Field(ge=1, le=365)). Sans
-    // clamp, une tache a 200j donnerait un max = 400j, rejete en 422 cote
-    // backend, et le worker rejouerait l'op a l'infini (cf. v0.15.3).
-    val maxDays = if (isAlreadyInterval) {
-        (currentDays * 2f).coerceIn(2f, 365f)
-    } else {
-        30f
-    }
+    // Never above 365 days: the backend refuses more (FrequencyUpdate.every_n_days, le=365),
+    // and the worker would replay the op forever (v0.15.3). FrequencyScale holds that cap.
     var daysValue by remember(pending.taskId) { mutableFloatStateOf(currentDays.toFloat()) }
-    // Unite locale pour le slider de frequence — defaut sur l'unite la plus
-    // naturelle pour la valeur courante (1 mois ↔ 30 j, 1 sem ↔ 7 j).
-    var freqUnit by remember(pending.taskId) {
-        mutableStateOf(DurationUnit.bestFor(currentDays))
-    }
 
     val res = LocalContext.current.resources
 
@@ -208,51 +195,30 @@ fun RatingDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // === Frequency ===
-                // Helper local pour snapper la valeur sur les multiples de
-                // l'unite courante (1 j / 7 j / 30 j) — partage entre les
-                // deux branches isAlreadyInterval / makeRecurring.
-                fun snapToUnit(raw: Float, lo: Float, hi: Float): Float {
-                    val r = raw.roundToInt()
-                    val s = if (freqUnit == DurationUnit.JOURS) r
-                    else freqUnit.toDays(freqUnit.fromDays(r))
-                    return s.coerceIn(lo.toInt(), hi.toInt()).toFloat()
-                }
+                // === Frequency === (1-to-15 slider in the chosen unit, FrequencyScaleSlider)
                 if (isAlreadyInterval) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            stringResource(
-                                R.string.rating_frequency_value_format,
-                                DurationFormat.formatDaysHuman(res, daysValue.toInt(), long = true),
-                            ),
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        InfoTooltip(
-                            title = stringResource(R.string.rating_frequency_label),
-                            description = stringResource(
-                                R.string.rating_frequency_tooltip_description_format,
-                                DurationFormat.formatDaysHuman(res, currentDays, long = true),
-                            ),
-                        )
-                    }
-                    UnitToggleRow(
-                        unit = freqUnit,
-                        onUnitChange = { u ->
-                            freqUnit = u
-                            daysValue = u.toDays(u.fromDays(daysValue.toInt()))
-                                .coerceIn(minDays.toInt(), maxDays.toInt()).toFloat()
-                        },
-                        sliderMaxDays = maxDays.toInt(),
-                    )
-                    Slider(
-                        value = daysValue,
-                        onValueChange = { daysValue = snapToUnit(it, minDays, maxDays) },
-                        valueRange = minDays..maxDays,
-                    )
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(DurationFormat.formatDaysHuman(res, minDays.toInt()), style = MaterialTheme.typography.labelSmall)
-                        Text(DurationFormat.formatDaysHuman(res, maxDays.toInt()), style = MaterialTheme.typography.labelSmall)
+                    FrequencyScaleSlider(
+                        days = daysValue.toInt(),
+                        onDaysChange = { daysValue = it.toFloat() },
+                        resetKey = pending.taskId,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                stringResource(
+                                    R.string.rating_frequency_value_format,
+                                    DurationFormat.formatDaysHuman(res, daysValue.toInt(), long = true),
+                                ),
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            InfoTooltip(
+                                title = stringResource(R.string.rating_frequency_label),
+                                description = stringResource(
+                                    R.string.rating_frequency_tooltip_description_format,
+                                    DurationFormat.formatDaysHuman(res, currentDays, long = true),
+                                ),
+                            )
+                        }
                     }
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -271,29 +237,20 @@ fun RatingDialog(
                     }
                     if (makeRecurring) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            stringResource(
-                                R.string.rating_recurring_every_format,
-                                DurationFormat.formatDaysHuman(res, daysValue.toInt(), long = true),
-                            ),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        UnitToggleRow(
-                            unit = freqUnit,
-                            onUnitChange = { u ->
-                                freqUnit = u
-                                daysValue = u.toDays(u.fromDays(daysValue.toInt()))
-                                    .coerceIn(1, 30).toFloat()
-                            },
-                            sliderMaxDays = 30,
-                        )
-                        Slider(
-                            value = daysValue,
-                            onValueChange = { daysValue = snapToUnit(it, 1f, 30f) },
-                            valueRange = 1f..30f,
-                            steps = 28,
-                        )
+                        FrequencyScaleSlider(
+                            days = daysValue.toInt(),
+                            onDaysChange = { daysValue = it.toFloat() },
+                            resetKey = pending.taskId,
+                        ) {
+                            Text(
+                                stringResource(
+                                    R.string.rating_recurring_every_format,
+                                    DurationFormat.formatDaysHuman(res, daysValue.toInt(), long = true),
+                                ),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                 }
             }
@@ -322,30 +279,6 @@ fun RatingDialog(
     )
 }
 
-/**
- * Petite ligne de boutons segmentes Jours / Semaines / Mois — partagee
- * entre RatingDialog et FrequencyVoteDialog. Un cran est desactive si
- * le slider courant ne peut pas l'accommoder (sliderMaxDays < unit.days),
- * ex: pas de "Mois" sur un slider qui plafonne a 14 j.
- */
-@Composable
-private fun UnitToggleRow(
-    unit: DurationUnit,
-    onUnitChange: (DurationUnit) -> Unit,
-    sliderMaxDays: Int,
-) {
-    val units = DurationUnit.values().toList()
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        units.forEachIndexed { idx, u ->
-            SegmentedButton(
-                selected = unit == u,
-                onClick = { onUnitChange(u) },
-                shape = SegmentedButtonDefaults.itemShape(idx, units.size),
-                enabled = sliderMaxDays >= u.days,
-            ) { Text(stringResource(u.labelRes)) }
-        }
-    }
-}
 
 /**
  * Format relatif de la derniere notation (sans absolu en fallback, choix

@@ -29,6 +29,8 @@ import androidx.compose.material3.SnackbarDuration
 import com.torchons.app.ui.common.ImeSnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +57,7 @@ import com.torchons.app.ui.common.CelebrationOverlay
 import com.torchons.app.ui.common.RatingDialog
 import com.torchons.app.ui.common.showUserError
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onTaskClick: (String) -> Unit = {},
@@ -329,7 +332,20 @@ fun HomeScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // Pull to refresh: the indicator follows the user's pull only. uiState.isRefreshing is
+    // also true on every resume (LifecycleResumeEffect -> loadData), which would spin it
+    // each time the app comes back. Same refresh as on resume, so the 2 h tolerance between
+    // two automatic prompts still applies.
+    var pulling by remember { mutableStateOf(false) }
+    LaunchedEffect(uiState.isRefreshing) { if (!uiState.isRefreshing) pulling = false }
+    PullToRefreshBox(
+        isRefreshing = pulling,
+        onRefresh = {
+            pulling = true
+            viewModel.refresh()
+        },
+        modifier = Modifier.fillMaxSize(),
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
