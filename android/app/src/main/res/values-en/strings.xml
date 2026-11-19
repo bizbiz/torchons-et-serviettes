@@ -1840,9 +1840,13 @@
     <!-- First-run welcome screen, copied from docs/plans/aide-et-bienvenue.md -->
     <string name="first_run_welcome_title">Hi, I\'m Quentin 👋</string>
     <string name="first_run_welcome_p1">I made this app. I tried to keep it as simple as possible while letting it do lots of things, and that is really not easy!</string>
-    <string name="first_run_welcome_p2">Some features are switched off while you get the hang of the app: they will be offered to you little by little. To turn them on sooner: Settings, then your household\'s card.</string>
-    <string name="first_run_welcome_p3">If something is unclear, tap the \"?\" at the top of the screen: it explains the page you are looking at.</string>
-    <string name="first_run_welcome_p4">A bug, an idea? Write to me: Settings, at the very bottom.</string>
+    <string name="first_run_welcome_p2">Some features are switched off while you get the hang of the app: they will be offered to you little by little. To turn them on sooner:</string>
+    <string name="first_run_welcome_p3">Something unclear? Tap the \"?\": it explains the page you are looking at.</string>
+    <string name="first_run_welcome_p4">A bug, an idea? Write to me:</string>
+    <string name="first_run_welcome_bottom_hint">⋮ at the very bottom</string>
+    <string name="first_run_welcome_mini_foyer_cd">Settings, then your household\'s card</string>
+    <string name="first_run_welcome_mini_help_cd">The \"?\" at the top of the screen</string>
+    <string name="first_run_welcome_mini_write_cd">Settings, at the very bottom: \"Write to me\"</string>
     <string name="first_run_welcome_button">Let\'s go</string>
     <!-- Bottom card of Settings -->
     <string name="support_dev_title">A word from Quentin</string>

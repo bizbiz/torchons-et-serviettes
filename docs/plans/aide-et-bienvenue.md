@@ -50,13 +50,21 @@ endroit, au lieu d'un écran d'onboarding par fonctionnalité.
 > permettant plein de choses, et ce n'est vraiment pas facile !
 >
 > Certaines fonctionnalités sont éteintes le temps que tu prennes l'appli en main : elles te
-> seront proposées petit à petit. Pour les allumer plus tôt : Réglages, puis la carte de ton
-> foyer.
+> seront proposées petit à petit. Pour les allumer plus tôt :
 >
-> Si quelque chose n'est pas clair, touche le « ? » en haut de l'écran : il explique la page que
-> tu as sous les yeux.
+> *[miniature : onglet Réglages, la carte du foyer entourée, une flèche]*
 >
-> Un bug, une idée ? Écris-moi : Réglages, tout en bas.
+> Quelque chose n'est pas clair ? Touche le « ? » : il explique la page que tu as sous les yeux.
+>
+> *[miniature : un haut d'écran, le « ? » entouré]*
+>
+> Un bug, une idée ? Écris-moi :
+>
+> *[miniature : le bas de Réglages, « Un mot de Quentin », le bouton « M'écrire » entouré]*
+
+Révisé le 19/11 au dogfood de la v0.46.0 : « montrer plutôt qu'expliquer, aérer ». Les phrases
+qui décrivaient un chemin s'arrêtent sur « : », et une miniature dessinée avec les vrais
+libellés (`ui/welcome/WelcomeMiniatures.kt`) montre ce chemin. Une seule page qui défile.
 
 Vérifié le 18/11 : 7 modules sur 9 sont éteints dans un foyer neuf (`default_new: false`) ; ils
 s'allument sur proposition acceptée, jamais seuls ; tout membre peut les basculer (pas de

@@ -1854,9 +1854,13 @@
     <!-- First-run welcome screen, copied from docs/plans/aide-et-bienvenue.md -->
     <string name="first_run_welcome_title">Bonjour, je suis Quentin 👋</string>
     <string name="first_run_welcome_p1">C\'est moi qui ai fait cette appli. J\'ai essayé de la rendre la plus simple possible tout en permettant plein de choses, et ce n\'est vraiment pas facile !</string>
-    <string name="first_run_welcome_p2">Certaines fonctionnalités sont éteintes le temps que tu prennes l\'appli en main : elles te seront proposées petit à petit. Pour les allumer plus tôt : Réglages, puis la carte de ton foyer.</string>
-    <string name="first_run_welcome_p3">Si quelque chose n\'est pas clair, touche le « ? » en haut de l\'écran : il explique la page que tu as sous les yeux.</string>
-    <string name="first_run_welcome_p4">Un bug, une idée ? Écris-moi : Réglages, tout en bas.</string>
+    <string name="first_run_welcome_p2">Certaines fonctionnalités sont éteintes le temps que tu prennes l\'appli en main : elles te seront proposées petit à petit. Pour les allumer plus tôt :</string>
+    <string name="first_run_welcome_p3">Quelque chose n\'est pas clair ? Touche le « ? » : il explique la page que tu as sous les yeux.</string>
+    <string name="first_run_welcome_p4">Un bug, une idée ? Écris-moi :</string>
+    <string name="first_run_welcome_bottom_hint">⋮ tout en bas</string>
+    <string name="first_run_welcome_mini_foyer_cd">Réglages, puis la carte de ton foyer</string>
+    <string name="first_run_welcome_mini_help_cd">Le « ? » en haut de l\'écran</string>
+    <string name="first_run_welcome_mini_write_cd">Réglages, tout en bas : « M\'écrire »</string>
     <string name="first_run_welcome_button">C\'est parti</string>
     <!-- Bottom card of Settings -->
     <string name="support_dev_title">Un mot de Quentin</string>

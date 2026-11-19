@@ -64,6 +64,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         WidgetLaunch.postFrom(intent)
+        resetWelcomeIfAsked(intent)
 
         // Rearmer la popup d'accueil a chaque ON_RESUME de l'activite :
         // cold start + retour depuis le background. La navigation Compose
@@ -134,6 +135,24 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         WidgetLaunch.postFrom(intent)
+        resetWelcomeIfAsked(intent)
+    }
+
+    /**
+     * Beta only, for dogfooding: the welcome screen shows once per phone, so a phone that saw it
+     * can only see it again through this launch extra (decided with Quentin on 2026-11-19):
+     * `adb shell am start -n com.torchons.app.beta/com.torchons.app.MainActivity
+     *  --ez show_first_run_welcome true`. FirstRunWelcomeHost collects the flag, so the screen
+     * comes back even when the app was already open. Ignored by the prod flavor.
+     */
+    private fun resetWelcomeIfAsked(intent: android.content.Intent?) {
+        if (BuildConfig.FLAVOR != "beta") return
+        if (intent?.getBooleanExtra(EXTRA_SHOW_FIRST_RUN_WELCOME, false) != true) return
+        CoroutineScope(Dispatchers.IO).launch { tokenManager.resetFirstRunWelcomeSeen() }
+    }
+
+    private companion object {
+        const val EXTRA_SHOW_FIRST_RUN_WELCOME = "show_first_run_welcome"
     }
 }
 

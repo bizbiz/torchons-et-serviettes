@@ -211,6 +211,11 @@ class TokenManager @Inject constructor(
         context.dataStore.edit { it[FIRST_RUN_WELCOME_SEEN_KEY] = true }
     }
 
+    /** Beta dogfood only (MainActivity.resetWelcomeIfAsked): show the welcome screen again. */
+    suspend fun resetFirstRunWelcomeSeen() {
+        context.dataStore.edit { it.remove(FIRST_RUN_WELCOME_SEEN_KEY) }
+    }
+
     suspend fun ackModuleNotice(key: String) {
         context.dataStore.edit { prefs ->
             // Keep the set bounded: notices older than 30 days never show again anyway.

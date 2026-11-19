@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -49,16 +51,22 @@ fun FirstRunWelcomeHost(content: @Composable () -> Unit) {
     val seen by produceState<Boolean?>(initialValue = null, tokenManager) {
         tokenManager.firstRunWelcomeSeenFlow.collect { value = it }
     }
+    val foyerName by produceState<String?>(initialValue = null, tokenManager) {
+        tokenManager.currentFoyerNameFlow.collect { value = it }
+    }
     val scope = rememberCoroutineScope()
     when (seen) {
         null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
-        false -> FirstRunWelcomeScreen(onDismiss = { scope.launch { tokenManager.markFirstRunWelcomeSeen() } })
+        false -> FirstRunWelcomeScreen(
+            foyerName = foyerName ?: stringResource(R.string.settings_foyer_default_name),
+            onDismiss = { scope.launch { tokenManager.markFirstRunWelcomeSeen() } },
+        )
         else -> content()
     }
 }
 
 @Composable
-private fun FirstRunWelcomeScreen(onDismiss: () -> Unit) {
+private fun FirstRunWelcomeScreen(foyerName: String, onDismiss: () -> Unit) {
     Scaffold { padding ->
         Column(
             modifier = Modifier
@@ -75,16 +83,27 @@ private fun FirstRunWelcomeScreen(onDismiss: () -> Unit) {
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                 )
-                listOf(
-                    R.string.first_run_welcome_p1,
-                    R.string.first_run_welcome_p2,
-                    R.string.first_run_welcome_p3,
-                    R.string.first_run_welcome_p4,
-                ).forEach { Text(text = stringResource(it), style = MaterialTheme.typography.bodyLarge) }
+                // Show rather than tell (Quentin, 2026-11-19): a paragraph that names a path ends
+                // on « : » and the miniature below draws that path (WelcomeMiniatures.kt).
+                Paragraph(R.string.first_run_welcome_p1)
+                Paragraph(R.string.first_run_welcome_p2)
+                MiniFoyerCard(foyerName)
+                Spacer(Modifier.height(8.dp))
+                Paragraph(R.string.first_run_welcome_p3)
+                MiniHelpButton()
+                Spacer(Modifier.height(8.dp))
+                Paragraph(R.string.first_run_welcome_p4)
+                MiniWriteToMe()
             }
+            Spacer(Modifier.height(16.dp))
             Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.first_run_welcome_button))
             }
         }
     }
+}
+
+@Composable
+private fun Paragraph(textRes: Int) {
+    Text(text = stringResource(textRes), style = MaterialTheme.typography.bodyLarge)
 }
