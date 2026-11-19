@@ -3,7 +3,6 @@ package com.torchons.app.ui.settings
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,19 +18,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Balance
 import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.VpnKey
@@ -41,19 +32,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.torchons.app.ui.common.PrimaryTopBar
-import com.torchons.app.ui.common.UserErrorDialogText
 import com.torchons.app.ui.help.HelpButton
 import com.torchons.app.ui.help.HelpScreen
 import androidx.compose.runtime.Composable
@@ -70,7 +55,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.R
-import com.torchons.app.ui.common.*
+import com.torchons.app.ui.common.InfoTooltip
+import com.torchons.app.ui.common.Modules
+import com.torchons.app.ui.common.moduleEnabled
 import com.torchons.app.ui.home.ProjectionSimulationDialog
 import com.torchons.app.ui.stats.StreakCalendarModal
 import com.torchons.app.ui.stats.StreakMember
@@ -125,7 +112,6 @@ fun FoyerSettingsScreen(
     var showSwitchSheet by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showSimulationDialog by remember { mutableStateOf(false) }
-    var showBonusMalus by remember { mutableStateOf(false) }
     var showLeaveConfirm by remember { mutableStateOf(false) }
     var showRegenerateConfirm by remember { mutableStateOf(false) }
     // P4b — le calendrier n'est plus inline : un bouton ouvre LE modal
@@ -243,128 +229,13 @@ fun FoyerSettingsScreen(
             // laisser visibles alors que le module est coupe promettrait un
             // comportement qui n'a plus lieu.
             if (moduleEnabled(Modules.PRESENCE)) {
-            SettingCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.foyer_presence_section_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    InfoTooltip(
-                        title = stringResource(R.string.foyer_presence_section_tooltip_title),
-                        description = stringResource(R.string.foyer_presence_section_tooltip_description),
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-
-                // Toggle mise en pause si absent (home freeze)
-                SettingSwitch(
-                    title = stringResource(R.string.foyer_presence_freeze_title),
-                    subtitle = stringResource(R.string.foyer_presence_freeze_subtitle),
-                    checked = homeFreezeEnabled,
-                    onCheckedChange = { viewModel.setCurrentFoyerHomeFreezeEnabled(it) },
+                FoyerPresenceCard(
+                    viewModel = viewModel,
+                    homeFreezeEnabled = homeFreezeEnabled,
+                    homeSsids = homeSsids,
+                    onRequestWifiExplanation = { showWifiExplanation = true },
+                    onOpenPresenceModal = { showPresenceModal = true },
                 )
-
-                // The personal "hide home tasks off WiFi" switch moved to Settings
-                // (HomeWifiCard): it is the member's choice, not the household's.
-
-                // WiFi maison (deplace tel quel depuis SettingsScreen)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Home,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.foyer_presence_wifi_section_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    InfoTooltip(
-                        title = stringResource(R.string.foyer_presence_wifi_tooltip_title),
-                        description = stringResource(R.string.foyer_presence_wifi_tooltip_description),
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-
-                if (homeSsids.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.foyer_presence_wifi_empty),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    homeSsids.forEach { ssid ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                ssid,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f),
-                            )
-                            IconButton(
-                                onClick = { viewModel.removeHomeSsid(ssid) },
-                                modifier = Modifier.size(24.dp),
-                            ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    stringResource(R.string.foyer_presence_wifi_remove_cd),
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = {
-                        val hasPermission = androidx.core.content.ContextCompat
-                            .checkSelfPermission(
-                                context,
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                        if (hasPermission) {
-                            val ssid = WifiHelper.getCurrentSsid(context)
-                            if (ssid != null) viewModel.addHomeSsid(ssid)
-                        } else {
-                            showWifiExplanation = true
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.foyer_presence_wifi_add_button))
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                // P4b — le calendrier de présence n'est PLUS inline ici :
-                // un seul modal "Présence & séries" (éditable), ouvrable de
-                // plusieurs endroits (design decision 5 v3 — "one modal to
-                // rule them all"). Ce bloc ne garde que les réglages.
-                OutlinedButton(
-                    onClick = { showPresenceModal = true },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(
-                        Icons.Default.Timeline,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.foyer_presence_open_calendar_button))
-                }
-            }
             }
 
             // (8) Simuler le rattrapage du foyer (-> ProjectionSimulationDialog)
@@ -405,146 +276,12 @@ fun FoyerSettingsScreen(
             }
             }
 
-            // (9) Bonus / Malus de points (replie par defaut, complexe)
-            val bonusConfig by viewModel.bonusConfig.collectAsState()
             // P3 — les 13 seuils appartiennent au module `bonus_malus`. Il exige
             // `motivation`, mais l'inverse n'est pas vrai : un foyer peut vouloir des
             // points sans moduler leur valeur. Se reposer sur la garde gamif
             // laisserait donc les seuils visibles dans ce cas.
             if (moduleEnabled(Modules.BONUS_MALUS)) {
-            SettingCard {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showBonusMalus = !showBonusMalus },
-                ) {
-                    Text(
-                        text = stringResource(R.string.foyer_bonus_section_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    InfoTooltip(
-                        title = stringResource(R.string.foyer_bonus_section_tooltip_title),
-                        description = stringResource(R.string.foyer_bonus_section_tooltip_description),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Icon(
-                        imageVector = if (showBonusMalus)
-                            Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = null,
-                    )
-                }
-
-                if (showBonusMalus && bonusConfig != null) {
-                    val cfg = bonusConfig!!
-                    Spacer(Modifier.height(8.dp))
-
-                    Text(
-                        stringResource(R.string.foyer_bonus_group_late),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    BonusSlider(
-                        stringResource(R.string.foyer_bonus_pct_label),
-                        stringResource(R.string.foyer_bonus_pct_value_format, (cfg.bonusPct * 100).toInt()),
-                        cfg.bonusPct, 0f..2f, 19,
-                        stringResource(R.string.foyer_bonus_pct_desc),
-                    ) { viewModel.updateBonusConfig("bonus_pct", it) }
-                    BonusSlider(
-                        stringResource(R.string.foyer_bonus_threshold_strict),
-                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.seuilBonusStrict * 100).toInt()),
-                        cfg.seuilBonusStrict, 0f..1f, 19,
-                        stringResource(R.string.foyer_bonus_threshold_strict_desc),
-                    ) { viewModel.updateBonusConfig("seuil_bonus_strict", it) }
-                    BonusSlider(
-                        stringResource(R.string.foyer_bonus_threshold_normal),
-                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.seuilBonusNormal * 100).toInt()),
-                        cfg.seuilBonusNormal, 0f..1f, 19,
-                        stringResource(R.string.foyer_bonus_threshold_normal_desc),
-                    ) { viewModel.updateBonusConfig("seuil_bonus_normal", it) }
-                    BonusSlider(
-                        stringResource(R.string.foyer_bonus_threshold_souple),
-                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.seuilBonusSouple * 100).toInt()),
-                        cfg.seuilBonusSouple, 0f..1f, 19,
-                        stringResource(R.string.foyer_bonus_threshold_souple_desc),
-                    ) { viewModel.updateBonusConfig("seuil_bonus_souple", it) }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                    Text(
-                        stringResource(R.string.foyer_malus_group),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    BonusSlider(
-                        stringResource(R.string.foyer_malus_floor_label),
-                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.plancherMalus * 100).toInt()),
-                        cfg.plancherMalus, 0.1f..1f, 17,
-                        stringResource(R.string.foyer_malus_floor_desc),
-                    ) { viewModel.updateBonusConfig("plancher_malus", it) }
-                    BonusSlider(
-                        stringResource(R.string.foyer_malus_threshold_strict),
-                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.seuilMalusStrict * 100).toInt()),
-                        cfg.seuilMalusStrict, 0f..1f, 19,
-                        stringResource(R.string.foyer_malus_threshold_strict_desc),
-                    ) { viewModel.updateBonusConfig("seuil_malus_strict", it) }
-                    BonusSlider(
-                        stringResource(R.string.foyer_malus_threshold_normal),
-                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.seuilMalusNormal * 100).toInt()),
-                        cfg.seuilMalusNormal, 0f..1f, 19,
-                        stringResource(R.string.foyer_malus_threshold_normal_desc),
-                    ) { viewModel.updateBonusConfig("seuil_malus_normal", it) }
-                    BonusSlider(
-                        stringResource(R.string.foyer_malus_threshold_souple),
-                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.seuilMalusSouple * 100).toInt()),
-                        cfg.seuilMalusSouple, 0f..1f, 19,
-                        stringResource(R.string.foyer_malus_threshold_souple_desc),
-                    ) { viewModel.updateBonusConfig("seuil_malus_souple", it) }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                    Text(
-                        stringResource(R.string.foyer_bump_group),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    BonusSlider(
-                        stringResource(R.string.foyer_bump_window_min),
-                        stringResource(R.string.foyer_bump_window_value_days_format, cfg.bumpYMinDays),
-                        cfg.bumpYMinDays.toFloat(), 30f..365f, 10,
-                        stringResource(R.string.foyer_bump_window_min_desc),
-                    ) { viewModel.updateBonusConfig("bump_y_min_days", it.toInt()) }
-                    BonusSlider(
-                        stringResource(R.string.foyer_bump_window_max),
-                        stringResource(R.string.foyer_bump_window_value_days_format, cfg.bumpYMaxDays),
-                        cfg.bumpYMaxDays.toFloat(), 180f..3650f, 10,
-                        stringResource(R.string.foyer_bump_window_max_desc),
-                    ) { viewModel.updateBonusConfig("bump_y_max_days", it.toInt()) }
-                    BonusSlider(
-                        stringResource(R.string.foyer_bump_min_completions),
-                        stringResource(R.string.foyer_bump_value_int_format, cfg.bumpZMin),
-                        cfg.bumpZMin.toFloat(), 1f..10f, 8,
-                        stringResource(R.string.foyer_bump_min_completions_desc),
-                    ) { viewModel.updateBonusConfig("bump_z_min", it.toInt()) }
-                    BonusSlider(
-                        stringResource(R.string.foyer_bump_ratio),
-                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.bumpXRatio * 100).toInt()),
-                        cfg.bumpXRatio, 0.3f..1f, 13,
-                        stringResource(R.string.foyer_bump_ratio_desc),
-                    ) { viewModel.updateBonusConfig("bump_x_ratio", it) }
-                    BonusSlider(
-                        stringResource(R.string.foyer_bump_grace),
-                        stringResource(R.string.foyer_bump_value_pct_format, (cfg.bumpGraceRatio * 100).toInt()),
-                        cfg.bumpGraceRatio, 0.1f..2f, 18,
-                        stringResource(R.string.foyer_bump_grace_desc),
-                    ) { viewModel.updateBonusConfig("bump_grace_ratio", it) }
-                }
-            }
+                FoyerBonusMalusCard(viewModel)
             }
 
             // (10) Quitter le foyer — destructif, rouge, en bas du groupe
@@ -633,7 +370,10 @@ fun FoyerSettingsScreen(
                         )
                     }
                     OutlinedButton(onClick = { showRegenerateConfirm = true }) {
-                        Text(stringResource(R.string.foyer_recovery_button), style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            stringResource(R.string.foyer_recovery_button),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
                     }
                 }
             }
@@ -680,98 +420,24 @@ fun FoyerSettingsScreen(
 
     // --- Dialog renommer le foyer ---
     if (showRenameDialog) {
-        var name by remember { mutableStateOf(foyerName) }
-        AlertDialog(
-            onDismissRequest = { showRenameDialog = false },
-            title = { Text(stringResource(R.string.foyer_rename_title), fontWeight = FontWeight.Bold) },
-            text = {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.common_name_label)) },
-                    singleLine = true, keyboardActions = submitKeyboardActions(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = dismissKeyboardThen {
-                        viewModel.renameCurrentFoyer(name)
-                        showRenameDialog = false
-                    },
-                    enabled = name.trim().isNotEmpty(),
-                ) { Text(stringResource(R.string.common_save)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRenameDialog = false }) { Text(stringResource(R.string.common_cancel)) }
+        FoyerRenameDialog(
+            foyerName = foyerName,
+            onDismiss = { showRenameDialog = false },
+            onSave = {
+                viewModel.renameCurrentFoyer(it)
+                showRenameDialog = false
             },
         )
     }
 
     // --- Feuille de selection "Changer de foyer" (>= 2 foyers) ---
     if (showSwitchSheet) {
-        AlertDialog(
-            onDismissRequest = { showSwitchSheet = false },
-            title = { Text(stringResource(R.string.foyer_switch_dialog_title), fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = stringResource(R.string.foyer_switch_dialog_intro),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    allFoyers.forEach { f ->
-                        Card(
-                            onClick = {
-                                if (!f.isCurrent) {
-                                    viewModel.switchToFoyer(f.id)
-                                    showSwitchSheet = false
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (f.isCurrent) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.surface
-                                },
-                            ),
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    Icons.Default.Home,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(f.name, fontWeight = FontWeight.Bold)
-                                    Text(
-                                        text = f.role.replaceFirstChar { it.uppercase() },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                if (f.isCurrent) {
-                                    Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = stringResource(R.string.foyer_switch_dialog_current_cd),
-                                        tint = MaterialTheme.colorScheme.primary,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showSwitchSheet = false }) { Text(stringResource(R.string.foyer_switch_dialog_close)) }
+        FoyerSwitchDialog(
+            allFoyers = allFoyers,
+            onDismiss = { showSwitchSheet = false },
+            onSwitchTo = {
+                viewModel.switchToFoyer(it)
+                showSwitchSheet = false
             },
         )
     }
@@ -825,205 +491,6 @@ fun FoyerSettingsScreen(
         showRegenerateConfirm = showRegenerateConfirm,
         onDismissRegenerateConfirm = { showRegenerateConfirm = false },
     )
-}
-
-/**
- * Dialogs des flows "Regenerer code de recuperation" et "Quitter le foyer".
- * Reprend exactement la sequence d'AlertDialog de SecuritySection (confirm
- * -> loading -> success/switched -> error), pilotee par regenerateState /
- * leaveState du SettingsViewModel. La card declenchant ces flows vit
- * directement dans FoyerSettingsScreen (groupes 12 et 10).
- */
-@Composable
-private fun RecoveryAndLeaveDialogs(
-    viewModel: SettingsViewModel,
-    onLeftFoyer: () -> Unit,
-    showLeaveConfirm: Boolean,
-    onDismissLeaveConfirm: () -> Unit,
-    showRegenerateConfirm: Boolean,
-    onDismissRegenerateConfirm: () -> Unit,
-) {
-    val regenerateState by viewModel.regenerateState.collectAsState()
-    val leaveState by viewModel.leaveState.collectAsState()
-    val context = androidx.compose.ui.platform.LocalContext.current
-
-    LaunchedEffect(leaveState) {
-        if (leaveState is SettingsViewModel.LeaveState.LoggedOut) {
-            onLeftFoyer()
-        }
-    }
-
-    // --- Regenerer : confirmation ---
-    if (showRegenerateConfirm &&
-        regenerateState is SettingsViewModel.RegenerateState.Idle
-    ) {
-        AlertDialog(
-            onDismissRequest = onDismissRegenerateConfirm,
-            title = { Text(stringResource(R.string.recovery_dialog_confirm_title)) },
-            text = {
-                Text(stringResource(R.string.recovery_dialog_confirm_message))
-            },
-            confirmButton = {
-                Button(onClick = {
-                    onDismissRegenerateConfirm()
-                    viewModel.regenerateRecoveryCode()
-                }) { Text(stringResource(R.string.foyer_recovery_button)) }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissRegenerateConfirm) { Text(stringResource(R.string.common_cancel)) }
-            },
-        )
-    }
-
-    if (regenerateState is SettingsViewModel.RegenerateState.Loading) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text(stringResource(R.string.recovery_dialog_loading_title)) },
-            text = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    androidx.compose.material3.CircularProgressIndicator()
-                }
-            },
-            confirmButton = {},
-        )
-    }
-
-    val regenSuccess = regenerateState as? SettingsViewModel.RegenerateState.Success
-    if (regenSuccess != null) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissRegenerate() },
-            title = { Text(stringResource(R.string.recovery_dialog_success_title)) },
-            text = {
-                Column {
-                    androidx.compose.material3.Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            text = regenSuccess.recoveryCode,
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp),
-                        )
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = stringResource(R.string.recovery_dialog_warning),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(
-                            onClick = { copyCode(context, regenSuccess.recoveryCode) },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Icon(
-                                Icons.Default.ContentCopy,
-                                contentDescription = null,
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(stringResource(R.string.recovery_dialog_copy))
-                        }
-                        OutlinedButton(
-                            onClick = { shareCode(context, regenSuccess.recoveryCode) },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Icon(Icons.Default.Share, contentDescription = null)
-                            Spacer(Modifier.width(4.dp))
-                            Text(stringResource(R.string.recovery_dialog_share))
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(onClick = { viewModel.dismissRegenerate() }) { Text(stringResource(R.string.recovery_dialog_noted)) }
-            },
-        )
-    }
-    val regenError = regenerateState as? SettingsViewModel.RegenerateState.Error
-    if (regenError != null) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissRegenerate() },
-            title = { Text(stringResource(R.string.recovery_dialog_error_title)) },
-            text = { UserErrorDialogText(regenError.error, "SettingsRecovery") },
-            confirmButton = {
-                Button(onClick = { viewModel.dismissRegenerate() }) { Text(stringResource(R.string.common_ok)) }
-            },
-        )
-    }
-
-    // --- Quitter le foyer ---
-    if (showLeaveConfirm && leaveState is SettingsViewModel.LeaveState.Idle) {
-        AlertDialog(
-            onDismissRequest = onDismissLeaveConfirm,
-            title = { Text(stringResource(R.string.leave_dialog_confirm_title)) },
-            text = {
-                Text(stringResource(R.string.leave_dialog_confirm_message))
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onDismissLeaveConfirm()
-                        viewModel.leaveFoyer()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) { Text(stringResource(R.string.leave_dialog_confirm_action)) }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissLeaveConfirm) { Text(stringResource(R.string.common_cancel)) }
-            },
-        )
-    }
-
-    if (leaveState is SettingsViewModel.LeaveState.Loading) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text(stringResource(R.string.leave_dialog_loading_title)) },
-            text = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    androidx.compose.material3.CircularProgressIndicator()
-                }
-            },
-            confirmButton = {},
-        )
-    }
-
-    if (leaveState is SettingsViewModel.LeaveState.SwitchedFoyer) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissLeave() },
-            title = { Text(stringResource(R.string.leave_dialog_switched_title)) },
-            text = { Text(stringResource(R.string.leave_dialog_switched_message)) },
-            confirmButton = {
-                Button(onClick = { viewModel.dismissLeave() }) { Text(stringResource(R.string.common_ok)) }
-            },
-        )
-    }
-
-    val leaveError = leaveState as? SettingsViewModel.LeaveState.Error
-    if (leaveError != null) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissLeave() },
-            title = { Text(stringResource(R.string.recovery_dialog_error_title)) },
-            text = { UserErrorDialogText(leaveError.error, "SettingsLeaveFoyer") },
-            confirmButton = {
-                Button(onClick = { viewModel.dismissLeave() }) { Text(stringResource(R.string.common_ok)) }
-            },
-        )
-    }
 }
 
 @Composable
