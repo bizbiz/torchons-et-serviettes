@@ -1,8 +1,8 @@
 # « À faire aujourd'hui » : confier une tâche à un autre membre
 
-Décidé le 18/11/2026 (grill). Statut : livré en beta le 18/11 (`ee2419c`), dogfoodé sur un
-téléphone (liste, modal, « ! », fiche, widget) ; restent le retrait de l'interrupteur de foyer,
-la ligne du site, la pile rouge vue chez un destinataire, et la release prod. L'écran
+Décidé le 18/11/2026 (grill). Statut au 19/11 : en prod depuis la v0.46.0 (tag `v0.46.0`,
+Play « Tests internes »), interrupteur de foyer retiré (`4050c17`, la fonctionnalité est dans le
+noyau). Restent la ligne du site et la pile rouge vue sur le téléphone d'un destinataire. L'écran
 d'onboarding propre à la fonctionnalité est abandonné le 18/11 au profit de l'aide par écran
 (`aide-et-bienvenue.md`).
 

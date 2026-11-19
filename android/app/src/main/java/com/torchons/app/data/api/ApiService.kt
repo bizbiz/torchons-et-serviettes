@@ -240,7 +240,7 @@ interface ApiService {
     /** Tache en attente de notation d'affinite/effort. */
     @GET("pending-affinity")
     suspend fun getPendingAffinity(
-        @Query("expiry_months") expiryMonths: Int = 6
+        @Query("expiry_months") expiryMonths: Int = 24
     ): Response<List<PendingAffinity>>
 
     /** Tache avec la notation la plus ancienne (mode manuel). */

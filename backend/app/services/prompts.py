@@ -1,9 +1,8 @@
 """Generation des prompts dans la queue user_prompts.
 
-Trois sources de prompts :
-1. Event-driven (bump) : apres chaque completion, check critere retard.
-2. Event-driven (vote) : a la creation d'une tache avec assignments.
-3. Cron nightly : expirations de votes > N mois.
+Source of prompts generated here: BUMP_EFFORT, after each completion
+(chronic lateness check). Rating renewal is no longer a prompt: the home
+screen asks for it through GET /api/pending-affinity.
 
 Ce module contient la logique pure de generation. Les hooks dans les API
 routes appellent ces fonctions apres commit de l'action principale.
@@ -14,16 +13,13 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.completion import TaskCompletion
 from app.models.enums import CompletionReason, PromptType
 from app.models.foyer_bonus_config import FoyerBonusConfig
 from app.models.task import Task
-from app.models.task_affinity import TaskAffinity
-from app.models.task_assignment import TaskAssignment
-from app.models.task_effort import TaskEffort
 from app.models.user_foyer import UserFoyer
 from app.models.user_prompt import UserPrompt
 from app.services.bonus_malus import (
@@ -190,153 +186,3 @@ async def generate_bump_prompts(
         session.add(prompt)
 
     await session.flush()
-
-
-async def generate_vote_prompts_for_task(
-    session: AsyncSession,
-    task: Task,
-    foyer_id: uuid.UUID,
-    assigned_user_ids: list[uuid.UUID],
-    priority: int = 6,
-) -> None:
-    """Genere des prompts VOTE_RATING pour les users assignes a une tache.
-
-    Appele :
-    - A la creation d'une tache avec assignments (priority=6).
-    - Par le cron nightly pour les votes expires (priority=3).
-    """
-    # No module gate: VOTE_RATING is a core prompt type (see CORE_PROMPT_TYPES).
-    from app.services.recurrence import interval_hours as _ih
-
-    # Uncertain : pas de vote de frequence (la cadence est inferee, Q2).
-    if is_uncertain(task.recurrence_rule):
-        return
-
-    hours = _ih(task.recurrence_rule)
-    interval_days = hours / 24.0 if hours > 0 and hours != float("inf") else 0
-
-    context = {
-        "task_id": str(task.id),
-        "task_title": task.title,
-        "interval_days": int(round(interval_days)) if interval_days > 0 else None,
-    }
-
-    for uid in assigned_user_ids:
-        # Dedup : pas de VOTE_RATING pending pour cet user + task
-        existing = await session.execute(
-            select(UserPrompt.id).where(
-                UserPrompt.user_id == uid,
-                UserPrompt.foyer_id == foyer_id,
-                UserPrompt.type == PromptType.VOTE_RATING,
-                UserPrompt.resolved_at.is_(None),
-                UserPrompt.context["task_id"].astext == str(task.id),
-            ).limit(1)
-        )
-        if existing.scalar_one_or_none() is not None:
-            continue
-
-        prompt = UserPrompt(
-            user_id=uid,
-            foyer_id=foyer_id,
-            type=PromptType.VOTE_RATING,
-            priority=priority,
-            context=context,
-        )
-        session.add(prompt)
-
-    await session.flush()
-
-
-async def generate_expired_vote_prompts(
-    session: AsyncSession,
-    foyer_id: uuid.UUID,
-    expiry_months: int = 6,
-) -> int:
-    """Scan les votes expires et genere des prompts VOTE_RATING (priority=3).
-
-    Appele par le cron nightly. Retourne le nombre de prompts generes.
-    """
-    # No module gate: VOTE_RATING is a core prompt type (see CORE_PROMPT_TYPES).
-    expiry_cutoff = datetime.now(timezone.utc) - timedelta(days=expiry_months * 30)
-    generated = 0
-
-    # Taches actives du foyer avec assignments
-    tasks_result = await session.execute(
-        select(Task).where(
-            Task.foyer_id == foyer_id,
-            Task.deleted_at.is_(None),
-            Task.is_active.is_(True),
-        )
-    )
-    tasks = tasks_result.scalars().all()
-
-    for task in tasks:
-        # Users assignes a cette tache
-        assign_result = await session.execute(
-            select(TaskAssignment.user_id).where(TaskAssignment.task_id == task.id)
-        )
-        assigned_ids = [row[0] for row in assign_result.all()]
-        if not assigned_ids:
-            continue
-
-        for uid in assigned_ids:
-            # Verifier si affinite OU effort est expire
-            aff_result = await session.execute(
-                select(TaskAffinity.updated_at).where(
-                    TaskAffinity.task_id == task.id,
-                    TaskAffinity.user_id == uid,
-                )
-            )
-            aff_at = aff_result.scalar_one_or_none()
-
-            eff_result = await session.execute(
-                select(TaskEffort.updated_at).where(
-                    TaskEffort.task_id == task.id,
-                    TaskEffort.user_id == uid,
-                )
-            )
-            eff_at = eff_result.scalar_one_or_none()
-
-            # Si les deux sont recents, skip
-            if aff_at and aff_at >= expiry_cutoff and eff_at and eff_at >= expiry_cutoff:
-                continue
-
-            # Verifier qu'un prompt n'est pas deja pending
-            existing = await session.execute(
-                select(UserPrompt.id).where(
-                    UserPrompt.user_id == uid,
-                    UserPrompt.foyer_id == foyer_id,
-                    UserPrompt.type == PromptType.VOTE_RATING,
-                    UserPrompt.resolved_at.is_(None),
-                    UserPrompt.context["task_id"].astext == str(task.id),
-                ).limit(1)
-            )
-            if existing.scalar_one_or_none() is not None:
-                continue
-
-            # Cap : max 20 prompts pending par user
-            count_result = await session.execute(
-                select(func.count(UserPrompt.id)).where(
-                    UserPrompt.user_id == uid,
-                    UserPrompt.resolved_at.is_(None),
-                )
-            )
-            pending_count = count_result.scalar() or 0
-            if pending_count >= 20:
-                continue
-
-            prompt = UserPrompt(
-                user_id=uid,
-                foyer_id=foyer_id,
-                type=PromptType.VOTE_RATING,
-                priority=3,
-                context={
-                    "task_id": str(task.id),
-                    "task_title": task.title,
-                },
-            )
-            session.add(prompt)
-            generated += 1
-
-    await session.flush()
-    return generated

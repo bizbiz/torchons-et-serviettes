@@ -6,8 +6,9 @@ import com.google.gson.annotations.SerializedName
  * Prompt de la queue unifiee user_prompts. Retourne par GET /api/prompts/next.
  * Le front affiche 1 prompt a la fois a l'ouverture de l'app (tolerance 2h).
  *
- * Types : BUMP_EFFORT (tache en retard systematique), VOTE_RATING (notation
- * affinite+effort combinee).
+ * Types : BUMP_EFFORT (tache en retard systematique), RESOLVE_PRESENCE,
+ * VOTE_FREQUENCY, VOTE_EFFORT, DISCOVER_MODULE. (VOTE_RATING n'est plus
+ * jamais genere.)
  */
 data class UserPrompt(
     @SerializedName("id") val id: String,

@@ -151,7 +151,8 @@ class SettingsViewModel @Inject constructor(
                         notifHour = (data["notif_hour"] as? Double)?.toInt() ?: 9,
                         notifOverdueHour = (data["notif_overdue_hour"] as? Number)?.toInt() ?: 8,
                         affinityPopup = data["affinity_popup_enabled"] as? Boolean ?: true,
-                        affinityExpiry = (data["affinity_expiry_months"] as? Double)?.toInt() ?: 6,
+                        affinityExpiry = (data["affinity_expiry_months"] as? Number)?.toInt()
+                            ?: TokenManager.DEFAULT_AFFINITY_EXPIRY_MONTHS,
                         fairShareTolerance = (data["fair_share_tolerance_percent"] as? Double)?.toInt() ?: 30,
                         homeSsids = (data["home_ssids"] as? List<*>)?.map { it.toString() } ?: emptyList(),
                         foyerMemberCount = (data["foyer_member_count"] as? Double)?.toInt() ?: 2,

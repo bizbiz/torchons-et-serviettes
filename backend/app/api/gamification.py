@@ -714,8 +714,8 @@ def _eligible_for_rating_subq():
 
 @router.get("/pending-affinity", response_model=list[dict])
 async def pending_affinity(
-    # The app's slider goes from 1 to 12.
-    expiry_months: int = Query(default=6, ge=1, le=24),
+    # The app's slider goes from 1 to 24 months.
+    expiry_months: int = Query(default=24, ge=1, le=24),
     session: AsyncSession = Depends(get_session),
     current: dict = Depends(get_current_user),
 ):

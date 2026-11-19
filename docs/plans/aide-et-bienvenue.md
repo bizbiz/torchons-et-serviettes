@@ -1,9 +1,10 @@
 # Aide « ? » sur chaque écran, et écran de bienvenue
 
 Décidé le 18/11/2026 (grill). Remplace l'écran d'onboarding prévu pour « À faire aujourd'hui »
-(`a-faire-aujourdhui.md`). Statut : textes FR validés par Quentin le 19/11, traduits en anglais
-le même jour (`aide-textes-brouillon.md`) ; les cinq blocs qui s'affichaient module éteint sont
-conditionnés ; reste le code de l'aide.
+(`a-faire-aujourdhui.md`). Statut au 19/11 : livré en v0.46.0 — aide « ? » sur les 9 écrans,
+bulle « Noter une tâche », écran de bienvenue, carte « Un mot de Quentin », textes FR + EN
+(`aide-textes-brouillon.md`), dogfoodé sur le Pixel de Quentin. Reste le passage
+`android-design` en clair, sombre et grande police, jamais fait.
 
 ## Pourquoi
 

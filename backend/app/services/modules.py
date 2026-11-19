@@ -242,10 +242,12 @@ async def is_module_enabled(
 #: hors du filtre normal" (DISCOVER_MODULE).
 INVERTED_PROMPT_TYPES: set[str] = {"DISCOVER_MODULE"}
 
-#: Core types: owned by no module, never muted. VOTE_RATING collects affinity
-#: and effort ratings, which are core (suggestions use affinity unconditionally).
-#: Listing it here, rather than leaving it out, keeps "deliberately core" apart
-#: from "someone forgot" for the drift guard.
+#: Core types: owned by no module, never muted. Listing a type here, rather than
+#: leaving it out, keeps "deliberately core" apart from "someone forgot" for the
+#: drift guard.
+#: VOTE_RATING is a historical value, never generated any more (rating renewal is
+#: served by GET /api/pending-affinity). It stays in the PromptType enum because
+#: the database enum and old rows still carry it.
 CORE_PROMPT_TYPES: set[str] = {"VOTE_RATING"}
 
 

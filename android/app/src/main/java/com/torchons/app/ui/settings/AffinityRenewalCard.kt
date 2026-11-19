@@ -18,7 +18,7 @@ import com.torchons.app.ui.common.InfoTooltip
  * core (no module owns them), so the household screen always shows it.
  * Moved out of FoyerSettingsScreen, which is over its size budget.
  *
- * Months after which affinity and effort ratings are asked again (1 to 12).
+ * Months after which affinity and effort ratings are asked again (1 to 24).
  */
 @Composable
 internal fun AffinityRenewalCard(months: Int, onChange: (Int) -> Unit) {
@@ -38,8 +38,8 @@ internal fun AffinityRenewalCard(months: Int, onChange: (Int) -> Unit) {
         Slider(
             value = months.toFloat(),
             onValueChange = { onChange(it.toInt()) },
-            valueRange = 1f..12f,
-            steps = 10,
+            valueRange = 1f..24f,
+            steps = 22,
             modifier = Modifier.fillMaxWidth(),
         )
     }

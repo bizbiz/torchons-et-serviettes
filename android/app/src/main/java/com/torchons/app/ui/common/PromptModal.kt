@@ -34,7 +34,6 @@ import com.torchons.app.data.model.UserPrompt
  *
  * Types :
  * - BUMP_EFFORT : modal dedie avec liste completions + +1 effort.
- * - VOTE_RATING : delegate au flow de notation existant (callback).
  * - RESOLVE_PRESENCE : delegue au caller via onOpenPresenceCalendar qui
  *   ouvre StreakCalendarModal (one modal to rule them all). Le modal
  *   edite la presence directement via PUT /presence (taps); a la
@@ -70,12 +69,6 @@ fun PromptModal(
             onBump = onBumpEffort,
             onEditRating = { onOpenRating(prompt.context["task_id"]?.toString().orEmpty()) },
         )
-        "VOTE_RATING" -> {
-            // Pour VOTE_RATING, on ouvre directement le flow de notation
-            // existant et on resolve. Le caller (HomeViewModel) se charge
-            // de resolve le prompt une fois la notation soumise.
-            onOpenRating(prompt.context["task_id"]?.toString().orEmpty())
-        }
         "RESOLVE_PRESENCE" -> {
             // P4b.2 (one modal to rule them all) : delegue au caller pour
             // ouvrir StreakCalendarModal au lieu d'un dialog dedie. Les

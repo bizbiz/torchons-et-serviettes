@@ -245,7 +245,7 @@ class HomeViewModel @Inject constructor(
             }
             val otherResults = listOf(
                 async { homeRepository.refreshFairShare() },
-                async { homeRepository.refreshPendingAffinity(6) },
+                async { homeRepository.refreshPendingAffinity(tokenManager.affinityExpiryFlow.first()) },
                 async { taskRepository.refreshContexts() },
                 async { taskRepository.refreshTasks() },
                 // v0.32 : flag gamif du foyer courant (pour que l'UI gamif
@@ -414,7 +414,7 @@ class HomeViewModel @Inject constructor(
                 ratingCadence.onRated()
 
                 // Essayer d'abord les taches non-notees
-                homeRepository.refreshPendingAffinity(6)
+                homeRepository.refreshPendingAffinity(tokenManager.affinityExpiryFlow.first())
                 var next = homeRepository.observePendingAffinity().first()?.firstOrNull()
 
                 // Si plus de non-notees, fallback sur oldest-rating (re-notation)

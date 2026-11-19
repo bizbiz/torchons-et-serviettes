@@ -56,6 +56,8 @@ class TokenManager @Inject constructor(
         // SSIDs WiFi maison (separes par |)
         private val HOME_SSIDS_KEY = stringPreferencesKey("home_ssids")
         // Duree de persistance affinites/efforts en mois
+        /** Months before a rating is asked again; mirrors the server default (user_settings). */
+        const val DEFAULT_AFFINITY_EXPIRY_MONTHS = 24
         private val AFFINITY_EXPIRY_KEY = intPreferencesKey("affinity_expiry_months")
         // Sync offline
         private val DEVICE_ID_KEY = stringPreferencesKey("device_id")
@@ -158,7 +160,9 @@ class TokenManager @Inject constructor(
             prefs[HOME_SSIDS_KEY] = current.joinToString("|")
         }
     }
-    val affinityExpiryFlow: Flow<Int> = context.dataStore.data.map { it[AFFINITY_EXPIRY_KEY] ?: 6 }
+    val affinityExpiryFlow: Flow<Int> = context.dataStore.data.map {
+        it[AFFINITY_EXPIRY_KEY] ?: DEFAULT_AFFINITY_EXPIRY_MONTHS
+    }
 
     /** Timestamp millis du dernier prompt affiche (tolerance 2h). */
     val lastPromptShownAtFlow: Flow<Long> = context.dataStore.data.map { it[LAST_PROMPT_SHOWN_AT_KEY] ?: 0L }

@@ -1,5 +1,7 @@
 package com.torchons.app.ui.settings
 
+import com.torchons.app.data.local.TokenManager
+
 data class UserSettingsState(
     val notifDaily: Boolean = true,
     val notifUrgent: Boolean = true,
@@ -11,7 +13,7 @@ data class UserSettingsState(
     // Hour of the overdue notification; a server without the key means 8.
     val notifOverdueHour: Int = 8,
     val affinityPopup: Boolean = true,
-    val affinityExpiry: Int = 6,
+    val affinityExpiry: Int = TokenManager.DEFAULT_AFFINITY_EXPIRY_MONTHS,
     val fairShareTolerance: Int = 30,
     val homeSsids: List<String> = emptyList(),
     // Nb de membres du foyer actif : utilise pour cacher le toggle

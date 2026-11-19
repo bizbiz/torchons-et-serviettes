@@ -193,6 +193,11 @@ class HomeRepository @Inject constructor(
                 // (Home, completion dialog, nav tabs, notifs) soient a jour.
                 val gamifEnabled = data["gamification_enabled"] as? Boolean ?: true
                 tokenManager.setUserGamificationEnabled(gamifEnabled)
+                // The home screen reads the renewal delay from here: without this push,
+                // a phone that never opened the settings screen would use the default.
+                (data["affinity_expiry_months"] as? Number)?.let {
+                    tokenManager.setAffinityExpiry(it.toInt())
+                }
                 true
             } else {
                 false
