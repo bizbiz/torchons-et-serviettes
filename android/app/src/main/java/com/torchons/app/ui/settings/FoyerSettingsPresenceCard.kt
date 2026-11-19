@@ -62,6 +62,8 @@ internal fun FoyerPresenceCard(
             onCheckedChange = { viewModel.setCurrentFoyerHomeFreezeEnabled(it) },
         )
 
+        AbsenceSheetLink(freezeEnabled = homeFreezeEnabled)
+
         // The personal "hide home tasks off WiFi" switch moved to Settings
         // (HomeWifiCard): it is the member's choice, not the household's.
 

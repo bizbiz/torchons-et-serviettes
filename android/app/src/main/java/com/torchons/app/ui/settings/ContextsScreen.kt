@@ -49,7 +49,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
+import com.torchons.app.ui.common.Modules
 import com.torchons.app.ui.common.dismissKeyboardThen
+import com.torchons.app.ui.common.moduleEnabled
 import com.torchons.app.ui.common.submitKeyboardActions
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.ui.help.HelpButton
@@ -135,6 +137,7 @@ fun ContextsScreen(
                 .padding(horizontal = 16.dp),
         ) {
             Spacer(Modifier.height(8.dp))
+            if (moduleEnabled(Modules.PRESENCE)) AbsenceSheetLink()
             if (nomPris) {
                 Spacer(Modifier.height(8.dp))
                 Text(

@@ -1879,5 +1879,24 @@
     <string name="user_error_mail_line_version">Version de l\'app : %1$s</string>
     <string name="user_error_mail_line_screen">Écran : %1$s</string>
     <string name="user_error_mail_line_date">Date : %1$s</string>
+    <!-- « Pendant une absence » sheet -->
+    <string name="absence_sheet_title">Pendant une absence</string>
+    <string name="absence_sheet_link">Voir les tâches en pause</string>
+    <string name="absence_tab_paused">En pause (%1$d)</string>
+    <string name="absence_tab_running">Continuent (%1$d)</string>
+    <string name="absence_tab_paused_sentence">Leur retard s\'arrête tant que personne n\'est là.</string>
+    <string name="absence_tab_running_sentence">Leur retard continue de courir même quand personne n\'est là.</string>
+    <string name="absence_freeze_off_banner">Le gel est désactivé : tout continue pendant une absence.</string>
+    <string name="absence_empty">Aucune tâche ici</string>
+    <plurals name="absence_advice_keep_going">
+        <item quantity="one">Pour qu\'elle continue : coche «&#160;%1$s&#160;» sur le contexte %2$s, ou ajoute-lui un contexte qui l\'a déjà.</item>
+        <item quantity="other">Pour qu\'elle continue : coche «&#160;%1$s&#160;» sur les contextes %2$s, ou ajoute-lui un contexte qui l\'a déjà.</item>
+    </plurals>
+    <plurals name="absence_advice_pause">
+        <item quantity="one">Pour la mettre en pause : décoche «&#160;%1$s&#160;» sur le contexte %2$s.</item>
+        <item quantity="other">Pour la mettre en pause : décoche «&#160;%1$s&#160;» sur les contextes %2$s.</item>
+    </plurals>
+    <string name="absence_advice_also_presence">Il lui faut aussi un contexte «&#160;%1$s&#160;».</string>
+    <string name="absence_advice_add_presence">Pour la mettre en pause : ajoute-lui un contexte «&#160;%1$s&#160;».</string>
     <string name="user_error_mail_line_screenshot">Si tu as une capture d\'écran de l\'erreur, elle m\'aidera beaucoup.\n\nMerci beaucoup de prendre le temps de me faire remonter les erreurs,\nvraiment merci !!</string>
 </resources>

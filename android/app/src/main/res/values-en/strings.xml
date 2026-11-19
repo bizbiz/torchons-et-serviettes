@@ -1865,5 +1865,24 @@
     <string name="user_error_mail_line_version">App version: %1$s</string>
     <string name="user_error_mail_line_screen">Screen: %1$s</string>
     <string name="user_error_mail_line_date">Date: %1$s</string>
+    <!-- « While away » sheet -->
+    <string name="absence_sheet_title">While away</string>
+    <string name="absence_sheet_link">See paused tasks</string>
+    <string name="absence_tab_paused">Paused (%1$d)</string>
+    <string name="absence_tab_running">Keep going (%1$d)</string>
+    <string name="absence_tab_paused_sentence">Their lateness stops while nobody is there.</string>
+    <string name="absence_tab_running_sentence">Their lateness keeps running even when nobody is there.</string>
+    <string name="absence_freeze_off_banner">Freeze is off: everything keeps going during an absence.</string>
+    <string name="absence_empty">No tasks here</string>
+    <plurals name="absence_advice_keep_going">
+        <item quantity="one">To keep it going: tick \"%1$s\" on the context %2$s, or add a context that already has it.</item>
+        <item quantity="other">To keep it going: tick \"%1$s\" on the contexts %2$s, or add a context that already has it.</item>
+    </plurals>
+    <plurals name="absence_advice_pause">
+        <item quantity="one">To pause it: untick \"%1$s\" on the context %2$s.</item>
+        <item quantity="other">To pause it: untick \"%1$s\" on the contexts %2$s.</item>
+    </plurals>
+    <string name="absence_advice_also_presence">It also needs a context \"%1$s\".</string>
+    <string name="absence_advice_add_presence">To pause it: add a context \"%1$s\" to it.</string>
     <string name="user_error_mail_line_screenshot">If you have a screenshot of the error, it will help me a lot.\n\nThank you so much for taking the time to report errors to me,\nreally, thank you!!</string>
 </resources>
