@@ -13,7 +13,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
@@ -36,6 +37,7 @@ from app.services.modules import (
     unmet_requirements,
 )
 from app.services.revote_votes import revote_answer_args
+from app.utils.row_lock import lock_key, module_state_key, presence_key
 from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api", tags=["prompts"])
@@ -199,6 +201,9 @@ async def resolve_prompt(
     existants (set_affinity, set_effort). On marque juste comme resolu.
     """
     user_id = UUID(current["user_id"])
+    # Two copies of one answer (the sync worker resends) must not both run its side effects
+    # (a double +1 on the effort, a module switched twice): the second waits, then finds it resolved.
+    await lock_key(session, f"prompt:{prompt_id}")
     result = await session.execute(
         select(UserPrompt).where(
             UserPrompt.id == prompt_id,
@@ -229,24 +234,20 @@ async def resolve_prompt(
         if action == "bump_effort":
             task_id = prompt.context.get("task_id")
             if task_id:
-                # Incrementer le vote effort de l'user de +1
-                effort_result = await session.execute(
-                    select(TaskEffort).where(
-                        TaskEffort.task_id == uuid_lib.UUID(task_id),
-                        TaskEffort.user_id == user_id,
+                # Incrementer le vote effort de l'user de +1 ; pas de vote existant : en
+                # creer un a 4 (defaut 3 + 1). One atomic statement, so a PUT /effort
+                # arriving at the same moment cannot make this insert fail on the key.
+                await session.execute(
+                    pg_insert(TaskEffort)
+                    .values(task_id=uuid_lib.UUID(task_id), user_id=user_id, points=4)
+                    .on_conflict_do_update(
+                        index_elements=[TaskEffort.task_id, TaskEffort.user_id],
+                        set_={
+                            "points": func.least(18, TaskEffort.points + 1),
+                            "updated_at": func.now(),
+                        },
                     )
                 )
-                effort = effort_result.scalar_one_or_none()
-                if effort:
-                    effort.points = min(18, effort.points + 1)
-                else:
-                    # Pas de vote existant — en creer un a 4 (defaut 3 + 1)
-                    new_effort = TaskEffort(
-                        task_id=uuid_lib.UUID(task_id),
-                        user_id=user_id,
-                        points=4,
-                    )
-                    session.add(new_effort)
 
     elif prompt.type == PromptType.BUMP_EFFORT and payload.get("action") == "later":
         # « Plus tard »: asked again on the next late completion, without the
@@ -296,6 +297,7 @@ async def _accept_module_proposal(session, prompt, foyer_uuid, user_id) -> None:
         # refuserait.
         if not unmet_requirements(module, states):
             row_user_id = None if module.is_collective else user_id
+            await lock_key(session, module_state_key(foyer_uuid, module.key, row_user_id))
             existing = await session.execute(
                 select(ModuleState).where(
                     ModuleState.foyer_id == foyer_uuid,
@@ -573,6 +575,7 @@ async def _upsert_presence_day(
     source: str,
 ) -> None:
     """Insere ou met a jour une ligne presence_days."""
+    await lock_key(session, presence_key(foyer_id))
     existing = await session.execute(
         select(PresenceDay).where(
             PresenceDay.foyer_id == foyer_id,

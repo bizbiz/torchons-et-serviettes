@@ -28,6 +28,7 @@ from app.services.presence import get_absent_dates
 from app.services.recurrence import min_completion_gap_seconds
 from app.utils.scoping import current_foyer_uuid, visible_history, visible_to
 from app.utils.text import join_with_amp
+from app.services.history_feed import TaskTitleIndex, task_field_labels, vote_events
 from app.services.history_text import _t, points_suffix
 from app.services.points_visibility import points_visible
 
@@ -985,46 +986,6 @@ async def get_retard_timeline(
 
 # --- Historique global ---
 
-# Champs "techniques" ignores dans les UPDATE tasks : leur presence seule
-# ne doit pas generer un event d'historique.
-_TASK_TECHNICAL_FIELDS = {
-    "updated_at",
-    "version",
-    "last_completed_at",
-    "next_due_at",
-}
-
-# Libellés des champs métier pour les descriptions, par locale.
-_TASK_FIELD_LABELS_BY_LOCALE: dict[str, dict[str, str]] = {
-    "fr": {
-        "title": "titre",
-        "description": "description",
-        "category_id": "catégorie",
-        "room_id": "pièce",
-        "assigned_to_ids": "attribution",
-        "points_value": "points",
-        "weight": "poids",
-        "recurrence_rule": "récurrence",
-        "tolerance": "tolérance",
-        "deleted_at": "suppression",
-    },
-    "en": {
-        "title": "title",
-        "description": "description",
-        "category_id": "category",
-        "room_id": "room",
-        "assigned_to_ids": "assignment",
-        "points_value": "points",
-        "weight": "weight",
-        "recurrence_rule": "recurrence",
-        "tolerance": "tolerance",
-        "deleted_at": "deletion",
-    },
-}
-
-
-
-
 def _format_minutes(points: int) -> str:
     """Formate N points (1pt = 5min) en 'XhYY' ou 'Xmin'."""
     minutes = points * 5
@@ -1153,8 +1114,6 @@ async def _build_history(
       (change_log.foyer_id), soit via un JOIN sur tasks.
     """
     from app.models.sync import ChangeLog
-    from app.models.task_affinity import TaskAffinity
-    from app.models.task_effort import TaskEffort
 
     # Determiner quelles sources fetcher selon event_types.
     if event_types is None:
@@ -1273,73 +1232,14 @@ async def _build_history(
             head, title, participants, len(rows), _actor, user_names, locale, show_points
         ))
 
-    # --- 2. Affinites (seulement celles qui ont reellement change : created_at != updated_at) ---
-    if fetch_affinities:
-        aff_query = select(TaskAffinity, Task.title).join(
-            Task, Task.id == TaskAffinity.task_id
-        ).where(
-            TaskAffinity.updated_at > TaskAffinity.created_at,
-            Task.foyer_id == foyer_uuid,
-        )
-        if before is not None:
-            aff_query = aff_query.where(TaskAffinity.updated_at < before)
-        if since is not None:
-            aff_query = aff_query.where(TaskAffinity.updated_at >= since)
-        if actor_id is not None:
-            aff_query = aff_query.where(TaskAffinity.user_id == actor_id)
-        if q_pattern is not None:
-            aff_query = aff_query.where(Task.title.ilike(q_pattern))
-        aff_query = aff_query.order_by(TaskAffinity.updated_at.desc()).limit(fetch_limit)
-        aff_rows = (await session.execute(aff_query)).all()
-    else:
-        aff_rows = []
-
-    for aff, title in aff_rows:
-        actor = _actor(aff.user_id)
-        who = actor["name"] if actor else "?"
-        events.append({
-            "type": "affinity",
-            "date": aff.updated_at,
-            "description": _t(locale, "affinity", who=who, title=title, score=aff.score),
-            "user": who,
-            "actor": actor,
-            "task": {"id": str(aff.task_id), "title": title},
-            "meta": {"score": aff.score},
-        })
-
-    # --- 3. Efforts (idem : filtre created_at != updated_at) ---
-    if fetch_efforts:
-        eff_query = select(TaskEffort, Task.title).join(
-            Task, Task.id == TaskEffort.task_id
-        ).where(
-            TaskEffort.updated_at > TaskEffort.created_at,
-            Task.foyer_id == foyer_uuid,
-        )
-        if before is not None:
-            eff_query = eff_query.where(TaskEffort.updated_at < before)
-        if since is not None:
-            eff_query = eff_query.where(TaskEffort.updated_at >= since)
-        if actor_id is not None:
-            eff_query = eff_query.where(TaskEffort.user_id == actor_id)
-        if q_pattern is not None:
-            eff_query = eff_query.where(Task.title.ilike(q_pattern))
-        eff_query = eff_query.order_by(TaskEffort.updated_at.desc()).limit(fetch_limit)
-        eff_rows = (await session.execute(eff_query)).all()
-    else:
-        eff_rows = []
-
-    for eff, title in eff_rows:
-        actor = _actor(eff.user_id)
-        who = actor["name"] if actor else "?"
-        events.append({
-            "type": "effort",
-            "date": eff.updated_at,
-            "description": _t(locale, "effort", who=who, title=title, minutes=_format_minutes(eff.points)),
-            "user": who,
-            "actor": actor,
-            "task": {"id": str(eff.task_id), "title": title},
-            "meta": {"points": eff.points, "minutes": eff.points * 5},
-        })
+    # --- 2. et 3. Votes d'affinite et d'effort (premiers votes compris, titre d'epoque) ---
+    for kind, wanted in (("affinity", fetch_affinities), ("effort", fetch_efforts)):
+        if wanted:
+            events += await vote_events(
+                session, foyer_uuid, kind=kind, before=before, since=since, actor_id=actor_id,
+                q=q, fetch_limit=fetch_limit, locale=locale, actor_of=_actor,
+                minutes_text=_format_minutes,
+            )
 
     # --- 4. Modifications via change_log (scope foyer direct) ---
     if log_tables:
@@ -1393,41 +1293,8 @@ async def _build_history(
         elif log.table_name == "task_completions":
             completion_ids_needed.add(log.row_id)
 
-    task_titles: dict[UUID, str] = {}
-    if task_ids_needed:
-        # Scoped to the household: a change_log row can name a task id that is
-        # not ours (an op sent by a client on someone else's id is still
-        # journalled), and the title must not leak through it.
-        rows = await session.execute(
-            select(Task.id, Task.title).where(
-                Task.id.in_(task_ids_needed), Task.foyer_id == foyer_uuid,
-            )
-        )
-        task_titles = {row[0]: row[1] for row in rows.all()}
-
-        # Fallback pour les taches absentes de `tasks` (hard-deleted) :
-        # recuperer le dernier titre connu depuis change_log en cherchant un
-        # INSERT/UPDATE precedent qui contient `new_data.title`.
-        missing = task_ids_needed - set(task_titles.keys())
-        if missing:
-            fallback_rows = await session.execute(
-                select(ChangeLog.row_id, ChangeLog.new_data, ChangeLog.changed_at)
-                .where(
-                    ChangeLog.table_name == "tasks",
-                    ChangeLog.row_id.in_(missing),
-                    ChangeLog.foyer_id == foyer_uuid,
-                    ChangeLog.new_data["title"].astext.isnot(None),
-                )
-                .order_by(ChangeLog.changed_at.desc())
-            )
-            seen: set[UUID] = set()
-            for row_id, new_data, _changed_at in fallback_rows.all():
-                if row_id in seen:
-                    continue
-                seen.add(row_id)
-                title = (new_data or {}).get("title")
-                if title:
-                    task_titles[row_id] = f"{title}{_t(locale, 'task_deleted_suffix')}"
+    # Titre de la tache A LA DATE de chaque ligne (cf. history_feed.TaskTitleIndex).
+    task_titles = await TaskTitleIndex.load(session, foyer_uuid, task_ids_needed, locale)
 
     completion_task_titles: dict[UUID, tuple[UUID, str]] = {}
     if completion_ids_needed:
@@ -1445,7 +1312,9 @@ async def _build_history(
         who = actor["name"] if actor else "?"
 
         if log.table_name == "tasks":
-            title = task_titles.get(log.row_id, "?")
+            title = task_titles.at(
+                log.row_id, log.changed_at, (log.new_data or {}).get("title") or None
+            )
             task_info = {"id": str(log.row_id), "title": title}
 
             if log.operation == "INSERT":
@@ -1479,13 +1348,13 @@ async def _build_history(
                 ):
                     continue
 
-                # Filtrer les champs techniques : si rien ne reste, on saute.
-                raw_fields = list((log.new_data or {}).keys())
-                meaningful = [f for f in raw_fields if f not in _TASK_TECHNICAL_FIELDS]
-                if not meaningful:
+                # Garder les champs techniques ET ceux sans libelle hors du texte : si rien
+                # ne reste, on saute la ligne (cf. history_feed.task_field_labels).
+                named = task_field_labels(list((log.new_data or {}).keys()), locale)
+                if not named:
                     continue
-                field_labels = _TASK_FIELD_LABELS_BY_LOCALE.get(locale) or _TASK_FIELD_LABELS_BY_LOCALE["fr"]
-                labels = [field_labels.get(f, f) for f in meaningful]
+                meaningful = [f for f, _label in named]
+                labels = [label for _f, label in named]
                 event_type = "task_updated"
                 # Detail enrichi pour recurrence_rule : "tous les 5j -> tous les 7j".
                 detail_extra = ""

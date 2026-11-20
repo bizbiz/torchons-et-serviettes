@@ -34,6 +34,7 @@ from app.models.user_foyer import UserFoyer
 from app.models.user_prompt import UserPrompt
 from app.services.module_discovery import propose_module
 from app.services.presence import count_absent_days_since
+from app.utils.row_lock import lock_key, presence_key
 from app.utils.scoping import current_foyer_uuid, visible_to
 
 #: Nombre de jours absents sur les 15 derniers qui declenche la proposition
@@ -225,6 +226,8 @@ async def put_presence(
     """
     foyer_uuid = current_foyer_uuid(current)
     touched: list[PresenceDay] = []
+    # One writer at a time per foyer: two copies of one edit must not both insert a day.
+    await lock_key(session, presence_key(foyer_uuid))
 
     for item in days:
         if item.status not in ("present", "absent", "clear"):
@@ -292,7 +295,8 @@ async def checkin(
     foyer_uuid = current_foyer_uuid(current)
     today = _today_local()
 
-    # 1. Upsert confirmed_present pour aujourd'hui
+    # 1. Upsert confirmed_present pour aujourd'hui (same lock as PUT /presence)
+    await lock_key(session, presence_key(foyer_uuid))
     existing = await session.execute(
         select(PresenceDay).where(
             PresenceDay.foyer_id == foyer_uuid,

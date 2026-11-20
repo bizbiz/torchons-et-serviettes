@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.database import get_session
 from app.models.notification import NotificationToken
+from app.utils.row_lock import lock_key
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
@@ -45,6 +46,8 @@ async def register_token(
     user_id = UUID(current["user_id"])
     kind, value = body.target
 
+    # The app registers on every launch and may resend: two copies must not both insert.
+    await lock_key(session, f"notification-target:{user_id}:{value}")
     # Verifier si la cible existe deja
     result = await session.execute(
         select(NotificationToken).where(

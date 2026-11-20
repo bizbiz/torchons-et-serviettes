@@ -21,12 +21,14 @@ from __future__ import annotations
 from typing import Iterable
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.task import Task
 from app.models.task_frequency_vote import TaskFrequencyVote
 from app.utils.changelog import record_change
+from app.utils.row_lock import lock_key
 
 MONTHS = [str(m) for m in range(1, 13)]   # ["1", "2", ..., "12"]
 
@@ -115,25 +117,17 @@ async def upsert_vote_and_sync_consensus(
     """
     rule_before = dict(task.recurrence_rule) if task.recurrence_rule else None
 
-    # 1. Upsert le vote de l'user.
-    vote_r = await session.execute(
-        select(TaskFrequencyVote).where(
-            TaskFrequencyVote.task_id == task.id,
-            TaskFrequencyVote.user_id == user_id,
+    # 1. Upsert le vote de l'user. Lock + ON CONFLICT: a request replayed while still in
+    # flight must update the first one's row, not fail on the primary key (utils/row_lock.py).
+    await lock_key(session, f"votes:frequency:{task.id}")
+    await session.execute(
+        pg_insert(TaskFrequencyVote)
+        .values(task_id=task.id, user_id=user_id, days_per_month=days_per_month)
+        .on_conflict_do_update(
+            index_elements=[TaskFrequencyVote.task_id, TaskFrequencyVote.user_id],
+            set_={"days_per_month": days_per_month, "updated_at": func.now()},
         )
     )
-    vote = vote_r.scalar_one_or_none()
-    if vote:
-        vote.days_per_month = days_per_month
-    else:
-        session.add(
-            TaskFrequencyVote(
-                task_id=task.id,
-                user_id=user_id,
-                days_per_month=days_per_month,
-            )
-        )
-    await session.flush()
 
     # 2. Charger tous les votes pour calcul du consensus par mois.
     all_r = await session.execute(

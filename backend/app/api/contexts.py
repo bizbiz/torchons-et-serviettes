@@ -22,6 +22,7 @@ from app.models.context import Context, TaskContext
 from app.schemas.context import ContextCreate, ContextResponse, ContextUpdate
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
+from app.utils.row_lock import lock_key
 from app.utils.scoping import current_foyer_uuid, scoped
 
 router = APIRouter(prefix="/api/contexts", tags=["contexts"])
@@ -48,6 +49,9 @@ async def create_context(
     current: dict = Depends(get_current_user),
 ):
     foyer_id = current_foyer_uuid(current)
+    # Two copies of one create (the sync worker resends) must give the 409 below, not a 500
+    # on uq_contexts_name_foyer.
+    await lock_key(session, f"context-name:{foyer_id}:{body.name}")
     existing = await session.execute(
         scoped(Context, current).where(
             Context.deleted_at.is_(None), Context.name == body.name

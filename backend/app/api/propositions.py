@@ -41,6 +41,7 @@ from app.models.objective_proposition import (
 from app.models.user import User
 from app.models.user_foyer import UserFoyer
 from app.services.push import send_data_message_to_users
+from app.utils.row_lock import lock_key
 from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api/objective-propositions", tags=["propositions"])
@@ -270,6 +271,31 @@ async def create_proposition(
     return await _build_proposition_view(session, prop)
 
 
+async def _store_answer(session, prop, user_id, accepted: bool) -> None:
+    """Store the member's answer (unique per user: composite primary key), or 409 if given.
+
+    Two copies of one answer (the sync worker resends) must give that 409, not a 500 on the
+    key: they are serialised, so the second one finds the first one's row.
+    """
+    await lock_key(session, f"proposition-answer:{prop.id}:{user_id}")
+    existing_result = await session.execute(
+        select(ObjectivePropositionResponse).where(
+            ObjectivePropositionResponse.proposition_id == prop.id,
+            ObjectivePropositionResponse.user_id == user_id,
+        )
+    )
+    if existing_result.scalar_one_or_none() is not None:
+        raise LocalizedHTTPException(status_code=409, error_code="PROPOSITION_ALREADY_RESPONDED")
+
+    session.add(
+        ObjectivePropositionResponse(
+            proposition_id=prop.id,
+            user_id=user_id,
+            accepted=accepted,
+        )
+    )
+
+
 @router.post("/{proposition_id}/respond", response_model=PropositionView)
 async def respond_to_proposition(
     proposition_id: uuid.UUID,
@@ -336,24 +362,7 @@ async def respond_to_proposition(
     if user_id == prop.proposer_id:
         raise LocalizedHTTPException(status_code=400, error_code="PROPOSITION_IS_PROPOSER")
 
-    # Store la reponse (unique par user_id - on a la PK composite)
-    existing_result = await session.execute(
-        select(ObjectivePropositionResponse).where(
-            ObjectivePropositionResponse.proposition_id == prop.id,
-            ObjectivePropositionResponse.user_id == user_id,
-        )
-    )
-    existing = existing_result.scalar_one_or_none()
-    if existing is not None:
-        raise LocalizedHTTPException(status_code=409, error_code="PROPOSITION_ALREADY_RESPONDED")
-
-    session.add(
-        ObjectivePropositionResponse(
-            proposition_id=prop.id,
-            user_id=user_id,
-            accepted=body.accepted,
-        )
-    )
+    await _store_answer(session, prop, user_id, body.accepted)
 
     # Charge tous les users du foyer pour decider le flow
     foyer_users_result = await session.execute(

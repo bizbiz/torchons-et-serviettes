@@ -47,6 +47,7 @@ from app.services.catalog import pick_locale
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
 from app.utils.locale import get_request_locale
+from app.utils.row_lock import lock_key, module_state_key
 from app.utils.scoping import current_foyer_uuid
 
 router = APIRouter(prefix="/api/modules", tags=["modules"])
@@ -287,6 +288,8 @@ async def set_module_enabled(
     # Collective rows carry a NULL user_id; personal ones carry the member's.
     row_user_id = None if module.is_collective else user_id
 
+    # Two copies of one toggle (the sync worker resends) must not both insert the row.
+    await lock_key(session, module_state_key(foyer_id, module.key, row_user_id))
     existing = await session.execute(
         select(ModuleState).where(
             ModuleState.foyer_id == foyer_id,

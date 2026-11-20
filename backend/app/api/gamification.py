@@ -21,6 +21,7 @@ from app.models.task_assignment import TaskAssignment
 from app.models.task_effort import TaskEffort
 from app.models.task_frequency_vote import TaskFrequencyVote
 from app.services.frequency_vote import upsert_vote_and_sync_consensus
+from app.services.rating_votes import record_affinity_vote, record_effort_vote
 from app.services.presence import load_freeze_context
 from app.services.completion_anchor import first_completions_by_task
 from app.services.recurrence import (
@@ -187,47 +188,7 @@ async def set_affinity(
     """
     user_id = UUID(current["user_id"])
     await _ensure_user_assigned(session, task_id, user_id)
-
-    # Consensus avant : moyenne arrondie des scores existants.
-    cb_result = await session.execute(
-        select(func.avg(TaskAffinity.score)).where(TaskAffinity.task_id == task_id)
-    )
-    cb_raw = cb_result.scalar()
-    consensus_before = round(cb_raw) if cb_raw is not None else None
-
-    result = await session.execute(
-        select(TaskAffinity).where(
-            TaskAffinity.task_id == task_id,
-            TaskAffinity.user_id == user_id,
-        )
-    )
-    aff = result.scalar_one_or_none()
-    if aff:
-        aff.score = body.score
-        # Touch updated_at meme si valeur identique (marque comme "revu")
-        from sqlalchemy import func as sa_func
-        aff.updated_at = sa_func.now()
-    else:
-        aff = TaskAffinity(task_id=task_id, user_id=user_id, score=body.score)
-        session.add(aff)
-    await session.flush()
-
-    # Consensus apres : moyenne arrondie apres ce vote.
-    ca_result = await session.execute(
-        select(func.avg(TaskAffinity.score)).where(TaskAffinity.task_id == task_id)
-    )
-    ca_raw = ca_result.scalar()
-    consensus_after = round(ca_raw) if ca_raw is not None else None
-
-    await record_change(
-        session, "task_affinities", task_id, "VOTE", current["user_id"],
-        foyer_id=current["foyer_id"],
-        new_data={
-            "score": body.score,
-            "consensus_before": consensus_before,
-            "consensus_after": consensus_after,
-        },
-    )
+    await record_affinity_vote(session, task_id, user_id, current["foyer_id"], body.score)
     await session.commit()
     return {"task_id": task_id, "user_id": user_id, "score": body.score}
 
@@ -374,43 +335,7 @@ async def set_effort(
     """
     user_id = UUID(current["user_id"])
     await _ensure_user_assigned(session, task_id, user_id)
-
-    # Consensus avant : task.weight actuel (deja = round(avg)).
-    task_result = await session.execute(select(Task).where(Task.id == task_id))
-    task = task_result.scalar_one_or_none()
-    consensus_before = task.weight if task else None
-
-    result = await session.execute(
-        select(TaskEffort).where(TaskEffort.task_id == task_id, TaskEffort.user_id == user_id)
-    )
-    eff = result.scalar_one_or_none()
-    if eff:
-        eff.points = body.points
-        from sqlalchemy import func as sa_func
-        eff.updated_at = sa_func.now()
-    else:
-        eff = TaskEffort(task_id=task_id, user_id=user_id, points=body.points)
-        session.add(eff)
-    await session.flush()
-
-    # Recalculer le weight moyen de la tache = consensus apres.
-    avg_result = await session.execute(
-        select(func.avg(TaskEffort.points)).where(TaskEffort.task_id == task_id)
-    )
-    avg = avg_result.scalar()
-    consensus_after = round(avg) if avg is not None else None
-    if consensus_after is not None and task:
-        task.weight = consensus_after
-
-    await record_change(
-        session, "task_efforts", task_id, "VOTE", current["user_id"],
-        foyer_id=current["foyer_id"],
-        new_data={
-            "points": body.points,
-            "consensus_before": consensus_before,
-            "consensus_after": consensus_after,
-        },
-    )
+    await record_effort_vote(session, task_id, user_id, current["foyer_id"], body.points)
     await session.commit()
 
     return {"task_id": str(task_id), "user_id": str(user_id), "points": body.points}
