@@ -38,6 +38,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import com.torchons.app.ui.common.ActionErrorDialog
+import com.torchons.app.ui.common.LocalIsOnline
+import com.torchons.app.ui.common.NetworkNeededNote
 import com.torchons.app.ui.common.PrimaryTopBar
 import com.torchons.app.ui.help.HelpButton
 import com.torchons.app.ui.help.HelpScreen
@@ -90,6 +93,7 @@ fun FoyerSettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val isOnline = LocalIsOnline.current
     val s by viewModel.settings.collectAsState()
     val currentFoyer by viewModel.currentFoyer.collectAsState()
     val allFoyers by viewModel.allFoyers.collectAsState()
@@ -179,8 +183,13 @@ fun FoyerSettingsScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                         )
+                        // Renaming is a server write: disabled offline, with the reason on screen.
+                        if (!isOnline) NetworkNeededNote()
                     }
-                    IconButton(onClick = { showRenameDialog = true }) {
+                    IconButton(
+                        onClick = { showRenameDialog = true },
+                        enabled = isOnline,
+                    ) {
                         Icon(
                             Icons.Default.Edit,
                             contentDescription = stringResource(R.string.foyer_name_rename_action),
@@ -418,6 +427,10 @@ fun FoyerSettingsScreen(
         )
     }
 
+    // --- Last refused online-only write (rename, freeze, Wi-Fi, bonus, objective): rolled back, told ---
+    val actionError by viewModel.actionError.collectAsState()
+    ActionErrorDialog(actionError, "SettingsFoyer", viewModel::dismissActionError)
+
     // --- Dialog renommer le foyer ---
     if (showRenameDialog) {
         FoyerRenameDialog(
@@ -432,13 +445,22 @@ fun FoyerSettingsScreen(
 
     // --- Feuille de selection "Changer de foyer" (>= 2 foyers) ---
     if (showSwitchSheet) {
+        // The sheet stays open while the switch runs and shows its failure; it closes on success.
+        val switchState by viewModel.switchState.collectAsState()
+        LaunchedEffect(switchState) {
+            if (switchState is FoyerSwitchState.Done) {
+                showSwitchSheet = false
+                viewModel.dismissSwitch()
+            }
+        }
         FoyerSwitchDialog(
             allFoyers = allFoyers,
-            onDismiss = { showSwitchSheet = false },
-            onSwitchTo = {
-                viewModel.switchToFoyer(it)
+            state = switchState,
+            onDismiss = {
                 showSwitchSheet = false
+                viewModel.dismissSwitch()
             },
+            onSwitchTo = { viewModel.switchToFoyer(it) },
         )
     }
 

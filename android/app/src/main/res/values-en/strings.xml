@@ -250,6 +250,7 @@
     <string name="foyer_switch_dialog_intro">Switching will clear the local cache and reload data for the chosen household. Takes a few seconds.</string>
     <string name="foyer_switch_dialog_current_cd">Active household</string>
     <string name="foyer_switch_dialog_close">Close</string>
+    <string name="foyer_switch_in_progress">Switching household…</string>
 
     <!-- RecoveryAndLeaveDialogs -->
     <string name="recovery_dialog_confirm_title">Regenerate your code?</string>
@@ -1485,11 +1486,23 @@
     <string name="sync_op_completion_edit">Completion edited</string>
     <string name="sync_op_completion_delete">Completion deleted</string>
     <string name="sync_op_frequency_vote">Frequency vote</string>
+    <string name="sync_op_effort_vote">Effort vote</string>
+    <string name="sync_op_affinity_vote">Affinity vote</string>
+    <string name="sync_op_prompt_answer">Answer to a question</string>
+    <string name="sync_op_setting_change">Setting</string>
     <string name="sync_op_other">Change</string>
     <string name="sync_op_unknown_task">unknown task</string>
     <string name="sync_rejected_title">Refused by the server</string>
     <string name="sync_rejected_hint">These changes could not be saved: they were removed from the queue and undone on this phone.</string>
     <string name="sync_rejected_meta">Removed on %1$s</string>
+    <string name="sync_reason_stale_update">This item was changed elsewhere in the meantime. It will be tried again on the next sync.</string>
+    <string name="sync_reason_unique_violation">This item already exists on the server.</string>
+    <string name="sync_reason_deleted">This item was deleted in the meantime.</string>
+    <string name="sync_reason_not_found">This item no longer exists on the server.</string>
+    <string name="sync_reason_op_error">The server could not apply this change for now. It will be tried again on the next sync.</string>
+    <string name="sync_reason_rejected">The server refused this change.</string>
+    <string name="sync_reason_out_of_scope">This item is no longer reachable (deleted, or household left): the change was dropped.</string>
+    <string name="sync_reason_unknown">The server could not apply this change.</string>
     <string name="sync_op_label_format">%1$s: %2$s</string>
     <string name="sync_op_label_member_format">%1$s: %2$s (%3$s)</string>
     <string name="sync_op_meta_waiting">Waiting since %1$s</string>
@@ -1885,4 +1898,19 @@
     <string name="absence_advice_also_presence">It also needs a context \"%1$s\".</string>
     <string name="absence_advice_add_presence">To pause it: add a context \"%1$s\" to it.</string>
     <string name="user_error_mail_line_screenshot">If you have a screenshot of the error, it will help me a lot.\n\nThank you so much for taking the time to report errors to me,\nreally, thank you!!</string>
+    <!-- Audit 2026-11-20 (D3, D6, D7, D9): online-only actions, queued votes, sign-out -->
+    <string name="network_needed">Network needed</string>
+    <string name="home_rate_needs_network">Rate a task: network needed</string>
+    <string name="prompt_vote_needs_network">Network needed to open this vote. Try again once you are connected.</string>
+    <string name="prompt_effort_step_needs_network">Frequency saved. Network needed for the next step (effort): vote on effort from the task page once you are connected.</string>
+    <string name="prompt_vote_task_unavailable">This task is no longer available.</string>
+    <string name="action_error_title">Action failed</string>
+    <plurals name="mydevices_signout_pending">
+        <item quantity="one">%d change has not been sent to the server yet. If you sign out now, it will be lost.</item>
+        <item quantity="other">%d changes have not been sent to the server yet. If you sign out now, they will be lost.</item>
+    </plurals>
+    <string name="mydevices_signout_sync_first">Sync first</string>
+    <string name="mydevices_signout_anyway">Sign out anyway</string>
+    <string name="mydevices_signout_syncing">Syncing…</string>
+    <string name="mydevices_signout_sync_failed">The sync did not finish. Check your connection and try again, or sign out anyway: these changes will be lost.</string>
 </resources>

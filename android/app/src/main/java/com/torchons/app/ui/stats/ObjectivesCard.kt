@@ -51,8 +51,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.LocalIsOnline
+import com.torchons.app.ui.common.NetworkNeededNote
+import com.torchons.app.ui.common.OnlineResult
 import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrorBlock
 import com.torchons.app.ui.common.UserErrors
+import com.torchons.app.ui.common.runOnline
 import com.torchons.app.data.model.Objective
 import com.torchons.app.data.model.ObjectiveCreateRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -150,13 +155,11 @@ class ObjectivesViewModel @Inject constructor(
 
     fun delete(objectiveId: String) {
         viewModelScope.launch {
-            try {
-                val resp = apiService.deleteObjective(objectiveId)
-                if (resp.isSuccessful) {
-                    load()
-                }
-            } catch (_: Exception) {
-                // best-effort
+            // Online-only (the dialog disables the button offline): a failure is shown (D7).
+            val result = runOnline({ UserErrors.from(context, it) }) { apiService.deleteObjective(objectiveId) }
+            when (result) {
+                is OnlineResult.Done -> load()
+                is OnlineResult.Failed -> _uiState.update { it.copy(error = result.error) }
             }
         }
     }
@@ -171,6 +174,7 @@ fun ObjectivesCard(
     viewModel: ObjectivesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val isOnline = LocalIsOnline.current
     var showCreate by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<Objective?>(null) }
 
@@ -189,10 +193,13 @@ fun ObjectivesCard(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = { showCreate = true }) {
+                IconButton(onClick = { showCreate = true }, enabled = isOnline) {
                     Icon(Icons.Default.Add, contentDescription = stringResource(R.string.objectives_new_cd))
                 }
             }
+            // Creating and deleting go to the server: disabled offline, and the card says why.
+            if (!isOnline) NetworkNeededNote()
+            state.error?.let { UserErrorBlock(it, "Objectives") }
             Spacer(Modifier.height(8.dp))
 
             when {
@@ -237,12 +244,20 @@ fun ObjectivesCard(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text(stringResource(R.string.objectives_dialog_delete_title)) },
-            text = { Text(stringResource(R.string.objectives_dialog_delete_message_format, obj.title)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.objectives_dialog_delete_message_format, obj.title))
+                    if (!isOnline) NetworkNeededNote(Modifier.padding(top = 8.dp))
+                }
+            },
             confirmButton = {
-                Button(onClick = {
-                    viewModel.delete(obj.id)
-                    pendingDelete = null
-                }) { Text(stringResource(R.string.common_delete)) }
+                Button(
+                    onClick = {
+                        viewModel.delete(obj.id)
+                        pendingDelete = null
+                    },
+                    enabled = isOnline,
+                ) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) { Text(stringResource(R.string.common_cancel)) }
@@ -361,12 +376,13 @@ private fun CreateObjectiveDialog(
                     valueRange = 1f..30f,
                     steps = 28,
                 )
+                if (!LocalIsOnline.current) NetworkNeededNote()
             }
         },
         confirmButton = {
             Button(
                 onClick = dismissKeyboardThen { onCreate(title, period, target.roundToInt()) },
-                enabled = !isCreating && title.isNotBlank(),
+                enabled = !isCreating && title.isNotBlank() && LocalIsOnline.current,
             ) { Text(stringResource(R.string.objectives_dialog_button_create)) }
         },
         dismissButton = {

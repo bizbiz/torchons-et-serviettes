@@ -1,10 +1,7 @@
 package com.torchons.app.data.repository
 
-import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * Keeps a completions refresh from applying an answer that is older than a push.
@@ -25,10 +22,15 @@ import kotlinx.coroutines.sync.withLock
  * answer only if the epoch is still the same ([fetchThenApply]). When it moved, the answer is
  * dropped and the request is made once more.
  *
- * Why this never makes the worker wait on the network: [lock] is only ever held around LOCAL work
- * -- the worker's queue deletes, a refresh's Room transaction. The refresh's request runs outside
- * it, and a settling is never done inside an apply (the lock is not reentrant). Nobody takes the
- * lock while holding Room's write lock, so the two cannot deadlock.
+ * The same mechanism guards the TASKS cache ([tasks], a second [RefreshEpoch]): an offline-created
+ * task, edit or delete whose op the worker settled must not be erased by a `GET /tasks` answered
+ * before the push (D1, 2026-11-20 audit). The two scopes bump separately: a completion push does
+ * not void a tasks refresh.
+ *
+ * Why this never makes the worker wait on the network: the lock of a [RefreshEpoch] is only ever
+ * held around LOCAL work -- the worker's queue deletes, a refresh's Room transaction. The refresh's
+ * request runs outside it, and a settling is never done inside an apply (the lock is not
+ * reentrant). Nobody takes the lock while holding Room's write lock, so the two cannot deadlock.
  *
  * Why a lock at all: epoch check, pending-rows read and delete must be one step with respect to
  * the worker's delete-and-bump. Without it a refresh could read "op still pending", the worker
@@ -36,55 +38,26 @@ import kotlinx.coroutines.sync.withLock
  */
 @Singleton
 class CompletionRefreshGuard @Inject constructor() {
-    private val lock = Mutex()
-    private val epoch = AtomicLong(0)
+    private val completions = RefreshEpoch()
 
-    /** The epoch a refresh captures BEFORE it sends its request. */
-    fun currentEpoch(): Long = epoch.get()
+    /** The guard of the tasks cache (`TaskRepository.refreshTasks`, task ops settled by the worker). */
+    val tasks = RefreshEpoch()
 
-    /**
-     * Runs [block], a change to the completions cache (ops settled, rows reconciled), and bumps
-     * the epoch with it, atomically with respect to [applyIfUnchanged]. Bumps even when [block]
-     * throws: a half-done change is still a change a stale answer must not be applied over.
-     */
-    suspend fun <T> settling(block: suspend () -> T): T = lock.withLock {
-        try {
-            block()
-        } finally {
-            epoch.incrementAndGet()
-        }
-    }
+    /** The epoch a completions refresh captures BEFORE it sends its request. */
+    fun currentEpoch(): Long = completions.current()
+
+    /** See [RefreshEpoch.settling]: a change to the completions cache a refresh could not have seen. */
+    suspend fun <T> settling(block: suspend () -> T): T = completions.settling(block)
 
     /** [settling] when [condition] holds, plain [block] otherwise (a batch with no completion in it). */
     suspend fun <T> settlingIf(condition: Boolean, block: suspend () -> T): T =
-        if (condition) settling(block) else block()
+        completions.settlingIf(condition, block)
 
-    /** Runs [apply] only if no settling happened since [captured]; false when it was refused. */
-    suspend fun applyIfUnchanged(captured: Long, apply: suspend () -> Unit): Boolean = lock.withLock {
-        if (epoch.get() != captured) {
-            false
-        } else {
-            apply()
-            true
-        }
-    }
+    /** Runs [apply] only if no completions settling happened since [captured]; false when refused. */
+    suspend fun applyIfUnchanged(captured: Long, apply: suspend () -> Unit): Boolean =
+        completions.applyIfUnchanged(captured, apply)
 
-    /**
-     * One refresh: [fetch] (the network, outside the lock), then [apply] (the Room replace) if
-     * nothing was settled meanwhile. A stale answer is dropped and fetched once more; null when
-     * the second one is stale too (pushes keep landing: the cache is left as it is, and the
-     * worker's own redraws bring it up to date). [fetch] throws on failure, [apply] gets its result.
-     */
-    suspend fun <T : Any> fetchThenApply(fetch: suspend () -> T, apply: suspend (T) -> Unit): T? {
-        repeat(MAX_ATTEMPTS) {
-            val captured = currentEpoch()
-            val fetched = fetch()
-            if (applyIfUnchanged(captured) { apply(fetched) }) return fetched
-        }
-        return null
-    }
-
-    private companion object {
-        const val MAX_ATTEMPTS = 2
-    }
+    /** One completions refresh, see [RefreshEpoch.fetchThenApply]. */
+    suspend fun <T : Any> fetchThenApply(fetch: suspend () -> T, apply: suspend (T) -> Unit): T? =
+        completions.fetchThenApply(fetch, apply)
 }

@@ -70,47 +70,21 @@ class TaskRepository @Inject constructor(
     fun observeTasksForSuggestions(): Flow<List<Task>> =
         taskDao.observeForSuggestions().map { list -> list.map { it.toDomain() } }
 
-    suspend fun refreshTasks(): Boolean {
-        return try {
-            val response = apiService.getTasks(activeOnly = null)
-            if (response.isSuccessful) {
-                val tasks = response.body() ?: emptyList()
-                taskDao.replaceAll(tasks.map { it.toEntity() })
-                true
-            } else {
-                false
-            }
-        } catch (_: Exception) {
-            false
-        }
-    }
+    /**
+     * REPLACE of the tasks cache, spared for rows with a queued op (TaskDao.replaceAll) and
+     * guarded by the tasks epoch: an answer sent before a push the worker settled meanwhile is
+     * dropped (the op is no longer queued, so the replace would no longer spare its row). False
+     * when the request failed or two answers in a row were outdated by pushes.
+     */
+    suspend fun refreshTasks(): Boolean =
+        refreshTasksCache(refreshGuard, taskDao) { apiService.getTasks(activeOnly = null) }
 
     // -------------------------------------------------------------------
     // Categories
     // -------------------------------------------------------------------
 
-    // -------------------------------------------------------------------
-    // Cache wipe (multi-foyer switch)
-    // -------------------------------------------------------------------
-
-    /**
-     * Vide l'ensemble du cache Room local. Utilise quand l'user switche de
-     * foyer — les donnees du foyer precedent ne doivent pas rester visibles.
-     *
-     * Ne touche PAS aux pending_operations (on garde les ecritures offline
-     * en attente d'etre sync, elles seront rattachees au bon foyer via leur
-     * JWT au prochain sync).
-     */
-    suspend fun wipeLocalCache() {
-        taskDao.replaceAll(emptyList())
-        // deleteAll, not replaceAll: replaceAll keeps rows with a pending op,
-        // and nothing of the previous household may stay visible.
-        completionDao.deleteAll()
-        // task_history via DAO (clearForTask n'existe que per-task, donc on
-        // passe par deleteAll). Les autres caches (users, rooms) sont aussi wipes.
-        contextDao.replaceAll(emptyList())
-        members.wipe()
-    }
+    // The cache wipe of a household switch (every table but the queue) is HouseholdSwitcher's:
+    // data/repository/HouseholdCacheWipe.kt.
 
     // -------------------------------------------------------------------
     // Rooms (pieces)
@@ -307,21 +281,13 @@ class TaskRepository @Inject constructor(
      * l'op est mise en file d'attente (SyncWorker appellera setFrequency
      * directement — la table task_frequency_votes n'est pas geree par /sync).
      */
-    suspend fun voteFrequency(taskId: String, request: FrequencyRequest): Result<Unit> {
-        return try {
-            val response = apiService.setFrequency(taskId, request)
-            if (response.isSuccessful) {
-                refreshTaskHistory(taskId)
-                Result.success(Unit)
-            } else {
-                taskWriter.enqueueFrequencyVote(taskId, request)
-                Result.success(Unit)
-            }
-        } catch (_: Exception) {
-            taskWriter.enqueueFrequencyVote(taskId, request)
-            Result.success(Unit)
-        }
-    }
+    suspend fun voteFrequency(taskId: String, request: FrequencyRequest): Result<Unit> =
+        sendOrQueue(
+            taskHasQueuedOp = { taskId in taskDao.pendingRowIds() },
+            send = { apiService.setFrequency(taskId, request) },
+            queue = { taskWriter.enqueueFrequencyVote(taskId, request) },
+            onSent = { refreshTaskHistory(taskId) },
+        )
 
     /** Helper raccourci interval (mode "Régulière" — 12 mois identiques). */
     suspend fun voteFrequency(taskId: String, everyNDays: Int): Result<Unit> =

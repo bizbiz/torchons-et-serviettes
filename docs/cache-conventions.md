@@ -79,6 +79,14 @@ points), it does not go through `/sync`.
   epoch when it settles completion ops (`settleApplied`); the refresh reads it
   before its request and drops its answer if it moved (one more request, then
   nothing). The lock only ever wraps local work.
+- ❌ Same for **tasks**: `TaskDao.replaceAll` spares rows that still have a queued op (INSERT,
+  UPDATE, DELETE), and `refreshTasks` goes through `refreshGuard.tasks` (`refreshTasksCache`), a
+  second epoch that `settleApplied` and `applyServerChanges` bump for the `tasks` table. Without
+  it a task created offline vanished at the next refresh.
+- **Household switch**: one path, `HouseholdSwitcher.switchWith` (token, wipe of EVERY table but
+  `pending_operations`, refresh), in the application scope. Never a partial wipe in a ViewModel.
+  Queued ops keep their `foyerId` and are sent to their original household; if the user left it,
+  the server answers `out_of_scope` and the op is dropped without a notice.
 - The backend exposes the useful authoritative values (e.g.
   `TaskResponse.last_completed_at` computed server-side). **This is
   wired**: `Task` DTO + `TaskEntity.lastCompletedAt` (Room migration
@@ -124,6 +132,34 @@ write path (catalog import, migration, script) that sets a
   computed server-side and do not depend on the Room cache. Offline-first
   screens (task list, detail) depend on the cache → they are the ones
   these rules exist for.
+
+### Writes with no local row: queued REST ops, member settings, online-only gestures
+
+Three kinds of write, and a screen must know which one it is (2026-11-20 audit, D3/D6/D7/D9).
+
+1. **Idempotent "set my value" writes with a REST route** (frequency, effort and affinity votes,
+   the answer to a prompt): `VoteRepository` / `sendOrQueue` send online first; a network error, a
+   5xx, a 408/429, or a task still waiting in the queue puts the write in `pending_operations`
+   (tables in `core/sync/RestOps.kt`), and the worker replays it over REST AFTER the `/sync`
+   batches. A permanent 4xx is the caller's error, shown, never queued. Only queue a write that
+   the server answers the same way twice (verify the route first). A prompt whose answer is
+   queued is skipped by `fetchNextPrompt` (`VoteRepository.promptsAnsweredOffline`).
+2. **Member settings** (`user_settings`, a `/sync` table): `SettingsLedger` queues the UPDATE
+   (`LocalMutation`), the screen and the DataStore change at once, and a reload applies the queued
+   ops over the server's answer (`overlayPendingSettings`). Queued payload numbers keep their
+   type (`opPayload`): `/sync` writes `user_settings` with a raw `setattr`.
+3. **Online-only gestures** (household name, home freeze, Wi-Fi names, bonus thresholds,
+   objectives, contexts, presence days...): the control is DISABLED offline with the
+   "network needed" line (`LocalIsOnline`, `NetworkNeededNote`), and the request goes through
+   `runOnline`: an exception or a non-2xx answer rolls the optimistic change back and returns a
+   translated `UserError` the screen shows.
+   ❌ `catch (_: Exception) {}`, or an `isSuccessful` nobody reads.
+   `LocalIsOnline` flips on the first failed call, so the first tap after losing the network gets
+   the error, the next ones the disabled button.
+
+The pull is paged: `/sync` answers `has_more` when it cut at 500 rows, and the worker asks again
+(at most `MAX_PULL_PAGES` per run). "Sign out and cut this device" wipes the queue: its dialog
+shows the count and offers to sync first (`syncBeforeSignOut`).
 
 ## Checklist for any new feature touching cache/sync
 

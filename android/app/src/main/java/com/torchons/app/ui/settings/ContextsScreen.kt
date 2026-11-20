@@ -49,7 +49,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
+import androidx.compose.ui.platform.LocalContext
+import com.torchons.app.ui.common.LocalIsOnline
 import com.torchons.app.ui.common.Modules
+import com.torchons.app.ui.common.NetworkNeededNote
+import com.torchons.app.ui.common.OnlineResult
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrorBlock
+import com.torchons.app.ui.common.UserErrors
+import com.torchons.app.ui.common.runOnline
 import com.torchons.app.ui.common.dismissKeyboardThen
 import com.torchons.app.ui.common.moduleEnabled
 import com.torchons.app.ui.common.submitKeyboardActions
@@ -87,10 +95,15 @@ fun ContextsScreen(
     var editing by remember { mutableStateOf<ContextView?>(null) }
     var creating by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<ContextView?>(null) }
-    // Un booleen et non un message : la chaine visible doit venir de
-    // strings.xml, pas d'un marqueur trimballe dans l'etat.
-    var nomPris by remember { mutableStateOf(false) }
+    // The last refused write (create, edit, delete), translated: the taken name (409, the one the
+    // user can fix) says so, anything else goes through UserErrors. Never a success by default (D7).
+    val appContext = LocalContext.current
+    val isOnline = LocalIsOnline.current
+    var actionError by remember { mutableStateOf<UserError?>(null) }
     var unreachable by remember { mutableStateOf(false) }
+    fun errorOf(t: Throwable) = UserErrors.from(appContext, t) {
+        if (it.httpCode == 409) appContext.getString(R.string.contexts_name_taken) else null
+    }
 
     // Every call of this screen is guarded: offline, an uncaught ConnectException in a
     // Compose coroutine killed the app (emulator, 2026-11-03, retraced stack in todo.md).
@@ -125,8 +138,11 @@ fun ContextsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { creating = true }) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.common_add))
+            // A floating button cannot be disabled: offline it is replaced by the note below.
+            if (isOnline) {
+                FloatingActionButton(onClick = { creating = true }) {
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.common_add))
+                }
             }
         },
     ) { padding ->
@@ -138,13 +154,13 @@ fun ContextsScreen(
         ) {
             Spacer(Modifier.height(8.dp))
             if (moduleEnabled(Modules.PRESENCE)) AbsenceSheetLink()
-            if (nomPris) {
+            if (!isOnline) {
                 Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.contexts_name_taken),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                NetworkNeededNote()
+            }
+            actionError?.let {
+                Spacer(Modifier.height(8.dp))
+                UserErrorBlock(it, "Contexts")
             }
             Spacer(Modifier.height(12.dp))
 
@@ -181,34 +197,30 @@ fun ContextsScreen(
             onDismiss = { creating = false; editing = null },
             onConfirm = { nom, emoji, presence, accrues ->
                 scope.launch {
-                    nomPris = false
-                    val resp = runCatchingNetwork { if (cible == null) {
-                        apiService.createContext(
-                            ContextCreateRequest(
-                                name = nom, emoji = emoji,
-                                requiresPresence = presence, accruesWhenAway = accrues,
+                    actionError = null
+                    val result = runOnline(::errorOf) {
+                        if (cible == null) {
+                            apiService.createContext(
+                                ContextCreateRequest(
+                                    name = nom, emoji = emoji,
+                                    requiresPresence = presence, accruesWhenAway = accrues,
+                                )
                             )
-                        )
-                    } else {
-                        apiService.updateContext(
-                            cible.id,
-                            ContextUpdateRequest(
-                                name = nom, emoji = emoji,
-                                requiresPresence = presence, accruesWhenAway = accrues,
+                        } else {
+                            apiService.updateContext(
+                                cible.id,
+                                ContextUpdateRequest(
+                                    name = nom, emoji = emoji,
+                                    requiresPresence = presence, accruesWhenAway = accrues,
+                                )
                             )
-                        )
-                    } }
-                    // 409 = nom deja pris. Le dire plutot que d'echouer en
-                    // silence : c'est la seule erreur que l'user peut corriger.
-                    if (resp == null) {
-                        unreachable = true
-                        creating = false; editing = null
-                    } else if (resp.code() == 409) {
-                        nomPris = true
-                        creating = false; editing = null
-                    } else {
-                        creating = false; editing = null
-                        reload()
+                        }
+                    }
+                    creating = false; editing = null
+                    // A 409 (name taken) says so, any other failure is told: only a 2xx reloads.
+                    when (result) {
+                        is OnlineResult.Done -> reload()
+                        is OnlineResult.Failed -> actionError = result.error
                     }
                 }
             },
@@ -219,15 +231,27 @@ fun ContextsScreen(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text(ctx.label) },
-            text = { Text(stringResource(R.string.contexts_dialog_delete_message)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.contexts_dialog_delete_message))
+                    if (!isOnline) NetworkNeededNote(Modifier.padding(top = 8.dp))
+                }
+            },
             confirmButton = {
-                TextButton(onClick = {
-                    scope.launch {
-                        if (runCatchingNetwork { apiService.deleteContext(ctx.id) } == null) unreachable = true
-                        pendingDelete = null
-                        reload()
-                    }
-                }) { Text(stringResource(R.string.common_delete)) }
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            actionError = null
+                            val result = runOnline(::errorOf) { apiService.deleteContext(ctx.id) }
+                            pendingDelete = null
+                            when (result) {
+                                is OnlineResult.Done -> reload()
+                                is OnlineResult.Failed -> actionError = result.error
+                            }
+                        }
+                    },
+                    enabled = isOnline,
+                ) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) {
@@ -274,7 +298,7 @@ private fun ContextRow(
                     )
                 }
             }
-            IconButton(onClick = onDelete) {
+            IconButton(onClick = onDelete, enabled = LocalIsOnline.current) {
                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.common_delete))
             }
         }
@@ -334,6 +358,7 @@ private fun ContextEditDialog(
                     valeur = accrues,
                     onChange = { accrues = it },
                 )
+                if (!LocalIsOnline.current) NetworkNeededNote(Modifier.padding(top = 8.dp))
             }
         },
         confirmButton = {
@@ -341,7 +366,7 @@ private fun ContextEditDialog(
                 onClick = dismissKeyboardThen {
                     onConfirm(nom.trim(), emoji.trim().ifBlank { null }, presence, accrues)
                 },
-                enabled = nom.isNotBlank(),
+                enabled = nom.isNotBlank() && LocalIsOnline.current,
             ) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
@@ -369,13 +394,4 @@ private fun DrapeauLigne(
         Spacer(Modifier.width(8.dp))
         Switch(checked = valeur, onCheckedChange = onChange)
     }
-}
-
-/** The result of a network call, or null when the server cannot be reached (offline). */
-private suspend fun <T> runCatchingNetwork(call: suspend () -> T): T? = try {
-    call()
-} catch (e: CancellationException) {
-    throw e
-} catch (_: Exception) {
-    null
 }

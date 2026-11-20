@@ -11,12 +11,11 @@ import com.torchons.app.data.model.CatalogContextView
 import com.torchons.app.data.model.CatalogTaskContextView
 import com.torchons.app.data.model.ImportApplyRequest
 import com.torchons.app.data.model.ImportDecision
-import com.torchons.app.data.model.FoyerCreateRequest
 import com.torchons.app.data.model.ImportResolveRequest
 import com.torchons.app.data.model.OnboardingCreateFoyerRequest
 import com.torchons.app.data.model.ContextCreateRequest
 import com.torchons.app.data.repository.AuthRepository
-import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.data.repository.HouseholdSwitcher
 import com.torchons.app.service.TokenRegistrar
 import com.torchons.app.ui.common.UserError
 import com.torchons.app.ui.common.UserErrors
@@ -87,9 +86,11 @@ class CreateFoyerWizardViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
     private val tokenRegistrar: TokenRegistrar,
-    private val taskRepository: TaskRepository,
+    householdSwitcher: HouseholdSwitcher,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
+
+    private val addFoyer = AddFoyerFlow(apiService, authRepository, householdSwitcher, context)
 
     // Name pre-filled for the first member when the field is left blank (localized).
     private val defaultDisplayName: String
@@ -303,93 +304,14 @@ class CreateFoyerWizardViewModel @Inject constructor(
     }
 
     /**
-     * P4a.2 — création d'un foyer SUPPLÉMENTAIRE (user déjà connecté) :
-     * POST /foyers + switch (pas d'onboarding-bootstrap, pas de recovery
-     * code). Pièces/tâches importées APRÈS le switch -> ciblent le
-     * nouveau foyer. `done=true` à la fin (pas d'étape 5).
+     * P4a.2 -- creation of an ADDITIONAL household (user already signed in): see [AddFoyerFlow],
+     * which creates, switches, wipes the previous household's cache and imports the catalog, and
+     * remembers how far it got so that a retry never creates a second household.
+     * `done = true` at the end (no step 5).
      */
     private suspend fun submitAddFoyer(s: WizardState) {
-        val createResp = apiService.createFoyer(
-            FoyerCreateRequest(s.foyerName.ifBlank { context.getString(R.string.settings_foyer_default_name) }),
-        )
-        val created = createResp.body()
-        if (!createResp.isSuccessful || created == null) {
-            val err = if (createResp.isSuccessful) {
-                UserError(context.getString(R.string.common_empty_response))
-            } else {
-                UserErrors.fromResponse(context, createResp)
-            }
-            _uiState.update { it.copy(isSubmitting = false, error = err) }
-            return
-        }
-        val switched = authRepository.switchFoyer(created.id)
-        if (switched.isFailure) {
-            val err = UserErrors.from(context, switched.exceptionOrNull() ?: IllegalStateException("switch failed"))
-            _uiState.update { it.copy(isSubmitting = false, error = err) }
-            return
-        }
-        // Contextes libres saisis a l'etape 2 — best-effort : le foyer est
-        // cree de toute facon, un contexte manquant se rajoute apres coup.
-        if (s.customRooms.isNotEmpty()) {
-            runCatching {
-                for (name in s.customRooms) {
-                    apiService.createContext(ContextCreateRequest(name = name))
-                }
-            }
-        }
-        // Import catalogue dans le NOUVEAU foyer (JWT déjà switché). On NE
-        // swallow PLUS en silence : si l'import échoue, l'user (et le dev)
-        // doit voir POURQUOI — sinon foyer vide = mystère (bug dogfood).
-        if (s.selectedContextKeys.isNotEmpty() || s.selectedTaskKeys.isNotEmpty()) {
-            try {
-                val resolveResp = apiService.resolveCatalogImport(
-                    ImportResolveRequest(
-                        taskKeys = s.selectedTaskKeys.toList(),
-                        contextKeys = s.selectedContextKeys.toList(),
-                    )
-                )
-                val resolved = resolveResp.body()
-                if (!resolveResp.isSuccessful || resolved == null) {
-                    val err = if (resolveResp.isSuccessful) {
-                        UserError(context.getString(R.string.common_empty_response))
-                    } else {
-                        UserErrors.fromResponse(context, resolveResp)
-                    }
-                    _uiState.update { it.copy(isSubmitting = false, error = err) }
-                    return
-                }
-                val contextDecisions = resolved.contexts.map {
-                    ImportDecision(it.templateKey, "create", null)
-                }
-                val applyResp = apiService.applyCatalogImport(
-                    ImportApplyRequest(
-                        taskKeys = s.selectedTaskKeys.toList(),
-                        contextKeys = s.selectedContextKeys.toList(),
-                        contextDecisions = contextDecisions,
-                    )
-                )
-                if (!applyResp.isSuccessful) {
-                    val err = UserErrors.fromResponse(context, applyResp)
-                    _uiState.update { it.copy(isSubmitting = false, error = err) }
-                    return
-                }
-            } catch (e: Exception) {
-                val err = UserErrors.from(context, e)
-                _uiState.update { it.copy(isSubmitting = false, error = err) }
-                return
-            }
-        }
-        // Bascule effectuée : wiper le cache Room local (sinon l'UI montre
-        // les données de l'ANCIEN foyer — cf switchFoyer docstring) puis
-        // re-fetcher le nouveau foyer (tâches/pièces importées incluses).
-        taskRepository.wipeLocalCache()
-        runCatching {
-            taskRepository.refreshTasks()
-            taskRepository.refreshContexts()
-            taskRepository.refreshUsers()
-            taskRepository.refreshCompletions(limit = 2000)
-        }
-        _uiState.update { it.copy(isSubmitting = false, done = true) }
+        val error = addFoyer.run(s)
+        _uiState.update { it.copy(isSubmitting = false, error = error, done = error == null) }
     }
 
     /**

@@ -54,4 +54,6 @@ data class SyncResponse(
     @SerializedName("applied") val applied: List<SyncAppliedOp> = emptyList(),
     @SerializedName("conflicts") val conflicts: List<SyncConflict> = emptyList(),
     @SerializedName("server_changes") val serverChanges: List<ChangeLogEntry> = emptyList(),
+    /** True when the server cut this pull at its row limit: ask again from `server_version`. */
+    @SerializedName("has_more") val hasMore: Boolean = false,
 )

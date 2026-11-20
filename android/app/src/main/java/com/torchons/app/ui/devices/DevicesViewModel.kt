@@ -6,14 +6,18 @@ import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.core.network.DeviceRevocationMonitor
+import com.torchons.app.core.sync.SyncTrigger
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.model.DeviceDto
 import com.torchons.app.ui.common.UserError
 import com.torchons.app.ui.common.UserErrors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -39,11 +43,38 @@ data class DevicesUiState(
 class DevicesViewModel @Inject constructor(
     private val api: ApiService,
     private val revocationMonitor: DeviceRevocationMonitor,
+    private val pendingDao: PendingOperationDao,
+    private val syncTrigger: SyncTrigger,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DevicesUiState())
     val uiState: StateFlow<DevicesUiState> = _uiState.asStateFlow()
+
+    /**
+     * Changes made on this phone and not yet sent. The sign-out wipes them, so its dialog shows
+     * the count and offers to sync first (D9, 2026-11-20 audit).
+     */
+    val pendingOps: StateFlow<Int> = pendingDao.observeCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    private val _signOutSync = MutableStateFlow(SignOutSyncState.IDLE)
+    val signOutSync: StateFlow<SignOutSyncState> = _signOutSync.asStateFlow()
+
+    /** "Sync first": a pass of the worker, waited for until the queue is empty or the wait runs out. */
+    fun syncFirst() {
+        if (_signOutSync.value == SignOutSyncState.SYNCING) return
+        _signOutSync.value = SignOutSyncState.SYNCING
+        viewModelScope.launch {
+            val emptied = syncBeforeSignOut(pendingDao.observeCount(), syncTrigger::requestSync)
+            _signOutSync.value = if (emptied) SignOutSyncState.IDLE else SignOutSyncState.GAVE_UP
+        }
+    }
+
+    /** The sign-out dialog was closed: a later one starts clean. */
+    fun resetSignOutSync() {
+        _signOutSync.value = SignOutSyncState.IDLE
+    }
 
     init {
         refresh()

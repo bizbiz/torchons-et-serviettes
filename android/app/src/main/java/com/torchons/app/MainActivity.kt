@@ -15,7 +15,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.CompositionLocalProvider
+import com.torchons.app.core.network.BackendHealthMonitor
 import com.torchons.app.core.network.VersionGateMonitor
+import com.torchons.app.ui.common.LocalIsOnline
 import com.torchons.app.ui.gate.AppUpdateRequiredScreen
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.service.TokenRegistrar
@@ -53,6 +56,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var versionGateMonitor: VersionGateMonitor
+
+    @Inject
+    lateinit var healthMonitor: BackendHealthMonitor
 
     // Note : le PresenceTrigger (worker periodique 6h) a ete supprime car
     // les restrictions Android 12+ (Doze, background limits) empechaient
@@ -121,11 +127,15 @@ class MainActivity : ComponentActivity() {
                 // Exposes test tags as resource ids for the Play pre-launch robot (RobotTags).
                 @OptIn(ExperimentalComposeUiApi::class)
                 val robotIds = Modifier.semantics { testTagsAsResourceId = true }
+                val isOnline by healthMonitor.isOnline.collectAsStateWithLifecycle()
                 Box(robotIds) {
                     if (gate != null) {
                         AppUpdateRequiredScreen(blocked = gate)
                     } else {
-                        TorchonsApp(initialToken = initialToken)
+                        // Online-only buttons read it (LocalIsOnline) to disable themselves offline.
+                        CompositionLocalProvider(LocalIsOnline provides isOnline) {
+                            TorchonsApp(initialToken = initialToken)
+                        }
                     }
                 }
             }

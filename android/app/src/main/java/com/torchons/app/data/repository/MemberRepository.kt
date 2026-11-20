@@ -47,10 +47,6 @@ class MemberRepository @Inject constructor(
         }
     }
 
-    suspend fun wipe() {
-        userDao.replaceAll(emptyList())
-        formerMemberDao.replaceAll(emptyList())
-    }
 }
 
 /** A user row carrying `left_at` is a former member; a missing flag counts as not anonymized. */

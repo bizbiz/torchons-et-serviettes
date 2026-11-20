@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Arrangement
 import com.torchons.app.R
+import com.torchons.app.ui.common.LocalIsOnline
 import com.torchons.app.ui.common.ModuleOffNoticeHost
 import com.torchons.app.ui.help.HelpButton
 import com.torchons.app.ui.help.HelpScreen
@@ -27,6 +28,7 @@ import com.torchons.app.ui.help.HelpScreen
  */
 @Composable
 fun HomeGreeting(displayName: String?, onRate: () -> Unit, onSeeFoyer: () -> Unit) {
+    val isOnline = LocalIsOnline.current
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -42,14 +44,23 @@ fun HomeGreeting(displayName: String?, onRate: () -> Unit, onSeeFoyer: () -> Uni
             // Sync status icon (replaces the old full-width OfflineBanner
             // that used to push the whole layout down when appearing).
             com.torchons.app.ui.components.SyncStatusIcon()
-            IconButton(onClick = onRate) {
+            // Picking the next task to rate asks the server: disabled offline, the line below says why.
+            IconButton(onClick = onRate, enabled = isOnline) {
                 Icon(
                     imageVector = Icons.Default.ChatBubbleOutline,
                     contentDescription = stringResource(R.string.home_rate_task_cd),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = if (isOnline) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                 )
             }
             HelpButton(HelpScreen.HOME, tint = MaterialTheme.colorScheme.primary)
+        }
+        if (!isOnline) {
+            Text(
+                text = stringResource(R.string.home_rate_needs_network),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         ModuleOffNoticeHost(onSee = onSeeFoyer)
     }

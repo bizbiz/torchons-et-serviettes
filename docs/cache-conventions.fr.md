@@ -82,6 +82,17 @@ points), il ne passe pas par `/sync`.
   bumpe une époque quand il règle des ops de complétion (`settleApplied`) ; le
   refresh la lit avant sa requête et jette sa réponse si elle a bougé (une
   seconde requête, puis rien). Le verrou n'entoure que du travail local.
+- ❌ Idem pour les **tâches** : `TaskDao.replaceAll` épargne les lignes dont une
+  op est encore en file (INSERT, UPDATE, DELETE), et `refreshTasks` passe par
+  `refreshGuard.tasks` (`refreshTasksCache`), une seconde époque que
+  `settleApplied` et `applyServerChanges` bumpent pour la table `tasks`. Sans
+  cela une tâche créée hors ligne disparaissait au rafraîchissement suivant.
+- **Changement de foyer** : une seule voie, `HouseholdSwitcher.switchWith`
+  (jeton, vidage de TOUTES les tables sauf `pending_operations`, rafraîchissement),
+  dans le scope applicatif. Jamais de vidage partiel dans un ViewModel. Les ops
+  en file gardent leur `foyerId` et partent vers leur foyer d'origine ; si
+  l'utilisateur l'a quitté, le serveur répond `out_of_scope`, l'op est retirée
+  sans avis.
 - Le backend expose les valeurs autoritaires utiles (ex.
   `TaskResponse.last_completed_at` calculé serveur). **C'est câblé** :
   `Task` DTO + `TaskEntity.lastCompletedAt` (migration Room 9→10) →
@@ -128,6 +139,37 @@ ou garantir des int.
   calculés serveur et ne dépendent pas du cache Room. Les écrans
   offline-first (liste des tâches, détail) dépendent du cache → ce sont
   eux qui exigent ces règles.
+
+### Écritures sans ligne locale : ops REST en file, réglages du membre, gestes en ligne seulement
+
+Trois sortes d'écriture, et un écran doit savoir laquelle (audit du 20/11/2026, D3/D6/D7/D9).
+
+1. **Écritures idempotentes « fixer ma valeur » avec une route REST** (votes de fréquence,
+   d'effort et d'affinité, réponse à un prompt) : `VoteRepository` / `sendOrQueue` envoient
+   d'abord en ligne ; une erreur réseau, un 5xx, un 408/429, ou une tâche encore en attente dans
+   la file mettent l'écriture dans `pending_operations` (tables dans `core/sync/RestOps.kt`), et
+   le worker la rejoue en REST APRÈS les lots `/sync`. Un 4xx permanent est l'erreur de
+   l'appelant, montrée, jamais mise en file. Ne mettre en file qu'une écriture que le serveur
+   traite pareil deux fois (vérifier la route d'abord). Un prompt dont la réponse est en file est
+   ignoré par `fetchNextPrompt` (`VoteRepository.promptsAnsweredOffline`).
+2. **Réglages du membre** (`user_settings`, table `/sync`) : `SettingsLedger` met l'UPDATE en
+   file (`LocalMutation`), l'écran et le DataStore changent tout de suite, et un rechargement
+   applique les ops en file par-dessus la réponse du serveur (`overlayPendingSettings`). Les
+   nombres du payload gardent leur type (`opPayload`) : `/sync` écrit `user_settings` par un
+   `setattr` brut.
+3. **Gestes en ligne seulement** (nom du foyer, gel maison, noms Wi-Fi, seuils bonus, objectifs,
+   contextes, jours de présence...) : le contrôle est DÉSACTIVÉ hors ligne avec la ligne
+   « réseau nécessaire » (`LocalIsOnline`, `NetworkNeededNote`), et la requête passe par
+   `runOnline` : une exception ou une réponse non 2xx annule le changement optimiste et rend
+   un `UserError` traduit que l'écran montre.
+   ❌ `catch (_: Exception) {}`, ou un `isSuccessful` que personne ne lit.
+   `LocalIsOnline` bascule au premier appel raté : le premier tap après la perte du réseau
+   reçoit l'erreur, les suivants le bouton désactivé.
+
+Le pull est paginé : `/sync` répond `has_more` quand il a coupé à 500 lignes, et le worker
+redemande (au plus `MAX_PULL_PAGES` par passage). « Me déconnecter et couper cet appareil »
+efface la file : sa confirmation montre le nombre et propose de synchroniser d'abord
+(`syncBeforeSignOut`).
 
 ## Checklist nouvelle feature touchant cache/sync
 

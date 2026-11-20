@@ -1,34 +1,57 @@
 package com.torchons.app.ui.home
 
+import android.app.Application
+import com.torchons.app.R
+import com.torchons.app.data.api.ApiHttpException
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
+import com.torchons.app.data.model.EffortVotesState
+import com.torchons.app.data.model.FrequencyRequest
+import com.torchons.app.data.model.FrequencyVotesState
 import com.torchons.app.data.model.PromptResolveRequest
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.data.repository.VoteRepository
+import com.torchons.app.ui.common.UserErrors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import retrofit2.Response
 
 /**
  * Unified prompt queue of the home screen (BUMP_EFFORT / VOTE_RATING /
  * VOTE_FREQUENCY / VOTE_EFFORT / RESOLVE_PRESENCE), split out of
  * HomeViewModel. It reads and writes the ViewModel's [uiState] (passed in,
  * never exposed) and asks the ViewModel to [refresh] when a prompt is done.
+ * The vote dialogs live in [PromptVoteFlow].
  *
  * `internal` because HomeViewModel is its only user.
  */
 internal class HomePromptActions(
     private val scope: CoroutineScope,
+    private val application: Application,
     private val uiState: MutableStateFlow<HomeUiState>,
     private val apiService: ApiService,
-    private val taskRepository: TaskRepository,
+    taskRepository: TaskRepository,
+    private val votes: VoteRepository,
     private val tokenManager: TokenManager,
-    private val activeTasks: () -> List<Task>,
-    private val refresh: () -> Unit,
+    activeTasks: () -> List<Task>,
+    refresh: () -> Unit,
 ) {
-
-    // --- Queue unifiee des prompts (BUMP_EFFORT / VOTE_RATING) ---
+    private val flow = PromptVoteFlow(
+        scope = scope,
+        uiState = uiState,
+        port = AppPromptVotePort(apiService, taskRepository, votes),
+        activeTasks = activeTasks,
+        refresh = refresh,
+        errorOf = { UserErrors.from(application, it) },
+        texts = PromptVoteTexts(
+            networkNeededToVote = application.getString(R.string.prompt_vote_needs_network),
+            effortStepNeedsNetwork = application.getString(R.string.prompt_effort_step_needs_network),
+            taskUnavailable = application.getString(R.string.prompt_vote_task_unavailable),
+        ),
+    )
 
     /**
      * Fetch le prochain prompt non-resolu. Respecte la tolerance 2h : si un
@@ -42,6 +65,8 @@ internal class HomePromptActions(
             if (resp.isSuccessful && resp.body() != null) {
                 val prompt = resp.body()!!
 
+                // Answered offline, answer still queued: the server lists it until the worker sends it.
+                if (prompt.id in votes.promptsAnsweredOffline()) return
                 // Never replace a prompt the user is already looking at (modal or vote dialog).
                 val open = uiState.value
                 if (PromptPolicy.isPromptOpen(
@@ -83,183 +108,29 @@ internal class HomePromptActions(
     }
 
     /** User repond au prompt (ANSWERED avec payload). */
-    fun resolveCurrentPrompt(resolution: String, payload: Map<String, Any?>? = null) {
-        val prompt = uiState.value.currentPrompt ?: return
-        val wasPresencePrompt = prompt.type == "RESOLVE_PRESENCE"
-        val wasDismissed = resolution == "DISMISSED"
-        scope.launch {
-            try {
-                apiService.resolvePrompt(prompt.id, PromptResolveRequest(resolution, payload))
-            } catch (_: Exception) {}
-            uiState.value = uiState.value.copy(
-                currentPrompt = null,
-                showPromptModal = false,
-                // Si un RESOLVE_PRESENCE est DISMISSED ("Plus tard"), on garde
-                // le bandeau visible — les taches restent freezees.
-                hasUnresolvedPresenceDays = wasPresencePrompt && wasDismissed,
-            )
-            refresh()
-        }
-    }
+    fun resolveCurrentPrompt(resolution: String, payload: Map<String, Any?>? = null) =
+        flow.resolveCurrentPrompt(resolution, payload)
 
     /** User ferme le prompt (DISMISSED). */
-    fun dismissCurrentPrompt() {
-        resolveCurrentPrompt("DISMISSED")
-    }
+    fun dismissCurrentPrompt() = flow.resolveCurrentPrompt("DISMISSED")
 
-    // --- v0.28 : dispatch des prompts VOTE_FREQUENCY / VOTE_EFFORT ---
+    // --- v0.28 : dispatch des prompts VOTE_FREQUENCY / VOTE_EFFORT (PromptVoteFlow) ---
 
-    /**
-     * Ouvre le FrequencyVoteDialog en reponse a un prompt VOTE_FREQUENCY.
-     * Fetch le state a la volee, garde le promptId pour resolve apres submit.
-     */
-    /**
-     * « Tâche souvent en retard » → Revoter: frequency vote, then effort vote,
-     * the BUMP_EFFORT prompt staying current (so unresolved) until the end.
-     */
-    fun startBumpRevote() {
-        val ctx = uiState.value.currentPrompt?.context ?: return
-        val taskId = ctx["task_id"]?.toString() ?: return
-        val bump = BumpRevote(
-            latePercent = (((ctx["bonus_ratio"] as? Number)?.toFloat() ?: 0f) * 100).toInt(),
-            windowDays = (ctx["window_days"] as? Number)?.toInt() ?: 0,
-        )
-        openFrequencyVoteFromPrompt(taskId, requesterName = "", bump = bump)
-    }
+    fun startBumpRevote() = flow.startBumpRevote()
 
-    fun openFrequencyVoteFromPrompt(taskId: String, requesterName: String, bump: BumpRevote? = null) {
-        val prompt = uiState.value.currentPrompt ?: return
-        scope.launch {
-            try {
-                val resp = apiService.getFrequencyVotes(taskId)
-                if (resp.isSuccessful) {
-                    val state = resp.body()
-                    val task = activeTasks().firstOrNull { it.id == taskId }
-                    if (state != null && task != null) {
-                        uiState.value = uiState.value.copy(
-                            pendingFrequencyVoteContext = PromptVoteContext(
-                                promptId = prompt.id,
-                                taskId = taskId,
-                                header = com.torchons.app.ui.common.voteHeader(task),
-                                requesterName = requesterName,
-                                frequencyState = state,
-                                bump = bump,
-                            ),
-                            // On garde currentPrompt pour pouvoir resolve, mais on
-                            // cache le PromptModal de queue (le dialog vote prend la main).
-                            showPromptModal = false,
-                        )
-                    }
-                }
-            } catch (_: Exception) {}
-        }
-    }
+    fun openFrequencyVoteFromPrompt(taskId: String, requesterName: String, bump: BumpRevote? = null) =
+        flow.openFrequencyVoteFromPrompt(taskId, requesterName, bump)
 
-    fun openEffortVoteFromPrompt(taskId: String, requesterName: String, bump: BumpRevote? = null) {
-        val prompt = uiState.value.currentPrompt ?: return
-        scope.launch {
-            try {
-                val resp = apiService.getEffortVotes(taskId)
-                if (resp.isSuccessful) {
-                    val state = resp.body()
-                    val task = activeTasks().firstOrNull { it.id == taskId }
-                    if (state != null && task != null) {
-                        uiState.value = uiState.value.copy(
-                            pendingEffortVoteContext = PromptVoteContext(
-                                promptId = prompt.id,
-                                taskId = taskId,
-                                header = com.torchons.app.ui.common.voteHeader(task),
-                                requesterName = requesterName,
-                                effortState = state,
-                                bump = bump,
-                            ),
-                            // Same update as the effort dialog: in the « souvent en
-                            // retard » chain no instant shows neither dialog, so the
-                            // queue never fetches another prompt in between.
-                            pendingFrequencyVoteContext = null,
-                            showPromptModal = false,
-                        )
-                    }
-                }
-            } catch (_: Exception) {}
-        }
-    }
+    fun openEffortVoteFromPrompt(taskId: String, requesterName: String, bump: BumpRevote? = null) =
+        flow.openEffortVoteFromPrompt(taskId, requesterName, bump)
 
-    fun submitPromptFrequencyVote(request: com.torchons.app.data.model.FrequencyRequest) {
-        val ctx = uiState.value.pendingFrequencyVoteContext ?: return
-        if (ctx.bump != null) {
-            // Step 1 of 2: the prompt stays open, the effort vote follows at once.
-            scope.launch {
-                taskRepository.voteFrequency(ctx.taskId, request)
-                openEffortVoteFromPrompt(ctx.taskId, ctx.requesterName, ctx.bump)
-            }
-            return
-        }
-        scope.launch {
-            taskRepository.voteFrequency(ctx.taskId, request)
-            try {
-                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest.frequencyAnswer(request))
-            } catch (_: Exception) {}
-            uiState.value = uiState.value.copy(
-                pendingFrequencyVoteContext = null,
-                currentPrompt = null,
-            )
-            refresh()
-        }
-    }
+    fun submitPromptFrequencyVote(request: FrequencyRequest) = flow.submitPromptFrequencyVote(request)
 
-    fun submitPromptEffortVote(points: Int) {
-        val ctx = uiState.value.pendingEffortVoteContext ?: return
-        scope.launch {
-            try {
-                apiService.setEffort(ctx.taskId, mapOf("points" to points))
-                val answer = if (ctx.bump != null) {
-                    PromptResolveRequest("ANSWERED", mapOf("action" to "revote"))
-                } else {
-                    PromptResolveRequest.effortAnswer(points)
-                }
-                apiService.resolvePrompt(ctx.promptId, answer)
-            } catch (_: Exception) {}
-            uiState.value = uiState.value.copy(
-                pendingEffortVoteContext = null,
-                currentPrompt = null,
-            )
-            refresh()
-        }
-    }
+    fun submitPromptEffortVote(points: Int) = flow.submitPromptEffortVote(points)
 
-    fun dismissPromptFrequencyVote() {
-        val ctx = uiState.value.pendingFrequencyVoteContext ?: return
-        if (ctx.bump != null) return backToBumpDialog()
-        scope.launch {
-            try {
-                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("DISMISSED"))
-            } catch (_: Exception) {}
-            uiState.value = uiState.value.copy(pendingFrequencyVoteContext = null, currentPrompt = null)
-            refresh() // chain to the next queued re-vote, as a submit does
-        }
-    }
+    fun dismissPromptFrequencyVote() = flow.dismissPromptFrequencyVote()
 
-    fun dismissPromptEffortVote() {
-        val ctx = uiState.value.pendingEffortVoteContext ?: return
-        if (ctx.bump != null) return backToBumpDialog()
-        scope.launch {
-            try {
-                apiService.resolvePrompt(ctx.promptId, PromptResolveRequest("DISMISSED"))
-            } catch (_: Exception) {}
-            uiState.value = uiState.value.copy(pendingEffortVoteContext = null, currentPrompt = null)
-            refresh() // chain to the next queued re-vote, as a submit does
-        }
-    }
-
-    /** Cancel inside the chain: back to « Tâche souvent en retard », still open. */
-    private fun backToBumpDialog() {
-        uiState.value = uiState.value.copy(
-            pendingFrequencyVoteContext = null,
-            pendingEffortVoteContext = null,
-            showPromptModal = true,
-        )
-    }
+    fun dismissPromptEffortVote() = flow.dismissPromptEffortVote()
 
     /** Reouvrir le prompt RESOLVE_PRESENCE depuis le bandeau. */
     fun reopenPresencePrompt() {
@@ -276,7 +147,36 @@ internal class HomePromptActions(
                         )
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+                // Offline: the banner stays, the presence calendar (also online-only) says why.
+            }
         }
     }
+}
+
+/** [PromptVotePort] over the repositories; the state reads are plain GETs. */
+internal class AppPromptVotePort(
+    private val apiService: ApiService,
+    private val taskRepository: TaskRepository,
+    private val votes: VoteRepository,
+) : PromptVotePort {
+    private suspend fun <T : Any> load(call: suspend () -> Response<T>): Result<T> = resultOf {
+        val resp = call()
+        if (!resp.isSuccessful) throw ApiHttpException.from(resp)
+        resp.body() ?: throw IllegalStateException("empty body")
+    }
+
+    override suspend fun frequencyState(taskId: String): Result<FrequencyVotesState> =
+        load { apiService.getFrequencyVotes(taskId) }
+
+    override suspend fun effortState(taskId: String): Result<EffortVotesState> =
+        load { apiService.getEffortVotes(taskId) }
+
+    override suspend fun voteFrequency(taskId: String, request: FrequencyRequest) =
+        taskRepository.voteFrequency(taskId, request)
+
+    override suspend fun voteEffort(taskId: String, points: Int) = votes.voteEffort(taskId, points)
+
+    override suspend fun resolve(promptId: String, request: PromptResolveRequest) =
+        votes.resolvePrompt(promptId, request)
 }

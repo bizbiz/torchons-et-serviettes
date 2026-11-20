@@ -19,7 +19,8 @@ import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.RetardResponse
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
-import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.data.repository.HouseholdSwitcher
+import com.torchons.app.data.repository.SettingsWriter
 import com.torchons.app.core.proposition.PropositionStateHolder
 import com.torchons.app.worker.DailyNotificationWorker
 import com.torchons.app.worker.OverdueNotificationWorker
@@ -39,7 +40,8 @@ class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
     private val apiService: ApiService,
-    private val taskRepository: TaskRepository,
+    private val householdSwitcher: HouseholdSwitcher,
+    private val settingsWriter: SettingsWriter,
     private val propositionStateHolder: PropositionStateHolder,
     private val revocationMonitor: DeviceRevocationMonitor,
     @ApplicationContext private val appContext: Context,
@@ -91,6 +93,17 @@ class SettingsViewModel @Inject constructor(
     private val _allFoyers = MutableStateFlow<List<Foyer>>(emptyList())
     val allFoyers: StateFlow<List<Foyer>> = _allFoyers.asStateFlow()
 
+    private val writes = SettingsWrites(
+        scope = viewModelScope,
+        api = apiService,
+        writer = settingsWriter,
+        userId = { authRepository.userIdFlow.first() },
+        settings = _settings,
+        bonusConfig = _bonusConfig,
+        syncLocal = ::syncToTokenManager,
+        errorOf = { UserErrors.from(appContext, it) },
+    )
+
     init {
         seedFoyerFromCache()
         loadAll()
@@ -141,26 +154,9 @@ class SettingsViewModel @Inject constructor(
                 // Settings from backend
                 val resp = apiService.getSettings()
                 if (resp.isSuccessful) {
-                    val data = resp.body() ?: emptyMap()
-                    _settings.value = UserSettingsState(
-                        notifDaily = data["notif_daily"] as? Boolean ?: true,
-                        notifUrgent = data["notif_urgent"] as? Boolean ?: true,
-                        notifSolo = data["notif_solo"] as? Boolean ?: false,
-                        notifCollectiveWithMe = data["notif_collective_with_me"] as? Boolean ?: false,
-                        notifCollectiveWithoutMe = data["notif_collective_without_me"] as? Boolean ?: false,
-                        notifHour = (data["notif_hour"] as? Double)?.toInt() ?: 9,
-                        notifOverdueHour = (data["notif_overdue_hour"] as? Number)?.toInt() ?: 8,
-                        affinityPopup = data["affinity_popup_enabled"] as? Boolean ?: true,
-                        affinityExpiry = (data["affinity_expiry_months"] as? Number)?.toInt()
-                            ?: TokenManager.DEFAULT_AFFINITY_EXPIRY_MONTHS,
-                        fairShareTolerance = (data["fair_share_tolerance_percent"] as? Double)?.toInt() ?: 30,
-                        homeSsids = (data["home_ssids"] as? List<*>)?.map { it.toString() } ?: emptyList(),
-                        foyerMemberCount = (data["foyer_member_count"] as? Double)?.toInt() ?: 2,
-                        gamificationEnabled = data["gamification_enabled"] as? Boolean ?: true,
-                        hideHomeTasksOffWifi = data["hide_home_tasks_off_wifi"] as? Boolean ?: true,
-                        notifTodayReminders = data["notif_today_reminders"] as? Boolean ?: true,
-                        isLoaded = true,
-                    )
+                    // The member's own changes still queued for /sync win over the server's answer.
+                    val data = settingsWriter.withPending(resp.body() ?: emptyMap())
+                    _settings.value = userSettingsFromServer(data)
                     // Sync tous les reglages vers TokenManager local
                     syncToTokenManager(_settings.value)
                 }
@@ -218,16 +214,9 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** Offline-first (queued for /sync, SettingsWrites): the caller has already changed [_settings]. */
     private fun updateSetting(key: String, value: Any) {
-        viewModelScope.launch {
-            try {
-                val resp = apiService.updateSettings(mapOf(key to value))
-                if (!resp.isSuccessful) Log.w("SettingsVM", "updateSetting $key rejected: ${resp.code()}")
-            } catch (e: Exception) {
-                Log.e("SettingsVM", "updateSetting FAILED: $key", e)
-            }
-            syncToTokenManager(_settings.value)
-        }
+        writes.updateSetting(key, value)
     }
 
     /**
@@ -390,10 +379,14 @@ class SettingsViewModel @Inject constructor(
     /** Bascule vers un autre foyer existant (feuille "Changer de foyer"). */
     fun switchToFoyer(foyerId: String) = foyers.switchToFoyer(foyerId)
 
+    fun dismissSwitch() = foyers.dismissSwitch()
+
     fun createAndSwitchToFoyer(name: String) = foyers.createAndSwitchToFoyer(name)
 
     // Simulation rattrapage (ProjectionSimulationDialog) : SettingsSimulation.
-    private val simulation = SettingsSimulation(viewModelScope, apiService)
+    private val simulation = SettingsSimulation(
+        viewModelScope, apiService, { UserErrors.from(appContext, it) }, { writes.actionError.value = it },
+    )
 
     val simPace: StateFlow<PaceResponse?> = simulation.simPace
 
@@ -410,15 +403,12 @@ class SettingsViewModel @Inject constructor(
     fun setAffinityExpiry(v: Int) { _settings.value = _settings.value.copy(affinityExpiry = v); updateSetting("affinity_expiry_months", v) }
     fun setFairShareTolerance(v: Int) { _settings.value = _settings.value.copy(fairShareTolerance = v); updateSetting("fair_share_tolerance_percent", v) }
 
+    // Online-only writes: the controls are disabled offline; a failure rolls back and is shown.
     fun addHomeSsid(ssid: String) {
-        val updated = _settings.value.homeSsids + ssid
-        _settings.value = _settings.value.copy(homeSsids = updated)
-        updateSetting("home_ssids", updated)
+        writes.setHomeSsids(_settings.value.homeSsids + ssid)
     }
     fun removeHomeSsid(ssid: String) {
-        val updated = _settings.value.homeSsids.filter { it != ssid }
-        _settings.value = _settings.value.copy(homeSsids = updated)
-        updateSetting("home_ssids", updated)
+        writes.setHomeSsids(_settings.value.homeSsids.filter { it != ssid })
     }
 
     /**
@@ -426,15 +416,16 @@ class SettingsViewModel @Inject constructor(
      * Mise a jour partielle — seul le champ specifie est modifie.
      */
     fun updateBonusConfig(key: String, value: Any) {
-        viewModelScope.launch {
-            try {
-                val resp = apiService.updateBonusConfig(mapOf(key to value))
-                if (resp.isSuccessful) {
-                    _bonusConfig.value = resp.body()
-                }
-            } catch (_: Exception) {}
-        }
+        writes.updateBonusConfig(key, value)
     }
+
+    /** The last refused write of these screens (home freeze, rename, Wi-Fi, bonus), until dismissed. */
+    val actionError: StateFlow<UserError?> get() = writes.actionError
+
+    /** Changes each time a bonus slider was refused, to rebuild the sliders from the server's values. */
+    val bonusResets: StateFlow<Int> get() = writes.bonusResets
+
+    fun dismissActionError() = writes.dismissError()
 
     suspend fun logout() { authRepository.logout() }
 
@@ -498,17 +489,24 @@ class SettingsViewModel @Inject constructor(
     private val _leaveState = MutableStateFlow<LeaveState>(LeaveState.Idle)
     val leaveState: StateFlow<LeaveState> = _leaveState.asStateFlow()
 
+    private val _switchState = MutableStateFlow<FoyerSwitchState>(FoyerSwitchState.Idle)
+
+    /** Progress and outcome of the "Change household" sheet. */
+    val switchState: StateFlow<FoyerSwitchState> = _switchState.asStateFlow()
+
     private val foyers = SettingsFoyerActions(
         scope = viewModelScope,
         apiService = apiService,
         tokenManager = tokenManager,
         authRepository = authRepository,
-        taskRepository = taskRepository,
+        switcher = householdSwitcher,
         appContext = appContext,
         currentFoyer = _currentFoyer,
         allFoyers = _allFoyers,
         leaveState = _leaveState,
+        switchState = _switchState,
         loadAll = ::loadAll,
+        onError = { writes.actionError.value = it },
     )
 
     fun leaveFoyer() = foyers.leaveFoyer()

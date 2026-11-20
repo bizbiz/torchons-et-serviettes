@@ -30,3 +30,28 @@ data class UserSettingsState(
     val notifTodayReminders: Boolean = true,
     val isLoaded: Boolean = false
 )
+
+/**
+ * The settings state from a `GET /api/settings` answer, with the member's queued changes already
+ * applied on top ([com.torchons.app.data.repository.overlayPendingSettings]). Numbers are read as
+ * [Number]: the server answer holds Doubles, a queued change holds the whole number it was made of.
+ */
+fun userSettingsFromServer(data: Map<String, Any?>) = UserSettingsState(
+    notifDaily = data["notif_daily"] as? Boolean ?: true,
+    notifUrgent = data["notif_urgent"] as? Boolean ?: true,
+    notifSolo = data["notif_solo"] as? Boolean ?: false,
+    notifCollectiveWithMe = data["notif_collective_with_me"] as? Boolean ?: false,
+    notifCollectiveWithoutMe = data["notif_collective_without_me"] as? Boolean ?: false,
+    notifHour = (data["notif_hour"] as? Number)?.toInt() ?: 9,
+    notifOverdueHour = (data["notif_overdue_hour"] as? Number)?.toInt() ?: 8,
+    affinityPopup = data["affinity_popup_enabled"] as? Boolean ?: true,
+    affinityExpiry = (data["affinity_expiry_months"] as? Number)?.toInt()
+        ?: TokenManager.DEFAULT_AFFINITY_EXPIRY_MONTHS,
+    fairShareTolerance = (data["fair_share_tolerance_percent"] as? Number)?.toInt() ?: 30,
+    homeSsids = (data["home_ssids"] as? List<*>)?.map { it.toString() } ?: emptyList(),
+    foyerMemberCount = (data["foyer_member_count"] as? Number)?.toInt() ?: 2,
+    gamificationEnabled = data["gamification_enabled"] as? Boolean ?: true,
+    hideHomeTasksOffWifi = data["hide_home_tasks_off_wifi"] as? Boolean ?: true,
+    notifTodayReminders = data["notif_today_reminders"] as? Boolean ?: true,
+    isLoaded = true,
+)

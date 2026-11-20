@@ -18,7 +18,8 @@ import org.junit.Test
  *   (3) a refresh path that bypasses replaceAll / replaceForTask ...... not
  *       covered: `grep -rn "completionDao\." android/app/src/main` lists the
  *       writers; on 2026-10-16 only wipeLocalCache (household switch, meant
- *       to clear everything) calls deleteAll.
+ *       to clear everything) called deleteAll; since 2026-11-20 the wipe is
+ *       HouseholdCacheWipe.kt (every table but the queue, tested on real Room).
  */
 class PendingRowsRefreshTest {
 

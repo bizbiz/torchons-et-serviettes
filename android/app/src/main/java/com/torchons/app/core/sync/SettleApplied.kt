@@ -4,6 +4,7 @@ import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.model.ChangeLogEntry
 import com.torchons.app.data.model.SyncAppliedOp
 import com.torchons.app.data.repository.CompletionRefreshGuard
+import kotlinx.coroutines.CancellationException
 
 /**
  * Removes the ops the server acknowledged from the queue, and the local rows of the ones it
@@ -22,10 +23,15 @@ internal suspend fun settleApplied(
 ) {
     val appliedIds = applied.map { it.clientOpId }.toSet()
     val touchesCompletions = batch.any { it.clientOpId in appliedIds && it.tableName == "task_completions" }
-    guard.settlingIf(touchesCompletions) {
-        applied.forEach { deleteOp(it.clientOpId) }
-        // After the queue row is gone: a duplicate the server dropped leaves no local trace.
-        droppedCompletionRowIds(applied, batch).forEach { deleteCompletionRow(it) }
+    // Same reasoning for a tasks refresh (D1): a created/edited/deleted task whose op is settled
+    // must not be erased by a GET /tasks answered before the push.
+    val touchesTasks = batch.any { it.clientOpId in appliedIds && it.tableName == "tasks" }
+    guard.tasks.settlingIf(touchesTasks) {
+        guard.settlingIf(touchesCompletions) {
+            applied.forEach { deleteOp(it.clientOpId) }
+            // After the queue row is gone: a duplicate the server dropped leaves no local trace.
+            droppedCompletionRowIds(applied, batch).forEach { deleteCompletionRow(it) }
+        }
     }
 }
 
@@ -36,9 +42,22 @@ internal suspend fun settleApplied(
 internal suspend fun applyServerChanges(
     guard: CompletionRefreshGuard,
     changes: List<ChangeLogEntry>,
+    onError: (ChangeLogEntry, Exception) -> Unit = { _, _ -> },
     apply: suspend (ChangeLogEntry) -> Unit,
 ) {
-    guard.settlingIf(changes.any { it.table == "task_completions" }) {
-        changes.forEach { apply(it) }
+    guard.tasks.settlingIf(changes.any { it.table == "tasks" }) {
+        guard.settlingIf(changes.any { it.table == "task_completions" }) {
+            for (change in changes) {
+                try {
+                    apply(change)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // D8: such an error used to vanish. The rest of the batch still applies and the
+                    // next authoritative refresh puts the cache right, but it is reported.
+                    onError(change, e)
+                }
+            }
+        }
     }
 }

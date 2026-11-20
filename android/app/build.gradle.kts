@@ -185,6 +185,13 @@ android {
         compose = true
         buildConfig = true
     }
+
+    testOptions {
+        // Robolectric needs the merged resources/manifest on the unit-test classpath.
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 // R8 renames every class, so a crash trace coming back from a release APK is
@@ -293,6 +300,11 @@ dependencies {
     implementation(libs.qrcode.kotlin)
 
 
-    // JVM unit tests (pure logic only: no Android framework, no Room).
+    // JVM unit tests. Pure logic runs on fakes; DAO / transaction behaviour runs on a REAL Room
+    // database (in-memory) under Robolectric (src/test/resources/robolectric.properties: sdk=35).
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core-ktx:1.6.1")
+    testImplementation("androidx.test.ext:junit-ktx:1.2.1")
+    testImplementation("androidx.room:room-testing:2.6.1")
 }

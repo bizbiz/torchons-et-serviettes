@@ -1,5 +1,6 @@
 package com.torchons.app.data.repository
 
+import com.torchons.app.core.sync.FREQUENCY_VOTES_TABLE
 import com.torchons.app.data.local.dao.ContextDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.entities.ContextEntity
@@ -114,7 +115,7 @@ internal class TaskLedger(
         val payload: MutableMap<String, Any> = mutableMapOf()
         request.everyNDays?.let { payload["every_n_days"] = it }
         request.daysPerMonth?.let { payload["days_per_month"] = it }
-        mutation.run { enqueue("task_frequency_votes", "VOTE", taskId, payload) }
+        mutation.run { enqueue(FREQUENCY_VOTES_TABLE, "VOTE", taskId, payload) }
     }
 
     /** [contexts] null keeps the task's own: only a present `contextIds` changes them. */

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.torchons.app.ui.common.InfoTooltip
+import com.torchons.app.ui.common.LocalIsOnline
 
 /**
  * Helpers Compose partages entre SettingsScreen et FoyerSettingsScreen.
@@ -92,6 +93,8 @@ fun BonusSlider(
         onValueChangeFinished = { onValueChangeEnd(sliderValue) },
         valueRange = range,
         steps = steps,
+        // The thresholds are the household's, written on the server: no dragging offline.
+        enabled = LocalIsOnline.current,
         modifier = Modifier.fillMaxWidth(),
     )
 }

@@ -1,6 +1,7 @@
 package com.torchons.app.core.sync
 
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.google.gson.Gson
@@ -17,7 +18,6 @@ import com.torchons.app.data.local.entities.TaskEntity
 import com.torchons.app.data.local.entities.toEntity
 import com.torchons.app.data.model.ChangeLogEntry
 import com.torchons.app.data.model.Completion
-import com.torchons.app.data.model.FrequencyRequest
 import com.torchons.app.data.model.RecurrenceRule
 import com.torchons.app.data.model.SyncOperation
 import com.torchons.app.data.model.SyncRequest
@@ -56,6 +56,8 @@ interface SyncWorkerEntryPoint {
  */
 internal const val SYNC_BATCH_SIZE = 100
 
+private const val TAG = "SyncWorker"
+
 /**
  * Sends [items] in order, [batchSize] at a time, and stops at the first batch
  * [sendBatch] reports as failed: the batches after it are not sent, so the
@@ -92,7 +94,8 @@ class SyncWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(ctx, params) {
 
-    private val gson = Gson()
+    /** `has_more` of the last /sync answer settled by [sendBatch]. */
+    private var hasMore = false
 
     /** Failure text stored on an op and shown in the sync dialog: translated, never the raw message. */
     private fun shown(t: Throwable) = UserErrors.from(applicationContext, t).message
@@ -104,52 +107,19 @@ class SyncWorker(
         )
         val pendingDao = ep.pendingOperationDao()
         val apiService = ep.apiService()
-        val taskDao = ep.taskDao()
-        val completionDao = ep.completionDao()
         val tokenManager = ep.tokenManager()
-        val guard = ep.completionRefreshGuard()
 
         val pending = pendingDao.getAll()
         if (pending.isEmpty()) return Result.success()
 
-        // Les votes de frequence ne transitent pas par /sync (table absente
-        // du contrat serveur). On les pousse directement via setFrequency.
-        val (freqVotes, rest) = pending.partition { it.tableName == "task_frequency_votes" }
-        freqVotes.forEach { op ->
-            runCatching {
-                @Suppress("UNCHECKED_CAST")
-                val payload = gson.fromJson(op.payloadJson, Map::class.java) as? Map<String, Any?>
-                val days = (payload?.get("every_n_days") as? Number)?.toInt()
-                @Suppress("UNCHECKED_CAST")
-                val daysPerMonth = (payload?.get("days_per_month") as? Map<String, Any?>)
-                    ?.mapNotNull { (k, v) -> (v as? Number)?.toInt()?.let { k to it } }
-                    ?.toMap()
-                val request = when {
-                    daysPerMonth != null -> FrequencyRequest(daysPerMonth = daysPerMonth)
-                    days != null -> FrequencyRequest(everyNDays = days)
-                    else -> null
-                }
-                if (request != null) {
-                    val resp = apiService.setFrequency(op.rowId, request)
-                    when {
-                        resp.isSuccessful -> pendingDao.delete(op.clientOpId)
-                        // 4xx = erreur permanente (payload invalide / tache supprimee /
-                        // foyer different...). Retry indefini pollue le sync et laisse
-                        // le bandeau "Synchronisation en cours" affiche a vie. On drop.
-                        resp.code() in 400..499 -> pendingDao.delete(op.clientOpId)
-                        // 5xx / reseau via onFailure : on retry normalement.
-                        else -> pendingDao.incrementAttempt(op.clientOpId, shown(resp))
-                    }
-                } else {
-                    pendingDao.delete(op.clientOpId)
-                }
-            }.onFailure {
-                // Shown under the op in the sync dialog: the translated sentence, never the raw message.
-                pendingDao.incrementAttempt(op.clientOpId, shown(it))
-            }
-        }
+        // Votes and prompt answers are not part of /sync: they go to their REST route (RestOps.kt),
+        // AFTER the /sync batch (D4): a vote on a task created offline needs the task to exist.
+        val (freqVotes, rest) = pending.partition { it.tableName in REST_OP_TABLES }
 
-        if (rest.isEmpty()) return Result.success()
+        if (rest.isEmpty()) {
+            pushVotes(freqVotes, ep)
+            return Result.success()
+        }
 
         val deviceId = tokenManager.getOrCreateDeviceId()
 
@@ -158,47 +128,14 @@ class SyncWorker(
         // without refusing a long offline queue forever. Each batch is settled --
         // applied ops dropped, cursor advanced -- before the next one, so a failure
         // midway retries only what is left.
-        val allSent = sendInBatches(rest, SYNC_BATCH_SIZE) { batch ->
-            val request = SyncRequest(
-                deviceId,
-                tokenManager.getSyncCursor(),
-                batch.map { it.toSyncOperation() },
-            )
-
-            // A failed request is recorded on every op of the batch, like a
-            // conflict: the sync icon turns to "problem" after two failures and
-            // its dialog names the cause. It used to return silently, and the
-            // icon kept spinning as an ordinary sync while the queue waited.
-            suspend fun failed(reason: String): Boolean {
-                batch.forEach { pendingDao.incrementAttempt(it.clientOpId, reason) }
-                return false
-            }
-
-            val resp = try {
-                apiService.sync(request)
-            } catch (e: CancellationException) {
-                // requestSync REPLACEs a running pass: not a failure of the ops.
-                throw e
-            } catch (e: Exception) {
-                return@sendInBatches failed(shown(e))
-            }
-
-            if (!resp.isSuccessful) return@sendInBatches failed(shown(resp))
-            val body = resp.body()
-                ?: return@sendInBatches failed(shown(IllegalStateException("empty body")))
-
-            settleApplied(guard, body.applied, batch, pendingDao::delete, completionDao::deleteById)
-            if (body.applied.isNotEmpty()) tokenManager.setLastSyncPushAt(System.currentTimeMillis())
-
-            settleConflicts(body.conflicts, batch, ep)
-
-            applyServerChanges(guard, body.serverChanges) {
-                applyServerChange(it, taskDao, completionDao, ep.delegationDao())
-            }
-
-            tokenManager.setSyncCursor(body.serverVersion)
-            true
-        }
+        // The last answer may say `has_more` (pull cut at 500 rows): ask again, bounded, same pass.
+        val allSent = syncThenVotes(
+            sendOps = {
+                sendInBatches(rest, SYNC_BATCH_SIZE) { batch -> sendBatch(batch, ep, deviceId) } &&
+                    pullWhileMore(hasMore, MAX_PULL_PAGES) { PullPage(sendBatch(emptyList(), ep, deviceId), hasMore) }
+            },
+            pushVotes = { pushVotes(freqVotes, ep) },
+        )
 
         // The widget skips its server refresh while ops are queued (it would wipe
         // their optimistic rows): once they are sent, it redraws from fresh data.
@@ -207,64 +144,106 @@ class SyncWorker(
         return if (allSent) Result.success() else Result.retry()
     }
 
-    private suspend fun settleConflicts(
+    /** One /sync request for [batch], settled before the next one; false when the pass must stop here. */
+    private suspend fun sendBatch(
+        batch: List<PendingOperationEntity>,
+        ep: SyncWorkerEntryPoint,
+        deviceId: String,
+    ): Boolean {
+        val pendingDao = ep.pendingOperationDao()
+        val apiService = ep.apiService()
+        val taskDao = ep.taskDao()
+        val completionDao = ep.completionDao()
+        val tokenManager = ep.tokenManager()
+        val guard = ep.completionRefreshGuard()
+        val request = SyncRequest(
+            deviceId,
+            tokenManager.getSyncCursor(),
+            batch.map { it.toSyncOperation() },
+        )
+
+        // A failed request is recorded on every op of the batch, like a
+        // conflict: the sync icon turns to "problem" after two failures and
+        // its dialog names the cause. It used to return silently, and the
+        // icon kept spinning as an ordinary sync while the queue waited.
+        suspend fun failed(reason: String): Boolean {
+            batch.forEach { pendingDao.incrementAttempt(it.clientOpId, reason) }
+            return false
+        }
+
+        val resp = try {
+            apiService.sync(request)
+        } catch (e: CancellationException) {
+            // requestSync REPLACEs a running pass: not a failure of the ops.
+            throw e
+        } catch (e: Exception) {
+            return failed(shown(e))
+        }
+
+        if (!resp.isSuccessful) return failed(shown(resp))
+        val body = resp.body()
+            ?: return failed(shown(IllegalStateException("empty body")))
+
+        settleApplied(guard, body.applied, batch, pendingDao::delete, completionDao::deleteById)
+        if (body.applied.isNotEmpty()) tokenManager.setLastSyncPushAt(System.currentTimeMillis())
+
+        settleBatchConflicts(body.conflicts, batch, ep)
+
+        applyServerChanges(
+            guard, body.serverChanges,
+            onError = { change, e ->
+                Log.w(TAG, "applying server change ${change.table}/${change.rowId} (${change.operation}) failed", e)
+            },
+        ) {
+            applyServerChange(it, taskDao, completionDao, ep.delegationDao())
+        }
+
+        tokenManager.setSyncCursor(body.serverVersion)
+        hasMore = body.hasMore
+        return true
+    }
+
+    private suspend fun pushVotes(votes: List<PendingOperationEntity>, ep: SyncWorkerEntryPoint) {
+        if (votes.isEmpty()) return
+        val dao = ep.pendingOperationDao()
+        pushRestOps(
+            votes,
+            send = { op -> sendRestOp(ep.apiService(), op) },
+            outcomes = object : VotePushOutcomes {
+                override suspend fun sent(op: PendingOperationEntity) = dao.delete(op.clientOpId)
+
+                override suspend fun retry(op: PendingOperationEntity, reason: String) =
+                    dao.incrementAttempt(op.clientOpId, reason)
+
+                override suspend fun refused(op: PendingOperationEntity, reason: String) {
+                    // A refused answer to a prompt means the prompt is gone: nothing to tell.
+                    if (op.tableName == PROMPT_RESOLUTIONS_TABLE) return dao.delete(op.clientOpId)
+                    val notice = RejectedSyncOp(
+                        kind = pendingOpKind(op.tableName, op.operation),
+                        taskTitle = taskIdOf(op)?.let { ep.taskDao().getById(it)?.title },
+                        reason = reason,
+                        rejectedAtMs = System.currentTimeMillis(),
+                    )
+                    ep.tokenManager().updateRejectedSyncOpsJson { appendRejectedOps(it, listOf(notice)) }
+                    dao.delete(op.clientOpId)
+                }
+            },
+            reasonOf = ::shown,
+            reasonOfError = ::shown,
+        )
+    }
+
+    private suspend fun settleBatchConflicts(
         conflicts: List<SyncConflict>,
         batch: List<PendingOperationEntity>,
         ep: SyncWorkerEntryPoint,
-    ) {
-        val pendingDao = ep.pendingOperationDao()
-        conflicts.forEach { conflict ->
-            // `out_of_scope`: the op can never apply (household left, row gone).
-            // `rejected`: refused for good, dropped below and told to the user.
-            // Every other conflict stays queued and is replayed on the next pass.
-            when (conflict.reason) {
-                "out_of_scope" -> pendingDao.delete(conflict.clientOpId)
-                "rejected" -> Unit
-                else -> pendingDao.incrementAttempt(conflict.clientOpId, conflict.detail ?: conflict.reason)
-            }
-        }
-        dropRejected(conflicts.filter { it.reason == "rejected" }, batch, ep)
-    }
-
-    /**
-     * Drops the ops the server refused for good, the way a manual discard does
-     * (their local effect undone, an INSERT's dependents with it), and records a
-     * notice the sync dialog shows until acknowledged.
-     */
-    private suspend fun dropRejected(
-        rejected: List<SyncConflict>,
-        batch: List<PendingOperationEntity>,
-        ep: SyncWorkerEntryPoint,
-    ) {
-        if (rejected.isEmpty()) return
-        val notices = rejected.mapNotNull { conflict ->
-            val op = batch.firstOrNull { it.clientOpId == conflict.clientOpId } ?: return@mapNotNull null
-            RejectedSyncOp(
-                kind = pendingOpKind(op.tableName, op.operation),
-                taskTitle = taskIdOf(op)?.let { ep.taskDao().getById(it)?.title },
-                reason = readableSyncError(conflict.detail),
-                rejectedAtMs = System.currentTimeMillis(),
-            )
-        }
-        ep.tokenManager().updateRejectedSyncOpsJson { appendRejectedOps(it, notices) }
-        for (conflict in rejected) {
-            try {
-                ep.taskRepository().discardPendingOp(conflict.clientOpId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // The refresh that undoes a local edit needs the network; the op itself
-                // is already out of the queue, the next refresh puts the cache right.
-                ep.pendingOperationDao().delete(conflict.clientOpId)
-            }
-        }
-    }
+    ) = settleConflicts(
+        conflicts, batch, EntryPointConflictStore(ep),
+        textOf = { reason, detail -> conflictText(applicationContext, reason, detail) },
+    )
 
     private fun PendingOperationEntity.toSyncOperation(): SyncOperation {
-        @Suppress("UNCHECKED_CAST")
-        val data = try {
-            gson.fromJson(payloadJson, Map::class.java) as? Map<String, Any?>
-        } catch (_: Exception) { null }
+        val data = opPayload(this)
 
         return SyncOperation(
             clientOpId = clientOpId,
@@ -285,15 +264,13 @@ class SyncWorker(
         completionDao: CompletionDao,
         delegationDao: DelegationDao,
     ) {
-        try {
-            when (change.table) {
-                "tasks" -> applyTaskChange(change, taskDao)
-                "task_completions" -> applyCompletionChange(change, completionDao)
-                "task_delegations" -> delegationEntityFromChange(change)
-                    ?.let { delegationDao.upsertAll(listOf(it)) }
-                    ?: delegationDao.deleteById(change.rowId)
-            }
-        } catch (_: Exception) {}
+        when (change.table) {
+            "tasks" -> applyTaskChange(change, taskDao)
+            "task_completions" -> applyCompletionChange(change, completionDao)
+            "task_delegations" -> delegationEntityFromChange(change)
+                ?.let { delegationDao.upsertAll(listOf(it)) }
+                ?: delegationDao.deleteById(change.rowId)
+        }
     }
 
     private suspend fun applyTaskChange(change: ChangeLogEntry, taskDao: TaskDao) {

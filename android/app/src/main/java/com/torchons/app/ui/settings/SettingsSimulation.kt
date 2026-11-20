@@ -1,7 +1,9 @@
 package com.torchons.app.ui.settings
 
-import android.util.Log
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.OnlineResult
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.runOnline
 import com.torchons.app.data.model.MaintenanceRateResponse
 import com.torchons.app.data.model.ObjectiveUpdate
 import com.torchons.app.data.model.PaceResponse
@@ -22,6 +24,8 @@ import kotlinx.coroutines.launch
 internal class SettingsSimulation(
     private val scope: CoroutineScope,
     private val apiService: ApiService,
+    private val errorOf: (Throwable) -> UserError,
+    private val onError: (UserError) -> Unit,
 ) {
 
     // --- Simulation rattrapage (reutilise ProjectionSimulationDialog) ---
@@ -68,13 +72,13 @@ internal class SettingsSimulation(
      *  du dialog de simulation). Refresh les donnees apres. */
     fun saveObjective(minutes: Int?, unit: String?) {
         scope.launch {
-            try {
-                apiService.updateObjective(
-                    ObjectiveUpdate(dailyObjectiveMinutes = minutes, displayUnit = unit),
-                )
-                loadSimulationData()
-            } catch (e: Exception) {
-                Log.e("SettingsVM", "saveObjective failed", e)
+            // Online-only (the dialog disables the button offline): a refusal is shown, not logged.
+            val result = runOnline(errorOf) {
+                apiService.updateObjective(ObjectiveUpdate(dailyObjectiveMinutes = minutes, displayUnit = unit))
+            }
+            when (result) {
+                is OnlineResult.Done -> loadSimulationData()
+                is OnlineResult.Failed -> onError(result.error)
             }
         }
     }

@@ -8,8 +8,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -45,6 +48,15 @@ class BackendHealthMonitor @Inject constructor(
 
     private val _state = MutableStateFlow<ConnectionState>(ConnectionState.Online)
     val state: StateFlow<ConnectionState> = _state.asStateFlow()
+
+    /**
+     * True while the backend answers. What a screen gates its online-only buttons on
+     * (disabled, with a "network needed" label): the state flips on the first failed call,
+     * so the very first tap after losing the network still gets a translated error.
+     */
+    val isOnline: StateFlow<Boolean> = _state
+        .map { it is ConnectionState.Online }
+        .stateIn(scope, SharingStarted.Eagerly, true)
 
     /**
      * Epoch ms of the last API call that succeeded, since the app process

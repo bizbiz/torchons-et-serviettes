@@ -53,7 +53,14 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import com.torchons.app.ui.common.LocalIsOnline
+import com.torchons.app.ui.common.NetworkNeededNote
+import com.torchons.app.ui.common.OnlineResult
 import com.torchons.app.ui.common.PresenceCalendarGrid
+import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.UserErrorBlock
+import com.torchons.app.ui.common.UserErrors
+import com.torchons.app.ui.common.runOnline
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -114,6 +121,9 @@ fun StreakCalendarModal(
     // Incremente a chaque edition reussie -> re-trigger le GET presence
     // (la serie se recalcule sur la nouvelle presence).
     var refreshTrigger by remember { mutableStateOf(0) }
+    val isOnline = LocalIsOnline.current
+    // The last refused presence tap, shown under the grid until the next tap.
+    var tapError by remember { mutableStateOf<UserError?>(null) }
 
     var selectedUserId by remember {
         mutableStateOf(
@@ -299,33 +309,28 @@ fun StreakCalendarModal(
                                 PresenceCellState.UNKNOWN -> "clear"
                             }
                             scope.launch {
-                                try {
-                                    val r = withContext(Dispatchers.IO) {
+                                tapError = null
+                                // Online-only: the grid is not editable offline; a failure is shown (D7).
+                                val result = runOnline({ UserErrors.from(context, it) }) {
+                                    withContext(Dispatchers.IO) {
                                         apiService.putPresence(
-                                            listOf(
-                                                PresenceDayPut(
-                                                    date = day.toString(),
-                                                    status = status,
-                                                ),
-                                            ),
+                                            listOf(PresenceDayPut(date = day.toString(), status = status)),
                                         )
                                     }
-                                    if (r.isSuccessful) {
+                                }
+                                when (result) {
+                                    is OnlineResult.Failed -> tapError = result.error
+                                    is OnlineResult.Done -> {
                                         refreshTrigger++
                                         withContext(Dispatchers.IO) {
                                             taskRepository.refreshTasks()
-                                            taskRepository.refreshCompletions(
-                                                limit = 2000,
-                                            )
+                                            taskRepository.refreshCompletions(limit = 2000)
                                         }
                                     }
-                                } catch (_: Exception) {
-                                    // best-effort : online autoritaire, le
-                                    // prochain GET re-aligne si besoin.
                                 }
                             }
                         },
-                        editable = true,
+                        editable = isOnline,
                         showLegend = true,
                         activityDays = activityDays,
                         showStreak = gamificationVisible,
@@ -343,6 +348,10 @@ fun StreakCalendarModal(
                         }
                     }
                 }
+
+                // Presence is written on the server: no editing offline, and the modal says so.
+                if (!isOnline) NetworkNeededNote(Modifier.padding(top = 8.dp))
+                tapError?.let { UserErrorBlock(it, "PresenceCalendar", modifier = Modifier.padding(top = 8.dp)) }
 
                 // P4b : plus de lien "Modifier la presence →" — CE modal EST
                 // la surface d'edition (one modal to rule them all).

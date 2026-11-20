@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -27,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
 import com.torchons.app.ui.common.InfoTooltip
+import com.torchons.app.ui.common.LocalIsOnline
+import com.torchons.app.ui.common.NetworkNeededNote
 
 // Collapsible "Bonus / Malus" card (the 13 thresholds) of the household settings screen.
 @Composable
@@ -59,9 +62,12 @@ internal fun FoyerBonusMalusCard(viewModel: SettingsViewModel) {
             )
         }
 
-        if (showBonusMalus && bonusConfig != null) {
+        // A refused change rebuilds the sliders from the server's values (key), they must not keep the drag.
+        val resets by viewModel.bonusResets.collectAsState()
+        if (showBonusMalus && bonusConfig != null) key(resets) {
             val cfg = bonusConfig!!
             Spacer(Modifier.height(8.dp))
+            if (!LocalIsOnline.current) NetworkNeededNote()
 
             Text(
                 stringResource(R.string.foyer_bonus_group_late),

@@ -16,6 +16,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -32,6 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
 import com.torchons.app.data.model.Foyer
+import com.torchons.app.ui.common.LocalIsOnline
+import com.torchons.app.ui.common.NetworkNeededNote
 import com.torchons.app.ui.common.dismissKeyboardThen
 import com.torchons.app.ui.common.submitKeyboardActions
 
@@ -43,23 +46,28 @@ internal fun FoyerRenameDialog(
     onSave: (String) -> Unit,
 ) {
     var name by remember { mutableStateOf(foyerName) }
+    val isOnline = LocalIsOnline.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.foyer_rename_title), fontWeight = FontWeight.Bold) },
         text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(stringResource(R.string.common_name_label)) },
-                singleLine = true,
-                keyboardActions = submitKeyboardActions(),
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.common_name_label)) },
+                    singleLine = true,
+                    keyboardActions = submitKeyboardActions(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                // The name goes to the server: no saving offline, and the dialog says so.
+                if (!isOnline) NetworkNeededNote(Modifier.padding(top = 4.dp))
+            }
         },
         confirmButton = {
             Button(
                 onClick = dismissKeyboardThen { onSave(name) },
-                enabled = name.trim().isNotEmpty(),
+                enabled = name.trim().isNotEmpty() && isOnline,
             ) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
@@ -72,11 +80,14 @@ internal fun FoyerRenameDialog(
 @Composable
 internal fun FoyerSwitchDialog(
     allFoyers: List<Foyer>,
+    state: FoyerSwitchState,
     onDismiss: () -> Unit,
     onSwitchTo: (String) -> Unit,
 ) {
+    val switching = state is FoyerSwitchState.Switching
     AlertDialog(
-        onDismissRequest = onDismiss,
+        // The switch (wipe + refresh) cannot be interrupted: the sheet stays until it is over.
+        onDismissRequest = { if (!switching) onDismiss() },
         title = { Text(stringResource(R.string.foyer_switch_dialog_title), fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -85,10 +96,24 @@ internal fun FoyerSwitchDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (switching) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Text(
+                        text = stringResource(R.string.foyer_switch_in_progress),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (state is FoyerSwitchState.Error) {
+                    Text(
+                        text = state.error.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 allFoyers.forEach { f ->
                     Card(
                         onClick = {
-                            if (!f.isCurrent) {
+                            if (!f.isCurrent && !switching) {
                                 onSwitchTo(f.id)
                             }
                         },
@@ -135,7 +160,7 @@ internal fun FoyerSwitchDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !switching) {
                 Text(stringResource(R.string.foyer_switch_dialog_close))
             }
         },

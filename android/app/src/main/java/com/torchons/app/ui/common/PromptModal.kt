@@ -204,10 +204,15 @@ private fun BumpEffortDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                // The vote dialogs read their current state from the server: disabled offline, and
+                // the line below says why (D6, 2026-11-20 audit: the tap used to do nothing).
+                val isOnline = LocalIsOnline.current
                 Button(
                     onClick = onRevote,
+                    enabled = isOnline,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.bump_effort_button_revote)) }
+                if (!isOnline) NetworkNeededNote()
 
                 OutlinedButton(
                     onClick = onLater,

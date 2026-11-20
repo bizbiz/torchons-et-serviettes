@@ -53,14 +53,29 @@ interface TaskDao {
     @Query("DELETE FROM tasks")
     suspend fun deleteAll()
 
+    /** Rows the offline queue still has to push (INSERT, UPDATE or DELETE of a task). */
+    @Query("SELECT rowId FROM pending_operations WHERE tableName = 'tasks'")
+    suspend fun pendingRowIds(): List<String>
+
+    @Query(
+        "DELETE FROM tasks WHERE id NOT IN " +
+            "(SELECT rowId FROM pending_operations WHERE tableName = 'tasks')"
+    )
+    suspend fun deleteAllSynced()
+
     /**
-     * Remplace integralement le contenu de la table par la liste fournie.
-     * Utile apres un GET /api/tasks pour purger les taches qui n'existent
-     * plus cote serveur (suppression non encore observee localement).
+     * Remplace le contenu de la table par la liste fournie (REPLACE du scope) apres un
+     * GET /api/tasks : purge les taches qui n'existent plus cote serveur.
+     *
+     * Sauf les lignes qu'une op de la file n'a pas encore poussees (D1, audit du 2026-11-20) :
+     * une tache creee hors ligne disparaissait, une edition etait annulee, une tache supprimee
+     * revenait. Meme reserve que `CompletionDao.replaceAll` / `DelegationDao.replaceAll`. Le
+     * vidage du cache d'un changement de foyer passe par [deleteAll], pas par ici.
      */
     @Transaction
     suspend fun replaceAll(tasks: List<TaskEntity>) {
-        deleteAll()
-        upsertAll(tasks)
+        val pending = pendingRowIds().toSet()
+        deleteAllSynced()
+        upsertAll(tasks.filter { it.id !in pending })
     }
 }

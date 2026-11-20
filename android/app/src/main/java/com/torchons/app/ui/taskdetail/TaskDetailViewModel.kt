@@ -11,7 +11,9 @@ import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.CompletionChecks
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.data.repository.VoteRepository
 import com.torchons.app.ui.common.RatingRecurrence
+import com.torchons.app.ui.home.saveRatingData
 import com.torchons.app.ui.common.UserError
 import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.util.TaskUrgencyCalculator
@@ -40,6 +42,7 @@ class TaskDetailViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
     private val completionChecks: CompletionChecks,
     private val apiService: ApiService,
+    private val votes: VoteRepository,
     authRepository: AuthRepository,
     tokenManager: com.torchons.app.data.local.TokenManager,
     savedStateHandle: SavedStateHandle,
@@ -421,27 +424,23 @@ class TaskDetailViewModel @Inject constructor(
     /** Soumet le vote d'effort (depuis EffortVoteDialog). */
     fun submitEffortVote(points: Int) {
         viewModelScope.launch {
-            try {
-                val resp = apiService.setEffort(taskId, mapOf("points" to points))
-                if (resp.isSuccessful) {
+            // Online-first, queued when the network fails (D3): only a refusal is an error.
+            votes.voteEffort(taskId, points).fold(
+                onSuccess = {
                     _uiState.value = _uiState.value.copy(
                         showEffortVoteDialog = false,
                         completionMessage = appContext.getString(R.string.task_detail_vote_saved),
                     )
                     refreshEffortVotes()
                     refresh()  // pour les ratings + scorePoints recalcule
-                } else {
+                },
+                onFailure = { e ->
                     _uiState.value = _uiState.value.copy(
                         showEffortVoteDialog = false,
-                        error = UserErrors.fromResponse(appContext, resp),
+                        error = UserErrors.from(appContext, e),
                     )
-                }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    showEffortVoteDialog = false,
-                    error = UserErrors.from(appContext, e),
-                )
-            }
+                },
+            )
         }
     }
 
@@ -474,11 +473,8 @@ class TaskDetailViewModel @Inject constructor(
     fun submitRating(affinity: Int, effortPoints: Int, recurrence: RatingRecurrence?) {
         viewModelScope.launch {
             try {
-                apiService.setAffinity(taskId, com.torchons.app.data.model.AffinityRequest(affinity))
-                apiService.setEffort(taskId, mapOf("points" to effortPoints))
-                if (recurrence != null) {
-                    taskRepository.voteFrequency(taskId, recurrence.everyNDays)
-                }
+                // Each vote checks its answer and is queued offline; a refusal throws (shown below).
+                saveRatingData(votes, taskRepository, taskId, affinity, effortPoints, recurrence)
                 _uiState.value = _uiState.value.copy(
                     ratingContext = null,
                     completionMessage = appContext.getString(R.string.task_detail_notes_saved),

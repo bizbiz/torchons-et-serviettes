@@ -355,49 +355,7 @@ fun HomeScreen(
     ) {
         // Bandeau "jours non confirmes" (home freeze v2)
         if (uiState.hasUnresolvedPresenceDays && uiState.unresolvedPresenceDaysCount > 0) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFFFF3CD),
-                ),
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = Color(0xFFD97706),
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            pluralStringResource(
-                                R.plurals.home_unresolved_presence_days,
-                                uiState.unresolvedPresenceDaysCount,
-                                uiState.unresolvedPresenceDaysCount,
-                            ),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF92400E),
-                        )
-                        Text(
-                            stringResource(R.string.home_unresolved_presence_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFFB45309),
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = { viewModel.reopenPresencePrompt() },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF92400E)),
-                    ) {
-                        Text(stringResource(R.string.home_unresolved_presence_resolve), style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
+            HomePresenceBanner(uiState.unresolvedPresenceDaysCount) { viewModel.reopenPresencePrompt() }
         }
 
         // Greeting + rate button + "feature turned off by a member" notice

@@ -98,6 +98,10 @@ class PropositionStateHolder @Inject constructor(
                 } else if (resp.code() == 410) {
                     _currentProposition.value = null
                     _error.value = UserError(context.getString(R.string.proposition_expired))
+                } else {
+                    // Any other refusal (400, 403, 404, 5xx...) is told, not swallowed (D7): the
+                    // answer did not go through and the member must know to try again.
+                    _error.value = UserErrors.fromResponse(context, resp)
                 }
             }.onFailure { _error.value = UserErrors.from(context, it) }
         }

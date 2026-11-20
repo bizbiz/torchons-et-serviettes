@@ -256,6 +256,7 @@
     <string name="foyer_switch_dialog_intro">Basculer videra le cache local et rechargera les données du foyer choisi. Ça prend quelques secondes.</string>
     <string name="foyer_switch_dialog_current_cd">Foyer actif</string>
     <string name="foyer_switch_dialog_close">Fermer</string>
+    <string name="foyer_switch_in_progress">Changement de foyer en cours…</string>
 
     <!-- Dialogs RecoveryAndLeaveDialogs -->
     <string name="recovery_dialog_confirm_title">Régénérer ton code&#160;?</string>
@@ -1499,11 +1500,23 @@
     <string name="sync_op_completion_edit">Complétion modifiée</string>
     <string name="sync_op_completion_delete">Complétion supprimée</string>
     <string name="sync_op_frequency_vote">Vote de fréquence</string>
+    <string name="sync_op_effort_vote">Vote d’effort</string>
+    <string name="sync_op_affinity_vote">Vote d’affinité</string>
+    <string name="sync_op_prompt_answer">Réponse à une question</string>
+    <string name="sync_op_setting_change">Réglage</string>
     <string name="sync_op_other">Modification</string>
     <string name="sync_op_unknown_task">tâche inconnue</string>
     <string name="sync_rejected_title">Refusé par le serveur</string>
     <string name="sync_rejected_hint">Ces modifications ne pouvaient pas être enregistrées : elles ont été retirées de la file et annulées sur ce téléphone.</string>
     <string name="sync_rejected_meta">Retirée le %1$s</string>
+    <string name="sync_reason_stale_update">Cet élément a été modifié ailleurs entre-temps. Nouvel essai à la prochaine synchronisation.</string>
+    <string name="sync_reason_unique_violation">Cet élément existe déjà sur le serveur.</string>
+    <string name="sync_reason_deleted">Cet élément a été supprimé entre-temps.</string>
+    <string name="sync_reason_not_found">Cet élément n\'existe plus sur le serveur.</string>
+    <string name="sync_reason_op_error">Le serveur n\'a pas pu appliquer cette modification pour l\'instant. Nouvel essai à la prochaine synchronisation.</string>
+    <string name="sync_reason_rejected">Le serveur a refusé cette modification.</string>
+    <string name="sync_reason_out_of_scope">Cet élément n\'est plus accessible (supprimé, ou foyer quitté) : la modification a été abandonnée.</string>
+    <string name="sync_reason_unknown">Le serveur n\'a pas pu appliquer cette modification.</string>
     <string name="sync_op_label_format">%1$s : %2$s</string>
     <string name="sync_op_label_member_format">%1$s : %2$s (%3$s)</string>
     <string name="sync_op_meta_waiting">En attente depuis le %1$s</string>
@@ -1899,4 +1912,19 @@
     <string name="absence_advice_also_presence">Il lui faut aussi un contexte «&#160;%1$s&#160;».</string>
     <string name="absence_advice_add_presence">Pour la mettre en pause : ajoute-lui un contexte «&#160;%1$s&#160;».</string>
     <string name="user_error_mail_line_screenshot">Si tu as une capture d\'écran de l\'erreur, elle m\'aidera beaucoup.\n\nMerci beaucoup de prendre le temps de me faire remonter les erreurs,\nvraiment merci !!</string>
+    <!-- Audit 2026-11-20 (D3, D6, D7, D9): actions en ligne seulement, votes mis en file, déconnexion -->
+    <string name="network_needed">Réseau nécessaire</string>
+    <string name="home_rate_needs_network">Noter une tâche : réseau nécessaire</string>
+    <string name="prompt_vote_needs_network">Réseau nécessaire pour ouvrir ce vote. Réessayez une fois connecté.</string>
+    <string name="prompt_effort_step_needs_network">Fréquence enregistrée. Réseau nécessaire pour l’étape suivante (l’effort) : revotez l’effort depuis la fiche de la tâche une fois connecté.</string>
+    <string name="prompt_vote_task_unavailable">Cette tâche n’est plus disponible.</string>
+    <string name="action_error_title">Action impossible</string>
+    <plurals name="mydevices_signout_pending">
+        <item quantity="one">%d modification n’est pas encore envoyée au serveur. Si tu te déconnectes maintenant, elle sera perdue.</item>
+        <item quantity="other">%d modifications ne sont pas encore envoyées au serveur. Si tu te déconnectes maintenant, elles seront perdues.</item>
+    </plurals>
+    <string name="mydevices_signout_sync_first">Synchroniser d’abord</string>
+    <string name="mydevices_signout_anyway">Me déconnecter quand même</string>
+    <string name="mydevices_signout_syncing">Synchronisation en cours…</string>
+    <string name="mydevices_signout_sync_failed">La synchronisation n’a pas abouti. Vérifie ta connexion et réessaie, ou déconnecte-toi quand même : ces modifications seront perdues.</string>
 </resources>

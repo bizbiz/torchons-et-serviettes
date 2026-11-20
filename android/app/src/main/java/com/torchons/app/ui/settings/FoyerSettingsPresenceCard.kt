@@ -27,6 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
 import com.torchons.app.ui.common.InfoTooltip
+import com.torchons.app.ui.common.LocalIsOnline
+import com.torchons.app.ui.common.NetworkNeededNote
 import com.torchons.app.util.WifiHelper
 
 // "Presence & absences" card of the household settings screen: home freeze + home WiFi.
@@ -54,12 +56,17 @@ internal fun FoyerPresenceCard(
         }
         Spacer(Modifier.height(8.dp))
 
+        // Home freeze and the Wi-Fi names are server writes: disabled offline, with the reason shown.
+        val isOnline = LocalIsOnline.current
+        if (!isOnline) NetworkNeededNote()
+
         // Toggle mise en pause si absent (home freeze)
         SettingSwitch(
             title = stringResource(R.string.foyer_presence_freeze_title),
             subtitle = stringResource(R.string.foyer_presence_freeze_subtitle),
             checked = homeFreezeEnabled,
             onCheckedChange = { viewModel.setCurrentFoyerHomeFreezeEnabled(it) },
+            enabled = isOnline,
         )
 
         AbsenceSheetLink(freezeEnabled = homeFreezeEnabled)
@@ -110,6 +117,7 @@ internal fun FoyerPresenceCard(
                     )
                     IconButton(
                         onClick = { viewModel.removeHomeSsid(ssid) },
+                        enabled = isOnline,
                         modifier = Modifier.size(24.dp),
                     ) {
                         Icon(
@@ -137,6 +145,7 @@ internal fun FoyerPresenceCard(
                     onRequestWifiExplanation()
                 }
             },
+            enabled = isOnline,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))

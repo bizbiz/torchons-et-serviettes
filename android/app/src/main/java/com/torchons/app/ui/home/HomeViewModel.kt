@@ -21,6 +21,7 @@ import com.torchons.app.data.repository.DelegationRepository
 import com.torchons.app.ui.today.TodayDelegations
 import com.torchons.app.data.repository.HomeRepository
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.data.repository.VoteRepository
 import com.torchons.app.ui.common.RatingRecurrence
 import com.torchons.app.ui.common.UserError
 import com.torchons.app.ui.common.UserErrors
@@ -50,6 +51,7 @@ class HomeViewModel @Inject constructor(
     private val homeRepository: HomeRepository,
     private val authRepository: AuthRepository,
     private val taskRepository: TaskRepository,
+    private val votes: VoteRepository,
     private val completionChecks: CompletionChecks,
     private val popupSessionGate: PopupSessionGate,
     private val ratingCadence: RatingCadence,
@@ -149,12 +151,19 @@ class HomeViewModel @Inject constructor(
 
     private val prompts = HomePromptActions(
         scope = viewModelScope,
+        application = application,
         uiState = _uiState,
         apiService = apiService,
         taskRepository = taskRepository,
+        votes = votes,
         tokenManager = tokenManager,
         activeTasks = { activeTasks.value },
         refresh = ::refresh,
+    )
+
+    private val rating = HomeRatingActions(
+        viewModelScope, application, _uiState, apiService, votes, taskRepository, homeRepository,
+        tokenManager, ratingCadence, popupSessionGate, ::refresh, ::refreshProjection,
     )
 
     private val completions = HomeCompletionActions(
@@ -352,21 +361,6 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * Save l'objectif perso de l'user courant (appele depuis le popup
-     * simulation mode "Juste pour moi"). Refresh la card apres.
-     */
-    fun saveObjective(minutes: Int?, unit: String?) {
-        viewModelScope.launch {
-            try {
-                apiService.updateObjective(ObjectiveUpdate(dailyObjectiveMinutes = minutes, displayUnit = unit))
-                refreshProjection()
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = UserErrors.from(getApplication(), e))
-            }
-        }
-    }
-
-    /**
      * Proposer un objectif multi-user au foyer (v0.8.1). Declenche le flow
      * live FCM — le proposer rentre en ecran d'attente bloquant, les
      * receveurs recoivent un modal accept/decline.
@@ -400,80 +394,22 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun submitRating(taskId: String, affinity: Int, effortPoints: Int, recurrence: RatingRecurrence?) {
-        viewModelScope.launch {
-            try {
-                saveRatingData(apiService, taskRepository, taskId, affinity, effortPoints, recurrence)
-                popupSessionGate.disarm()
-                _uiState.value = _uiState.value.copy(showAffinityPopup = false)
-                ratingCadence.onRated()
-                refresh()
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = UserErrors.from(getApplication(), e))
-            }
-        }
-    }
-
-    fun submitRatingAndNext(taskId: String, affinity: Int, effortPoints: Int, recurrence: RatingRecurrence?) {
-        viewModelScope.launch {
-            try {
-                saveRatingData(apiService, taskRepository, taskId, affinity, effortPoints, recurrence)
-                _uiState.value = _uiState.value.copy(showAffinityPopup = false)
-                ratingCadence.onRated()
-
-                // Essayer d'abord les taches non-notees
-                homeRepository.refreshPendingAffinity(tokenManager.affinityExpiryFlow.first())
-                var next = homeRepository.observePendingAffinity().first()?.firstOrNull()
-
-                // Si plus de non-notees, fallback sur oldest-rating (re-notation)
-                if (next == null) {
-                    val resp = apiService.getOldestRating()
-                    next = if (resp.isSuccessful) resp.body()?.firstOrNull() else null
-                }
-
-                if (next != null) {
-                    _uiState.value = _uiState.value.copy(
-                        pendingAffinity = next,
-                        showAffinityPopup = true,
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        error = UserError(getApplication<Application>().getString(R.string.home_all_rated)),
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = UserErrors.from(getApplication(), e))
-            }
-        }
-    }
-
     fun dismissAffinityPopup() {
         ratingCadence.onDismissed()
         popupSessionGate.disarm()
         _uiState.value = _uiState.value.copy(showAffinityPopup = false)
     }
 
-    fun showManualRating() {
-        viewModelScope.launch {
-            try {
-                val resp = apiService.getOldestRating()
-                val task = if (resp.isSuccessful) resp.body()?.firstOrNull() else null
-                if (task != null) {
-                    popupSessionGate.arm()
-                    ratingCadence.onManualOpened()
-                    _uiState.value = _uiState.value.copy(
-                        pendingAffinity = task,
-                        showAffinityPopup = true,
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        error = UserError(getApplication<Application>().getString(R.string.home_all_rated)),
-                    )
-                }
-            } catch (_: Exception) {
-            }
-        }
-    }
+    // Rating pop-up and personal objective: HomeRatingActions.
+    fun saveObjective(minutes: Int?, unit: String?) = rating.saveObjective(minutes, unit)
+
+    fun submitRating(taskId: String, affinity: Int, effortPoints: Int, recurrence: RatingRecurrence?) =
+        rating.submitRating(taskId, affinity, effortPoints, recurrence)
+
+    fun submitRatingAndNext(taskId: String, affinity: Int, effortPoints: Int, recurrence: RatingRecurrence?) =
+        rating.submitRatingAndNext(taskId, affinity, effortPoints, recurrence)
+
+    fun showManualRating() = rating.showManualRating()
 
     fun completeTask(taskId: String, previewPoints: Int? = null, previewReason: String? = null) =
         completions.completeTask(taskId, previewPoints, previewReason)

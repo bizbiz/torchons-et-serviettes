@@ -22,6 +22,10 @@ interface PendingOperationDao {
     @Query("SELECT * FROM pending_operations ORDER BY createdAt ASC")
     suspend fun getAll(): List<PendingOperationEntity>
 
+    /** Row ids the queue still has to push for [table] (a prompt answer, for instance, is keyed by prompt). */
+    @Query("SELECT rowId FROM pending_operations WHERE tableName = :table")
+    suspend fun rowIdsOf(table: String): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(op: PendingOperationEntity)
 

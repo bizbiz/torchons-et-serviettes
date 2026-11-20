@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -32,6 +33,8 @@ import com.torchons.app.R
 import com.torchons.app.data.model.MaintenanceRateResponse
 import com.torchons.app.data.model.PaceResponse
 import com.torchons.app.data.model.RetardResponse
+import com.torchons.app.ui.common.LocalIsOnline
+import com.torchons.app.ui.common.NetworkNeededNote
 import com.torchons.app.util.TaskUrgencyCalculator
 import kotlin.math.ceil
 import kotlin.math.max
@@ -74,6 +77,7 @@ fun ProjectionSimulationDialog(
         return
     }
 
+    val isOnline = LocalIsOnline.current
     val me = users.find { it.userId == currentUserId }
     val initialUnit = me?.objectiveDisplayUnit ?: "min"
     var unit by remember { mutableStateOf(initialUnit) }
@@ -240,6 +244,8 @@ fun ProjectionSimulationDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // Both buttons talk to the server: disabled offline, and the dialog says why.
+                if (!isOnline) NetworkNeededNote(Modifier.padding(top = 8.dp))
             }
         },
         confirmButton = {
@@ -250,16 +256,19 @@ fun ProjectionSimulationDialog(
                     val map = sliderValues.mapValues { it.value.roundToInt() }
                     onProposeToFoyer(map, unit)
                 },
-                enabled = otherTouched,
+                enabled = otherTouched && isOnline,
             ) { Text(stringResource(R.string.simulation_propose_to_foyer)) }
         },
         dismissButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
-                OutlinedButton(onClick = {
-                    val mineValue = sliderValues[currentUserId]?.roundToInt() ?: 0
-                    onSaveSelf(mineValue, unit)
-                }) { Text(stringResource(R.string.simulation_just_for_me)) }
+                OutlinedButton(
+                    onClick = {
+                        val mineValue = sliderValues[currentUserId]?.roundToInt() ?: 0
+                        onSaveSelf(mineValue, unit)
+                    },
+                    enabled = isOnline,
+                ) { Text(stringResource(R.string.simulation_just_for_me)) }
             }
         },
     )
