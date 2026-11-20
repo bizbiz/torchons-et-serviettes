@@ -439,9 +439,12 @@ fun HomeScreen(
         // qui garantit qu'il y a quasi toujours du stock a afficher.
         // v0.16+ : on filtre aussi dismissedIds (clic ✕ sur la carte), reset
         // au cold start — preserve a travers LifecycleResumeEffect.
+        val locallyCompleted by viewModel.locallyCompletedIds.collectAsState()
         val visibleSuggestions = uiState.suggestions.filter { s ->
             s.taskId == uiState.celebratingTaskId ||
                 (s.taskId !in uiState.justCompletedIds && s.taskId !in uiState.dismissedIds &&
+                    // Completed by me, pushed or not: read from Room, so it also holds after a restart.
+                    s.taskId !in locallyCompleted &&
                     // Handed by me or to me: in no suggestion pile (also passed to /suggestions).
                     s.taskId !in todayExcluded)
         }

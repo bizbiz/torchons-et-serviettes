@@ -47,7 +47,16 @@ pas).
 ❌ **Ne PAS** déclencher un `refresh<Scope>()` juste après une mutation
 optimiste tant que l'op n'est pas poussée : le refetch serveur
 ré-ajouterait la ligne (le serveur l'a encore). Laisser la sync
-réconcilier.
+réconcilier. L'Accueil se rafraîchit quand le worker a fini un push
+(`lastSyncPushAt`), pas après le tap.
+
+✅ **Une complétion solo s'écrit au tap**, jamais après la célébration :
+`CompletionLedger` (via `TaskRepository.completeTask`) fait contrôle de
+doublon + ligne Room + op en file dans UNE transaction, dans un scope
+applicatif que quitter l'écran n'annule pas (19/11 : quatre taps, une seule
+op arrivée au serveur). La célébration est visuelle ; un second tap sur la
+même tâche pendant celle-ci est ignoré (`TapGuard`). Un `applied` du serveur
+marqué `dropped` supprime la ligne locale (`SyncWorker`).
 
 ### Refresh / réconciliation (online = autoritaire)
 

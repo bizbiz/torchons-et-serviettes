@@ -3,7 +3,9 @@ package com.torchons.app.ui.home
 import android.app.Application
 import com.torchons.app.R
 import com.torchons.app.data.repository.CompletionChecks
+import com.torchons.app.data.repository.DuplicateCompletionException
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.ui.common.TapGuard
 import com.torchons.app.ui.common.UserError
 import com.torchons.app.ui.common.UserErrors
 import kotlinx.coroutines.CoroutineScope
@@ -14,7 +16,8 @@ import kotlinx.coroutines.launch
  * Task completions of the home screen (solo, dated, collective) with their
  * celebration, split out of HomeViewModel. It reads and writes the
  * ViewModel's [uiState] (passed in, never exposed) and asks the ViewModel to
- * [refresh] once a completion is saved.
+ * [refresh] once a collective completion (online: the server has it) is saved. A solo completion
+ * does not: the sync worker's push triggers the refresh (HomeViewModel).
  *
  * `internal` because HomeViewModel is its only user.
  */
@@ -31,11 +34,31 @@ internal class HomeCompletionActions(
     fun completeTask(taskId: String, previewPoints: Int? = null, previewReason: String? = null) =
         unlessDuplicate(taskId) {
         celebrateThen(taskId, previewPoints, previewReason, earnedByFor(null, previewPoints)) {
-            taskRepository.completeTask(taskId).fold(
-                onSuccess = { refresh() },
-                onFailure = { uiState.value = uiState.value.copy(error = UserErrors.from(application, it)) },
-            )
+            writeSolo(taskId, null, null)
         }
+    }
+
+    /**
+     * The solo write. No refresh here: the op is still in the queue and the server does not have
+     * it, so a refetch would bring back the suggestion just completed (docs/cache-conventions.md).
+     * HomeViewModel refreshes when the sync worker has pushed.
+     */
+    private suspend fun writeSolo(taskId: String, isoDate: String?, completedBy: String?) {
+        taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
+            onSuccess = { },
+            onFailure = { error ->
+                val duplicate = (error as? DuplicateCompletionException)
+                    ?.let { completionChecks.duplicateMessage(it.twin) }
+                    ?.let(::UserError)
+                uiState.value = uiState.value.copy(
+                    celebratingTaskId = null,
+                    celebrationPoints = null,
+                    celebrationReason = null,
+                    celebrationEarnedBy = null,
+                    error = duplicate ?: UserErrors.from(application, error),
+                )
+            },
+        )
     }
 
     /**
@@ -63,10 +86,7 @@ internal class HomeCompletionActions(
         previewReason: String? = null,
     ) = unlessDuplicate(taskId, isoDate, completedBy?.let(::listOf)) {
         celebrateThen(taskId, previewPoints, previewReason, earnedByFor(completedBy, previewPoints)) {
-            taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
-                onSuccess = { refresh() },
-                onFailure = { uiState.value = uiState.value.copy(error = UserErrors.from(application, it)) },
-            )
+            writeSolo(taskId, isoDate, completedBy)
         }
     }
 
@@ -128,38 +148,53 @@ internal class HomeCompletionActions(
         block: suspend () -> Unit,
     ) {
         scope.launch {
-            uiState.value = uiState.value.copy(
-                celebratingTaskId = taskId,
-                celebrationTrigger = uiState.value.celebrationTrigger + 1,
-                celebrationPoints = points,
-                celebrationReason = reason,
-                celebrationEarnedBy = earnedBy,
-            )
-            // Run the completion CONCURRENTLY with the celebration so server
-            // responses (exact collective split) can refresh the celebration
-            // content while it is still on screen. The celebrating card stays
-            // visible through celebratingTaskId; justCompletedIds takes over
-            // the filtering at reset time.
-            val work = launch { block() }
-            kotlinx.coroutines.delay(3000L)
-            uiState.value = uiState.value.copy(
-                celebratingTaskId = null,
-                celebrationPoints = null,
-                celebrationReason = null,
-                celebrationEarnedBy = null,
-                justCompletedIds = uiState.value.justCompletedIds + taskId,
-            )
-            work.join()
+            try {
+                uiState.value = uiState.value.copy(
+                    celebratingTaskId = taskId,
+                    celebrationTrigger = uiState.value.celebrationTrigger + 1,
+                    celebrationPoints = points,
+                    celebrationReason = reason,
+                    celebrationEarnedBy = earnedBy,
+                )
+                // Run the completion CONCURRENTLY with the celebration so server
+                // responses (exact collective split) can refresh the celebration
+                // content while it is still on screen. The celebrating card stays
+                // visible through celebratingTaskId; justCompletedIds takes over
+                // the filtering at reset time.
+                val work = launch { block() }
+                kotlinx.coroutines.delay(3000L)
+                uiState.value = uiState.value.copy(
+                    celebratingTaskId = null,
+                    celebrationPoints = null,
+                    celebrationReason = null,
+                    celebrationEarnedBy = null,
+                    justCompletedIds = uiState.value.justCompletedIds + taskId,
+                )
+                work.join()
+            } finally {
+                tapGuard.release(taskId)
+            }
         }
     }
 
-    /** Refuses a duplicate completion BEFORE the celebration (CompletionChecks.refusal); [by] null = me. */
+    /**
+     * Refuses a duplicate completion BEFORE the celebration (CompletionChecks.refusal); [by] null =
+     * me. A tap on a task whose previous completion is still being handled is ignored.
+     */
     private fun unlessDuplicate(taskId: String, at: String? = null, by: List<String>? = null, go: () -> Unit) {
+        if (!tapGuard.tryAcquire(taskId)) return
         scope.launch {
             val refusal = completionChecks.refusal(taskId, at, by)
-            if (refusal == null) go() else uiState.value = uiState.value.copy(error = UserError(refusal))
+            if (refusal == null) {
+                go()
+            } else {
+                tapGuard.release(taskId)
+                uiState.value = uiState.value.copy(error = UserError(refusal))
+            }
         }
     }
+
+    private val tapGuard = TapGuard()
 
     /** Points preview of a completion; null offline or on error (the UI falls back to /suggestions values). */
     suspend fun fetchCompletionPreview(taskId: String, isoDate: String, numParticipants: Int) =

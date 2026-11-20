@@ -53,6 +53,7 @@ class TaskRepository @Inject constructor(
     private val contextDao: ContextDao,
     private val syncTrigger: SyncTrigger,
     private val tokenManager: TokenManager,
+    private val completionWriter: CompletionWriter,
 ) {
     private val gson = Gson()
 
@@ -323,40 +324,10 @@ class TaskRepository @Inject constructor(
         completedAt: String? = null,
         completedBy: String? = null,
         notes: String? = null,
-    ): Result<Completion> {
-        val clientOpId = UUID.randomUUID().toString()
-        val rowId = UUID.randomUUID().toString()
-        val now = completedAt ?: Instant.now().toString()
-
-        // L'ecriture optimiste doit MIMER le resultat serveur : sans
-        // completedBy explicite, le backend attribue la completion au user du
-        // JWT (cf sync.py _handle_completion : data.get("completed_by",
-        // user_id)). On resout donc l'id du user courant ici, sinon la row
-        // locale a completedBy="" et l'historique affiche "?" jusqu'au prochain
-        // refresh. Cf docs/cache-conventions.md (etat derive juste sans reseau).
-        val effectiveCompletedBy = completedBy ?: tokenManager.userIdFlow.first()
-
-        val optimistic = Completion(
-            id = rowId,
-            taskId = taskId,
-            completedBy = effectiveCompletedBy ?: "",
-            completedAt = now,
-            pointsEarned = 1,
-            notes = notes,
-        )
-
-        completionDao.upsertAll(listOf(optimistic.toEntity()))
-
-        val payload = mapOf<String, Any?>(
-            "task_id" to taskId,
-            "completed_by" to effectiveCompletedBy,
-            "completed_at" to now, // the tap's time, not the sync's: an offline ✓ keeps its date
-            "notes" to notes,
-        )
-        enqueue(clientOpId, "task_completions", "INSERT", rowId, payload)
-
-        return Result.success(optimistic)
-    }
+    ): Result<Completion> =
+        // Duplicate check + optimistic row + queued op in one transaction, in the application's
+        // scope: see CompletionLedger. Fails with DuplicateCompletionException on a duplicate.
+        completionWriter.complete(taskId, completedAt, completedBy, notes)
 
     /**
      * Supprime une completion en offline-first : delete local OPTIMISTE

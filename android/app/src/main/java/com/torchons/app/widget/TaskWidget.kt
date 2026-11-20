@@ -65,7 +65,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 @InstallIn(SingletonComponent::class)
 interface TaskWidgetEntryPoint {
     fun taskRepository(): TaskRepository
-    fun completionChecks(): com.torchons.app.data.repository.CompletionChecks
     fun pendingOperationDao(): PendingOperationDao
     fun tokenManager(): TokenManager
     fun delegationRepository(): DelegationRepository

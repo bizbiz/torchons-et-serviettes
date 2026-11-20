@@ -23,6 +23,11 @@ data class SyncAppliedOp(
     @SerializedName("client_op_id") val clientOpId: String,
     @SerializedName("server_row_id") val serverRowId: String,
     @SerializedName("new_version") val newVersion: Long,
+    /**
+     * True when the server acknowledged the op without writing anything (a duplicate completion).
+     * Absent on older servers: false, behaviour unchanged.
+     */
+    @SerializedName("dropped") val dropped: Boolean = false,
 )
 
 data class SyncConflict(

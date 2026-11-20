@@ -35,8 +35,8 @@ from app.services.bonus_malus import (
 from app.services.recurrence import (
     compute_inferred_interval_days,
     is_uncertain,
-    min_completion_gap_seconds,
 )
+from app.services.completion_guard import refuse_collective_duplicate, refuse_recent_duplicate
 from app.services.task_flags import NO_FLAGS, resolve_flags_for_tasks
 from app.services.delegations import settle_task_delegations
 from app.utils.changelog import record_change
@@ -190,38 +190,7 @@ async def complete_task(
     completed_by = body.completed_by or UUID(current["user_id"])
     await assert_active_members(session, task.foyer_id, [completed_by])
 
-    # Anti-doublon : verifier qu'aucune completion active n'existe dans la fenetre
-    # derivee de la recurrence (24h pour hebdo+, 1h sinon).
-    gap_seconds = min_completion_gap_seconds(task.recurrence_rule, task.inferred_interval_days)
-    window_start = datetime.now(timezone.utc) - timedelta(seconds=gap_seconds)
-    recent = await session.execute(
-        select(TaskCompletion)
-        .where(
-            TaskCompletion.task_id == task_id,
-            TaskCompletion.completed_by == completed_by,
-            TaskCompletion.deleted_at.is_(None),
-            TaskCompletion.completed_at >= window_start,
-        )
-        .order_by(desc(TaskCompletion.completed_at))
-        .limit(1)
-    )
-    last = recent.scalar_one_or_none()
-    if last is not None:
-        elapsed = datetime.now(timezone.utc) - last.completed_at
-        retry_at = last.completed_at + timedelta(seconds=gap_seconds)
-        elapsed_min = int(elapsed.total_seconds() // 60)
-        # Anti-doublon : 409 localise. Anciennement detail={"message": ...,
-        # "retry_at": ...} dict — converti en string localise via le handler
-        # global. Le client n'utilisait pas la structure pour autre chose
-        # qu'un toast.
-        raise LocalizedHTTPException(
-            status_code=409,
-            error_code="COMPLETION_DUPLICATE",
-            format_args={
-                "elapsed_min": elapsed_min,
-                "retry_at": retry_at.isoformat(),
-            },
-        )
+    await refuse_recent_duplicate(session, task, completed_by)
 
     # Base points : moyenne des efforts ou weight, 0 pour tache perso.
     base_points = await compute_base_points_for_task(session, task)
@@ -327,26 +296,7 @@ async def complete_task_collective(
 
     # 3. Anti-doublon atomique : pour chaque participant, verifier qu'aucune
     # completion active n'existe dans la fenetre derivee de la recurrence.
-    gap_seconds = min_completion_gap_seconds(task.recurrence_rule, task.inferred_interval_days)
-    window_start = datetime.now(timezone.utc) - timedelta(seconds=gap_seconds)
-    conflict_result = await session.execute(
-        select(TaskCompletion)
-        .where(
-            TaskCompletion.task_id == task_id,
-            TaskCompletion.completed_by.in_(participants),
-            TaskCompletion.deleted_at.is_(None),
-            TaskCompletion.completed_at >= window_start,
-        )
-    )
-    conflicts = conflict_result.scalars().all()
-    if conflicts:
-        # Anti-doublon collectif : 409 localise. L'ancien detail etait un
-        # dict {message, conflicts, gap_seconds} mais le client n'utilisait
-        # que le message — converti en string localise via le handler.
-        raise LocalizedHTTPException(
-            status_code=409,
-            error_code="COMPLETION_COLLECTIVE_DUPLICATE",
-        )
+    await refuse_collective_duplicate(session, task, participants)
 
     # 4. Base points : meme logique que le endpoint classique.
     base_points = await compute_base_points_for_task(session, task)

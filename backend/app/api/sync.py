@@ -143,6 +143,7 @@ async def sync(
                 client_op_id=op.client_op_id,
                 server_row_id=existing.server_row_id,
                 new_version=0,
+                dropped=await _was_dropped(session, existing),
             ))
             continue
 
@@ -156,7 +157,7 @@ async def sync(
                 op_foyer = await _op_foyer(session, op, user_id, foyer_id)
                 result = await _apply_op(session, op, user_id, op_foyer, body.device_id)
             applied.append(result)
-            if op.table == "task_completions" and op.operation == "INSERT":
+            if op.table == "task_completions" and op.operation == "INSERT" and not result.dropped:
                 inserted_completions.append(result.server_row_id)
         except Exception as e:
             # Filet de securite : toute erreur sur UNE op devient un conflit
@@ -273,7 +274,22 @@ async def _apply_op(
         client_op_id=op.client_op_id,
         server_row_id=server_row_id,
         new_version=last_version,
+        dropped=written_id is None,
     )
+
+
+async def _was_dropped(session: AsyncSession, processed: ProcessedOp) -> bool:
+    """`dropped` of a replayed op, which must match its first answer (processed_ops keeps no flag).
+
+    Exact for `task_completions`: a dropped op wrote no row, so none carries its id (a written
+    one stays, soft-deleted at worst). For the other tables it stays False on replay.
+    """
+    if processed.table_name != "task_completions":
+        return False
+    found = await session.execute(
+        select(TaskCompletion.id).where(TaskCompletion.id == processed.server_row_id)
+    )
+    return found.first() is None
 
 
 # Keys a client may write on a task through /sync. Mirrors the payload built by

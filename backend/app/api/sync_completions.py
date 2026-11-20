@@ -24,7 +24,7 @@ from app.services.bonus_malus import (
     compute_bonus_malus_for_completion,
     resolve_stored_reason_and_mult,
 )
-from app.services.completion_guard import duplicates_recent_completion
+from app.services.completion_guard import duplicates_recent_completion, lock_completion_slot
 from app.services.delegations import settle_task_delegations
 from app.utils.errors import LocalizedHTTPException
 from app.utils.scoping import assert_active_members, user_foyer_ids, visible_to
@@ -68,8 +68,10 @@ async def _insert_completion(
     multiplier = 1.0
     reason = CompletionReason.NEUTRAL
 
+    if task is not None:
+        await lock_completion_slot(session, task.id, completed_by)  # held to the end of the request
     if task is not None and await duplicates_recent_completion(session, task, completed_by, completed_at_eff):
-        return None  # acknowledged, not written: services/completion_guard.py
+        return None  # acknowledged as `dropped`, not written: services/completion_guard.py
     if task is not None:
         base_points = await compute_base_points_for_task(session, task)
         mult_result = await compute_bonus_malus_for_completion(

@@ -44,7 +44,17 @@ never removes it).
 
 ❌ **Do NOT** trigger a `refresh<Scope>()` right after an optimistic
 mutation while the op has not been pushed yet: the server refetch would
-re-add the row (the server still has it). Let sync reconcile.
+re-add the row (the server still has it). Let sync reconcile. Home
+refreshes when the worker has finished a push (`lastSyncPushAt`), not
+after the tap.
+
+✅ **A solo completion is written at the tap**, never after the
+celebration: `CompletionLedger` (via `TaskRepository.completeTask`) does
+duplicate check + Room row + queued op in ONE transaction, in an
+application scope that leaving the screen does not cancel (Nov 19: four
+taps, a single op reached the server). The celebration is visual only; a
+second tap on the same task during it is ignored (`TapGuard`). A server
+`applied` entry flagged `dropped` deletes the local row (`SyncWorker`).
 
 ### Refresh / reconciliation (online = authoritative)
 

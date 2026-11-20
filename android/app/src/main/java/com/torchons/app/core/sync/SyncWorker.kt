@@ -185,6 +185,8 @@ class SyncWorker(
                 ?: return@sendInBatches failed(shown(IllegalStateException("empty body")))
 
             body.applied.forEach { pendingDao.delete(it.clientOpId) }
+            // After the queue row is gone: a duplicate the server dropped leaves no local trace.
+            droppedCompletionRowIds(body.applied, batch).forEach { completionDao.deleteById(it) }
             if (body.applied.isNotEmpty()) tokenManager.setLastSyncPushAt(System.currentTimeMillis())
 
             settleConflicts(body.conflicts, batch, ep)

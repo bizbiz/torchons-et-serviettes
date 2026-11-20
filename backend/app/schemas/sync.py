@@ -46,6 +46,11 @@ class SyncAppliedOp(BaseModel):
     client_op_id: UUID
     server_row_id: UUID
     new_version: int
+    #: True when the handler wrote nothing (a duplicate completion dropped by
+    #: services/completion_guard.py, a row gone or hidden): the op is acknowledged so the
+    #: queue moves on, but `server_row_id` (= the op's own row id) names no server row.
+    #: The client must not keep a local row for it. Additive: older apps ignore it.
+    dropped: bool = False
 
 
 class SyncConflict(BaseModel):

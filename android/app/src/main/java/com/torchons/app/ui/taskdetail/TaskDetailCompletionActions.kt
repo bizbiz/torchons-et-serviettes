@@ -2,7 +2,9 @@ package com.torchons.app.ui.taskdetail
 
 import com.torchons.app.R
 import com.torchons.app.data.repository.CompletionChecks
+import com.torchons.app.data.repository.DuplicateCompletionException
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.ui.common.TapGuard
 import com.torchons.app.ui.common.UserError
 import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.util.CompletionDateLabels
@@ -40,18 +42,8 @@ internal class TaskDetailCompletionActions(
                     earnedBy = earnedByFor(null, preview?.finalPoints),
                 )
             },
-            write = {
-                taskRepository.completeTask(taskId).fold(
-                    onSuccess = {
-                        uiState.value = uiState.value.copy(
-                            completionMessage = appContext.getString(R.string.common_task_completed),
-                        )
-                    },
-                    onFailure = { error ->
-                        uiState.value = uiState.value.copy(error = UserErrors.from(appContext, error))
-                    },
-                )
-            },
+            write = { writeSolo(null, null) },
+            writeFirst = true,
         )
     }
 
@@ -66,20 +58,39 @@ internal class TaskDetailCompletionActions(
             resolve = {
                 CelebrationContent(previewPoints, previewReason, earnedByFor(completedBy, previewPoints))
             },
-            write = {
-                taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
-                    onSuccess = {
-                        uiState.value = uiState.value.copy(
-                            completionMessage = appContext.getString(R.string.common_task_completed),
-                        )
-                    },
-                    onFailure = { error ->
-                        uiState.value = uiState.value.copy(error = UserErrors.from(appContext, error))
-                    },
+            write = { writeSolo(isoDate, completedBy) },
+            writeFirst = true,
+        )
+    }
+
+    /**
+     * The solo write: Room row + queued op, at tap time (see [celebrate]). A duplicate that slipped
+     * past the pre-check (two taps in the same instant) stops the celebration and says why.
+     */
+    private suspend fun writeSolo(isoDate: String?, completedBy: String?) {
+        taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
+            onSuccess = {
+                uiState.value = uiState.value.copy(
+                    completionMessage = appContext.getString(R.string.common_task_completed),
+                )
+            },
+            onFailure = { error ->
+                uiState.value = uiState.value.copy(
+                    isCelebrating = false,
+                    celebrationPoints = null,
+                    celebrationReason = null,
+                    celebrationEarnedBy = null,
+                    error = completionError(error),
                 )
             },
         )
     }
+
+    private fun completionError(error: Throwable): UserError =
+        (error as? DuplicateCompletionException)
+            ?.let { completionChecks.duplicateMessage(it.twin) }
+            ?.let(::UserError)
+            ?: UserErrors.from(appContext, error)
 
     /** Fait ensemble : completion collective (N participants, split ceil). */
     fun completeTaskCollective(
@@ -166,51 +177,73 @@ internal class TaskDetailCompletionActions(
 
     /**
      * Celebration visuelle (card + confetti) pendant ~3s : emoji immediat, puis
-     * points + attribution des que [resolve] les renvoie (preview). L'ecriture
-     * Room reelle ([write]) est faite APRES l'animation (parite Accueil /
-     * onglet Taches).
+     * points + attribution des que [resolve] les renvoie (preview).
+     *
+     * [writeFirst] (solo completions): [write] starts together with the celebration, at tap time,
+     * so leaving the screen cannot lose it (2026-11-19: a completion tapped then abandoned within
+     * 3 s was never written). The celebration is only visual. The collective completion keeps
+     * writing AFTER the animation: it is an online call whose answer feeds the message.
+     * The preview request is started before the write: the write queues a sync at once, and a
+     * preview asked after the push would price the completion against itself.
      */
     private fun celebrate(
         resolve: suspend () -> CelebrationContent,
         write: suspend () -> Unit,
+        writeFirst: Boolean = false,
     ) {
         scope.launch {
-            uiState.value = uiState.value.copy(
-                isCelebrating = true,
-                celebrationTrigger = uiState.value.celebrationTrigger + 1,
-                celebrationPoints = null,
-                celebrationReason = null,
-                celebrationEarnedBy = null,
-            )
-            val filler = launch {
-                val content = resolve()
-                if (uiState.value.isCelebrating) {
-                    uiState.value = uiState.value.copy(
-                        celebrationPoints = content.points,
-                        celebrationReason = content.reason,
-                        celebrationEarnedBy = content.earnedBy,
-                    )
+            try {
+                uiState.value = uiState.value.copy(
+                    isCelebrating = true,
+                    celebrationTrigger = uiState.value.celebrationTrigger + 1,
+                    celebrationPoints = null,
+                    celebrationReason = null,
+                    celebrationEarnedBy = null,
+                )
+                val filler = launch {
+                    val content = resolve()
+                    if (uiState.value.isCelebrating) {
+                        uiState.value = uiState.value.copy(
+                            celebrationPoints = content.points,
+                            celebrationReason = content.reason,
+                            celebrationEarnedBy = content.earnedBy,
+                        )
+                    }
                 }
+                val early = if (writeFirst) launch { write() } else null
+                kotlinx.coroutines.delay(3000L)
+                filler.cancel()
+                uiState.value = uiState.value.copy(
+                    isCelebrating = false,
+                    celebrationPoints = null,
+                    celebrationReason = null,
+                    celebrationEarnedBy = null,
+                )
+                if (early != null) early.join() else write()
+            } finally {
+                tapGuard.release(taskId)
             }
-            kotlinx.coroutines.delay(3000L)
-            filler.cancel()
-            uiState.value = uiState.value.copy(
-                isCelebrating = false,
-                celebrationPoints = null,
-                celebrationReason = null,
-                celebrationEarnedBy = null,
-            )
-            write()
         }
     }
 
-    /** Refuses a duplicate completion BEFORE the celebration (CompletionChecks.refusal); [by] null = me. */
+    /**
+     * Refuses a duplicate completion BEFORE the celebration (CompletionChecks.refusal); [by] null =
+     * me. A tap while the previous completion of this task is still celebrating is ignored.
+     */
     private fun unlessDuplicate(at: String? = null, by: List<String>? = null, go: () -> Unit) {
+        if (!tapGuard.tryAcquire(taskId)) return
         scope.launch {
             val refusal = completionChecks.refusal(taskId, at, by)
-            if (refusal == null) go() else uiState.value = uiState.value.copy(error = UserError(refusal))
+            if (refusal == null) {
+                go()
+            } else {
+                tapGuard.release(taskId)
+                uiState.value = uiState.value.copy(error = UserError(refusal))
+            }
         }
     }
+
+    private val tapGuard = TapGuard()
 
     /** Preview bonus/malus pour le dialog de completion. null = offline/erreur. */
     suspend fun fetchCompletionPreview(taskId: String, isoDate: String, numParticipants: Int) =

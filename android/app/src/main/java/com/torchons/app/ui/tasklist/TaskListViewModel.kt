@@ -9,7 +9,9 @@ import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.CompletionChecks
 import com.torchons.app.data.repository.DelegationRepository
+import com.torchons.app.data.repository.DuplicateCompletionException
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.ui.common.TapGuard
 import com.torchons.app.ui.common.UserError
 import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.ui.today.TodayDelegations
@@ -70,6 +72,14 @@ class TaskListViewModel @Inject constructor(
 
     private val filtersFlow = MutableStateFlow(TaskListFilters())
 
+    /** The last list the pipeline computed, to draw again when a celebration releases its task. */
+    private var lastProcessed: ProcessedTaskList? = null
+
+    /** Tasks celebrating, as the list showed them at the tap (see [holdCelebrated]). Main thread only. */
+    private val held = mutableMapOf<String, TaskWithUrgency>()
+
+    private val tapGuard = TapGuard()
+
     init {
         observeCache()
         refresh()
@@ -103,26 +113,32 @@ class TaskListViewModel @Inject constructor(
                     filters = filters,
                 )
             }.flowOn(Dispatchers.Default).collect { processed ->
-                // Attention : on ne recopie PAS searchQuery
-                // ici. Ce champ est mis a jour synchroniquement dans
-                // updateSearchQuery pour eviter que
-                // le pipeline async (qui fait applyFilters sur Dispatchers.Default)
-                // ne remette une version en retard dans le TextField. Sans ca,
-                // le curseur "revient en arriere" quand l'utilisateur tape vite.
-                _uiState.value = _uiState.value.copy(
-                    tasks = processed.filtered.tasks,
-                    blocks = processed.filtered.blocks,
-                    searching = processed.filtered.searching,
-                    availableContexts = processed.filtered.contexts,
-                    isAtHome = processed.filtered.isAtHome,
-                    homeTasksHidden = processed.filtered.homeTasksHidden,
-                    showAllTasks = processed.filters.showAllTasks,
-                    selectedContextIds = processed.filters.selectedContextIds,
-                    hasCachedData = processed.hasCache,
-                    isLoading = if (processed.hasCache) false else _uiState.value.isLoading,
-                )
+                lastProcessed = processed
+                publish(processed)
             }
         }
+    }
+
+    private fun publish(processed: ProcessedTaskList) {
+        val filtered = holdCelebrated(processed.filtered, held)
+        // Attention : on ne recopie PAS searchQuery
+        // ici. Ce champ est mis a jour synchroniquement dans
+        // updateSearchQuery pour eviter que
+        // le pipeline async (qui fait applyFilters sur Dispatchers.Default)
+        // ne remette une version en retard dans le TextField. Sans ca,
+        // le curseur "revient en arriere" quand l'utilisateur tape vite.
+        _uiState.value = _uiState.value.copy(
+            tasks = filtered.tasks,
+            blocks = filtered.blocks,
+            searching = filtered.searching,
+            availableContexts = filtered.contexts,
+            isAtHome = filtered.isAtHome,
+            homeTasksHidden = filtered.homeTasksHidden,
+            showAllTasks = processed.filters.showAllTasks,
+            selectedContextIds = processed.filters.selectedContextIds,
+            hasCachedData = processed.hasCache,
+            isLoading = if (processed.hasCache) false else _uiState.value.isLoading,
+        )
     }
 
     /**
@@ -180,18 +196,34 @@ class TaskListViewModel @Inject constructor(
                     earnedBy = earnedByFor(null, preview?.finalPoints),
                 )
             },
-            write = {
-                taskRepository.completeTask(taskId).fold(
-                    onSuccess = {
-                        _uiState.value = _uiState.value.copy(
-                            completionMessage = context.getString(R.string.common_task_completed),
-                        )
-                    },
-                    onFailure = { error ->
-                        _uiState.value = _uiState.value.copy(
-                            error = UserErrors.from(context, error),
-                        )
-                    },
+            write = { writeSolo(taskId, null, null) },
+            writeFirst = true,
+        )
+    }
+
+    /**
+     * The solo write: Room row + queued op, at tap time (see [celebrate]). A duplicate that slipped
+     * past the pre-check (two taps in the same instant) stops the celebration and says why.
+     */
+    private suspend fun writeSolo(taskId: String, isoDate: String?, completedBy: String?) {
+        taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
+            onSuccess = {
+                _uiState.value = _uiState.value.copy(
+                    completionMessage = context.getString(R.string.common_task_completed),
+                )
+            },
+            onFailure = { error ->
+                held.remove(taskId)
+                lastProcessed?.let(::publish)
+                val duplicate = (error as? DuplicateCompletionException)
+                    ?.let { completionChecks.duplicateMessage(it.twin) }
+                    ?.let(::UserError)
+                _uiState.value = _uiState.value.copy(
+                    celebratingTaskId = null,
+                    celebrationPoints = null,
+                    celebrationReason = null,
+                    celebrationEarnedBy = null,
+                    error = duplicate ?: UserErrors.from(context, error),
                 )
             },
         )
@@ -214,18 +246,8 @@ class TaskListViewModel @Inject constructor(
             resolve = {
                 CelebrationContent(previewPoints, previewReason, earnedByFor(completedBy, previewPoints))
             },
-            write = {
-                taskRepository.completeTask(taskId, completedAt = isoDate, completedBy = completedBy).fold(
-                    onSuccess = {
-                        _uiState.value = _uiState.value.copy(
-                            completionMessage = context.getString(R.string.common_task_completed),
-                        )
-                    },
-                    onFailure = { error ->
-                        _uiState.value = _uiState.value.copy(error = UserErrors.from(context, error))
-                    },
-                )
-            },
+            write = { writeSolo(taskId, isoDate, completedBy) },
+            writeFirst = true,
         )
     }
 
@@ -319,45 +341,62 @@ class TaskListViewModel @Inject constructor(
     /**
      * Joue la celebration post-completion (parite Accueil) : emoji + confetti
      * immediatement, puis points + attribution des que [resolve] les renvoie
-     * (typiquement un preview). L'ecriture Room reelle ([write]) est faite
-     * APRES l'animation (~3s) pour que la tache completee reste visible pendant
-     * la celebration — l'ecrire plus tot la ferait passer en GREEN et le filtre
-     * "a faire" retirerait la carte en pleine animation.
+     * (typiquement un preview).
+     *
+     * [writeFirst] (solo completions): [write] starts with the celebration, at tap time, so leaving
+     * the screen cannot lose it (2026-11-19: written after the 3 s, a completion abandoned within
+     * them never reached Room nor the queue). The written task turns green at once; [held] keeps
+     * its card as it was until the animation ends, so « À faire » does not drop it mid-animation.
+     * The collective completion keeps writing AFTER the animation (an online call).
+     * The preview request is started before the write: the write queues a sync at once, and a
+     * preview asked after the push would price the completion against itself.
      */
     private fun celebrate(
         taskId: String,
         resolve: suspend () -> CelebrationContent,
         write: suspend () -> Unit,
+        writeFirst: Boolean = false,
     ) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                celebratingTaskId = taskId,
-                celebrationTrigger = _uiState.value.celebrationTrigger + 1,
-                celebrationPoints = null,
-                celebrationReason = null,
-                celebrationEarnedBy = null,
-            )
-            // Resolution concurrente : le confetti s'affiche instantanement meme
-            // si le preview est lent / timeout offline.
-            val filler = launch {
-                val content = resolve()
-                if (_uiState.value.celebratingTaskId == taskId) {
-                    _uiState.value = _uiState.value.copy(
-                        celebrationPoints = content.points,
-                        celebrationReason = content.reason,
-                        celebrationEarnedBy = content.earnedBy,
-                    )
+            try {
+                _uiState.value = _uiState.value.copy(
+                    celebratingTaskId = taskId,
+                    celebrationTrigger = _uiState.value.celebrationTrigger + 1,
+                    celebrationPoints = null,
+                    celebrationReason = null,
+                    celebrationEarnedBy = null,
+                )
+                if (writeFirst) {
+                    _uiState.value.tasks.firstOrNull { it.task.id == taskId }?.let { held[taskId] = it }
                 }
+                // Resolution concurrente : le confetti s'affiche instantanement meme
+                // si le preview est lent / timeout offline.
+                val filler = launch {
+                    val content = resolve()
+                    if (_uiState.value.celebratingTaskId == taskId) {
+                        _uiState.value = _uiState.value.copy(
+                            celebrationPoints = content.points,
+                            celebrationReason = content.reason,
+                            celebrationEarnedBy = content.earnedBy,
+                        )
+                    }
+                }
+                val early = if (writeFirst) launch { write() } else null
+                kotlinx.coroutines.delay(3000L)
+                filler.cancel()
+                _uiState.value = _uiState.value.copy(
+                    celebratingTaskId = null,
+                    celebrationPoints = null,
+                    celebrationReason = null,
+                    celebrationEarnedBy = null,
+                )
+                held.remove(taskId)
+                lastProcessed?.let(::publish)
+                if (early != null) early.join() else write()
+            } finally {
+                held.remove(taskId)
+                tapGuard.release(taskId)
             }
-            kotlinx.coroutines.delay(3000L)
-            filler.cancel()
-            _uiState.value = _uiState.value.copy(
-                celebratingTaskId = null,
-                celebrationPoints = null,
-                celebrationReason = null,
-                celebrationEarnedBy = null,
-            )
-            write()
         }
     }
 
@@ -369,11 +408,20 @@ class TaskListViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null)
     }
 
-    /** Refuses a duplicate completion BEFORE the celebration (CompletionChecks.refusal); [by] null = me. */
+    /**
+     * Refuses a duplicate completion BEFORE the celebration (CompletionChecks.refusal); [by] null =
+     * me. A tap on a task whose previous completion is still celebrating is ignored.
+     */
     private fun unlessDuplicate(taskId: String, at: String? = null, by: List<String>? = null, go: () -> Unit) {
+        if (!tapGuard.tryAcquire(taskId)) return
         viewModelScope.launch {
             val refusal = completionChecks.refusal(taskId, at, by)
-            if (refusal == null) go() else _uiState.value = _uiState.value.copy(error = UserError(refusal))
+            if (refusal == null) {
+                go()
+            } else {
+                tapGuard.release(taskId)
+                _uiState.value = _uiState.value.copy(error = UserError(refusal))
+            }
         }
     }
 

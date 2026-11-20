@@ -264,6 +264,71 @@ async def test_three_quick_ticks_make_one_completion(client, sent):
     assert await _live_completions(task) == [D_ID]
 
 
+async def _sync_raw(client, ops):
+    body = {"device_id": D_DEVICE, "last_server_version": 0, "changes": ops}
+    r = await client.post("/api/sync", json=body, headers=_headers())
+    assert r.status_code == 200 and not r.json()["conflicts"], r.text
+    return {a["client_op_id"]: a for a in r.json()["applied"]}
+
+
+@pytest.mark.asyncio
+async def test_a_dropped_duplicate_is_flagged_and_stays_flagged_on_replay(client, sent):
+    task = await _new_task(client, "Litiere", [C_ID, D_ID])
+    written, twin = _completion(task), _completion(task)
+    first = await _sync_raw(client, [written, twin])
+    w, t = first[written["client_op_id"]], first[twin["client_op_id"]]
+    assert w["dropped"] is False and w["server_row_id"] == written["row_id"]
+    assert t["dropped"] is True and t["server_row_id"] == twin["row_id"] and t["new_version"] >= 0
+    assert await _live_completions(task) == [D_ID]
+    # Replayed (same client_op_id): same answer as the first time.
+    again = await _sync_raw(client, [written, twin])
+    assert again[written["client_op_id"]]["dropped"] is False
+    assert again[twin["client_op_id"]]["dropped"] is True
+
+
+@pytest.mark.asyncio
+async def test_a_task_delete_that_wrote_nothing_is_flagged_dropped(client, sent):
+    gone = _op("tasks", str(uuid.uuid4()), None)
+    gone["operation"] = "DELETE"
+    ack = (await _sync_raw(client, [gone]))[gone["client_op_id"]]
+    assert ack["dropped"] is True and ack["server_row_id"] == gone["row_id"]
+
+
+@pytest.mark.asyncio
+async def test_the_completion_lock_blocks_a_second_transaction_until_the_first_ends(client):
+    """Same (task, member): the second `lock_completion_slot` waits for the first transaction to
+    end. Deterministic: no timing assumption beyond « still blocked after 0.5 s »."""
+    import asyncio
+
+    from app.database import async_session
+    from app.services.completion_guard import lock_completion_slot
+
+    task_id, member = uuid.uuid4(), uuid.UUID(D_ID)
+    async with async_session() as holder, async_session() as waiter:
+        await lock_completion_slot(holder, task_id, member)
+        other_member = asyncio.create_task(lock_completion_slot(waiter, task_id, uuid.UUID(C_ID)))
+        await asyncio.wait_for(other_member, timeout=5)  # another member: not blocked
+        await waiter.rollback()
+
+        blocked = asyncio.create_task(lock_completion_slot(waiter, task_id, member))
+        done, _ = await asyncio.wait({blocked}, timeout=0.5)
+        assert not done, "the second transaction must wait while the first holds the lock"
+        await holder.commit()  # releases the xact lock
+        await asyncio.wait_for(blocked, timeout=5)
+        await waiter.rollback()
+
+
+@pytest.mark.asyncio
+async def test_two_parallel_syncs_of_different_ops_write_one_completion(client, sent):
+    import asyncio
+
+    task = await _new_task(client, "Plantes", [C_ID, D_ID])
+    results = await asyncio.gather(*(_sync_raw(client, [_completion(task)]) for _ in range(6)))
+    flags = sorted(next(iter(r.values()))["dropped"] for r in results)
+    assert flags == [False] + [True] * 5
+    assert await _live_completions(task) == [D_ID]
+
+
 @pytest.mark.asyncio
 async def test_another_member_or_another_day_is_not_a_duplicate(client, sent):
     task = await _new_task(client, "Poubelles", [C_ID, D_ID])

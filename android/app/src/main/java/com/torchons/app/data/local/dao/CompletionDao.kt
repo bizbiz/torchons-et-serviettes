@@ -17,6 +17,10 @@ interface CompletionDao {
     @Query("SELECT * FROM completions WHERE taskId = :taskId ORDER BY completedAt DESC")
     fun observeByTask(taskId: String): Flow<List<CompletionEntity>>
 
+    /** One-shot read of a task's completions, for the duplicate check inside a write transaction. */
+    @Query("SELECT * FROM completions WHERE taskId = :taskId")
+    suspend fun getByTask(taskId: String): List<CompletionEntity>
+
     /** Lookup one-shot pour patcher une row (edition optimiste + UPDATE sync partiel). */
     @Query("SELECT * FROM completions WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): CompletionEntity?

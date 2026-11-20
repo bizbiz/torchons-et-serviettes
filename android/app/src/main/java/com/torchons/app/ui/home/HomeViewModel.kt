@@ -167,9 +167,17 @@ class HomeViewModel @Inject constructor(
         refresh = ::refresh,
     )
 
+    /** Completed by me inside the duplicate window: filtered out of the suggestions (HomeLocalCompletions.kt). */
+    val locallyCompletedIds: StateFlow<Set<String>> = locallyCompletedFlow(
+        taskRepository.observeActiveTasks(),
+        taskRepository.observeRecentCompletions(limit = 200),
+        authRepository.userIdFlow,
+    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
     init {
         observeCache()
         refresh()
+        viewModelScope.launch { pushFinished(tokenManager.lastSyncPushAtFlow).collect { refresh() } }
     }
 
     /**

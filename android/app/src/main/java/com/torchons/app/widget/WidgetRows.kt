@@ -212,10 +212,11 @@ class CompleteTaskAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val taskId = parameters[taskIdParam] ?: return
         withContext(Dispatchers.IO) {
-            // A second tap before the row leaves would be dropped by the server anyway
-            // (CompletionChecks): not written, so the cache never shows it either.
-            val deps = widgetDeps(context)
-            if (deps.completionChecks().refusal(taskId) == null) deps.taskRepository().completeTask(taskId)
+            // A second tap before the row leaves would be dropped by the server anyway: the
+            // repository refuses it inside the write's own transaction (duplicate window), so two
+            // quick taps cannot both pass a check made before the write. The failure is ignored:
+            // the widget has nothing to say, and the redraw below shows what the cache holds.
+            widgetDeps(context).taskRepository().completeTask(taskId)
         }
         TaskWidget().update(context, glanceId)
     }
