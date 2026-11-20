@@ -1,5 +1,30 @@
 # Release notes
 
+## v0.47.0 — 2026-11-20
+
+### During an absence
+- A new sheet shows which tasks pause when nobody is home, and which keep going. Tapping a
+  task explains what to change to move it to the other side. Open it under the freeze
+  setting, or at the top of the Contexts screen.
+
+### Often-late task
+- The question now offers to re-vote the task's frequency, then its effort, one after the
+  other. "Later" asks again the next time it is late, "Ignore" leaves it alone.
+- Fixed: answering this question no longer opens the vote of another task by mistake.
+
+### Frequency
+- The frequency slider goes from 1 to 15 in days, weeks or months, instead of an approximate
+  number of days.
+
+### Task ratings
+- A rating is only asked again after 24 months, and the "Renewal" slider in household
+  settings finally works.
+- Effort and affinity ratings no longer depend on the Sharing feature.
+
+### Home and welcome
+- Pull down on the home screen to refresh it.
+- The welcome screen shows the way in pictures instead of describing it.
+
 ## v0.46.0 — 2026-11-19
 
 ### To do today

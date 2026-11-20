@@ -1,5 +1,30 @@
 # Notes de version
 
+## v0.47.0 — 2026-11-20
+
+### Pendant une absence
+- Une nouvelle feuille montre quelles tâches se mettent en pause quand personne n'est là, et
+  lesquelles continuent. Toucher une tâche explique quoi changer pour la faire passer de
+  l'autre côté. On l'ouvre sous le réglage du gel, ou en haut de l'écran Contextes.
+
+### Tâche souvent en retard
+- La question propose maintenant de revoter la fréquence puis l'effort de la tâche, l'un après
+  l'autre. « Plus tard » la repose au prochain retard, « Ignorer » la laisse tranquille.
+- Corrigé : répondre à cette question n'ouvre plus par erreur le vote d'une autre tâche.
+
+### Fréquence
+- Le curseur de fréquence se règle de 1 à 15 en jours, en semaines ou en mois, au lieu d'un
+  nombre de jours approximatif.
+
+### Notes des tâches
+- Une note n'est redemandée qu'au bout de 24 mois, et le curseur « Renouvellement » des
+  Réglages du foyer agit enfin.
+- Les notes d'effort et d'affinité ne dépendent plus de la fonctionnalité Répartition.
+
+### Accueil et bienvenue
+- Tirer l'accueil vers le bas le rafraîchit.
+- L'écran de bienvenue montre le chemin en images au lieu de le décrire.
+
 ## v0.46.0 — 2026-11-19
 
 ### À faire aujourd'hui
