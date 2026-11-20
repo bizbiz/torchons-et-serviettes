@@ -45,7 +45,7 @@ class QueuedVotesOverlayTest {
     @After fun tearDown() { db.close() }
 
     private fun overlay(server: ServerVotes, queued: QueuedVotes) =
-        overlayQueuedVotes(server, queued, taskId = "t1", me = me, myName = "Quentin")
+        overlayQueuedVotes(server, queued, taskId = "t1", me = me, myName = "Robin")
 
     private suspend fun queuedFromRoom(taskId: String = "t1"): QueuedVotes =
         queuedVotesOf(db.pendingOperationDao().observeForRow(QUEUED_VOTE_TABLES, taskId).first())
@@ -61,7 +61,7 @@ class QueuedVotesOverlayTest {
 
         val row = shown.ratings.single()
         assertEquals(me, row.userId)
-        assertEquals("Quentin", row.displayName)
+        assertEquals("Robin", row.displayName)
         assertEquals(9, row.affinity)
         assertEquals(45, row.effortTimeMin)
     }
@@ -78,24 +78,24 @@ class QueuedVotesOverlayTest {
     @Test
     fun my_row_is_replaced_in_place_and_the_average_follows() {
         val other = TaskRating("u-lo", "Lo", affinity = 4, effortTimeMin = 15)
-        val old = TaskRating(me, "Quentin", affinity = 2, effortTimeMin = 5)
+        val old = TaskRating(me, "Robin", affinity = 2, effortTimeMin = 5)
         val server = ServerVotes(listOf(other, old), avgEffortTimeMin = 10, scorePoints = 2)
 
         val shown = overlay(server, QueuedVotes(affinity = 9, effortPoints = 9))
 
-        assertEquals(listOf(other, TaskRating(me, "Quentin", 9, 45)), shown.ratings)
+        assertEquals(listOf(other, TaskRating(me, "Robin", 9, 45)), shown.ratings)
         assertEquals(30, shown.avgEffortTimeMin)
         assertEquals(6, shown.scorePoints)
     }
 
     @Test
     fun an_affinity_alone_keeps_the_server_effort_and_average() {
-        val old = TaskRating(me, "Quentin", affinity = 2, effortTimeMin = 20)
+        val old = TaskRating(me, "Robin", affinity = 2, effortTimeMin = 20)
         val server = ServerVotes(listOf(old), avgEffortTimeMin = 20, scorePoints = 4)
 
         val shown = overlay(server, QueuedVotes(affinity = 7))
 
-        assertEquals(TaskRating(me, "Quentin", 7, 20), shown.ratings.single())
+        assertEquals(TaskRating(me, "Robin", 7, 20), shown.ratings.single())
         assertEquals(20, shown.avgEffortTimeMin)
         assertEquals(4, shown.scorePoints)
     }
