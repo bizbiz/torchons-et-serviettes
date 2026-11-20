@@ -139,6 +139,7 @@ internal class TaskDetailCompletionActions(
                     },
                 )
             },
+            writeFirst = true,
         )
     }
 
@@ -179,10 +180,11 @@ internal class TaskDetailCompletionActions(
      * Celebration visuelle (card + confetti) pendant ~3s : emoji immediat, puis
      * points + attribution des que [resolve] les renvoie (preview).
      *
-     * [writeFirst] (solo completions): [write] starts together with the celebration, at tap time,
+     * [writeFirst] (every completion): [write] starts together with the celebration, at tap time,
      * so leaving the screen cannot lose it (2026-11-19: a completion tapped then abandoned within
-     * 3 s was never written). The celebration is only visual. The collective completion keeps
-     * writing AFTER the animation: it is an online call whose answer feeds the message.
+     * 3 s was never written). The celebration is only visual. The collective completion is an
+     * online call whose answer feeds the message; the repository runs it to its end (reconcile or
+     * rollback) in the application scope, so this scope only waits for the answer.
      * The preview request is started before the write: the write queues a sync at once, and a
      * preview asked after the push would price the completion against itself.
      */

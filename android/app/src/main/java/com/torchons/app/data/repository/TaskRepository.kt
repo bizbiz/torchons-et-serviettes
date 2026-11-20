@@ -15,7 +15,6 @@ import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.toDomain
 import com.torchons.app.data.local.entities.toEntity
-import com.torchons.app.data.model.CollectiveCompleteRequest
 import com.torchons.app.data.model.CollectiveCompletionResponse
 import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.CreateTaskRequest
@@ -54,6 +53,8 @@ class TaskRepository @Inject constructor(
     private val syncTrigger: SyncTrigger,
     private val tokenManager: TokenManager,
     private val completionWriter: CompletionWriter,
+    private val collectiveWriter: CollectiveCompletionWriter,
+    private val refreshGuard: CompletionRefreshGuard,
 ) {
     private val gson = Gson()
 
@@ -187,29 +188,42 @@ class TaskRepository @Inject constructor(
         // et s'affichent faussement "en retard" apres chaque refresh.
         val effectiveLimit = limit ?: if (taskId == null && userId == null) 2000 else null
         return try {
-            val response = apiService.getCompletions(userId, taskId, effectiveLimit)
-            if (response.isSuccessful) {
-                val completions = response.body() ?: emptyList()
-                // En ligne = serveur autoritaire : REMPLACE le scope (full
-                // ou par tache) pour propager suppressions/edits serveur ;
-                // upsert-only seulement pour le scope userId. Cf
-                // docs/cache-conventions.md.
-                when {
-                    taskId == null && userId == null ->
-                        completionDao.replaceAll(completions.map { it.toEntity() })
-                    taskId != null ->
-                        completionDao.replaceForTask(taskId, completions.map { it.toEntity() })
-                    else ->
-                        completionDao.upsertAll(completions.map { it.toEntity() })
-                }
-                true
-            } else {
-                false
-            }
+            fetchAndApplyCompletions(userId, taskId, effectiveLimit) != null
         } catch (_: Exception) {
             false
         }
     }
+
+    /**
+     * The one place a completions answer reaches Room, for [refreshCompletions] (task detail, task
+     * list, widget, settings) and [getCompletions]: the request outside the guard's lock, the
+     * replace inside it, and an answer older than a push dropped (see CompletionRefreshGuard).
+     * Throws on failure; null when pushes kept landing and nothing was applied.
+     */
+    private suspend fun fetchAndApplyCompletions(
+        userId: String?,
+        taskId: String?,
+        limit: Int?,
+    ): List<Completion>? = refreshGuard.fetchThenApply(
+        fetch = {
+            val response = apiService.getCompletions(userId, taskId, limit)
+            if (!response.isSuccessful) throw ApiHttpException.from(response)
+            response.body() ?: emptyList()
+        },
+        apply = { completions ->
+            // En ligne = serveur autoritaire : REMPLACE le scope (full ou par tache) pour propager
+            // suppressions/edits serveur ; upsert-only seulement pour le scope userId.
+            // Cf docs/cache-conventions.md.
+            when {
+                taskId == null && userId == null ->
+                    completionDao.replaceAll(completions.map { it.toEntity() })
+                taskId != null ->
+                    completionDao.replaceForTask(taskId, completions.map { it.toEntity() })
+                else ->
+                    completionDao.upsertAll(completions.map { it.toEntity() })
+            }
+        },
+    )
 
     // -------------------------------------------------------------------
     // Ecritures offline-first
@@ -392,84 +406,16 @@ class TaskRepository @Inject constructor(
     }
 
     /**
-     * Completion "fait ensemble" : optimiste-avec-reconciliation.
-     *
-     * 1. Insere immediatement N lignes locales (collective_id client, points
-     *    estimes) -> l'historique s'affiche sans attendre le reseau.
-     * 2. Appelle l'endpoint dedie (online-first : le split des points en
-     *    ceil + l'anti-doublon sont atomiques cote serveur ; on ne peut PAS
-     *    rejouer ca via N INSERT /sync — chaque INSERT recalculerait les
-     *    points pleins, pas divises).
-     * 3. Succes -> on retire l'optimiste et on insere les lignes serveur
-     *    autoritaires (vrais ids + points + reason).
-     * 4. Echec (409 anti-doublon / reseau) -> rollback de l'optimiste : le
-     *    backend gagne, rien n'a ete persiste donc l'UI ne doit pas mentir.
-     *
-     * Cf docs/cache-conventions.md (offline = on fait confiance au front ;
-     * online = serveur autoritaire ; ici la persistance est online-only par
-     * contrainte metier, mais le retour visuel reste immediat).
+     * Completion "fait ensemble" : optimiste-avec-reconciliation, en ligne. Le detail, et pourquoi
+     * elle tourne dans le scope applicatif, est dans [CollectiveCompletionLedger].
      */
     suspend fun completeTaskCollective(
         taskId: String,
         participantUserIds: List<String>,
         completedAt: String? = null,
         notes: String? = null,
-    ): Result<CollectiveCompletionResponse> {
-        if (participantUserIds.isEmpty()) {
-            return Result.failure(IllegalArgumentException("Aucun participant"))
-        }
-
-        val clientCollectiveId = UUID.randomUUID().toString()
-        val now = completedAt ?: Instant.now().toString()
-        val optimisticRows = participantUserIds.map { uid ->
-            Completion(
-                id = UUID.randomUUID().toString(),
-                taskId = taskId,
-                completedBy = uid,
-                completedAt = now,
-                pointsEarned = 1,
-                notes = notes,
-                collectiveId = clientCollectiveId,
-            )
-        }
-        completionDao.upsertAll(optimisticRows.map { it.toEntity() })
-
-        suspend fun rollback() {
-            optimisticRows.forEach { completionDao.deleteById(it.id) }
-        }
-
-        return try {
-            val resp = apiService.completeTaskCollective(
-                taskId = taskId,
-                request = CollectiveCompleteRequest(
-                    participantUserIds = participantUserIds,
-                    completedAt = completedAt,
-                    notes = notes,
-                ),
-            )
-            if (resp.isSuccessful) {
-                val body = resp.body()
-                if (body == null) {
-                    rollback()
-                    return Result.failure(IllegalStateException("Reponse vide"))
-                }
-                // Reconcilie : retire l'optimiste, insere les rows serveur.
-                rollback()
-                completionDao.upsertAll(body.completions.map { it.toEntity() })
-                Result.success(body)
-            } else {
-                rollback()
-                val http = ApiHttpException.from(resp)
-                Result.failure(CollectiveCompletionException(http.httpCode, http.errorBody, http.errorId))
-            }
-        } catch (e: Exception) {
-            rollback()
-            Result.failure(e)
-        }
-    }
-
-    class CollectiveCompletionException(httpCode: Int, errorBody: String, errorId: String? = null) :
-        ApiHttpException(httpCode, errorBody, errorId)
+    ): Result<CollectiveCompletionResponse> =
+        collectiveWriter.complete(taskId, participantUserIds, completedAt, notes)
 
     // -------------------------------------------------------------------
     // Historique de modification — observe / refresh / vote frequence
@@ -596,21 +542,9 @@ class TaskRepository @Inject constructor(
         limit: Int? = null,
     ): Result<List<Completion>> {
         return try {
-            val response = apiService.getCompletions(userId, taskId, limit)
-            if (response.isSuccessful) {
-                val completions = response.body() ?: emptyList()
-                when {
-                    taskId == null && userId == null ->
-                        completionDao.replaceAll(completions.map { it.toEntity() })
-                    taskId != null ->
-                        completionDao.replaceForTask(taskId, completions.map { it.toEntity() })
-                    else ->
-                        completionDao.upsertAll(completions.map { it.toEntity() })
-                }
-                Result.success(completions)
-            } else {
-                Result.failure(ApiHttpException.from(response))
-            }
+            fetchAndApplyCompletions(userId, taskId, limit)
+                ?.let { Result.success(it) }
+                ?: Result.failure(IllegalStateException("completions answer outdated by a push"))
         } catch (e: Exception) {
             Result.failure(e)
         }

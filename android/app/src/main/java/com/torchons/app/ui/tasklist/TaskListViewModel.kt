@@ -301,6 +301,7 @@ class TaskListViewModel @Inject constructor(
                     },
                 )
             },
+            writeFirst = true,
         )
     }
 
@@ -343,11 +344,12 @@ class TaskListViewModel @Inject constructor(
      * immediatement, puis points + attribution des que [resolve] les renvoie
      * (typiquement un preview).
      *
-     * [writeFirst] (solo completions): [write] starts with the celebration, at tap time, so leaving
+     * [writeFirst] (every completion): [write] starts with the celebration, at tap time, so leaving
      * the screen cannot lose it (2026-11-19: written after the 3 s, a completion abandoned within
      * them never reached Room nor the queue). The written task turns green at once; [held] keeps
      * its card as it was until the animation ends, so « À faire » does not drop it mid-animation.
-     * The collective completion keeps writing AFTER the animation (an online call).
+     * The collective completion is an online call: the repository runs it to its end (reconcile or
+     * rollback) in the application scope, this scope only waits for the answer.
      * The preview request is started before the write: the write queues a sync at once, and a
      * preview asked after the push would price the completion against itself.
      */

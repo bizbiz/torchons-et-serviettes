@@ -56,10 +56,23 @@ taps, a single op reached the server). The celebration is visual only; a
 second tap on the same task during it is ignored (`TapGuard`). A server
 `applied` entry flagged `dropped` deletes the local row (`SyncWorker`).
 
+✅ **« Done together » also starts at the tap**, and its whole sequence
+(optimistic rows → call → reconcile or rollback) runs in the application
+scope (`CollectiveCompletionLedger`): the screen only waits for the result
+for its message. It stays online (dedicated endpoint, the server splits the
+points), it does not go through `/sync`.
+
 ### Refresh / reconciliation (online = authoritative)
 
 - Full (`taskId==null && userId==null`) → `replaceAll`.
 - Per task (`taskId!=null`) → `replaceForTask(taskId, …)`.
+- ❌ A completions refresh is never applied as is: it goes through
+  `CompletionRefreshGuard.fetchThenApply`. An answer sent BEFORE a push and
+  applied AFTER its op was settled would erase the row just pushed (the op is
+  no longer queued, `replaceAll` no longer protects it). The worker bumps an
+  epoch when it settles completion ops (`settleApplied`); the refresh reads it
+  before its request and drops its answer if it moved (one more request, then
+  nothing). The lock only ever wraps local work.
 - The backend exposes the useful authoritative values (e.g.
   `TaskResponse.last_completed_at` computed server-side). **This is
   wired**: `Task` DTO + `TaskEntity.lastCompletedAt` (Room migration

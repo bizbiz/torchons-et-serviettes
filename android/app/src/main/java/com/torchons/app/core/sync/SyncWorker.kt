@@ -23,6 +23,7 @@ import com.torchons.app.data.model.SyncOperation
 import com.torchons.app.data.model.SyncRequest
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.SyncConflict
+import com.torchons.app.data.repository.CompletionRefreshGuard
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.widget.TaskWidget
 import com.torchons.app.worker.cacheMyTargetRatio
@@ -46,6 +47,7 @@ interface SyncWorkerEntryPoint {
     fun delegationDao(): DelegationDao
     fun tokenManager(): TokenManager
     fun taskRepository(): TaskRepository
+    fun completionRefreshGuard(): CompletionRefreshGuard
 }
 
 /**
@@ -105,6 +107,7 @@ class SyncWorker(
         val taskDao = ep.taskDao()
         val completionDao = ep.completionDao()
         val tokenManager = ep.tokenManager()
+        val guard = ep.completionRefreshGuard()
 
         val pending = pendingDao.getAll()
         if (pending.isEmpty()) return Result.success()
@@ -184,14 +187,14 @@ class SyncWorker(
             val body = resp.body()
                 ?: return@sendInBatches failed(shown(IllegalStateException("empty body")))
 
-            body.applied.forEach { pendingDao.delete(it.clientOpId) }
-            // After the queue row is gone: a duplicate the server dropped leaves no local trace.
-            droppedCompletionRowIds(body.applied, batch).forEach { completionDao.deleteById(it) }
+            settleApplied(guard, body.applied, batch, pendingDao::delete, completionDao::deleteById)
             if (body.applied.isNotEmpty()) tokenManager.setLastSyncPushAt(System.currentTimeMillis())
 
             settleConflicts(body.conflicts, batch, ep)
 
-            body.serverChanges.forEach { applyServerChange(it, taskDao, completionDao, ep.delegationDao()) }
+            applyServerChanges(guard, body.serverChanges) {
+                applyServerChange(it, taskDao, completionDao, ep.delegationDao())
+            }
 
             tokenManager.setSyncCursor(body.serverVersion)
             true

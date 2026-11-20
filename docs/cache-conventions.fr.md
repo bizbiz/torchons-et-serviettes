@@ -58,10 +58,23 @@ op arrivée au serveur). La célébration est visuelle ; un second tap sur la
 même tâche pendant celle-ci est ignoré (`TapGuard`). Un `applied` du serveur
 marqué `dropped` supprime la ligne locale (`SyncWorker`).
 
+✅ **« Fait ensemble » démarre aussi au tap**, et tout son déroulé (lignes
+optimistes → appel → réconciliation ou rollback) tourne dans le scope
+applicatif (`CollectiveCompletionLedger`) : l'écran n'attend que le résultat
+pour son message. Il reste en ligne (endpoint dédié, le serveur répartit les
+points), il ne passe pas par `/sync`.
+
 ### Refresh / réconciliation (online = autoritaire)
 
 - Plein (`taskId==null && userId==null`) → `replaceAll`.
 - Par tâche (`taskId!=null`) → `replaceForTask(taskId, …)`.
+- ❌ Un refresh de complétions ne s'applique jamais tel quel : il passe par
+  `CompletionRefreshGuard.fetchThenApply`. Une réponse partie AVANT un push et
+  appliquée APRÈS le règlement de l'op effacerait la ligne qu'on vient de
+  pousser (l'op n'est plus en file, `replaceAll` ne la protège plus). Le worker
+  bumpe une époque quand il règle des ops de complétion (`settleApplied`) ; le
+  refresh la lit avant sa requête et jette sa réponse si elle a bougé (une
+  seconde requête, puis rien). Le verrou n'entoure que du travail local.
 - Le backend expose les valeurs autoritaires utiles (ex.
   `TaskResponse.last_completed_at` calculé serveur). **C'est câblé** :
   `Task` DTO + `TaskEntity.lastCompletedAt` (migration Room 9→10) →
