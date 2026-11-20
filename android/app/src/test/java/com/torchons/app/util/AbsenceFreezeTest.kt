@@ -1,5 +1,6 @@
 package com.torchons.app.util
 
+import com.google.gson.JsonParser
 import com.torchons.app.data.model.TaskContextRef
 import com.torchons.app.util.AbsenceFreeze.Advice
 import org.junit.Assert.assertEquals
@@ -7,6 +8,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
+
+private const val VECTORS = "shared/test-vectors/absence_freeze.json"
 
 /**
  * Scope: the pause/keep-going split and the advice of the « Pendant une absence » sheet.
@@ -69,6 +73,27 @@ class AbsenceFreezeTest {
         val e = one(listOf(ctx("Jardin", accrues = true)))
         assertFalse(e.frozen)
         assertEquals(Advice.Pause(listOf("Jardin"), alsoNeedsPresence = true), e.advice)
+    }
+
+    /**
+     * Same table as the server's `tests/test_absence_freeze_vectors.py`, which also proves the
+     * table is exhaustive. A rule changed on one side only fails that side's test.
+     */
+    @Test
+    fun `rule matches the shared table`() {
+        var dir: File? = File(System.getProperty("user.dir")).absoluteFile
+        while (dir != null && !File(dir, VECTORS).isFile) dir = dir.parentFile
+        val file = File(requireNotNull(dir) { "$VECTORS not found above user.dir" }, VECTORS)
+        val cases = JsonParser.parseString(file.readText()).asJsonObject.getAsJsonArray("cases")
+        assertTrue("empty table", cases.size() > 0)
+        for (case in cases) {
+            val obj = case.asJsonObject
+            val contexts = obj.getAsJsonArray("contexts").mapIndexed { i, c ->
+                val o = c.asJsonObject
+                ctx("c$i", o["presence"].asBoolean, o["accrues"].asBoolean)
+            }
+            assertEquals(obj.toString(), obj["freezes"].asBoolean, AbsenceFreeze.freezes(contexts))
+        }
     }
 
     @Test

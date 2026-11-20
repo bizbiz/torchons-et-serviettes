@@ -57,6 +57,21 @@ class TaskFlags:
 NO_FLAGS = TaskFlags()
 
 
+def combine_flags(contexts: Iterable[tuple[bool, bool]]) -> TaskFlags:
+    """OR the (requires_presence, accrues_when_away) pairs of a task's contexts.
+
+    Pure on purpose: `shared/test-vectors/absence_freeze.json` checks it against
+    the same table as the app's copy of the rule (`AbsenceFreeze.kt`).
+    """
+    out = NO_FLAGS
+    for presence, accrues in contexts:
+        out = TaskFlags(
+            requires_presence=out.requires_presence or bool(presence),
+            accrues_when_away=out.accrues_when_away or bool(accrues),
+        )
+    return out
+
+
 async def resolve_flags_for_tasks(
     session: AsyncSession, task_ids: Iterable[uuid.UUID]
 ) -> dict[uuid.UUID, TaskFlags]:
@@ -79,14 +94,10 @@ async def resolve_flags_for_tasks(
         .where(TaskContext.task_id.in_(ids), Context.deleted_at.is_(None))
     )).all()
 
-    out: dict[uuid.UUID, TaskFlags] = {tid: NO_FLAGS for tid in ids}
+    per_task: dict[uuid.UUID, list[tuple[bool, bool]]] = {tid: [] for tid in ids}
     for task_id, presence, accrues in rows:
-        actuel = out.get(task_id, NO_FLAGS)
-        out[task_id] = TaskFlags(
-            requires_presence=actuel.requires_presence or bool(presence),
-            accrues_when_away=actuel.accrues_when_away or bool(accrues),
-        )
-    return out
+        per_task.setdefault(task_id, []).append((presence, accrues))
+    return {tid: combine_flags(pairs) for tid, pairs in per_task.items()}
 
 
 async def task_ids_requiring_presence(

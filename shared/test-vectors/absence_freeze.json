@@ -1,0 +1,27 @@
+{
+  "rule": "freezes = OR(requires_presence) AND NOT OR(accrues_when_away), over the task's contexts",
+  "read_by": [
+    "backend/tests/test_absence_freeze_vectors.py",
+    "android/app/src/test/java/com/torchons/app/util/AbsenceFreezeTest.kt"
+  ],
+  "note": "Every multiset of 0 to 2 contexts. Changing the rule means changing this table, and both tests fail until both sides follow.",
+  "cases": [
+    {"contexts": [], "freezes": false},
+
+    {"contexts": [{"presence": false, "accrues": false}], "freezes": false},
+    {"contexts": [{"presence": true, "accrues": false}], "freezes": true},
+    {"contexts": [{"presence": false, "accrues": true}], "freezes": false},
+    {"contexts": [{"presence": true, "accrues": true}], "freezes": false},
+
+    {"contexts": [{"presence": false, "accrues": false}, {"presence": false, "accrues": false}], "freezes": false},
+    {"contexts": [{"presence": false, "accrues": false}, {"presence": true, "accrues": false}], "freezes": true},
+    {"contexts": [{"presence": false, "accrues": false}, {"presence": false, "accrues": true}], "freezes": false},
+    {"contexts": [{"presence": false, "accrues": false}, {"presence": true, "accrues": true}], "freezes": false},
+    {"contexts": [{"presence": true, "accrues": false}, {"presence": true, "accrues": false}], "freezes": true},
+    {"contexts": [{"presence": true, "accrues": false}, {"presence": false, "accrues": true}], "freezes": false},
+    {"contexts": [{"presence": true, "accrues": false}, {"presence": true, "accrues": true}], "freezes": false},
+    {"contexts": [{"presence": false, "accrues": true}, {"presence": false, "accrues": true}], "freezes": false},
+    {"contexts": [{"presence": false, "accrues": true}, {"presence": true, "accrues": true}], "freezes": false},
+    {"contexts": [{"presence": true, "accrues": true}, {"presence": true, "accrues": true}], "freezes": false}
+  ]
+}

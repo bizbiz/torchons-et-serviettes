@@ -87,7 +87,9 @@ lateness / interval ratio, descending.
 on site and none says it keeps going without us, and only when the household has the freeze
 on (`home_freeze_enabled`); a task with no context never freezes. The rule lives in
 `backend/app/services/task_flags.py` and has an app-side copy, `util/AbsenceFreeze.kt` (the
-"During an absence" sheet): changing one means changing the other, no test ties them.
+"During an absence" sheet). Both are tested against the same table,
+`shared/test-vectors/absence_freeze.json` (every combination of 0 to 2 contexts): changing the
+rule means changing the table, and both suites fail until both sides follow.
 
 ## Sync ordering
 

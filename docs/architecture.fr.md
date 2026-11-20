@@ -92,7 +92,10 @@ l'intérieur d'un niveau se fait par ratio retard / intervalle décroissant.
 être sur place » et qu'aucun ne dit « Ça continue sans nous », et seulement si le foyer a le gel
 activé (`home_freeze_enabled`) ; une tâche sans contexte ne gèle pas. La règle vit dans
 `backend/app/services/task_flags.py` et a une copie côté app, `util/AbsenceFreeze.kt` (feuille
-« Pendant une absence ») : changer l'une, c'est changer l'autre, aucun test ne les relie.
+« Pendant une absence »). Les deux sont testées contre la même table,
+`shared/test-vectors/absence_freeze.json` (toutes les combinaisons de 0 à 2 contextes) : changer
+la règle, c'est changer la table, et les deux suites échouent tant que les deux côtés ne suivent
+pas.
 
 ## Ordre de synchronisation
 
