@@ -1,18 +1,12 @@
 package com.torchons.app.data.repository
 
-import com.google.gson.Gson
-import com.torchons.app.core.sync.SyncTrigger
 import com.torchons.app.data.api.ApiHttpException
-import com.torchons.app.core.sync.opsToDiscard
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.dao.CompletionDao
-import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.ContextDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.dao.TaskHistoryDao
 import com.torchons.app.data.model.FormerMember
-import com.torchons.app.data.local.TokenManager
-import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.toDomain
 import com.torchons.app.data.local.entities.toEntity
 import com.torchons.app.data.model.CollectiveCompletionResponse
@@ -20,16 +14,12 @@ import com.torchons.app.data.model.Completion
 import com.torchons.app.data.model.CreateTaskRequest
 import com.torchons.app.data.model.FrequencyRequest
 import com.torchons.app.data.model.ContextView
-import com.torchons.app.data.model.TaskContextRef
 import com.torchons.app.data.model.Task
 import com.torchons.app.data.model.TaskHistoryEvent
 import com.torchons.app.data.model.UpdateTaskRequest
 import com.torchons.app.data.model.User
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import java.time.Instant
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -39,7 +29,8 @@ import javax.inject.Singleton
  * Lectures : observe* retourne un Flow Room, refresh* fetch l'API et upsert.
  * Ecritures : write-local-first. L'operation est ecrite dans Room immediatement
  * (UI optimiste), enqueue dans pending_operations, et le SyncWorker la pousse
- * vers le backend quand la connexion est disponible.
+ * vers le backend quand la connexion est disponible. Le write local et l'enqueue sont UNE
+ * transaction dans le scope applicatif (LocalMutation) : quitter l'ecran ne les separe jamais.
  */
 @Singleton
 class TaskRepository @Inject constructor(
@@ -47,16 +38,15 @@ class TaskRepository @Inject constructor(
     private val taskDao: TaskDao,
     private val completionDao: CompletionDao,
     private val members: MemberRepository,
-    private val pendingDao: PendingOperationDao,
     private val taskHistoryDao: TaskHistoryDao,
     private val contextDao: ContextDao,
-    private val syncTrigger: SyncTrigger,
-    private val tokenManager: TokenManager,
     private val completionWriter: CompletionWriter,
+    private val completionEdits: CompletionEditWriter,
+    private val taskWriter: TaskWriter,
+    private val pendingDiscard: PendingDiscardWriter,
     private val collectiveWriter: CollectiveCompletionWriter,
     private val refreshGuard: CompletionRefreshGuard,
 ) {
-    private val gson = Gson()
 
     // -------------------------------------------------------------------
     // Tasks — observe / refresh
@@ -229,109 +219,16 @@ class TaskRepository @Inject constructor(
     // Ecritures offline-first
     // -------------------------------------------------------------------
 
-    /**
-     * Traduit des ids de contexte en references affichables, depuis le CACHE.
-     *
-     * L'etat derive doit etre recalcule a chaque mutation sans reseau : sans
-     * ca, une tache creee hors ligne s'afficherait sans contexte jusqu'a la
-     * prochaine synchronisation. Cf `docs/cache-conventions.md`.
-     */
-    private suspend fun resolveContextRefs(ids: List<String>?): List<TaskContextRef> {
-        if (ids.isNullOrEmpty()) return emptyList()
-        val connus = contextDao.getAll().associateBy { it.id }
-        return ids.mapIndexedNotNull { position, id ->
-            connus[id]?.let {
-                TaskContextRef(
-                    id = it.id, name = it.name, color = it.color,
-                    emoji = it.emoji, position = position,
-                )
-            }
-        }
-    }
+    // Each of these is ONE LocalMutation (cache change + queued op in one transaction, in the
+    // application's scope): see TaskLedger and LocalMutation. Return values and errors are the
+    // callers' contract and did not change.
 
-    suspend fun createTask(request: CreateTaskRequest): Result<Task> {
-        val clientOpId = UUID.randomUUID().toString()
-        val rowId = UUID.randomUUID().toString()
-        val now = Instant.now().toString()
+    suspend fun createTask(request: CreateTaskRequest): Result<Task> = taskWriter.create(request)
 
-        val optimistic = Task(
-            id = rowId,
-            title = request.title,
-            description = request.description,
-            assignedToIds = request.assignedToIds,
-            recurrenceRule = request.recurrenceRule,
-            weight = request.weight,
-            tolerance = request.tolerance,
-            isActive = true,
-            sortOrder = 0,
-            createdAt = now,
-            updatedAt = now,
-            contexts = resolveContextRefs(request.contextIds),
-        )
+    suspend fun updateTask(taskId: String, request: UpdateTaskRequest): Result<Task> =
+        taskWriter.update(taskId, request)
 
-        taskDao.upsert(optimistic.toEntity())
-
-        val payload = mapOf(
-            "title" to request.title,
-            "description" to request.description,
-            "assigned_to_ids" to request.assignedToIds,
-            "recurrence_rule" to request.recurrenceRule,
-            "weight" to request.weight,
-            "tolerance" to request.tolerance,
-            "context_ids" to request.contextIds,
-        )
-        enqueue(clientOpId, "tasks", "INSERT", rowId, payload)
-
-        return Result.success(optimistic)
-    }
-
-    suspend fun updateTask(taskId: String, request: UpdateTaskRequest): Result<Task> {
-        val clientOpId = UUID.randomUUID().toString()
-
-        val existing = taskDao.getById(taskId)?.toDomain()
-        val updated = existing?.copy(
-            title = request.title ?: existing.title,
-            description = request.description ?: existing.description,
-            assignedToIds = request.assignedToIds ?: existing.assignedToIds,
-            recurrenceRule = request.recurrenceRule ?: existing.recurrenceRule,
-            weight = request.weight ?: existing.weight,
-            tolerance = request.tolerance ?: existing.tolerance,
-            isActive = request.isActive ?: existing.isActive,
-            updatedAt = Instant.now().toString(),
-            contexts = if (request.contextIds != null)
-                resolveContextRefs(request.contextIds) else existing.contexts,
-        )
-
-        if (updated != null) {
-            taskDao.upsert(updated.toEntity())
-        }
-
-        val payload = mutableMapOf<String, Any?>()
-        request.title?.let { payload["title"] = it }
-        request.description?.let { payload["description"] = it }
-        request.assignedToIds?.let { payload["assigned_to_ids"] = it }
-        request.recurrenceRule?.let { payload["recurrence_rule"] = it }
-        request.weight?.let { payload["weight"] = it }
-        request.tolerance?.let { payload["tolerance"] = it }
-        request.isActive?.let { payload["is_active"] = it }
-        // `?.let` et non `takeIf { it.isNotEmpty() }` : une liste VIDE est une
-        // instruction — « detache tous les contextes » — et doit partir telle
-        // quelle. Seul `null` signifie « ne touche pas ».
-        request.contextIds?.let { payload["context_ids"] = it }
-
-        enqueue(clientOpId, "tasks", "UPDATE", taskId, payload)
-
-        return Result.success(updated ?: existing ?: Task(id = taskId, title = ""))
-    }
-
-    suspend fun deleteTask(taskId: String): Result<Unit> {
-        val clientOpId = UUID.randomUUID().toString()
-
-        taskDao.deleteById(taskId)
-        enqueue(clientOpId, "tasks", "DELETE", taskId, null)
-
-        return Result.success(Unit)
-    }
+    suspend fun deleteTask(taskId: String): Result<Unit> = taskWriter.delete(taskId)
 
     suspend fun completeTask(
         taskId: String,
@@ -344,66 +241,31 @@ class TaskRepository @Inject constructor(
         completionWriter.complete(taskId, completedAt, completedBy, notes)
 
     /**
-     * Supprime une completion en offline-first : delete local OPTIMISTE
-     * immediat (l'urgence de la tache se recalcule aussitot depuis le cache
-     * — offline = on fait confiance au front) + enqueue d'une op DELETE
-     * (le serveur reconcilie quand en ligne ; SyncWorker propage aussi les
-     * DELETE serveur via change_log). Remplace l'ancien chemin
-     * apiService.deleteCompletion (REST online-only, sans delete local, qui
-     * laissait une completion fantome -> lastCompletedAt perime).
-     * Cf docs/cache-conventions.md.
+     * Supprime une completion en offline-first : delete local OPTIMISTE immediat (l'urgence de la
+     * tache se recalcule aussitot depuis le cache -- offline = on fait confiance au front) + op
+     * DELETE en file, dans UNE transaction (CompletionEditLedger). Le serveur reconcilie quand en
+     * ligne. Cf docs/cache-conventions.md.
      */
-    suspend fun deleteCompletion(completionId: String): Result<Unit> {
-        val clientOpId = UUID.randomUUID().toString()
-        completionDao.deleteById(completionId)
-        enqueue(clientOpId, "task_completions", "DELETE", completionId, null)
-        return Result.success(Unit)
-    }
+    suspend fun deleteCompletion(completionId: String): Result<Unit> = completionEdits.delete(completionId)
 
     /**
-     * Supprime un evenement collectif entier en offline-first : delete local
-     * OPTIMISTE de chaque ligne + une op DELETE enqueue par ligne (meme chemin
-     * que [deleteCompletion] : le backend _handle_completion DELETE soft-delete
-     * chaque row, le SyncWorker propage). Remplace l'ancien chemin online-only
-     * apiService.deleteCollectiveCompletion + refresh immediat (anti-pattern :
-     * casse l'offline et le refresh re-ajoutait les lignes fantomes tant que
-     * l'op n'etait pas poussee). Cf docs/cache-conventions.md.
+     * Supprime un evenement collectif entier en offline-first : delete local OPTIMISTE de chaque
+     * ligne + une op DELETE par ligne, le tout dans UNE transaction (meme chemin que
+     * [deleteCompletion]). Cf docs/cache-conventions.md.
      */
-    suspend fun deleteCollectiveCompletion(rowIds: List<String>): Result<Unit> {
-        for (id in rowIds) {
-            completionDao.deleteById(id)
-            enqueue(UUID.randomUUID().toString(), "task_completions", "DELETE", id, null)
-        }
-        return Result.success(Unit)
-    }
+    suspend fun deleteCollectiveCompletion(rowIds: List<String>): Result<Unit> =
+        completionEdits.deleteCollective(rowIds)
 
     /**
-     * Edite une completion (qui / quand) en offline-first : upsert local
-     * OPTIMISTE immediat (l'historique + l'urgence se recalculent aussitot)
-     * + enqueue d'une op UPDATE (le backend _handle_completion UPDATE applique
-     * completed_by/completed_at, le SyncWorker propage le change_log). Pas de
-     * refresh immediat : l'op est en file, le serveur a encore l'ancienne
-     * valeur, un refetch ecraserait l'optimiste. Cf docs/cache-conventions.md.
+     * Edite une completion (qui / quand) en offline-first : upsert local OPTIMISTE + op UPDATE en
+     * file, dans UNE transaction. Pas de refresh immediat : le serveur a encore l'ancienne valeur,
+     * un refetch ecraserait l'optimiste. Cf docs/cache-conventions.md.
      */
     suspend fun updateCompletion(
         completionId: String,
         completedBy: String,
         completedAt: String,
-    ): Result<Unit> {
-        val existing = completionDao.getById(completionId)
-            ?: return Result.failure(IllegalStateException("Completion introuvable en cache"))
-        completionDao.upsertAll(
-            listOf(existing.copy(completedBy = completedBy, completedAt = completedAt))
-        )
-        enqueue(
-            UUID.randomUUID().toString(),
-            "task_completions",
-            "UPDATE",
-            completionId,
-            mapOf("completed_by" to completedBy, "completed_at" to completedAt),
-        )
-        return Result.success(Unit)
-    }
+    ): Result<Unit> = completionEdits.update(completionId, completedBy, completedAt)
 
     /**
      * Completion "fait ensemble" : optimiste-avec-reconciliation, en ligne. Le detail, et pourquoi
@@ -452,11 +314,11 @@ class TaskRepository @Inject constructor(
                 refreshTaskHistory(taskId)
                 Result.success(Unit)
             } else {
-                enqueueFrequencyVote(taskId, request)
+                taskWriter.enqueueFrequencyVote(taskId, request)
                 Result.success(Unit)
             }
         } catch (_: Exception) {
-            enqueueFrequencyVote(taskId, request)
+            taskWriter.enqueueFrequencyVote(taskId, request)
             Result.success(Unit)
         }
     }
@@ -464,14 +326,6 @@ class TaskRepository @Inject constructor(
     /** Helper raccourci interval (mode "Régulière" — 12 mois identiques). */
     suspend fun voteFrequency(taskId: String, everyNDays: Int): Result<Unit> =
         voteFrequency(taskId, FrequencyRequest(everyNDays = everyNDays))
-
-    private suspend fun enqueueFrequencyVote(taskId: String, request: FrequencyRequest) {
-        val clientOpId = UUID.randomUUID().toString()
-        val payload: MutableMap<String, Any> = mutableMapOf()
-        request.everyNDays?.let { payload["every_n_days"] = it }
-        request.daysPerMonth?.let { payload["days_per_month"] = it }
-        enqueue(clientOpId, "task_frequency_votes", "VOTE", taskId, payload)
-    }
 
     /**
      * Retourne l'etat des votes de frequence pour une tache (consensus,
@@ -489,47 +343,15 @@ class TaskRepository @Inject constructor(
     }
 
     /**
-     * Drops a queued op the user gave up on (sync dialog), with the ops that
-     * depend on it ([opsToDiscard]), and undoes its optimistic local write:
-     * a dropped INSERT leaves a row the server will never have, so it is
-     * deleted; a dropped UPDATE or DELETE left the server row as it was, so
-     * a refresh brings it back (the row is no longer pending, the replace
-     * takes it).
+     * Drops a queued op the user gave up on (sync dialog), with the ops that depend on it, and
+     * undoes the optimistic local write of a dropped INSERT, all in one transaction
+     * (PendingDiscardLedger). A dropped UPDATE or DELETE left the server row as it was, so the
+     * refresh below brings it back (the row is no longer pending, the replace takes it).
      */
     suspend fun discardPendingOp(clientOpId: String) {
-        val queue = pendingDao.getAll()
-        val target = queue.firstOrNull { it.clientOpId == clientOpId } ?: return
-        val dropped = opsToDiscard(queue, target)
-        dropped.forEach { pendingDao.delete(it.clientOpId) }
-        for (op in dropped.filter { it.operation == "INSERT" }) {
-            when (op.tableName) {
-                "tasks" -> taskDao.deleteById(op.rowId)
-                "task_completions" -> completionDao.deleteById(op.rowId)
-            }
-        }
+        val dropped = pendingDiscard.discard(clientOpId)
         if (dropped.any { it.tableName == "tasks" && it.operation != "INSERT" }) refreshTasks()
         if (dropped.any { it.tableName == "task_completions" && it.operation != "INSERT" }) refreshCompletions()
-    }
-
-    private suspend fun enqueue(
-        clientOpId: String,
-        table: String,
-        operation: String,
-        rowId: String,
-        payload: Any?,
-    ) {
-        pendingDao.insert(
-            PendingOperationEntity(
-                clientOpId = clientOpId,
-                tableName = table,
-                operation = operation,
-                rowId = rowId,
-                payloadJson = gson.toJson(payload),
-                createdAt = System.currentTimeMillis(),
-                foyerId = tokenManager.foyerIdFlow.first(),
-            )
-        )
-        syncTrigger.requestSync()
     }
 
     // -------------------------------------------------------------------

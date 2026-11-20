@@ -37,6 +37,12 @@ Mirror of `TaskRepository.completeTask` / `deleteCompletion` /
    including DELETEs -> completionDao.deleteById)
 ```
 
+Steps 1 and 2 are ONE `LocalMutation` (`data/repository/LocalMutation.kt`): the local
+write and the op in a single Room transaction, run in the application scope, `requestSync()`
+after the commit. ❌ Never write them as two suspend steps in the caller's scope: leaving the
+screen between them shows a change that is never queued (the next refresh erases it). New
+mutation = a ledger like `TaskLedger`, its block calling `enqueue(...)` on the `MutationScope`.
+
 ❌ **Anti-pattern**: calling an online-only REST endpoint (e.g.
 `apiService.deleteCompletion`) without an optimistic local delete and
 enqueue → breaks offline AND leaves a ghost row in the cache (upsert

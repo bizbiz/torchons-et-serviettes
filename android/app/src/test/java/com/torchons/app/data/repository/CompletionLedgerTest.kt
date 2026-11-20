@@ -59,6 +59,7 @@ class CompletionLedgerTest {
         }
         override suspend fun insertCompletion(entity: CompletionEntity) { completions += entity }
         override suspend fun enqueue(op: PendingOperationEntity) { ops += op }
+        override suspend fun dequeue(clientOpId: String) { ops.removeAll { it.clientOpId == clientOpId } }
     }
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

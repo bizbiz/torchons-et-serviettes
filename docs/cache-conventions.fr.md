@@ -39,6 +39,13 @@ Mirror de `TaskRepository.completeTask` / `deleteCompletion` /
    y compris les DELETE -> completionDao.deleteById)
 ```
 
+Les étapes 1 et 2 forment UNE `LocalMutation` (`data/repository/LocalMutation.kt`) : l'écriture
+locale et l'op dans une seule transaction Room, exécutée dans le scope applicatif,
+`requestSync()` après le commit. ❌ Jamais deux étapes suspend dans le scope de l'appelant :
+quitter l'écran entre les deux montre un changement jamais mis en file (le prochain refresh
+l'efface). Nouvelle mutation = un ledger comme `TaskLedger`, dont le bloc appelle `enqueue(...)`
+sur le `MutationScope`.
+
 ❌ **Anti-pattern** : appeler un endpoint REST online-only (ex.
 `apiService.deleteCompletion`) sans delete local optimiste ni enqueue →
 casse l'offline ET laisse une ligne fantôme en cache (upsert ne la retire

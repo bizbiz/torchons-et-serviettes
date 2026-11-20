@@ -1,7 +1,6 @@
 package com.torchons.app.data.repository
 
 import androidx.room.withTransaction
-import com.google.gson.Gson
 import com.torchons.app.core.sync.SyncTrigger
 import com.torchons.app.data.local.AppDatabase
 import com.torchons.app.data.local.TokenManager
@@ -14,7 +13,6 @@ import com.torchons.app.data.local.entities.toEntity
 import com.torchons.app.data.model.Completion
 import com.torchons.app.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import java.time.Instant
 import java.util.UUID
@@ -25,16 +23,12 @@ import javax.inject.Singleton
 class DuplicateCompletionException(val twin: CompletionEntity) : Exception("duplicate completion ${twin.id}")
 
 /** What [CompletionLedger] needs from the database; Room in the app, a fake in JVM tests. */
-internal interface CompletionStore {
-    /** Runs [block] as ONE transaction: all of its writes land, or none. */
-    suspend fun <T> atomically(block: suspend () -> T): T
-
+internal interface CompletionStore : OpStore {
     /** The duplicate window of the task in seconds, null when the task is not in the cache. */
     suspend fun duplicateGapSeconds(taskId: String): Long?
 
     suspend fun completionsOf(taskId: String): List<CompletionEntity>
     suspend fun insertCompletion(entity: CompletionEntity)
-    suspend fun enqueue(op: PendingOperationEntity)
 }
 
 /**
@@ -52,15 +46,17 @@ internal interface CompletionStore {
  *
  * What is read from DataStore (user id, household) is read BEFORE the transaction: a suspend
  * call that waits on another dispatcher has no business holding the database's write lock.
+ * The transaction, the scope and the sync-after-commit are [LocalMutation], shared with every
+ * other offline-first mutation; this class only adds the duplicate check.
  */
 internal class CompletionLedger(
     private val store: CompletionStore,
-    private val scope: CoroutineScope,
-    private val requestSync: () -> Unit,
+    scope: CoroutineScope,
+    requestSync: () -> Unit,
     private val now: () -> Instant = Instant::now,
     private val newId: () -> String = { UUID.randomUUID().toString() },
 ) {
-    private val gson = Gson()
+    private val mutation = LocalMutation(store, scope, requestSync, newId = newId)
 
     suspend fun complete(
         taskId: String,
@@ -88,27 +84,16 @@ internal class CompletionLedger(
             "notes" to notes,
         )
 
-        // async + await, not withContext: cancelling the caller stops its wait, never the write.
-        val refusedBy = scope.async {
-            store.atomically {
-                val twin = by?.let { duplicateIn(taskId, it, at) }
-                if (twin == null) {
-                    store.insertCompletion(optimistic.toEntity())
-                    store.enqueue(
-                        PendingOperationEntity(
-                            clientOpId = clientOpId,
-                            tableName = "task_completions",
-                            operation = "INSERT",
-                            rowId = rowId,
-                            payloadJson = gson.toJson(payload),
-                            createdAt = System.currentTimeMillis(),
-                            foyerId = foyerId,
-                        ),
-                    )
-                }
-                twin
-            }.also { if (it == null) requestSync() } // after the commit: the worker must find the op
-        }.await()
+        // Transaction, application scope and sync-after-commit: LocalMutation. A refused duplicate
+        // queues nothing, so it requests no sync.
+        val refusedBy = mutation.run(foyerId) {
+            val twin = by?.let { duplicateIn(taskId, it, at) }
+            if (twin == null) {
+                store.insertCompletion(optimistic.toEntity())
+                enqueue("task_completions", "INSERT", rowId, payload, clientOpId)
+            }
+            twin
+        }
 
         return if (refusedBy == null) {
             Result.success(optimistic)
@@ -141,6 +126,8 @@ internal class RoomCompletionStore(
     override suspend fun insertCompletion(entity: CompletionEntity) = completionDao.upsertAll(listOf(entity))
 
     override suspend fun enqueue(op: PendingOperationEntity) = pendingDao.insert(op)
+
+    override suspend fun dequeue(clientOpId: String) = pendingDao.delete(clientOpId)
 }
 
 /** The Hilt-facing entry point of [CompletionLedger]; [TaskRepository.completeTask] delegates here. */
