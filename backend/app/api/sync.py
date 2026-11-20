@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime, timezone
+from functools import partial
 
 from fastapi import APIRouter, Depends
 from pydantic import ValidationError
@@ -30,6 +31,7 @@ from app.schemas.sync import (
 from app.api.sync_completions import handle_completion
 from app.api.sync_delegations import handle_delegation
 from app.api.sync_errors import OutOfScopeError, StaleUpdateError
+from app.api.sync_stale import is_stale
 from app.api.tasks import replace_task_contexts
 from app.services.push import send_sync_completions
 from app.services.recurrence import checked_recurrence_rule
@@ -40,6 +42,9 @@ from app.utils.user_settings import get_or_create_user_settings
 from app.schemas.task import TaskUpdate
 
 router = APIRouter(prefix="/api", tags=["sync"])
+
+# Most change_log rows one /sync answer carries; the cursor it returns never goes past them.
+PULL_LIMIT = 500
 
 
 async def _op_foyer(session: AsyncSession, op: SyncOperation, user_id: str, token_foyer: str) -> str:
@@ -117,6 +122,53 @@ async def _visible_changes(session: AsyncSession, user_id, rows: list) -> list:
     return [r for r in rows if resolved(r) not in hidden]
 
 
+async def _pull_changes(
+    session: AsyncSession, body: SyncRequest, user_id: str, foyer_id: str
+) -> tuple[int, list, bool]:
+    """Server changes since `last_server_version`, the cursor to send back, and whether more wait.
+
+    Excludes the ops of this device. SCOPE FOYER: a client only receives the changes of its
+    current household. At most PULL_LIMIT rows are scanned. The cursor never goes past a row
+    that was not delivered.
+    """
+    own_op_ids = select(ProcessedOp.client_op_id).where(
+        ProcessedOp.device_id == body.device_id
+    ).scalar_subquery()
+    foyer_uuid = uuid.UUID(foyer_id) if isinstance(foyer_id, str) else foyer_id
+
+    # Read BEFORE the page: a row committed between the two reads is then returned by the
+    # page (and again by the next pull, which is idempotent), never skipped by the cursor.
+    max_version = (
+        await session.execute(select(func.max(ChangeLog.server_version)))
+    ).scalar() or body.last_server_version
+
+    # One row more than the limit, to know whether the limit cut the answer.
+    scanned = (
+        await session.execute(
+            select(ChangeLog)
+            .where(ChangeLog.server_version > body.last_server_version)
+            .where(ChangeLog.foyer_id == foyer_uuid)
+            .where(
+                (ChangeLog.client_op_id.is_(None))
+                | (~ChangeLog.client_op_id.in_(own_op_ids))
+            )
+            .order_by(ChangeLog.server_version)
+            .limit(PULL_LIMIT + 1)
+        )
+    ).scalars().all()
+    has_more = len(scanned) > PULL_LIMIT
+    if has_more:
+        # Cut: the cursor stops at the last row scanned (delivered, or hidden from this user),
+        # so the next pull resumes right after it. The global max would skip every row beyond.
+        scanned = scanned[:PULL_LIMIT]
+        cursor = scanned[-1].server_version
+    else:
+        # Nothing cut: every row of this household up to `max_version` was scanned, so the
+        # cursor may jump over the versions of other households and of this device's own ops.
+        cursor = max(max_version, scanned[-1].server_version) if scanned else max_version
+    return cursor, await _visible_changes(session, user_id, scanned), has_more
+
+
 @router.post("/sync", response_model=SyncResponse)
 async def sync(
     body: SyncRequest,
@@ -170,33 +222,7 @@ async def sync(
     await session.commit()
     await send_sync_completions(session, inserted_completions, user_id)
 
-    # Pull : changements serveur depuis last_server_version,
-    # en excluant les ops originant de ce device. SCOPE FOYER : un client ne
-    # recoit que les changements de son foyer actuel.
-    own_op_ids = select(ProcessedOp.client_op_id).where(
-        ProcessedOp.device_id == body.device_id
-    ).scalar_subquery()
-
-    foyer_uuid = uuid.UUID(foyer_id) if isinstance(foyer_id, str) else foyer_id
-    server_rows = (
-        await session.execute(
-            select(ChangeLog)
-            .where(ChangeLog.server_version > body.last_server_version)
-            .where(ChangeLog.foyer_id == foyer_uuid)
-            .where(
-                (ChangeLog.client_op_id.is_(None))
-                | (~ChangeLog.client_op_id.in_(own_op_ids))
-            )
-            .order_by(ChangeLog.server_version)
-            .limit(500)
-        )
-    ).scalars().all()
-    server_rows = await _visible_changes(session, user_id, server_rows)
-
-    max_version_row = await session.execute(
-        select(func.max(ChangeLog.server_version))
-    )
-    max_version = max_version_row.scalar() or body.last_server_version
+    server_version, server_rows, has_more = await _pull_changes(session, body, user_id, foyer_id)
 
     server_changes = [
         ChangeLogEntry(
@@ -211,7 +237,8 @@ async def sync(
     ]
 
     return SyncResponse(
-        server_version=max_version,
+        server_version=server_version,
+        has_more=has_more,
         applied=applied,
         conflicts=conflicts,
         server_changes=server_changes,
@@ -227,7 +254,7 @@ async def _apply_op(
 ) -> SyncAppliedOp:
     """Dispatch et execute une operation sync (scope foyer)."""
     handlers = {
-        "tasks": _handle_task,
+        "tasks": partial(_handle_task, device_id=device_id),
         "task_completions": handle_completion,
         "task_delegations": handle_delegation,
         "user_settings": _handle_settings,
@@ -300,11 +327,6 @@ _TASK_UPDATE_FIELDS = frozenset({
 })
 
 
-def _truncate_to_ms(dt: datetime) -> datetime:
-    """Tronque un datetime a la milliseconde (resolution Android)."""
-    return dt.replace(microsecond=(dt.microsecond // 1000) * 1000)
-
-
 async def _writable_task(session: AsyncSession, task_id, foyer_uuid: uuid.UUID, user_id: str):
     """The live task of this household the caller may see, or None."""
     return (
@@ -324,6 +346,7 @@ async def _handle_task(
     op: SyncOperation,
     user_id: str,
     foyer_id: str,
+    device_id: uuid.UUID,
 ) -> uuid.UUID | None:
     """Traite INSERT / UPDATE / DELETE sur tasks."""
     data = op.data or {}
@@ -357,7 +380,9 @@ async def _handle_task(
         if not row:
             # Gone, never in this household, or assigned to others only: no replay will apply it.
             raise OutOfScopeError("task not found in this household")
-        if _truncate_to_ms(row.updated_at) > _truncate_to_ms(op.client_timestamp):
+        # Stale = someone else changed the task after this op was queued. Not `row.updated_at`:
+        # see sync_stale.last_foreign_change_at.
+        if await is_stale(session, "tasks", op.row_id, op.client_timestamp, device_id):
             raise StaleUpdateError(_row_to_dict(row))
         # Only the fields the app sends (TaskRepository.updateTask) are written.
         # The loop used to `setattr` any key that matched a column, so a client

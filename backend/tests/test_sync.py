@@ -28,6 +28,18 @@ def _make_op(
     }
 
 
+async def _db_max_version() -> int:
+    """Latest change_log version. A pull from 0 on this long-lived dev DB is cut by PULL_LIMIT,
+    so a test that wants the cursor at the tail starts from here."""
+    from sqlalchemy import func, select
+
+    from app.database import async_session
+    from app.models.sync import ChangeLog
+
+    async with async_session() as session:
+        return (await session.execute(select(func.max(ChangeLog.server_version)))).scalar() or 0
+
+
 def _sync_body(device_id: str, changes: list[dict], last_server_version: int = 0) -> dict:
     return {
         "device_id": device_id,
@@ -173,7 +185,9 @@ async def test_sync_pull_excludes_own_device(client, auth_headers, auth_headers_
     )
 
     # Device A push
-    r1 = await client.post("/api/sync", json=_sync_body(device_a, [op]), headers=auth_headers)
+    r1 = await client.post(
+        "/api/sync", json=_sync_body(device_a, [op], await _db_max_version()), headers=auth_headers
+    )
     assert r1.status_code == 200
     cursor_before = r1.json()["server_version"]
 
@@ -220,7 +234,10 @@ async def test_sync_delete_visible_in_pull(client, auth_headers, auth_headers_de
             "assigned_to_ids": [TEST_USER_ID],
         },
     )
-    r1 = await client.post("/api/sync", json=_sync_body(device_a, [insert_op]), headers=auth_headers)
+    r1 = await client.post(
+        "/api/sync", json=_sync_body(device_a, [insert_op], await _db_max_version()),
+        headers=auth_headers,
+    )
     cursor_before = r1.json()["server_version"] - 1
 
     # DELETE

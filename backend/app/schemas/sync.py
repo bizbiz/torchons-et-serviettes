@@ -86,7 +86,12 @@ class ChangeLogEntry(BaseModel):
 
 
 class SyncResponse(BaseModel):
+    #: Pull cursor. When `has_more` is true it is the version of the last row scanned, not
+    #: the latest on the server: pull again from it.
     server_version: int
+    #: True when the pull stopped at its row limit and more changes wait. Additive: an older
+    #: app ignores it and catches up one page per sync instead of skipping them.
+    has_more: bool = False
     applied: list[SyncAppliedOp] = []
     conflicts: list[SyncConflict] = []
     server_changes: list[ChangeLogEntry] = []
