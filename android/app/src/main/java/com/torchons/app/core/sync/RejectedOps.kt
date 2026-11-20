@@ -16,6 +16,8 @@ data class RejectedSyncOp(
     /** Readable refusal, as the server worded it. */
     val reason: String?,
     val rejectedAtMs: Long,
+    /** Key of the member setting the op changed (`user_settings` ops); absent from older stored notices. */
+    val settingKey: String? = null,
 )
 
 /** Bound on the notices kept: the oldest go first. */

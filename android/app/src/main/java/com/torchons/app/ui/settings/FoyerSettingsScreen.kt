@@ -40,7 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import com.torchons.app.ui.common.ActionErrorDialog
 import com.torchons.app.ui.common.LocalIsOnline
-import com.torchons.app.ui.common.NetworkNeededNote
+import com.torchons.app.ui.common.NetworkNeededSlot
 import com.torchons.app.ui.common.PrimaryTopBar
 import com.torchons.app.ui.help.HelpButton
 import com.torchons.app.ui.help.HelpScreen
@@ -184,7 +184,7 @@ fun FoyerSettingsScreen(
                             fontWeight = FontWeight.Bold,
                         )
                         // Renaming is a server write: disabled offline, with the reason on screen.
-                        if (!isOnline) NetworkNeededNote()
+                        NetworkNeededSlot(visible = !isOnline)
                     }
                     IconButton(
                         onClick = { showRenameDialog = true },

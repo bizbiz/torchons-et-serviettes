@@ -520,6 +520,8 @@
     <string name="task_field_weight">le poids</string>
     <string name="task_field_active">l\'activation</string>
     <string name="task_field_order">l\'ordre</string>
+    <string name="task_field_contexts">les contextes</string>
+    <string name="task_field_room">la pièce</string>
 
     <!-- TaskDetail — formatRecurrence + formatTolerance -->
     <string name="task_recurrence_every_n_days_format">Tous les %1$s</string>
@@ -1927,4 +1929,18 @@
     <string name="mydevices_signout_anyway">Me déconnecter quand même</string>
     <string name="mydevices_signout_syncing">Synchronisation en cours…</string>
     <string name="mydevices_signout_sync_failed">La synchronisation n’a pas abouti. Vérifie ta connexion et réessaie, ou déconnecte-toi quand même : ces modifications seront perdues.</string>
+    <string name="sync_op_setting_generic">Réglage modifié</string>
+    <string name="sync_setting_notif_daily">résumé quotidien</string>
+    <string name="sync_setting_notif_hour">heure du résumé quotidien</string>
+    <string name="sync_setting_notif_urgent">tâches passées en retard</string>
+    <string name="sync_setting_notif_overdue_hour">heure des notifications de retard</string>
+    <string name="sync_setting_notif_solo">tâche faite seul par un membre</string>
+    <string name="sync_setting_notif_collective_with_me">tâche faite avec moi</string>
+    <string name="sync_setting_notif_collective_without_me">tâche faite à plusieurs sans moi</string>
+    <string name="sync_setting_notif_today_reminders">rappels « À faire aujourd\'hui »</string>
+    <string name="sync_setting_affinity_popup">questions de notation</string>
+    <string name="sync_setting_affinity_expiry">délai de renouvellement des notes</string>
+    <string name="sync_setting_fair_share_tolerance">tolérance du partage équitable</string>
+    <string name="sync_setting_gamification">points et classement</string>
+    <string name="sync_setting_hide_off_wifi">masquer les tâches maison hors WiFi</string>
 </resources>

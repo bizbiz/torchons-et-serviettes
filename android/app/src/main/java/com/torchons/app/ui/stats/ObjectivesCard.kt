@@ -53,6 +53,7 @@ import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.ui.common.LocalIsOnline
 import com.torchons.app.ui.common.NetworkNeededNote
+import com.torchons.app.ui.common.NetworkNeededSlot
 import com.torchons.app.ui.common.OnlineResult
 import com.torchons.app.ui.common.UserError
 import com.torchons.app.ui.common.UserErrorBlock
@@ -198,7 +199,7 @@ fun ObjectivesCard(
                 }
             }
             // Creating and deleting go to the server: disabled offline, and the card says why.
-            if (!isOnline) NetworkNeededNote()
+            NetworkNeededSlot(visible = !isOnline)
             state.error?.let { UserErrorBlock(it, "Objectives") }
             Spacer(Modifier.height(8.dp))
 

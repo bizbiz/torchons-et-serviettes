@@ -43,6 +43,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.torchons.app.R
 import com.torchons.app.data.model.DeviceDto
+import com.torchons.app.ui.common.ReloadOnReconnect
 import com.torchons.app.ui.common.UserErrorBlock
 import com.torchons.app.ui.help.HelpButton
 import com.torchons.app.ui.help.HelpScreen
@@ -70,6 +71,8 @@ fun DevicesScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var pendingRevoke by remember { mutableStateOf<DeviceDto?>(null) }
     var confirmSignOut by remember { mutableStateOf(false) }
+
+    ReloadOnReconnect(hasError = state.error != null, reload = viewModel::refresh)
 
     LaunchedEffect(state.signedOut) {
         if (state.signedOut) onSignedOut()
@@ -148,7 +151,7 @@ fun DevicesScreen(
         val syncState by viewModel.signOutSync.collectAsStateWithLifecycle()
         SignOutDialog(
             pending = pending,
-            syncState = syncState,
+            syncState = shownSignOutSyncState(syncState, pending),
             onSyncFirst = viewModel::syncFirst,
             onConfirm = {
                 confirmSignOut = false

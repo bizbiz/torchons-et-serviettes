@@ -40,6 +40,7 @@ import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.ReloadOnReconnect
 import com.torchons.app.ui.common.UserError
 import com.torchons.app.ui.common.UserErrorBlock
 import com.torchons.app.ui.common.UserErrors
@@ -118,6 +119,7 @@ fun WeeklySummaryCard(
     val state by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.load(0) }
+    ReloadOnReconnect(hasError = state.error != null && state.data == null) { viewModel.load(state.weekOffset) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),

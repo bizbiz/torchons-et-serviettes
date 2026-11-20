@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.torchons.app.R
 import com.torchons.app.ui.common.InfoTooltip
 import com.torchons.app.ui.common.LocalIsOnline
-import com.torchons.app.ui.common.NetworkNeededNote
+import com.torchons.app.ui.common.NetworkNeededSlot
 import com.torchons.app.util.WifiHelper
 
 // "Presence & absences" card of the household settings screen: home freeze + home WiFi.
@@ -58,7 +58,7 @@ internal fun FoyerPresenceCard(
 
         // Home freeze and the Wi-Fi names are server writes: disabled offline, with the reason shown.
         val isOnline = LocalIsOnline.current
-        if (!isOnline) NetworkNeededNote()
+        NetworkNeededSlot(visible = !isOnline)
 
         // Toggle mise en pause si absent (home freeze)
         SettingSwitch(

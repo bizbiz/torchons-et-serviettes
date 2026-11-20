@@ -18,9 +18,18 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** "Fait : Changer les serviettes (Bob)" — what an op is about. */
+/**
+ * "Fait : Changer les serviettes (Bob)" — what an op is about. A setting op is named by the setting
+ * ("Réglage : heure du résumé quotidien"), an op with no task by its kind alone: neither has a task
+ * to look up, and "tâche inconnue" was the wrong thing to say about them.
+ */
 @Composable
-internal fun syncOpLabel(kind: PendingOpKind, taskTitle: String?, memberName: String?): String {
+internal fun syncOpLabel(
+    kind: PendingOpKind,
+    taskTitle: String?,
+    memberName: String?,
+    settingKey: String? = null,
+): String {
     val kindText = stringResource(
         when (kind) {
             PendingOpKind.TASK_CREATE -> R.string.sync_op_task_create
@@ -39,6 +48,11 @@ internal fun syncOpLabel(kind: PendingOpKind, taskTitle: String?, memberName: St
             PendingOpKind.OTHER -> R.string.sync_op_other
         }
     )
+    if (kind == PendingOpKind.SETTING_CHANGE) {
+        val settingRes = settingLabelRes(settingKey) ?: return stringResource(R.string.sync_op_setting_generic)
+        return stringResource(R.string.sync_op_label_format, kindText, stringResource(settingRes))
+    }
+    if (taskTitle == null && kind in KINDS_WITHOUT_TASK) return kindText
     val title = taskTitle ?: stringResource(R.string.sync_op_unknown_task)
     return if (memberName != null) {
         stringResource(R.string.sync_op_label_member_format, kindText, title, memberName)
@@ -69,7 +83,7 @@ internal fun RejectedOpsSection(rejected: List<RejectedSyncOp>) {
     rejected.forEach { op ->
         Column(Modifier.padding(vertical = 4.dp)) {
             Text(
-                text = syncOpLabel(op.kind, op.taskTitle, memberName = null),
+                text = syncOpLabel(op.kind, op.taskTitle, memberName = null, settingKey = op.settingKey),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(

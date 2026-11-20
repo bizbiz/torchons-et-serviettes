@@ -32,23 +32,29 @@ class SyncTrigger @Inject constructor(
         .build()
 
     /**
-     * REPLACE, not KEEP: after a failed pass the one-shot work sits in
-     * WorkManager's exponential backoff (30 s, then 1 min, 2 min... up to 5 h).
-     * With KEEP a new write found that work pending and did nothing: the op
-     * waited for the end of the backoff, possibly hours, with no sign of it.
-     * REPLACE starts a pass now. Cancelling a pass mid-flight is safe: /sync
-     * is idempotent on client_op_id (an op already applied is answered
-     * `applied` again) and the cursor only moves after a settled batch.
+     * Asks for a push pass now. What happens to the work already there is [syncRequestAction]'s
+     * rule: a running pass is never cancelled, a pass in WorkManager's backoff (30 s, 1 min...
+     * up to 5 h) is replaced, so a new write never waits for the end of a backoff.
+     *
+     * Cancelling a pass mid-flight used to be called safe because /sync is idempotent on
+     * client_op_id. It is not for the REST ops (votes): the second pass replays a request the
+     * server may still be handling. The lookup is asynchronous, this never blocks its caller.
      */
     fun requestSync() {
-        val request = OneTimeWorkRequestBuilder<SyncWorker>()
-            .setConstraints(networkConstraints)
-            .build()
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            SYNC_WORK_NAME,
-            ExistingWorkPolicy.REPLACE,
-            request,
-        )
+        val workManager = WorkManager.getInstance(context)
+        val lookup = workManager.getWorkInfosForUniqueWork(SYNC_WORK_NAME)
+        lookup.addListener({
+            val states = runCatching { lookup.get().map { it.state } }.getOrDefault(emptyList())
+            val policy = when (syncRequestAction(states)) {
+                SyncRequestAction.START_NOW -> ExistingWorkPolicy.REPLACE
+                SyncRequestAction.CHAIN_AFTER_RUNNING -> ExistingWorkPolicy.APPEND_OR_REPLACE
+                SyncRequestAction.ALREADY_CHAINED -> return@addListener
+            }
+            val request = OneTimeWorkRequestBuilder<SyncWorker>()
+                .setConstraints(networkConstraints)
+                .build()
+            workManager.enqueueUniqueWork(SYNC_WORK_NAME, policy, request)
+        }, Runnable::run)
     }
 
     fun schedulePeriodic() {

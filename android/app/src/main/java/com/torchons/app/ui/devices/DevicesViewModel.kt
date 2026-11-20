@@ -78,6 +78,13 @@ class DevicesViewModel @Inject constructor(
 
     init {
         refresh()
+        // The queue emptied by itself after a failed "sync first": forget the failure, or it comes
+        // back the next time a change is queued (the dialog already hides it at a count of zero).
+        viewModelScope.launch {
+            pendingDao.observeCount().collect { count ->
+                _signOutSync.value = shownSignOutSyncState(_signOutSync.value, count)
+            }
+        }
     }
 
     fun refresh() {

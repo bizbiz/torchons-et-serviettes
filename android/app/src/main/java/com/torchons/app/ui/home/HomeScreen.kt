@@ -362,6 +362,9 @@ fun HomeScreen(
         HomeGreeting(
             displayName = displayName,
             onRate = { viewModel.showManualRating() },
+            onRateNeedsNetwork = {
+                Toast.makeText(toastContext, R.string.home_rate_needs_network, Toast.LENGTH_SHORT).show()
+            },
             onSeeFoyer = onFoyerClick,
         )
 

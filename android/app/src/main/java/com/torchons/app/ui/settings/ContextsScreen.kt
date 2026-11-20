@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -138,10 +139,18 @@ fun ContextsScreen(
             )
         },
         floatingActionButton = {
-            // A floating button cannot be disabled: offline it is replaced by the note below.
+            // A floating button cannot be disabled: offline it is replaced by the note, in the same
+            // floating slot (a line above the list pushed every context down when the network dropped).
             if (isOnline) {
                 FloatingActionButton(onClick = { creating = true }) {
                     Icon(Icons.Default.Add, contentDescription = stringResource(R.string.common_add))
+                }
+            } else {
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                ) {
+                    NetworkNeededNote(Modifier.padding(12.dp))
                 }
             }
         },
@@ -154,10 +163,6 @@ fun ContextsScreen(
         ) {
             Spacer(Modifier.height(8.dp))
             if (moduleEnabled(Modules.PRESENCE)) AbsenceSheetLink()
-            if (!isOnline) {
-                Spacer(Modifier.height(8.dp))
-                NetworkNeededNote()
-            }
             actionError?.let {
                 Spacer(Modifier.height(8.dp))
                 UserErrorBlock(it, "Contexts")

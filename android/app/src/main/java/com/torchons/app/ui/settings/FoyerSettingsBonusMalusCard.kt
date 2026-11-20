@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.torchons.app.R
 import com.torchons.app.ui.common.InfoTooltip
 import com.torchons.app.ui.common.LocalIsOnline
-import com.torchons.app.ui.common.NetworkNeededNote
+import com.torchons.app.ui.common.NetworkNeededSlot
 
 // Collapsible "Bonus / Malus" card (the 13 thresholds) of the household settings screen.
 @Composable
@@ -67,7 +67,7 @@ internal fun FoyerBonusMalusCard(viewModel: SettingsViewModel) {
         if (showBonusMalus && bonusConfig != null) key(resets) {
             val cfg = bonusConfig!!
             Spacer(Modifier.height(8.dp))
-            if (!LocalIsOnline.current) NetworkNeededNote()
+            NetworkNeededSlot(visible = !LocalIsOnline.current)
 
             Text(
                 stringResource(R.string.foyer_bonus_group_late),

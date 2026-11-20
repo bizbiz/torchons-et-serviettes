@@ -49,6 +49,7 @@ internal suspend fun settleConflicts(
             taskTitle = taskIdOf(op)?.let { store.taskTitle(it) },
             reason = textOf(conflict.reason, conflict.detail),
             rejectedAtMs = nowMs(),
+            settingKey = settingKeyOf(op),
         )
     }
 

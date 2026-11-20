@@ -19,6 +19,8 @@ data class PendingOpRow(
     val taskTitle: String?,
     /** Member a completion is credited to; null for other ops or unknown members. */
     val memberName: String?,
+    /** Key of the member setting a `user_settings` op changes (`notif_hour`...); null for other ops. */
+    val settingKey: String? = null,
     val queuedAtMs: Long,
     val attemptCount: Int,
     /** Readable cause of the last failure, null when the op has not failed yet. */
@@ -59,6 +61,10 @@ internal fun taskIdOf(op: PendingOperationEntity): String? = when (op.tableName)
     else -> null
 }
 
+/** The setting a queued `user_settings` op changes: its payload is `{key: value}`, one key. */
+internal fun settingKeyOf(op: PendingOperationEntity): String? =
+    if (op.tableName == "user_settings") payloadOf(op)?.keys?.singleOrNull() as? String else null
+
 /**
  * The server sends a conflict `detail` as `<ExceptionClass>: <status>: <message>`
  * for its own validation errors (sync.py). The message is what the user can
@@ -80,6 +86,7 @@ internal fun describePendingOps(
         kind = pendingOpKind(op.tableName, op.operation),
         taskTitle = taskIdOf(op)?.let { taskTitles[it] },
         memberName = completedBy?.let { memberNames[it] },
+        settingKey = settingKeyOf(op),
         queuedAtMs = op.createdAt,
         attemptCount = op.attemptCount,
         error = readableSyncError(op.lastError),

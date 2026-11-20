@@ -27,7 +27,12 @@ import com.torchons.app.ui.help.HelpScreen
  * telling that another member turned a household feature off (nothing when none).
  */
 @Composable
-fun HomeGreeting(displayName: String?, onRate: () -> Unit, onSeeFoyer: () -> Unit) {
+fun HomeGreeting(
+    displayName: String?,
+    onRate: () -> Unit,
+    onRateNeedsNetwork: () -> Unit,
+    onSeeFoyer: () -> Unit,
+) {
     val isOnline = LocalIsOnline.current
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
@@ -44,8 +49,11 @@ fun HomeGreeting(displayName: String?, onRate: () -> Unit, onSeeFoyer: () -> Uni
             // Sync status icon (replaces the old full-width OfflineBanner
             // that used to push the whole layout down when appearing).
             com.torchons.app.ui.components.SyncStatusIcon()
-            // Picking the next task to rate asks the server: disabled offline, the line below says why.
-            IconButton(onClick = onRate, enabled = isOnline) {
+            // Picking the next task to rate asks the server, so it is dimmed offline. Its reason is
+            // told on tap (a toast), never as a line above the cards: that line pushed every card
+            // down ~70 px the moment the network dropped, and a tap meant for a button landed on
+            // another card (2026-11-20 emulator run). The button stays enabled, only to receive it.
+            IconButton(onClick = { if (isOnline) onRate() else onRateNeedsNetwork() }) {
                 Icon(
                     imageVector = Icons.Default.ChatBubbleOutline,
                     contentDescription = stringResource(R.string.home_rate_task_cd),
@@ -54,13 +62,6 @@ fun HomeGreeting(displayName: String?, onRate: () -> Unit, onSeeFoyer: () -> Uni
                 )
             }
             HelpButton(HelpScreen.HOME, tint = MaterialTheme.colorScheme.primary)
-        }
-        if (!isOnline) {
-            Text(
-                text = stringResource(R.string.home_rate_needs_network),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
         ModuleOffNoticeHost(onSee = onSeeFoyer)
     }

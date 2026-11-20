@@ -10,6 +10,7 @@ import com.torchons.app.data.model.PendingAffinity
 import com.torchons.app.data.model.User
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.CompletionChecks
+import com.torchons.app.data.repository.QueuedVotes
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.data.repository.VoteRepository
 import com.torchons.app.ui.common.RatingRecurrence
@@ -78,9 +79,45 @@ class TaskDetailViewModel @Inject constructor(
         currentUserId = { currentUserId.value },
     )
 
+    /** The server's last answer about the votes, and my votes still queued: shown together. */
+    private var serverVotes = ServerVotes()
+    private var queuedVotes = QueuedVotes()
+
     init {
         observeCache()
+        observeQueuedVotes()
         refresh()
+    }
+
+    /** Shows [serverVotes] with my queued votes over them (right offline, see [overlayQueuedVotes]). */
+    private fun applyVotes() {
+        val me = currentUserId.value
+        val shown = overlayQueuedVotes(serverVotes, queuedVotes, taskId, me, _uiState.value.userNames[me])
+        _uiState.value = _uiState.value.copy(
+            ratings = shown.ratings,
+            avgEffortTimeMin = shown.avgEffortTimeMin,
+            scorePoints = shown.scorePoints,
+            effortVotes = shown.effortVotes,
+        )
+    }
+
+    /**
+     * Follows my effort / affinity votes waiting in the offline queue. When the worker has sent
+     * them (the queue drains), the server is refetched BEFORE the overlay is dropped, so the
+     * saved value never flickers back to the old one.
+     */
+    private fun observeQueuedVotes() {
+        viewModelScope.launch { currentUserId.collect { applyVotes() } }
+        viewModelScope.launch {
+            votes.observeQueuedVotes(taskId).collect { queued ->
+                if (!queuedVotes.isEmpty && queued.isEmpty) {
+                    fetchRatings()
+                    refreshEffortVotes()
+                }
+                queuedVotes = queued
+                applyVotes()
+            }
+        }
     }
 
     /**
@@ -145,6 +182,7 @@ class TaskDetailViewModel @Inject constructor(
                     error = if (!hasCache && !_uiState.value.isLoading && _uiState.value.lastRefreshFailed)
                         UserError(appContext.getString(R.string.task_detail_not_found)) else _uiState.value.error,
                 )
+                applyVotes()  // my name may have just arrived with the members
             }
         }
     }
@@ -174,30 +212,7 @@ class TaskDetailViewModel @Inject constructor(
                 async { taskRepository.refreshContexts() },
             ).awaitAll()
 
-            // Ratings en direct API (best-effort)
-            try {
-                val ratingsResp = apiService.getTaskRatings(taskId)
-                if (ratingsResp.isSuccessful) {
-                    val data = ratingsResp.body() ?: emptyMap()
-                    @Suppress("UNCHECKED_CAST")
-                    val ratingsData = data["ratings"] as? List<Map<String, Any?>> ?: emptyList()
-                    val ratings = ratingsData.map { r ->
-                        TaskRating(
-                            userId = r["user_id"] as? String,
-                            displayName = r["display_name"] as? String ?: "?",
-                            affinity = (r["affinity"] as? Double)?.toInt(),
-                            effortTimeMin = (r["effort_time_min"] as? Double)?.toInt(),
-                        )
-                    }
-                    val avgEffortTimeMin = (data["avg_effort_time_min"] as? Double)?.toInt()
-                    val scorePoints = (data["score_points"] as? Double)?.toInt()
-                    _uiState.value = _uiState.value.copy(
-                        ratings = ratings,
-                        avgEffortTimeMin = avgEffortTimeMin,
-                        scorePoints = scorePoints,
-                    )
-                }
-            } catch (_: Exception) {}
+            fetchRatings()
 
             // Bonus/malus preview pour affichage dans le header (best-effort).
             try {
@@ -214,12 +229,7 @@ class TaskDetailViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(frequencyVotes = freq.body())
                 }
             } catch (_: Exception) {}
-            try {
-                val effort = apiService.getEffortVotes(taskId)
-                if (effort.isSuccessful) {
-                    _uiState.value = _uiState.value.copy(effortVotes = effort.body())
-                }
-            } catch (_: Exception) {}
+            refreshEffortVotes()
 
             val allOk = results.all { it }
 
@@ -352,7 +362,13 @@ class TaskDetailViewModel @Inject constructor(
                     resp.body()?.let { fresh ->
                         // Ne remplace que si le modal est toujours ouvert
                         if (_uiState.value.ratingContext != null) {
-                            _uiState.value = _uiState.value.copy(ratingContext = fresh)
+                            // A vote still queued is newer than the server's answer.
+                            _uiState.value = _uiState.value.copy(
+                                ratingContext = fresh.copy(
+                                    currentAffinity = queuedVotes.affinity ?: fresh.currentAffinity,
+                                    currentEffortPoints = queuedVotes.effortPoints ?: fresh.currentEffortPoints,
+                                ),
+                            )
                         }
                     }
                 }
@@ -465,8 +481,38 @@ class TaskDetailViewModel @Inject constructor(
         try {
             val effort = apiService.getEffortVotes(taskId)
             if (effort.isSuccessful) {
-                _uiState.value = _uiState.value.copy(effortVotes = effort.body())
+                serverVotes = serverVotes.copy(effortVotes = effort.body())
+                applyVotes()
             }
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * Ratings of every member, straight from the API (not cached). Best-effort: when the call
+     * fails (offline) [serverVotes] keeps its last value, never an empty list, and my queued
+     * votes are still laid over it by [applyVotes].
+     */
+    private suspend fun fetchRatings() {
+        try {
+            val ratingsResp = apiService.getTaskRatings(taskId)
+            if (!ratingsResp.isSuccessful) return
+            val data = ratingsResp.body() ?: emptyMap()
+            @Suppress("UNCHECKED_CAST")
+            val ratingsData = data["ratings"] as? List<Map<String, Any?>> ?: emptyList()
+            val ratings = ratingsData.map { r ->
+                TaskRating(
+                    userId = r["user_id"] as? String,
+                    displayName = r["display_name"] as? String ?: "?",
+                    affinity = (r["affinity"] as? Double)?.toInt(),
+                    effortTimeMin = (r["effort_time_min"] as? Double)?.toInt(),
+                )
+            }
+            serverVotes = serverVotes.copy(
+                ratings = ratings,
+                avgEffortTimeMin = (data["avg_effort_time_min"] as? Double)?.toInt(),
+                scorePoints = (data["score_points"] as? Double)?.toInt(),
+            )
+            applyVotes()
         } catch (_: Exception) {}
     }
 

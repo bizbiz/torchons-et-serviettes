@@ -26,6 +26,10 @@ interface PendingOperationDao {
     @Query("SELECT rowId FROM pending_operations WHERE tableName = :table")
     suspend fun rowIdsOf(table: String): List<String>
 
+    /** The ops queued on one row of [tables] (a task's votes), oldest first, kept up to date. */
+    @Query("SELECT * FROM pending_operations WHERE tableName IN (:tables) AND rowId = :rowId ORDER BY createdAt ASC")
+    fun observeForRow(tables: List<String>, rowId: String): Flow<List<PendingOperationEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(op: PendingOperationEntity)
 

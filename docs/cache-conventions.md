@@ -144,6 +144,10 @@ Three kinds of write, and a screen must know which one it is (2026-11-20 audit, 
    batches. A permanent 4xx is the caller's error, shown, never queued. Only queue a write that
    the server answers the same way twice (verify the route first). A prompt whose answer is
    queued is skipped by `fetchNextPrompt` (`VoteRepository.promptsAnsweredOffline`).
+   These votes have no Room row, so the screen that shows them lays the QUEUED value over the
+   server's last answer (`overlayQueuedVotes`, fed by `VoteRepository.observeQueuedVotes`): the
+   task detail shows the vote just saved offline, and its "you have not voted" banner follows.
+   When the queue drains the screen refetches BEFORE dropping the overlay (no flicker back).
 2. **Member settings** (`user_settings`, a `/sync` table): `SettingsLedger` queues the UPDATE
    (`LocalMutation`), the screen and the DataStore change at once, and a reload applies the queued
    ops over the server's answer (`overlayPendingSettings`). Queued payload numbers keep their
@@ -156,6 +160,15 @@ Three kinds of write, and a screen must know which one it is (2026-11-20 audit, 
    ❌ `catch (_: Exception) {}`, or an `isSuccessful` nobody reads.
    `LocalIsOnline` flips on the first failed call, so the first tap after losing the network gets
    the error, the next ones the disabled button.
+   ❌ The note must not move what is under the finger: on a screen or card with tappable content
+   below it use `NetworkNeededSlot` (line always laid out), not `NetworkNeededNote` (Home: a
+   dimmed button + toast on tap). A screen that shows a load error also uses `ReloadOnReconnect`
+   (reload once when `LocalIsOnline` goes false → true), never only a "Retry" button.
+
+Sync passes: `SyncTrigger.requestSync` never cancels a RUNNING pass (a vote request already at the
+server would be replayed, 500): `syncRequestAction` chains a new pass behind it, and replaces a
+pass that is only waiting (idle, backoff). `syncPassLock` serialises the one-shot and periodic
+workers in the process.
 
 The pull is paged: `/sync` answers `has_more` when it cut at 500 rows, and the worker asks again
 (at most `MAX_PULL_PAGES` per run). "Sign out and cut this device" wipes the queue: its dialog

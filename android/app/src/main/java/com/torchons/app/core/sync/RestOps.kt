@@ -113,7 +113,7 @@ internal suspend fun sendRestOp(api: ApiService, op: PendingOperationEntity): Re
  * comes back is [VotePushOutcomes.refused].
  *
  * [send] returns null for an unreadable payload: dropped (nothing can ever be sent). Cancellation
- * propagates: a pass replaced by `requestSync` is not a failure of the op.
+ * propagates: a pass stopped by the system is not a failure of the op.
  */
 internal suspend fun pushRestOps(
     ops: List<PendingOperationEntity>,

@@ -10,6 +10,8 @@ import com.torchons.app.data.model.AffinityRequest
 import com.torchons.app.data.model.PromptResolveRequest
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * Queue-only mutations of the REST ops that have no local row (the value lives on the server):
@@ -73,6 +75,10 @@ class VoteRepository @Inject constructor(
         queue = { ledger.enqueueResolution(promptId, request) },
         onSent = {},
     )
+
+    /** My effort and affinity votes on [taskId] still waiting in the queue, kept up to date. */
+    fun observeQueuedVotes(taskId: String): Flow<QueuedVotes> =
+        pendingDao.observeForRow(QUEUED_VOTE_TABLES, taskId).map(::queuedVotesOf)
 
     /** Prompts whose answer is queued: the server still lists them, the screen must not. */
     suspend fun promptsAnsweredOffline(): Set<String> = pendingDao.rowIdsOf(PROMPT_RESOLUTIONS_TABLE).toSet()

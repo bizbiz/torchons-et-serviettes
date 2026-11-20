@@ -46,6 +46,7 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.model.CoupleTotalsResponse
 import com.torchons.app.data.model.LeaderboardEntry
+import com.torchons.app.ui.common.ReloadOnReconnect
 import com.torchons.app.ui.common.UserError
 import com.torchons.app.ui.common.UserErrorBlock
 import com.torchons.app.ui.common.UserErrors
@@ -114,7 +115,10 @@ fun UserProfileDialog(
     var coupleTotals by remember { mutableStateOf<CoupleTotalsResponse?>(null) }
     var error by remember { mutableStateOf<UserError?>(null) }
 
-    LaunchedEffect(request.userId) {
+    var reloadCount by remember { mutableStateOf(0) }
+    ReloadOnReconnect(hasError = error != null) { reloadCount++ }
+
+    LaunchedEffect(request.userId, reloadCount) {
         loading = true
         error = null
         try {

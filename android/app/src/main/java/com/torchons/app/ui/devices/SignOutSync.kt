@@ -7,6 +7,15 @@ import kotlinx.coroutines.withTimeoutOrNull
 /** Where the "sync first" button of the sign-out dialog stands. */
 enum class SignOutSyncState { IDLE, SYNCING, GAVE_UP }
 
+/**
+ * What the dialog says about the sync, given how many changes are still queued. "The sync did not
+ * finish" (GAVE_UP) is about the queue: once it is empty (the network came back and the worker
+ * emptied it by itself) the message is no longer true, and the red warning that these changes
+ * "will be lost" must go with it. It stays while changes remain, and the count line updates live.
+ */
+internal fun shownSignOutSyncState(state: SignOutSyncState, pendingCount: Int): SignOutSyncState =
+    if (state == SignOutSyncState.GAVE_UP && pendingCount == 0) SignOutSyncState.IDLE else state
+
 /** How long the dialog waits for the queue to empty before it says the sync did not finish. */
 internal const val SIGN_OUT_SYNC_WAIT_MS = 20_000L
 

@@ -41,6 +41,7 @@ import com.torchons.app.ui.common.submitKeyboardActions
 import androidx.compose.ui.text.input.ImeAction
 import com.torchons.app.data.model.FairShareHistoryEntry
 import com.torchons.app.ui.common.InfoTooltip
+import com.torchons.app.ui.common.ReloadOnReconnect
 
 /**
  * Target share of each member of the household (percent per member, total 100), with the
@@ -53,6 +54,8 @@ import com.torchons.app.ui.common.InfoTooltip
 fun FairShareTargetSection(viewModel: FairShareTargetViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val history by viewModel.history.collectAsState()
+
+    ReloadOnReconnect(hasError = state.load == FairShareLoad.UNAVAILABLE) { viewModel.retryIfUnavailable() }
 
     // The bottom tabs keep this ViewModel alive: a block opened offline retries when the
     // screen comes back instead of staying unavailable until the app is restarted.

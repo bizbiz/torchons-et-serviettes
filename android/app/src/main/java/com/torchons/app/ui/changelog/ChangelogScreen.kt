@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.torchons.app.R
 import com.torchons.app.data.api.ApiService
+import com.torchons.app.ui.common.ReloadOnReconnect
 import com.torchons.app.ui.common.UserError
 import com.torchons.app.ui.common.UserErrorBlock
 import com.torchons.app.ui.common.UserErrors
@@ -81,8 +82,12 @@ fun ChangelogScreen(onBack: () -> Unit) {
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<UserError?>(null) }
 
-    LaunchedEffect(Unit) {
+    var reloadCount by remember { mutableStateOf(0) }
+    ReloadOnReconnect(hasError = error != null) { reloadCount++ }
+
+    LaunchedEffect(reloadCount) {
         loading = true
+        error = null
         try {
             val c = withContext(Dispatchers.IO) { apiService.getChangelog() }
             val r = withContext(Dispatchers.IO) { apiService.getRoadmap() }

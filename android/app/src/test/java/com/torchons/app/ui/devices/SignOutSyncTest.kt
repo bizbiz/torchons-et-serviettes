@@ -21,6 +21,28 @@ import org.junit.Test
  * Not covered: the dialog (Compose) and the ViewModel's use of the result (SignOutSyncState).
  */
 class SignOutSyncTest {
+    /*
+     * Emulator finding of 2026-11-20 (item 4): after the network came back and the queue emptied
+     * by itself, the dialog's button became "Confirmer" but the red "La synchronisation n'a pas
+     * abouti... ces modifications seront perdues" stayed. `shownSignOutSyncState` is what the
+     * dialog shows from the stored state and the live count:
+     *   (5) GAVE_UP with an empty queue: nothing to warn about ........................... COVERED
+     *   (6) GAVE_UP with changes still queued (count falling, not zero): the warning stays .. COVERED
+     *   (7) SYNCING and IDLE are never touched by the count .............................. COVERED
+     */
+    @Test
+    fun `the failure text clears when the queue empties and stays while it is not empty`() {
+        assertEquals(SignOutSyncState.IDLE, shownSignOutSyncState(SignOutSyncState.GAVE_UP, 0))
+        assertEquals(SignOutSyncState.GAVE_UP, shownSignOutSyncState(SignOutSyncState.GAVE_UP, 1))
+        assertEquals(SignOutSyncState.GAVE_UP, shownSignOutSyncState(SignOutSyncState.GAVE_UP, 3))
+    }
+
+    @Test
+    fun `syncing and idle do not depend on the count`() {
+        assertEquals(SignOutSyncState.SYNCING, shownSignOutSyncState(SignOutSyncState.SYNCING, 0))
+        assertEquals(SignOutSyncState.IDLE, shownSignOutSyncState(SignOutSyncState.IDLE, 2))
+    }
+
     @Test
     fun `the queue emptying after the request is a success, requested once`() = runBlocking {
         val pending = MutableStateFlow(3)

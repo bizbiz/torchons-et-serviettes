@@ -36,6 +36,7 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.withLock
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -101,8 +102,11 @@ class SyncWorker(
     private fun shown(t: Throwable) = UserErrors.from(applicationContext, t).message
     private fun shown(resp: retrofit2.Response<*>) = UserErrors.fromResponse(applicationContext, resp).message
 
-    override suspend fun doWork(): Result {
-        val ep = EntryPointAccessors.fromApplication(
+    /** One pass at a time in the process: see [syncPassLock]. */
+    override suspend fun doWork(): Result = syncPassLock.withLock { runPass() }
+
+    private suspend fun runPass(): Result {
+        val ep =EntryPointAccessors.fromApplication(
             applicationContext, SyncWorkerEntryPoint::class.java
         )
         val pendingDao = ep.pendingOperationDao()
@@ -174,7 +178,7 @@ class SyncWorker(
         val resp = try {
             apiService.sync(request)
         } catch (e: CancellationException) {
-            // requestSync REPLACEs a running pass: not a failure of the ops.
+            // The pass was stopped (by the system, or replaced before its request left): not a failure of the ops.
             throw e
         } catch (e: Exception) {
             return failed(shown(e))
@@ -223,6 +227,7 @@ class SyncWorker(
                         taskTitle = taskIdOf(op)?.let { ep.taskDao().getById(it)?.title },
                         reason = reason,
                         rejectedAtMs = System.currentTimeMillis(),
+                        settingKey = settingKeyOf(op),
                     )
                     ep.tokenManager().updateRejectedSyncOpsJson { appendRejectedOps(it, listOf(notice)) }
                     dao.delete(op.clientOpId)

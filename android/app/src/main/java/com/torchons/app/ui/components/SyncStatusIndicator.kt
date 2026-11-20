@@ -333,7 +333,8 @@ private fun DetailLine(labelRes: Int, value: String) {
 }
 
 @Composable
-private fun pendingOpLabel(row: PendingOpRow): String = syncOpLabel(row.kind, row.taskTitle, row.memberName)
+private fun pendingOpLabel(row: PendingOpRow): String =
+    syncOpLabel(row.kind, row.taskTitle, row.memberName, row.settingKey)
 
 /**
  * One queued op. The discard button only shows once the op has failed: an op

@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.torchons.app.core.clipboard.copySensitiveToClipboard
 import com.torchons.app.R
+import com.torchons.app.ui.common.ReloadOnReconnect
 import com.torchons.app.ui.common.UserErrorBlock
 import qrcode.QRCode
 import java.time.OffsetDateTime
@@ -64,6 +65,7 @@ fun InviteQrScreen(
     viewModel: InviteQrViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    ReloadOnReconnect(hasError = state.error != null) { viewModel.generate() }
 
     val titleText = if (state.kind == "add_device") stringResource(R.string.invite_title_add_device)
     else stringResource(R.string.invite_title_invite_someone)

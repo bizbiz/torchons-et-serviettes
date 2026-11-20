@@ -513,6 +513,8 @@
     <string name="task_field_weight">the weight</string>
     <string name="task_field_active">the active state</string>
     <string name="task_field_order">the order</string>
+    <string name="task_field_contexts">the contexts</string>
+    <string name="task_field_room">the room</string>
 
     <!-- TaskDetail — recurrence + tolerance labels -->
     <string name="task_recurrence_every_n_days_format">Every %1$s</string>
@@ -1913,4 +1915,18 @@
     <string name="mydevices_signout_anyway">Sign out anyway</string>
     <string name="mydevices_signout_syncing">Syncing…</string>
     <string name="mydevices_signout_sync_failed">The sync did not finish. Check your connection and try again, or sign out anyway: these changes will be lost.</string>
+    <string name="sync_op_setting_generic">Setting changed</string>
+    <string name="sync_setting_notif_daily">daily summary</string>
+    <string name="sync_setting_notif_hour">daily summary time</string>
+    <string name="sync_setting_notif_urgent">tasks that became overdue</string>
+    <string name="sync_setting_notif_overdue_hour">overdue notifications time</string>
+    <string name="sync_setting_notif_solo">task done alone by a member</string>
+    <string name="sync_setting_notif_collective_with_me">task done with me</string>
+    <string name="sync_setting_notif_collective_without_me">task done by several without me</string>
+    <string name="sync_setting_notif_today_reminders">\"To do today\" reminders</string>
+    <string name="sync_setting_affinity_popup">rating questions</string>
+    <string name="sync_setting_affinity_expiry">rating renewal delay</string>
+    <string name="sync_setting_fair_share_tolerance">fair-share tolerance</string>
+    <string name="sync_setting_gamification">points and ranking</string>
+    <string name="sync_setting_hide_off_wifi">hide home tasks off WiFi</string>
 </resources>

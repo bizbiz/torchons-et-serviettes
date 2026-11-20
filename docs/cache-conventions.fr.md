@@ -152,6 +152,11 @@ Trois sortes d'écriture, et un écran doit savoir laquelle (audit du 20/11/2026
    l'appelant, montrée, jamais mise en file. Ne mettre en file qu'une écriture que le serveur
    traite pareil deux fois (vérifier la route d'abord). Un prompt dont la réponse est en file est
    ignoré par `fetchNextPrompt` (`VoteRepository.promptsAnsweredOffline`).
+   Ces votes n'ont pas de ligne Room : l'écran qui les montre pose la valeur EN FILE par-dessus la
+   dernière réponse du serveur (`overlayQueuedVotes`, alimenté par
+   `VoteRepository.observeQueuedVotes`) : le détail d'une tâche montre le vote qu'on vient de
+   faire hors ligne, et son bandeau « tu n'as pas voté » suit. Quand la file se vide, l'écran
+   recharge AVANT de retirer la surcouche (pas de retour en arrière furtif).
 2. **Réglages du membre** (`user_settings`, table `/sync`) : `SettingsLedger` met l'UPDATE en
    file (`LocalMutation`), l'écran et le DataStore changent tout de suite, et un rechargement
    applique les ops en file par-dessus la réponse du serveur (`overlayPendingSettings`). Les
@@ -165,6 +170,16 @@ Trois sortes d'écriture, et un écran doit savoir laquelle (audit du 20/11/2026
    ❌ `catch (_: Exception) {}`, ou un `isSuccessful` que personne ne lit.
    `LocalIsOnline` bascule au premier appel raté : le premier tap après la perte du réseau
    reçoit l'erreur, les suivants le bouton désactivé.
+   ❌ La note ne doit pas bouger ce qui est sous le doigt : sur un écran ou une carte avec du
+   contenu à toucher dessous, `NetworkNeededSlot` (ligne toujours posée), pas `NetworkNeededNote`
+   (Accueil : bouton grisé + toast au tap). Un écran qui montre une erreur de chargement utilise
+   aussi `ReloadOnReconnect` (recharge une fois quand `LocalIsOnline` passe de faux à vrai), pas
+   seulement un bouton « Réessayer ».
+
+Passages de synchro : `SyncTrigger.requestSync` n'annule jamais un passage EN COURS (une requête
+de vote déjà chez le serveur serait rejouée, 500) : `syncRequestAction` en chaîne un nouveau
+derrière lui, et remplace un passage qui ne fait qu'attendre (inactif, backoff). `syncPassLock`
+sérialise les workers one-shot et périodique dans le processus.
 
 Le pull est paginé : `/sync` répond `has_more` quand il a coupé à 500 lignes, et le worker
 redemande (au plus `MAX_PULL_PAGES` par passage). « Me déconnecter et couper cet appareil »

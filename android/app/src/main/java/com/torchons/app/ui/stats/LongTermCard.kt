@@ -34,6 +34,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.ui.common.UserError
+import com.torchons.app.ui.common.ReloadOnReconnect
 import com.torchons.app.ui.common.UserErrorBlock
 import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.data.model.LongTermResponse
@@ -107,6 +108,7 @@ fun LongTermCard(
     val state by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.load("quarter") }
+    ReloadOnReconnect(hasError = state.error != null && state.data == null) { viewModel.load(state.period) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),

@@ -152,15 +152,4 @@ private fun formatHistoryEvent(event: TaskHistoryEvent): String {
 }
 
 @Composable
-private fun localizedFieldName(key: String): String? = when (key) {
-    "title" -> stringResource(R.string.task_field_title)
-    "description" -> stringResource(R.string.task_field_description)
-    "category_id" -> stringResource(R.string.task_field_category)
-    "tolerance" -> stringResource(R.string.task_field_tolerance)
-    "assigned_to_ids" -> stringResource(R.string.task_field_assigned)
-    "recurrence_rule" -> stringResource(R.string.task_field_recurrence)
-    "weight" -> stringResource(R.string.task_field_weight)
-    "is_active" -> stringResource(R.string.task_field_active)
-    "sort_order" -> stringResource(R.string.task_field_order)
-    else -> null
-}
+private fun localizedFieldName(key: String): String? = taskFieldLabelRes(key)?.let { stringResource(it) }
