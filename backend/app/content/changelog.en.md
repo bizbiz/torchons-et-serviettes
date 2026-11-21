@@ -1,5 +1,28 @@
 # Release notes
 
+## v0.48.0 — 2026-11-21
+
+### Marking a task done
+- A task marked done counts even if you leave the screen during the confetti, and several quick
+  taps count it only once.
+- « Done together » finishes even if you switch screens.
+
+### Offline
+- A task created or edited offline no longer disappears or reverts when the app refreshes.
+- Settings and effort and affinity ratings work offline and are sent when the network is back.
+- Buttons that need the network are greyed out offline, with « Network needed », instead of
+  doing nothing.
+- Screens reload by themselves when the network is back, and say when they could not load
+  instead of showing « No… ».
+
+### Clearer
+- Editing a task saves only what changed; the history says which fields, with the title the
+  task had at that time.
+- A refused rating or vote says so instead of showing « saved ».
+- Signing out warns you if changes are still waiting to be sent.
+- Switching households shows its progress and no longer mixes the two households.
+- Fixed: two people acting at the same time no longer get an error.
+
 ## v0.47.0 — 2026-11-20
 
 ### During an absence

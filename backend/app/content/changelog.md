@@ -1,5 +1,30 @@
 # Notes de version
 
+## v0.48.0 — 2026-11-21
+
+### Valider une tâche
+- Une tâche validée compte même si l'on quitte l'écran pendant les confettis, et plusieurs
+  appuis rapides ne la comptent qu'une fois.
+- « Fait ensemble » va au bout même si l'on change d'écran.
+
+### Hors ligne
+- Une tâche créée ou modifiée hors ligne ne disparaît plus et ne revient plus en arrière quand
+  l'app se rafraîchit.
+- Les réglages, les notes d'effort et d'affinité marchent hors ligne et partent au retour du
+  réseau.
+- Les boutons qui ont besoin du réseau sont grisés hors ligne, avec « Réseau nécessaire », au
+  lieu de ne rien faire.
+- Les écrans se rechargent seuls au retour du réseau, et disent quand ils n'ont pas pu charger
+  au lieu d'afficher « Aucun… ».
+
+### Plus clair
+- Modifier une tâche n'enregistre que ce qui a changé ; l'historique dit quels champs, avec le
+  titre qu'avait la tâche à ce moment.
+- Une note ou un vote refusé l'annonce au lieu d'afficher « enregistré ».
+- Se déconnecter prévient s'il reste des changements à envoyer.
+- Changer de foyer montre sa progression et ne mélange plus les deux foyers.
+- Corrigé : deux personnes qui agissent en même temps n'ont plus d'erreur.
+
 ## v0.47.0 — 2026-11-20
 
 ### Pendant une absence
