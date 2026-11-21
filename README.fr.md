@@ -129,6 +129,7 @@ docs/                 # chaque document a son jumeau .md (EN)
   appareils.fr.md         # appareils : sessions, révocation
   version-gate.fr.md      # retirer une version d'APK de la circulation
   self-hosting.fr.md      # quel code tourne où
+  play-console.fr.md      # réglages de la Play Console laissés tels quels, et pourquoi
 scripts/              # contrôles de déploiement, génération du site, import du catalogue
 site/                 # site statique public (pages légales, vitrine)
 ```

@@ -129,6 +129,7 @@ docs/                 # each document has a .fr.md twin
   appareils.md          # devices: sessions, revocation
   version-gate.md       # taking an APK version out of circulation
   self-hosting.md       # which code is running where
+  play-console.md       # Play Console settings left as is, and why
 scripts/              # deployment checks, site generation, catalog import
 site/                 # static public website (legal pages, showcase)
 ```
