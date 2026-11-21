@@ -122,6 +122,22 @@ chaque environnement.
 travail, donc du non commité. Vérifier ce qui tourne, les pièges mesurés et la lecture d'une
 trace de l'APK minifié : [`self-hosting.fr.md`](self-hosting.fr.md).
 
+**Contrat de `/sync`** (depuis la v0.48.0) :
+- une op déjà traitée est reconnue par son `client_op_id` (`processed_ops`) et rend la même
+  réponse ; `dropped: true` dit que le serveur l'a acquittée sans rien écrire (doublon de
+  réalisation écarté) et l'app retire alors sa ligne locale ;
+- une modification de tâche n'est périmée (`stale_update`) que face au changement d'un AUTRE
+  écrivain postérieur à sa mise en file, jamais face aux ops du même appareil
+  (`backend/app/api/sync_stale.py`) ;
+- seuls les champs qui changent vraiment sont écrits et journalisés, avec leur ancienne valeur ;
+  un enregistrement sans changement ne crée aucune ligne de `change_log`
+  (`services/task_update_diff.py`) ;
+- le pull coupe à 500 lignes et répond `has_more` ; son curseur est la dernière ligne parcourue ;
+- `server_version` se numérote `MAX + 1` et se retente sur collision dans un point de
+  sauvegarde (`utils/changelog.py`) : les versions suivent l'ordre des validations ;
+- les écritures « ma valeur » rejouables (votes, présence, modules…) prennent un verrou
+  consultatif de transaction (`utils/row_lock.py`), par tâche pour les votes.
+
 ## Codes d'erreur
 
 Toute réponse de statut >= 400 porte l'en-tête `X-Error-Id: E-7K3QX` (`E-` puis 5 caractères

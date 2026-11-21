@@ -115,6 +115,20 @@ of `main`, proposed, never run on its own); a test environment may receive the w
 uncommitted code runs. Verifying what runs, measured pitfalls and reading a trace from the
 minified APK: [`self-hosting.md`](self-hosting.md).
 
+**`/sync` contract** (since v0.48.0):
+- an op already processed is recognised by its `client_op_id` (`processed_ops`) and gets the
+  same answer; `dropped: true` says the server acknowledged it without writing anything (a
+  dropped duplicate completion), and the app then removes its local row;
+- a task edit is stale (`stale_update`) only against a change by ANOTHER writer made after it
+  was queued, never against ops of the same device (`backend/app/api/sync_stale.py`);
+- only fields that actually change are written and journaled, with their previous value; a
+  save with no change creates no `change_log` row (`services/task_update_diff.py`);
+- the pull cuts at 500 rows and answers `has_more`; its cursor is the last row scanned;
+- `server_version` is numbered `MAX + 1` and retried on collision inside a savepoint
+  (`utils/changelog.py`): versions follow commit order;
+- replayable "set my value" writes (votes, presence, modules…) take a transaction-scoped
+  advisory lock (`utils/row_lock.py`), per task for votes.
+
 ## Devices
 
 The JWT has no `exp`, and that is deliberate: a household app does not ask for a code every
