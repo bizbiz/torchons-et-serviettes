@@ -265,6 +265,9 @@ class HomeViewModel @Inject constructor(
                 async { homeRepository.refreshPendingAffinity(tokenManager.affinityExpiryFlow.first()) },
                 async { taskRepository.refreshContexts() },
                 async { taskRepository.refreshTasks() },
+                // Member names for the red stack's « Confiée par Alice »: without this, a phone
+                // just signed in showed « Confiée par ? » until the Tasks screen filled the cache.
+                async { taskRepository.refreshUsers() },
                 // v0.32 : flag gamif du foyer courant (pour que l'UI gamif
                 // disparaisse instantanement si l'autre membre a toggle).
                 async { homeRepository.refreshCurrentFoyerGamification() },
