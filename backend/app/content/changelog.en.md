@@ -1,5 +1,15 @@
 # Release notes
 
+## v0.48.1 — 2026-11-21
+
+### Fixes
+- A task's page no longer crashes when opened again.
+- The "To do today" stack shows who handed the task right after signing in, instead of
+  "Handed by ?".
+- A task's page no longer shows points when gamification is off.
+- With TalkBack, the "!" of a received task now reads "See who handed it", no longer "Cancel".
+- The contexts help now says a single "It keeps going without us" is enough.
+
 ## v0.48.0 — 2026-11-21
 
 ### Marking a task done

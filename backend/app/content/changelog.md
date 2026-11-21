@@ -1,5 +1,16 @@
 # Notes de version
 
+## v0.48.1 — 2026-11-21
+
+### Corrections
+- La fiche d'une tâche ne plante plus quand on la rouvre.
+- La pile « À faire aujourd'hui » affiche le nom de qui a confié la tâche dès la connexion, au
+  lieu de « Confiée par ? ».
+- La fiche d'une tâche n'affiche plus de points quand la gamification est coupée.
+- Avec TalkBack, le « ! » d'une tâche reçue s'annonce « Voir qui l'a confiée », et non plus
+  « Annuler ».
+- L'aide des contextes précise qu'un seul « Ça continue sans nous » suffit.
+
 ## v0.48.0 — 2026-11-21
 
 ### Valider une tâche
