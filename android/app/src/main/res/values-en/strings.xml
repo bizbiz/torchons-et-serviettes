@@ -65,8 +65,6 @@
     <string name="categories_dialog_new_title">New category</string>
     <string name="categories_dialog_delete_message">Tasks in this category will be moved to \"no category\".</string>
     <string name="categories_requires_home_switch_label">Only at home</string>
-    <string name="categories_requires_home_tooltip_title">At home</string>
-    <string name="categories_requires_home_tooltip_description">When on, tasks in this category are paused while no one is home. Days of absence don\'t count — tasks don\'t pile up late during the absence.\n\nExample: “Vacuum” every 7 days. You\'re away for 5 days. Without the pause, you come back and it\'s overdue. With the pause, those 5 days don\'t count — you still have 2 days to do it.</string>
 
     <!-- RoomsScreen -->
     <string name="rooms_title">Rooms</string>
@@ -141,11 +139,9 @@
     <string name="foyer_rooms_title">Rooms</string>
     <string name="foyer_rooms_subtitle">Kitchen, bathroom, bedroom… + emoji and color</string>
 
-    <!-- (5) Categories + freeze tooltip -->
+    <!-- (5) Categories -->
     <string name="foyer_categories_title">Categories</string>
     <string name="foyer_categories_subtitle">Add, edit, delete</string>
-    <string name="foyer_categories_tooltip_title">Categories and freeze during absence</string>
-    <string name="foyer_categories_tooltip_description">A category flagged \"at home\" contains tasks that can only be done on site. When no one is detected at home (see Presence &amp; absence block), these tasks are frozen: they stop aging and resume on return.</string>
 
     <!-- (6) Presence & absence -->
     <string name="foyer_presence_section_title">Presence &amp; absence</string>
@@ -1541,7 +1537,7 @@
     <string name="contexts_name_taken">That name is already taken by another context.</string>
     <string name="contexts_unreachable">No connection to the server: contexts are managed online. Try again once connected.</string>
     <string name="context_requires_presence_label">You must be there</string>
-    <string name="context_requires_presence_help">The chore can only be done at home. Off your home WiFi, it can hide from your list. During an absence, it pauses, unless \"It keeps going without us\" is ticked too.</string>
+    <string name="context_requires_presence_help">The chore can only be done at home. Off your home WiFi, it can hide from your list. During an absence, it pauses, unless one of its contexts, this one or another, has \"It keeps going without us\": one is enough to keep it going.</string>
     <string name="context_accrues_when_away_label">It keeps going without us</string>
     <string name="context_accrues_when_away_help">The need grows even without you: grass grows, the calendar turns. These chores never pause during an absence.</string>
     <string name="foyer_contexts_subtitle">Kitchen, Cat, Garden, Admin… + emoji and colour</string>
@@ -1847,7 +1843,7 @@
     <string name="help_contexts_1_title">What they are for</string>
     <string name="help_contexts_1_text">A context says why a task exists in your home: a room (Kitchen), a pet (Cat), an outdoor area (Garden), a situation (Baby). A task can have several. They act as filters in the list.</string>
     <string name="help_contexts_2_title">The two settings</string>
-    <string name="help_contexts_2_text">\"You must be there\": the task pauses during an absence. \"It keeps going without us\": it never stops (the grass grows even without you).</string>
+    <string name="help_contexts_2_text">\"You must be there\": the task pauses during an absence. \"It keeps going without us\": it never stops (the grass grows even without you). A task that has both, even through two different contexts, keeps going: one \"It keeps going without us\" is enough.</string>
     <string name="help_contexts_3_title">Delete</string>
     <string name="help_contexts_3_text">The tasks in this context lose it, but stay.</string>
     <string name="help_devices_title">My devices</string>

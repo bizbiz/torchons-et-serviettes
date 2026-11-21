@@ -69,8 +69,6 @@
     <string name="categories_dialog_new_title">Nouvelle catégorie</string>
     <string name="categories_dialog_delete_message">Les tâches de cette catégorie seront déplacées en « sans catégorie ».</string>
     <string name="categories_requires_home_switch_label">À la maison uniquement</string>
-    <string name="categories_requires_home_tooltip_title">À la maison</string>
-    <string name="categories_requires_home_tooltip_description">Si activé, les tâches de cette catégorie sont mises en pause quand personne n\'est à la maison. Les jours d\'absence ne comptent pas — les tâches n\'accumulent pas de retard pendant l\'absence.\n\nExemple : « Passer l\'aspirateur » tous les 7 jours. Tu pars 5 jours. Sans la pause, tu reviens et c\'est en retard. Avec la pause, les 5 jours ne comptent pas — il te reste 2 jours pour la faire.</string>
 
     <!-- RoomsScreen -->
     <string name="rooms_title">Pièces</string>
@@ -147,11 +145,9 @@
     <string name="foyer_rooms_title">Pièces</string>
     <string name="foyer_rooms_subtitle">Cuisine, SDB, Chambre… + emoji et couleur</string>
 
-    <!-- (5) Catégories + tooltip gel -->
+    <!-- (5) Catégories -->
     <string name="foyer_categories_title">Catégories</string>
     <string name="foyer_categories_subtitle">Ajouter, modifier, supprimer</string>
-    <string name="foyer_categories_tooltip_title">Catégories et gel pendant l\'absence</string>
-    <string name="foyer_categories_tooltip_description">Une catégorie marquée «&#160;à la maison&#160;» contient des tâches qui ne peuvent être faites que sur place. Quand personne n\'est détecté à la maison (cf. bloc Présence &amp; absences), ces tâches sont gelées&#160;: elles arrêtent de vieillir et reprennent au retour.</string>
 
     <!-- (6) Présence & absences -->
     <string name="foyer_presence_section_title">Présence &amp; absences</string>
@@ -1555,7 +1551,7 @@
     <string name="contexts_name_taken">Ce nom est déjà pris par un autre contexte.</string>
     <string name="contexts_unreachable">Pas de connexion au serveur&#160;: les contextes se gèrent en ligne. Réessaie une fois connecté.</string>
     <string name="context_requires_presence_label">Il faut être sur place</string>
-    <string name="context_requires_presence_help">La tâche ne se fait qu\'à la maison. Hors de ton WiFi maison, elle peut se cacher de ta liste. Pendant une absence, elle se met en pause, sauf si «&#160;Ça continue sans nous&#160;» est aussi coché.</string>
+    <string name="context_requires_presence_help">La tâche ne se fait qu\'à la maison. Hors de ton WiFi maison, elle peut se cacher de ta liste. Pendant une absence, elle se met en pause, sauf si l\'un de ses contextes, celui-ci ou un autre, a «&#160;Ça continue sans nous&#160;»&#160;: un seul suffit pour qu\'elle continue.</string>
     <string name="context_accrues_when_away_label">Ça continue sans nous</string>
     <string name="context_accrues_when_away_help">Le besoin grandit même sans vous&#160;: la pelouse pousse, le calendrier tourne. Ces tâches ne se mettent jamais en pause pendant une absence.</string>
     <string name="foyer_contexts_subtitle">Cuisine, Chat, Jardin, Administratif… + emoji et couleur</string>
@@ -1861,7 +1857,7 @@
     <string name="help_contexts_1_title">À quoi ça sert</string>
     <string name="help_contexts_1_text">Un contexte dit pourquoi une tâche existe chez toi : une pièce (Cuisine), un animal (Chat), un extérieur (Jardin), une situation (Bébé). Une tâche peut en avoir plusieurs. Ils servent de filtres dans la liste.</string>
     <string name="help_contexts_2_title">Les deux réglages</string>
-    <string name="help_contexts_2_text">« Il faut être sur place » : la tâche se met en pause pendant une absence. « Ça continue sans nous » : elle ne s\'arrête jamais (la pelouse pousse même sans vous).</string>
+    <string name="help_contexts_2_text">« Il faut être sur place » : la tâche se met en pause pendant une absence. « Ça continue sans nous » : elle ne s\'arrête jamais (la pelouse pousse même sans vous). Une tâche qui a les deux, même par deux contextes différents, continue : un seul « Ça continue sans nous » suffit.</string>
     <string name="help_contexts_3_title">Supprimer</string>
     <string name="help_contexts_3_text">Les tâches de ce contexte le perdent, mais restent.</string>
     <string name="help_devices_title">Mes appareils</string>
