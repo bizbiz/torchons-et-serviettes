@@ -1,6 +1,7 @@
 package com.torchons.app.core.sync
 
 import com.google.gson.Gson
+import com.torchons.app.data.local.entities.ContextEntity
 import com.torchons.app.data.local.entities.TaskEntity
 import com.torchons.app.data.model.ChangeLogEntry
 import com.torchons.app.data.model.RecurrenceRule
@@ -31,9 +32,9 @@ import org.junit.Test
  * - UPDATE for a row absent from the cache: updateOnUnknownRow
  * non couvert : the DAO wiring in SyncWorker.applyTaskChange (getById/upsert),
  *   it needs a WorkManager context; covered by compilation only.
- * non couvert : context_ids resolution into TaskContextRef, deliberately not
- *   done here (no context cache in the worker); partialEdit asserts the
- *   cached contexts are kept and the next authoritative refresh fixes them.
+ * context_ids (2026-11-20): resolved from the CACHED contexts the caller passes in; an id the
+ *   cache does not know is left out; a change with no `context_ids` key keeps the row's
+ *   contexts (contextChange_* tests).
  */
 class TaskChangeMergeTest {
 
@@ -109,7 +110,7 @@ class TaskChangeMergeTest {
     fun partialEdit_patchesOnlyCarriedKeys() {
         val change = entry("UPDATE", """{"title": "Aspirateur partout", "weight": 5, "context_ids": ["c2"]}""")
 
-        val merged = taskEntityFromChange(existing, change)!!
+        val merged = taskEntityFromChange(existing, change, knownContexts = listOf(salon, chat))!!
 
         assertEquals("Aspirateur partout", merged.title)
         assertEquals(5, merged.weight)
@@ -117,8 +118,44 @@ class TaskChangeMergeTest {
         assertEquals(existing.recurrenceRule, merged.recurrenceRule)
         assertEquals(existing.description, merged.description)
         assertEquals(existing.tolerance, merged.tolerance)
-        assertEquals(existing.contexts, merged.contexts)
+        assertEquals(listOf("c2"), merged.contexts.map { it.id })
         assertEquals(existing.createdAt, merged.createdAt)
+    }
+
+    private fun contextRow(id: String, name: String) = ContextEntity(
+        id = id, name = name, color = "#112233", icon = null, emoji = null, requiresPresence = true,
+        accruesWhenAway = false, sortOrder = 0, templateKey = null, version = 1, createdAt = null,
+    )
+    private val salon = contextRow("c1", "Salon")
+    private val chat = contextRow("c2", "Chat")
+
+    @Test
+    fun contextChange_fromAnotherDevice_isShownAtOnce_inTheOrderSent() {
+        val change = entry("UPDATE", """{"context_ids": ["c2", "c1"]}""")
+
+        val merged = taskEntityFromChange(existing, change, knownContexts = listOf(salon, chat))!!
+
+        assertEquals(listOf("c2", "c1"), merged.contexts.map { it.id })
+        assertEquals(listOf("Chat", "Salon"), merged.contexts.map { it.name })
+        assertEquals(true, merged.contexts.first().requiresPresence)
+    }
+
+    @Test
+    fun contextChange_toNone_detachesAll_andAnUnknownIdIsLeftOut() {
+        val none = taskEntityFromChange(existing, entry("UPDATE", """{"context_ids": []}"""))!!
+        val unknown = taskEntityFromChange(
+            existing, entry("UPDATE", """{"context_ids": ["c1", "c404"]}"""), knownContexts = listOf(salon),
+        )!!
+
+        assertEquals(emptyList<String>(), none.contexts.map { it.id })
+        assertEquals(listOf("c1"), unknown.contexts.map { it.id })
+    }
+
+    @Test
+    fun updateWithoutContextKey_keepsTheRowsContexts() {
+        val merged = taskEntityFromChange(existing, entry("UPDATE", """{"title": "Autre"}"""), listOf(chat))!!
+
+        assertEquals(existing.contexts, merged.contexts)
     }
 
     @Test
@@ -162,6 +199,7 @@ class TaskChangeMergeTest {
         assertEquals(RecurrenceRule(type = "interval", everyNDays = 30), built.recurrenceRule)
         assertEquals(2, built.weight)
         assertEquals("SOUPLE", built.tolerance)
+        assertEquals(emptyList<String>(), built.contexts.map { it.id }) // c9 is not in the cache
         // No created_at in the payload: the server's change time is the best
         // available stand-in (an empty string would break urgency math).
         assertEquals("2026-09-30T12:00:00+00:00", built.createdAt)

@@ -75,6 +75,8 @@ fun RatingDialog(
     onSubmitAndNext: ((Int, Int, RatingRecurrence?) -> Unit)? = null,
     onDismiss: () -> Unit,
     roomLabel: String? = null,
+    /** The server could not be asked about the previous rating (offline): see [previousRatingLine]. */
+    previousUnknown: Boolean = false,
 ) {
     // Pre-remplissage avec les valeurs serveur. Key sur taskId pour
     // reinitialiser quand on change de tache (flow Home "Une autre !").
@@ -125,8 +127,14 @@ fun RatingDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                val hasValues = pending.currentAffinity != null || pending.currentEffortPoints != null
+                val line = previousRatingLine(pending.lastRatedAt, previousUnknown, hasValues)
                 Text(
-                    text = formatLastRated(res, pending.lastRatedAt),
+                    text = when (line) {
+                        PreviousRatingLine.PREVIOUS_UNKNOWN -> res.getString(R.string.rating_previous_unknown)
+                        PreviousRatingLine.DATE_UNKNOWN -> res.getString(R.string.rating_last_rated_unknown_offline)
+                        else -> formatLastRated(res, pending.lastRatedAt)
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontStyle = if (pending.lastRatedAt == null) FontStyle.Italic else FontStyle.Normal,

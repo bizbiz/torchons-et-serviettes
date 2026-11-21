@@ -37,6 +37,7 @@ internal fun FoyerPresenceCard(
     viewModel: SettingsViewModel,
     homeFreezeEnabled: Boolean,
     homeSsids: List<String>,
+    settingsLoaded: Boolean,
     onRequestWifiExplanation: () -> Unit,
     onOpenPresenceModal: () -> Unit,
 ) {
@@ -97,7 +98,8 @@ internal fun FoyerPresenceCard(
         Spacer(Modifier.height(8.dp))
 
         if (homeSsids.isEmpty()) {
-            Text(
+            // Settings not loaded yet (offline start): the list is unknown, not empty.
+            if (settingsLoaded) Text(
                 text = stringResource(R.string.foyer_presence_wifi_empty),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

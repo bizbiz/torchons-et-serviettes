@@ -5,12 +5,9 @@ import android.content.Context
 import com.torchons.app.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.torchons.app.data.model.CreateTaskRequest
-import com.torchons.app.data.model.RecurrenceRule
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.data.model.CatalogSuggestion
 import com.torchons.app.data.model.Task
-import com.torchons.app.data.model.UpdateTaskRequest
 import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.TaskRepository
 import com.torchons.app.ui.common.UserError
@@ -277,58 +274,11 @@ class TaskEditViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = state.copy(isSaving = true, error = null)
 
-            val recurrenceRule = when (state.recurrenceType) {
-                "interval" -> RecurrenceRule(
-                    type = "interval",
-                    everyNDays = state.canonicalEveryNDays()
-                )
-                "monthly_variable" -> {
-                    val dpm = state.daysPerMonth
-                        .filter { it.value.isNotBlank() && (it.value.toIntOrNull() ?: 0) > 0 }
-                        .mapValues { it.value.toInt() }
-                    RecurrenceRule(type = "monthly_variable", daysPerMonth = dpm)
-                }
-                "uncertain" -> RecurrenceRule(type = "uncertain")
-                "calendar" -> RecurrenceRule(
-                    type = "calendar",
-                    // Le serveur normalise (tri, dedoublonnage, bornes) ;
-                    // on envoie l'intention telle que l'user l'a exprimee.
-                    months = state.recurrenceMonths.sorted().ifEmpty { listOf(1) },
-                    day = state.recurrenceDay,
-                    graceDays = state.recurrenceGraceDays,
-                )
-                "anniversary" -> RecurrenceRule(
-                    type = "anniversary",
-                    everyNMonths = state.anniversaryEveryNMonths(),
-                )
-                else -> null
-            }
-
-            val result = if (taskId != null) {
-                taskRepository.updateTask(
-                    taskId,
-                    UpdateTaskRequest(
-                        title = state.title,
-                        description = state.description.ifBlank { null },
-                        contextIds = state.contextIds,
-                        assignedToIds = state.assignedToIds,
-                        recurrenceRule = recurrenceRule,
-                        weight = state.weight,
-                        tolerance = state.tolerance,
-                    )
-                )
-            } else {
-                taskRepository.createTask(
-                    CreateTaskRequest(
-                        title = state.title,
-                        description = state.description.ifBlank { null },
-                        contextIds = state.contextIds,
-                        assignedToIds = state.assignedToIds,
-                        recurrenceRule = recurrenceRule,
-                        weight = state.weight,
-                        tolerance = state.tolerance,
-                    )
-                )
+            val result = when (val action = state.saveAction(taskId)) {
+                // Nothing differs from what the form loaded: no op, no history line, just close.
+                SaveAction.Nothing -> Result.success(Unit)
+                is SaveAction.Update -> taskRepository.updateTask(action.taskId, action.request)
+                is SaveAction.Create -> taskRepository.createTask(action.request)
             }
 
             result.fold(
@@ -398,10 +348,14 @@ class TaskEditViewModel @Inject constructor(
                         ?: request.daysPerMonth?.values?.let { it.sum() / it.size }
                         ?: 7
                     val newFieldText = state.recurrenceUnit.fromDays(newAvg).toString()
-                    _uiState.value = state.copy(
+                    val voted = state.copy(
                         showFrequencyVoteDialog = false,
                         frequencyVotes = refreshed,
                         recurrenceFieldText = newFieldText,
+                    )
+                    // The vote already moved the rule: it is the new reference, not a pending edit.
+                    _uiState.value = voted.copy(
+                        baseline = state.baseline?.copy(recurrence = voted.previewRecurrenceRule()),
                     )
                 },
                 onFailure = { error ->

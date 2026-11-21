@@ -55,7 +55,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.torchons.app.ui.common.FoyerGamifState
 import com.torchons.app.ui.common.WhyNoPointsDialog
@@ -91,7 +90,7 @@ fun SettingsScreen(
     onCreateFoyer: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
-    val scope = rememberCoroutineScope()
+    var confirmSignOut by remember { mutableStateOf(false) }
 
     // POST_NOTIFICATIONS (Android 13+) est demandee ICI et nulle part ailleurs :
     // au moment ou l'utilisateur active une notification, donc quand il sait
@@ -523,12 +522,7 @@ fun SettingsScreen(
 
         // Deconnexion
         Button(
-            onClick = {
-                scope.launch {
-                    viewModel.logout()
-                    onLogout()
-                }
-            },
+            onClick = { confirmSignOut = true },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
@@ -551,6 +545,14 @@ fun SettingsScreen(
         }
 
         DeleteAccountSection(viewModel = viewModel, onDeleted = onLogout) // last section (privacy policy)
+
+        if (confirmSignOut) {
+            SettingsSignOutDialog(
+                viewModel = viewModel,
+                onDismiss = { confirmSignOut = false },
+                onSignedOut = onLogout,
+            )
+        }
     }
 
     // P4a.2 — l'ancien dialog "nom seul" est remplacé par le wizard

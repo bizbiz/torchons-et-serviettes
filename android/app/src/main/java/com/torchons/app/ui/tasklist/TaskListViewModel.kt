@@ -484,8 +484,4 @@ class TaskListViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(searchQuery = query)
         filtersFlow.value = filtersFlow.value.copy(searchQuery = query)
     }
-
-    suspend fun logout() {
-        authRepository.logout()
-    }
 }

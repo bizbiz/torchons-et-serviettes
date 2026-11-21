@@ -1018,6 +1018,8 @@
     <string name="stats_history_filter_period_all">Tout</string>
     <string name="stats_history_empty_filtered">Aucun résultat avec ces filtres</string>
     <string name="stats_history_empty">Aucun historique</string>
+    <string name="stats_history_load_failed">Impossible de charger l’historique. Il se rechargera quand la connexion reviendra.</string>
+    <string name="stats_history_retry">Réessayer</string>
 
     <!-- Pluriels Stats -->
     <plurals name="stats_top_day_count">
@@ -1086,6 +1088,9 @@
     <string name="rating_button_next">Une autre&#160;!</string>
     <string name="rating_button_later">Plus tard</string>
     <string name="rating_last_rated_never">Jamais noté</string>
+    <string name="rating_previous_unknown">Ta note précédente est inconnue hors ligne</string>
+    <string name="rating_last_rated_unknown_offline">Date de ta dernière note inconnue hors ligne</string>
+    <string name="task_detail_lists_unavailable">Indisponible tant que la connexion manque : la liste se chargera au retour du réseau.</string>
     <string name="rating_last_rated_just_now">Dernière notation à l\'instant</string>
     <string name="rating_last_rated_minutes_format">Dernière notation il y a %1$dmin</string>
     <string name="rating_last_rated_hours_format">Dernière notation il y a %1$dh</string>
@@ -1929,6 +1934,13 @@
     <string name="mydevices_signout_anyway">Me déconnecter quand même</string>
     <string name="mydevices_signout_syncing">Synchronisation en cours…</string>
     <string name="mydevices_signout_sync_failed">La synchronisation n’a pas abouti. Vérifie ta connexion et réessaie, ou déconnecte-toi quand même : ces modifications seront perdues.</string>
+    <string name="settings_logout_confirm_title">Te déconnecter ?</string>
+    <string name="settings_logout_confirm_body">Il te faudra ton code de récupération, ou un autre appareil déjà connecté, pour revenir.</string>
+    <plurals name="settings_logout_pending">
+        <item quantity="one">%d modification n’est pas encore envoyée au serveur. Elle ne partira qu’à ta prochaine connexion.</item>
+        <item quantity="other">%d modifications ne sont pas encore envoyées au serveur. Elles ne partiront qu’à ta prochaine connexion.</item>
+    </plurals>
+    <string name="settings_logout_sync_failed">La synchronisation n’a pas abouti. Vérifie ta connexion et réessaie, ou déconnecte-toi quand même : ces modifications attendront ta prochaine connexion.</string>
     <string name="sync_op_setting_generic">Réglage modifié</string>
     <string name="sync_setting_notif_daily">résumé quotidien</string>
     <string name="sync_setting_notif_hour">heure du résumé quotidien</string>

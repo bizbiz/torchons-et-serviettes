@@ -21,7 +21,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -36,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -150,6 +148,7 @@ fun DevicesScreen(
         val pending by viewModel.pendingOps.collectAsStateWithLifecycle()
         val syncState by viewModel.signOutSync.collectAsStateWithLifecycle()
         SignOutDialog(
+            texts = CutDeviceSignOutTexts,
             pending = pending,
             syncState = shownSignOutSyncState(syncState, pending),
             onSyncFirst = viewModel::syncFirst,
@@ -166,64 +165,6 @@ fun DevicesScreen(
     }
 }
 
-/**
- * The sign-out wipes the phone, unsent changes included (D9, 2026-11-20 audit): with changes
- * waiting, the dialog says how many, offers to sync first, and signs out anyway only on request.
- */
-@Composable
-private fun SignOutDialog(
-    pending: Int,
-    syncState: SignOutSyncState,
-    onSyncFirst: () -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.mydevices_signout_confirm_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.mydevices_signout_confirm_body))
-                if (pending > 0) {
-                    Text(
-                        text = pluralStringResource(R.plurals.mydevices_signout_pending, pending, pending),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-                when (syncState) {
-                    SignOutSyncState.SYNCING -> {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        Text(stringResource(R.string.mydevices_signout_syncing))
-                    }
-                    SignOutSyncState.GAVE_UP -> Text(
-                        text = stringResource(R.string.mydevices_signout_sync_failed),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    SignOutSyncState.IDLE -> Unit
-                }
-            }
-        },
-        confirmButton = {
-            Column(horizontalAlignment = Alignment.End) {
-                if (pending > 0) {
-                    TextButton(onClick = onSyncFirst, enabled = syncState != SignOutSyncState.SYNCING) {
-                        Text(stringResource(R.string.mydevices_signout_sync_first))
-                    }
-                }
-                TextButton(onClick = onConfirm) {
-                    Text(
-                        stringResource(
-                            if (pending > 0) R.string.mydevices_signout_anyway else R.string.mydevices_confirm,
-                        ),
-                    )
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.mydevices_cancel)) }
-        },
-    )
-}
 
 @Composable
 private fun DeviceRow(device: DeviceDto, onRevoke: () -> Unit) {

@@ -53,6 +53,7 @@ import com.torchons.app.ui.common.ImeSnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import com.torchons.app.ui.common.PrimaryTopBar
+import com.torchons.app.ui.common.ReloadOnReconnect
 import com.torchons.app.ui.common.showUserError
 import com.torchons.app.ui.help.HelpButton
 import com.torchons.app.ui.help.HelpScreen
@@ -143,6 +144,8 @@ fun TaskDetailScreen(
         viewModel.refresh()
         onPauseOrDispose { }
     }
+    // The refresh that feeds the lists and votes failed (offline): do it again once back online.
+    ReloadOnReconnect(hasError = uiState.lastRefreshFailed) { viewModel.refresh() }
 
     LaunchedEffect(uiState.completionMessage) {
         uiState.completionMessage?.let {
@@ -293,6 +296,7 @@ fun TaskDetailScreen(
             onSubmitAndNext = null,
             onDismiss = { viewModel.dismissRatingDialog() },
             roomLabel = ratingRoomLabel,
+            previousUnknown = uiState.ratingPreviousUnknown,
         )
     }
 
@@ -796,104 +800,12 @@ fun TaskDetailScreen(
                         }
                     }
 
-                    // Section historique
-                    item {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.History,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(R.string.task_detail_history_title_format, uiState.completions.size),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-
-                    if (uiState.completions.isEmpty()) {
-                        item {
-                            Text(
-                                text = stringResource(R.string.task_detail_history_empty),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                        }
-                    } else {
-                        // Grouping par collective_id : un evenement collectif =
-                        // une seule carte. Solo : carte = 1 row comme avant.
-                        // Pas de `remember` ici (LazyListScope n'est pas
-                        // @Composable) — le groupBy sur une liste courte est
-                        // negligeable en cout.
-                        val groups = groupCompletions(uiState.completions)
-                        items(
-                            items = groups,
-                            key = { it.key }
-                        ) { group ->
-                            CompletionCard(
-                                group = group,
-                                userNames = uiState.userNames,
-                                formerMembers = uiState.formerMembers, showPoints = gamificationVisible,
-                                onDeleteOne = { viewModel.deleteCompletion(group.head.id) },
-                                onDeleteCollective = {
-                                    viewModel.deleteCollective(group.rows.map { it.id })
-                                },
-                                onEdit = { viewModel.showEditCompletion(group.head) },
-                                onUserClick = { uid ->
-                                    val name = uiState.userNames[uid] ?: "?"
-                                    userProfileRequest = UserProfileRequest(
-                                        userId = uid,
-                                        userName = name
-                                    )
-                                }
-                            )
-                        }
-                    }
-
-                    // Section historique des modifications (votes + edits)
-                    item {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 16.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(R.string.task_detail_modifications_title_format, uiState.history.size),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-
-                    if (uiState.history.isEmpty()) {
-                        item {
-                            Text(
-                                text = stringResource(R.string.task_detail_modifications_empty),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                        }
-                    } else {
-                        items(
-                            items = uiState.history,
-                            key = { it.id }
-                        ) { event ->
-                            HistoryEventCard(event = event)
-                        }
+                    taskHistorySections(uiState, gamificationVisible, viewModel) { uid ->
+                        val name = uiState.userNames[uid] ?: "?"
+                        userProfileRequest = UserProfileRequest(
+                            userId = uid,
+                            userName = name,
+                        )
                     }
 
                     // Espace en bas

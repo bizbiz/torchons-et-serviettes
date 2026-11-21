@@ -9,10 +9,13 @@ import com.torchons.app.data.api.ApiService
 import com.torchons.app.ui.common.UserErrors
 import com.torchons.app.data.local.TokenManager
 import com.torchons.app.data.local.dao.CompletionDao
+import com.torchons.app.data.local.dao.ContextDao
 import com.torchons.app.data.local.dao.DelegationDao
 import com.torchons.app.data.local.dao.PendingOperationDao
 import com.torchons.app.data.local.dao.TaskDao
+import com.torchons.app.data.local.entities.ContextEntity
 import com.torchons.app.data.local.entities.DelegationEntity
+import com.torchons.app.data.local.entities.contextRefsOf
 import com.torchons.app.data.local.entities.PendingOperationEntity
 import com.torchons.app.data.local.entities.TaskEntity
 import com.torchons.app.data.local.entities.toEntity
@@ -44,6 +47,7 @@ interface SyncWorkerEntryPoint {
     fun apiService(): ApiService
     fun pendingOperationDao(): PendingOperationDao
     fun taskDao(): TaskDao
+    fun contextDao(): ContextDao
     fun completionDao(): CompletionDao
     fun delegationDao(): DelegationDao
     fun tokenManager(): TokenManager
@@ -199,7 +203,7 @@ class SyncWorker(
                 Log.w(TAG, "applying server change ${change.table}/${change.rowId} (${change.operation}) failed", e)
             },
         ) {
-            applyServerChange(it, taskDao, completionDao, ep.delegationDao())
+            applyServerChange(it, taskDao, completionDao, ep.delegationDao(), ep.contextDao())
         }
 
         tokenManager.setSyncCursor(body.serverVersion)
@@ -268,9 +272,10 @@ class SyncWorker(
         taskDao: TaskDao,
         completionDao: CompletionDao,
         delegationDao: DelegationDao,
+        contextDao: ContextDao,
     ) {
         when (change.table) {
-            "tasks" -> applyTaskChange(change, taskDao)
+            "tasks" -> applyTaskChange(change, taskDao, contextDao)
             "task_completions" -> applyCompletionChange(change, completionDao)
             "task_delegations" -> delegationEntityFromChange(change)
                 ?.let { delegationDao.upsertAll(listOf(it)) }
@@ -278,13 +283,15 @@ class SyncWorker(
         }
     }
 
-    private suspend fun applyTaskChange(change: ChangeLogEntry, taskDao: TaskDao) {
+    private suspend fun applyTaskChange(change: ChangeLogEntry, taskDao: TaskDao, contextDao: ContextDao) {
         if (change.operation == "DELETE") {
             taskDao.deleteById(change.rowId)
             return
         }
-        if (change.data == null) return
-        val merged = taskEntityFromChange(taskDao.getById(change.rowId), change) ?: return
+        val data = change.data ?: return
+        // The context cache is read only when the change moves the contexts.
+        val known = if (data.containsKey("context_ids")) contextDao.getAll() else emptyList()
+        val merged = taskEntityFromChange(taskDao.getById(change.rowId), change, known) ?: return
         taskDao.upsert(merged)
     }
 
@@ -347,12 +354,18 @@ private val changeGson = Gson()
  * not cached invents nothing: the next authoritative refresh (replaceAll)
  * reconciles it. Same strategy as applyCompletionChange.
  *
- * `context_ids` cannot be resolved into TaskContextRef here (no context
- * cache in the worker): cached contexts are kept until the next refresh.
+ * `context_ids` is resolved into TaskContextRef from [knownContexts] (the cached contexts, read
+ * by the caller when the change carries the key): a context added or moved from another device
+ * shows at once, not at the next full refresh (the edit form opened on the old ones, 2026-11-20).
+ * An id the cache does not know yet is left out; the next refresh brings it.
  * Fields the change_log never carries (inferred_interval_days,
  * last_completed_at, absent days) always keep their cached value.
  */
-internal fun taskEntityFromChange(existing: TaskEntity?, change: ChangeLogEntry): TaskEntity? {
+internal fun taskEntityFromChange(
+    existing: TaskEntity?,
+    change: ChangeLogEntry,
+    knownContexts: List<ContextEntity> = emptyList(),
+): TaskEntity? {
     val data = change.data ?: return null
 
     if (existing != null && change.operation in setOf("UPDATE", "INSERT")) {
@@ -370,6 +383,8 @@ internal fun taskEntityFromChange(existing: TaskEntity?, change: ChangeLogEntry)
             isArchived = (data["is_archived"] as? Boolean) ?: existing.isArchived,
             sortOrder = (data["sort_order"] as? Number)?.toInt() ?: existing.sortOrder,
             updatedAt = (data["updated_at"] as? String) ?: change.changedAt,
+            contexts = data.stringList("context_ids")?.let { contextRefsOf(it, knownContexts) }
+                ?: existing.contexts,
         )
     }
     if (change.operation != "INSERT") return null
@@ -390,6 +405,7 @@ internal fun taskEntityFromChange(existing: TaskEntity?, change: ChangeLogEntry)
         // due-date math (created_at anchors a never-done task).
         createdAt = data["created_at"] as? String ?: change.changedAt,
         updatedAt = data["updated_at"] as? String ?: change.changedAt,
+        contexts = data.stringList("context_ids")?.let { contextRefsOf(it, knownContexts) }.orEmpty(),
     )
     return task.toEntity()
 }

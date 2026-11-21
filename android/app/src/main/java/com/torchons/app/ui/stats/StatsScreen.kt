@@ -43,6 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.filled.Favorite
 import com.torchons.app.R
+import com.torchons.app.ui.common.ReloadOnReconnect
+import com.torchons.app.ui.common.UserErrorBlock
 import com.torchons.app.ui.common.Modules
 import com.torchons.app.ui.common.moduleEnabled
 import com.torchons.app.data.model.FairShareStatus
@@ -105,6 +107,11 @@ fun StatsScreen(
     // faite ailleurs (tâche complétée → série/record, présence éditée…)
     // sans pull-to-refresh manuel. Cache-conventions règle 1, surface Stats.
     LaunchedEffect(Unit) { viewModel.loadData(isRefresh = true) }
+    // A cold start offline left the screen empty, and it stayed so after the network came back
+    // (2026-11-20): reload once on reconnect while the load is in error.
+    ReloadOnReconnect(hasError = uiState.error != null || uiState.historyFailed) {
+        viewModel.loadData(isRefresh = true)
+    }
 
     if (uiState.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -120,6 +127,7 @@ fun StatsScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             StatsTabBar(tabs, selectedIndex, onSelect = viewModel::selectTab)
+            uiState.error?.let { UserErrorBlock(it, "Stats", modifier = Modifier.padding(horizontal = 16.dp)) }
 
             val onUserClick: (UserProfileRequest) -> Unit = { req -> userProfileRequest = req }
             val currentUserId by viewModel.userId.collectAsState()
@@ -165,6 +173,8 @@ fun StatsScreen(
                     history = uiState.history,
                     filters = uiState.historyFilters,
                     isHistoryLoading = uiState.isHistoryLoading,
+                    loadFailed = uiState.historyFailed,
+                    onRetry = viewModel::retryHistory,
                     users = uiState.stats.map { it.userId to it.displayName },
                     onQueryChange = viewModel::updateHistoryQuery,
                     onToggleFamily = viewModel::toggleHistoryFamily,

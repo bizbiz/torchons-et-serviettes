@@ -157,6 +157,12 @@ Trois sortes d'écriture, et un écran doit savoir laquelle (audit du 20/11/2026
    `VoteRepository.observeQueuedVotes`) : le détail d'une tâche montre le vote qu'on vient de
    faire hors ligne, et son bandeau « tu n'as pas voté » suit. Quand la file se vide, l'écran
    recharge AVANT de retirer la surcouche (pas de retour en arrière furtif).
+   La dernière réponse du serveur est elle-même en cache (`TaskVotesCache`, dans
+   `view_snapshots` : les votes de la tâche à chaque lecture, et l'affinité de l'utilisateur sur
+   chaque tâche, un `GET /my-affinities` fait avec le rafraîchissement des tâches) : une tâche
+   ouverte hors ligne montre les votes que l'app connaissait déjà. Ce qui est inconnu est dit
+   inconnu : la fenêtre de notation n'affirme jamais « Jamais noté » quand le serveur n'a pas pu
+   être interrogé (`previousRatingLine`).
 2. **Réglages du membre** (`user_settings`, table `/sync`) : `SettingsLedger` met l'UPDATE en
    file (`LocalMutation`), l'écran et le DataStore changent tout de suite, et un rechargement
    applique les ops en file par-dessus la réponse du serveur (`overlayPendingSettings`). Les
@@ -175,6 +181,19 @@ Trois sortes d'écriture, et un écran doit savoir laquelle (audit du 20/11/2026
    (Accueil : bouton grisé + toast au tap). Un écran qui montre une erreur de chargement utilise
    aussi `ReloadOnReconnect` (recharge une fois quand `LocalIsOnline` passe de faux à vrai), pas
    seulement un bouton « Réessayer ».
+
+❌ **Une liste vide n'est pas une réponse vide.** Un écran ne dit « Aucun ... » que si sa lecture a
+répondu (`shouldShowEmptyState(isLoading, loadFailed, isEmpty)`) : pendant le chargement ou après
+un échec, il montre l'erreur (ou « indisponible »), jamais le texte d'état vide. Éditions :
+le formulaire d'édition n'envoie que les champs que l'utilisateur a changés par rapport à ce
+qu'il a chargé (`TaskEditBaseline`, `saveAction`) : un formulaire ouvert sur des données périmées
+ne peut pas annuler ce qu'il n'a jamais montré, et un enregistrement sans changement ne met rien
+en file. Un changement de tâche reçu de `/sync` résout `context_ids` depuis les contextes en cache
+(`taskEntityFromChange`).
+
+Toute déconnexion passe par `SignOutFlow` (compte des modifications en attente, « Synchroniser
+d'abord », confirmation) : aucun écran n'appelle `AuthRepository.logout` ni `wipeNow` de son côté
+(`SignOutFlowTest` balaie les sources).
 
 Passages de synchro : `SyncTrigger.requestSync` n'annule jamais un passage EN COURS (une requête
 de vote déjà chez le serveur serait rejouée, 500) : `syncRequestAction` en chaîne un nouveau

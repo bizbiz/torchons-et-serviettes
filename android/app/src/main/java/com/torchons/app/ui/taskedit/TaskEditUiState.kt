@@ -74,6 +74,8 @@ data class TaskEditUiState(
      * l'user n'ait pas reset le clone.
      */
     val clonedFromTitle: String? = null,
+    /** Edit mode: the values the form was loaded with, to send only what the user changed. */
+    val baseline: TaskEditBaseline? = null,
 )
 
 /** `anniversary` period in months, as stored (`every_n_months`). */

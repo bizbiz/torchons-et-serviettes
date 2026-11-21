@@ -73,6 +73,8 @@ data class StatsUiState(
     val history: List<Map<String, Any>> = emptyList(),
     val historyFilters: HistoryFilters = HistoryFilters(),
     val isHistoryLoading: Boolean = false,
+    /** The history request failed (offline, server error): no "Aucun historique" over it. */
+    val historyFailed: Boolean = false,
     val fairShare: List<FairShareStatus> = emptyList(),
     // Donnees graphiques (chargees en parallele du reste).
     val pointsWeek: PointsTimelineResponse? = null,
@@ -154,6 +156,7 @@ class StatsViewModel @Inject constructor(
                     history = withoutPoints(
                         historyResp.body().takeIf { historyResp.isSuccessful }.orEmpty(), gamification,
                     ),
+                    historyFailed = !historyResp.isSuccessful,
                     fairShare = if (fairShareResp.isSuccessful) fairShareResp.body() ?: emptyList() else emptyList(),
                     pointsWeek = ptsWeekResp?.takeIf { it.isSuccessful }?.body(),
                     pointsMonth = ptsMonthResp?.takeIf { it.isSuccessful }?.body(),
@@ -165,9 +168,19 @@ class StatsViewModel @Inject constructor(
                     retardTimeline = if (retardResp.isSuccessful) retardResp.body() else null,
                 )
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = UserErrors.from(context, e))
+                markLoadFailed(e)
             }
         }
+    }
+
+    /** The whole load failed. isRefreshing too: a failed refresh left the pull spinner turning. */
+    private fun markLoadFailed(e: Exception) {
+        _uiState.value = _uiState.value.copy(
+            isLoading = false,
+            isRefreshing = false,
+            historyFailed = true,
+            error = UserErrors.from(context, e),
+        )
     }
 
     fun selectTab(tab: Int) {
@@ -269,6 +282,9 @@ class StatsViewModel @Inject constructor(
         refetchHistory(cleared)
     }
 
+    /** Asks for the history again with the current filters (the failure text's "Retry"). */
+    fun retryHistory() = refetchHistory(_uiState.value.historyFilters)
+
     /** Re-appelle GET /history avec les filtres courants. Debouncing simple :
      * une nouvelle requete remplace l'ancienne (la derniere arrivee gagne).
      * `dayFilter` (deeplink chart) prend le pas sur `period` quand il est non-null. */
@@ -302,9 +318,18 @@ class StatsViewModel @Inject constructor(
                 )
                 val body = if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
                 val history = withoutPoints(body, _uiState.value.gamificationVisible)
-                _uiState.value = _uiState.value.copy(history = history, isHistoryLoading = false)
+                _uiState.value = _uiState.value.copy(
+                    history = history,
+                    isHistoryLoading = false,
+                    historyFailed = !resp.isSuccessful,
+                )
             } catch (_: Exception) {
-                _uiState.value = _uiState.value.copy(isHistoryLoading = false)
+                // No answer for THESE filters: the old list would pass for their result.
+                _uiState.value = _uiState.value.copy(
+                    history = emptyList(),
+                    isHistoryLoading = false,
+                    historyFailed = true,
+                )
             }
         }
     }

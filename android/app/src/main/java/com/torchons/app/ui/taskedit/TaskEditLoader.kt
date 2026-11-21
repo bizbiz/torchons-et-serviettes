@@ -101,7 +101,7 @@ internal class TaskEditLoader(
                         users = users,
                         frequencyVotes = votes,
                         clonedFromTitle = null,
-                    )
+                    ).let { it.copy(baseline = it.toBaseline()) }
                 } else {
                     uiState.value = uiState.value.copy(
                         isLoading = false, error = UserError(context.getString(R.string.task_detail_not_found))

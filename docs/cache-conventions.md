@@ -148,6 +148,11 @@ Three kinds of write, and a screen must know which one it is (2026-11-20 audit, 
    server's last answer (`overlayQueuedVotes`, fed by `VoteRepository.observeQueuedVotes`): the
    task detail shows the vote just saved offline, and its "you have not voted" banner follows.
    When the queue drains the screen refetches BEFORE dropping the overlay (no flicker back).
+   The server's last answer is itself cached (`TaskVotesCache`, in `view_snapshots`: the task's
+   votes at each fetch, and the user's own affinity on every task, one `GET /my-affinities` made
+   with the tasks refresh), so a task opened offline shows the votes the app already knew. What is
+   unknown is said so: the rating dialog never claims "Jamais noté" when the server could not be
+   asked (`previousRatingLine`).
 2. **Member settings** (`user_settings`, a `/sync` table): `SettingsLedger` queues the UPDATE
    (`LocalMutation`), the screen and the DataStore change at once, and a reload applies the queued
    ops over the server's answer (`overlayPendingSettings`). Queued payload numbers keep their
@@ -164,6 +169,17 @@ Three kinds of write, and a screen must know which one it is (2026-11-20 audit, 
    below it use `NetworkNeededSlot` (line always laid out), not `NetworkNeededNote` (Home: a
    dimmed button + toast on tap). A screen that shows a load error also uses `ReloadOnReconnect`
    (reload once when `LocalIsOnline` goes false → true), never only a "Retry" button.
+
+❌ **An empty list is not an empty answer.** A screen says "Aucun ..." only when its load answered
+(`shouldShowEmptyState(isLoading, loadFailed, isEmpty)`): while loading or after a failure it
+shows the error (or "unavailable"), never the empty-state text. Edits: the edit form sends only
+the fields the user changed against what it loaded (`TaskEditBaseline`, `saveAction`), so a form
+opened on stale data cannot revert what it never showed; a save with no change queues nothing.
+A task change pulled from `/sync` resolves `context_ids` from the cached contexts
+(`taskEntityFromChange`).
+
+Every sign-out goes through `SignOutFlow` (pending count, "Sync first", confirmation): no screen
+calls `AuthRepository.logout` or `wipeNow` on its own (`SignOutFlowTest` scans the sources).
 
 Sync passes: `SyncTrigger.requestSync` never cancels a RUNNING pass (a vote request already at the
 server would be replayed, 500): `syncRequestAction` chains a new pass behind it, and replaces a

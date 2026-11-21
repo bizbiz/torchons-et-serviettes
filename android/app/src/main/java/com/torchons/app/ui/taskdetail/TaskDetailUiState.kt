@@ -36,6 +36,8 @@ data class TaskDetailUiState(
     val room: TaskContextRef? = null,
     /** Contexte de notation pour le modal unifie. Non-null = modal ouvert. */
     val ratingContext: PendingAffinity? = null,
+    /** The server could not be asked what I rated before (offline): the dialog says so. */
+    val ratingPreviousUnknown: Boolean = false,
     val editingCompletion: Completion? = null,
     val error: UserError? = null,
     val completionMessage: String? = null,

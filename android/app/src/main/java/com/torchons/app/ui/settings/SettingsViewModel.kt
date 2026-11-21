@@ -6,6 +6,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.torchons.app.core.network.DeviceRevocationMonitor
+import com.torchons.app.core.sync.SyncTrigger
+import com.torchons.app.data.local.dao.PendingOperationDao
+import com.torchons.app.ui.devices.SignOutFlow
+import com.torchons.app.ui.devices.SignOutSyncState
 import com.torchons.app.data.api.ApiService
 import com.torchons.app.ui.common.UserError
 import com.torchons.app.ui.common.UserErrors
@@ -44,6 +48,8 @@ class SettingsViewModel @Inject constructor(
     private val settingsWriter: SettingsWriter,
     private val propositionStateHolder: PropositionStateHolder,
     private val revocationMonitor: DeviceRevocationMonitor,
+    private val pendingDao: PendingOperationDao,
+    private val syncTrigger: SyncTrigger,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -427,7 +433,27 @@ class SettingsViewModel @Inject constructor(
 
     fun dismissActionError() = writes.dismissError()
 
-    suspend fun logout() { authRepository.logout() }
+    /**
+     * Settings "Sign out". The ONLY way out from here is this flow: its dialog warns about the
+     * changes not sent yet and offers to sync first (see SignOutFlow). `logout` is not exposed.
+     */
+    private val signOutFlow = SignOutFlow(
+        scope = viewModelScope,
+        pendingCount = pendingDao.observeCount(),
+        requestSync = syncTrigger::requestSync,
+        signOut = { authRepository.logout() },
+    )
+
+    val pendingOps: StateFlow<Int> = pendingDao.observeCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val signOutSync: StateFlow<SignOutSyncState> get() = signOutFlow.syncState
+
+    fun syncBeforeSignOut() = signOutFlow.syncFirst()
+
+    fun resetSignOut() = signOutFlow.reset()
+
+    fun confirmSignOut(onSignedOut: () -> Unit) = signOutFlow.confirm(onSignedOut)
 
     // --- v0.30 : actions onboarding (regenerer code, quitter foyer) ---
 

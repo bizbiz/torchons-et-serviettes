@@ -1009,6 +1009,8 @@
     <string name="stats_history_filter_period_all">All</string>
     <string name="stats_history_empty_filtered">No results with these filters</string>
     <string name="stats_history_empty">No history yet</string>
+    <string name="stats_history_load_failed">Could not load the history. It will reload when the connection is back.</string>
+    <string name="stats_history_retry">Retry</string>
 
     <!-- Stats plurals -->
     <plurals name="stats_top_day_count">
@@ -1074,6 +1076,9 @@
     <string name="rating_button_next">Next!</string>
     <string name="rating_button_later">Later</string>
     <string name="rating_last_rated_never">Never rated</string>
+    <string name="rating_previous_unknown">Your previous rating is unknown while offline</string>
+    <string name="rating_last_rated_unknown_offline">Date of your last rating unknown while offline</string>
+    <string name="task_detail_lists_unavailable">Unavailable while offline: the list will load when the network is back.</string>
     <string name="rating_last_rated_just_now">Last rated just now</string>
     <string name="rating_last_rated_minutes_format">Last rated %1$dmin ago</string>
     <string name="rating_last_rated_hours_format">Last rated %1$dh ago</string>
@@ -1915,6 +1920,13 @@
     <string name="mydevices_signout_anyway">Sign out anyway</string>
     <string name="mydevices_signout_syncing">Syncing…</string>
     <string name="mydevices_signout_sync_failed">The sync did not finish. Check your connection and try again, or sign out anyway: these changes will be lost.</string>
+    <string name="settings_logout_confirm_title">Sign out?</string>
+    <string name="settings_logout_confirm_body">You will need your recovery code, or another device already signed in, to come back.</string>
+    <plurals name="settings_logout_pending">
+        <item quantity="one">%d change has not been sent to the server yet. It will only go out the next time you sign in.</item>
+        <item quantity="other">%d changes have not been sent to the server yet. They will only go out the next time you sign in.</item>
+    </plurals>
+    <string name="settings_logout_sync_failed">The sync did not finish. Check your connection and try again, or sign out anyway: these changes will wait for your next sign-in.</string>
     <string name="sync_op_setting_generic">Setting changed</string>
     <string name="sync_setting_notif_daily">daily summary</string>
     <string name="sync_setting_notif_hour">daily summary time</string>

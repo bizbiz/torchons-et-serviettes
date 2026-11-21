@@ -12,6 +12,7 @@ import com.torchons.app.data.repository.AuthRepository
 import com.torchons.app.data.repository.CompletionChecks
 import com.torchons.app.data.repository.QueuedVotes
 import com.torchons.app.data.repository.TaskRepository
+import com.torchons.app.data.repository.TaskVotesCache
 import com.torchons.app.data.repository.VoteRepository
 import com.torchons.app.ui.common.RatingRecurrence
 import com.torchons.app.ui.home.saveRatingData
@@ -27,6 +28,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -44,6 +47,7 @@ class TaskDetailViewModel @Inject constructor(
     private val completionChecks: CompletionChecks,
     private val apiService: ApiService,
     private val votes: VoteRepository,
+    private val votesCache: TaskVotesCache,
     authRepository: AuthRepository,
     tokenManager: com.torchons.app.data.local.TokenManager,
     savedStateHandle: SavedStateHandle,
@@ -83,10 +87,39 @@ class TaskDetailViewModel @Inject constructor(
     private var serverVotes = ServerVotes()
     private var queuedVotes = QueuedVotes()
 
+    /** True once a ratings fetch succeeded: the cached votes (loadCachedVotes) never override it. */
+    private var votesFetched = false
+
     init {
         observeCache()
         observeQueuedVotes()
+        loadCachedVotes()
         refresh()
+    }
+
+    /**
+     * The votes of a task not fetched yet in this session, from the cache (a task opened online
+     * before, or at least my affinity from the bulk snapshot): shown offline, with my queued votes
+     * over them, so I never overwrite a vote I cannot see (2026-11-20).
+     */
+    private fun loadCachedVotes() {
+        viewModelScope.launch {
+            val me = currentUserId.filterNotNull().first()
+            val cached = votesBeforeFetch(
+                cachedJson = votesCache.taskVotes(taskId),
+                myAffinity = votesCache.myAffinity(me, taskId),
+                me = me,
+                myName = _uiState.value.userNames[me],
+            )
+            if (!votesFetched) {
+                serverVotes = cached.copy(effortVotes = serverVotes.effortVotes ?: cached.effortVotes)
+                applyVotes()
+            }
+        }
+    }
+
+    private fun cacheVotes() {
+        viewModelScope.launch { votesCache.saveTaskVotes(taskId, serverVotes.toJson()) }
     }
 
     /** Shows [serverVotes] with my queued votes over them (right offline, see [overlayQueuedVotes]). */
@@ -352,28 +385,30 @@ class TaskDetailViewModel @Inject constructor(
             pendingTotal = null,
             lastRatedAt = null,
         )
-        _uiState.value = _uiState.value.copy(ratingContext = cachedContext)
+        _uiState.value = _uiState.value.copy(ratingContext = cachedContext, ratingPreviousUnknown = false)
 
         // Fetch serveur en background
         viewModelScope.launch {
-            try {
+            val answered = try {
                 val resp = apiService.getRatingContext(taskId)
-                if (resp.isSuccessful) {
-                    resp.body()?.let { fresh ->
-                        // Ne remplace que si le modal est toujours ouvert
-                        if (_uiState.value.ratingContext != null) {
-                            // A vote still queued is newer than the server's answer.
-                            _uiState.value = _uiState.value.copy(
-                                ratingContext = fresh.copy(
-                                    currentAffinity = queuedVotes.affinity ?: fresh.currentAffinity,
-                                    currentEffortPoints = queuedVotes.effortPoints ?: fresh.currentEffortPoints,
-                                ),
-                            )
-                        }
-                    }
+                val fresh = resp.body()?.takeIf { resp.isSuccessful }
+                // Ne remplace que si le modal est toujours ouvert
+                if (fresh != null && _uiState.value.ratingContext != null) {
+                    // A vote still queued is newer than the server's answer.
+                    _uiState.value = _uiState.value.copy(
+                        ratingContext = fresh.copy(
+                            currentAffinity = queuedVotes.affinity ?: fresh.currentAffinity,
+                            currentEffortPoints = queuedVotes.effortPoints ?: fresh.currentEffortPoints,
+                        ),
+                    )
                 }
+                fresh != null
             } catch (_: Exception) {
-                // Cache reste affiche, c'est OK
+                false
+            }
+            // No answer (offline): the cached values stay, and the dialog must not claim "never rated".
+            if (!answered && _uiState.value.ratingContext != null) {
+                _uiState.value = _uiState.value.copy(ratingPreviousUnknown = true)
             }
         }
     }
@@ -483,6 +518,7 @@ class TaskDetailViewModel @Inject constructor(
             if (effort.isSuccessful) {
                 serverVotes = serverVotes.copy(effortVotes = effort.body())
                 applyVotes()
+                if (votesFetched) cacheVotes()
             }
         } catch (_: Exception) {}
     }
@@ -512,7 +548,9 @@ class TaskDetailViewModel @Inject constructor(
                 avgEffortTimeMin = (data["avg_effort_time_min"] as? Double)?.toInt(),
                 scorePoints = (data["score_points"] as? Double)?.toInt(),
             )
+            votesFetched = true
             applyVotes()
+            cacheVotes()
         } catch (_: Exception) {}
     }
 

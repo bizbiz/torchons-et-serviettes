@@ -46,6 +46,7 @@ class TaskRepository @Inject constructor(
     private val pendingDiscard: PendingDiscardWriter,
     private val collectiveWriter: CollectiveCompletionWriter,
     private val refreshGuard: CompletionRefreshGuard,
+    private val votesCache: TaskVotesCache,
 ) {
 
     // -------------------------------------------------------------------
@@ -76,8 +77,12 @@ class TaskRepository @Inject constructor(
      * dropped (the op is no longer queued, so the replace would no longer spare its row). False
      * when the request failed or two answers in a row were outdated by pushes.
      */
-    suspend fun refreshTasks(): Boolean =
-        refreshTasksCache(refreshGuard, taskDao) { apiService.getTasks(activeOnly = null) }
+    suspend fun refreshTasks(): Boolean {
+        val refreshed = refreshTasksCache(refreshGuard, taskDao) { apiService.getTasks(activeOnly = null) }
+        // Same trip, one small request: my own affinity on every task, for the offline rating dialog.
+        if (refreshed) votesCache.refreshMyAffinities()
+        return refreshed
+    }
 
     // -------------------------------------------------------------------
     // Categories

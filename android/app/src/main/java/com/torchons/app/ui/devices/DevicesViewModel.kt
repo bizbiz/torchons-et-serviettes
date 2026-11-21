@@ -58,33 +58,31 @@ class DevicesViewModel @Inject constructor(
     val pendingOps: StateFlow<Int> = pendingDao.observeCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    private val _signOutSync = MutableStateFlow(SignOutSyncState.IDLE)
-    val signOutSync: StateFlow<SignOutSyncState> = _signOutSync.asStateFlow()
+    /** The sign-out and its pending-changes warning: see SignOutFlow, shared with Settings. */
+    private val signOutFlow = SignOutFlow(
+        scope = viewModelScope,
+        pendingCount = pendingDao.observeCount(),
+        requestSync = syncTrigger::requestSync,
+        signOut = {
+            try {
+                api.signOutThisDevice()
+            } catch (_: Exception) {
+                // Meme hors ligne, on efface : l'utilisateur a demande a sortir.
+            }
+            revocationMonitor.wipeNow()
+        },
+    )
 
-    /** "Sync first": a pass of the worker, waited for until the queue is empty or the wait runs out. */
-    fun syncFirst() {
-        if (_signOutSync.value == SignOutSyncState.SYNCING) return
-        _signOutSync.value = SignOutSyncState.SYNCING
-        viewModelScope.launch {
-            val emptied = syncBeforeSignOut(pendingDao.observeCount(), syncTrigger::requestSync)
-            _signOutSync.value = if (emptied) SignOutSyncState.IDLE else SignOutSyncState.GAVE_UP
-        }
-    }
+    val signOutSync: StateFlow<SignOutSyncState> get() = signOutFlow.syncState
+
+    /** "Sync first" of the dialog. */
+    fun syncFirst() = signOutFlow.syncFirst()
 
     /** The sign-out dialog was closed: a later one starts clean. */
-    fun resetSignOutSync() {
-        _signOutSync.value = SignOutSyncState.IDLE
-    }
+    fun resetSignOutSync() = signOutFlow.reset()
 
     init {
         refresh()
-        // The queue emptied by itself after a failed "sync first": forget the failure, or it comes
-        // back the next time a change is queued (the dialog already hides it at a count of zero).
-        viewModelScope.launch {
-            pendingDao.observeCount().collect { count ->
-                _signOutSync.value = shownSignOutSyncState(_signOutSync.value, count)
-            }
-        }
     }
 
     fun refresh() {
@@ -132,15 +130,7 @@ class DevicesViewModel @Inject constructor(
      * serveur laisserait les sept tables Room lisibles hors ligne, et
      * `clearAuthData()` seul ne les touche pas.
      */
-    fun signOutThisDevice() {
-        viewModelScope.launch {
-            try {
-                api.signOutThisDevice()
-            } catch (_: Exception) {
-                // Meme hors ligne, on efface : l'utilisateur a demande a sortir.
-            }
-            revocationMonitor.wipeNow()
-            _uiState.value = _uiState.value.copy(signedOut = true)
-        }
+    fun signOutThisDevice() = signOutFlow.confirm {
+        _uiState.value = _uiState.value.copy(signedOut = true)
     }
 }

@@ -5,6 +5,7 @@ import com.torchons.app.data.local.dao.ContextDao
 import com.torchons.app.data.local.dao.TaskDao
 import com.torchons.app.data.local.entities.ContextEntity
 import com.torchons.app.data.local.entities.TaskEntity
+import com.torchons.app.data.local.entities.contextRefsOf
 import com.torchons.app.data.local.entities.toDomain
 import com.torchons.app.data.local.entities.toEntity
 import com.torchons.app.data.model.CreateTaskRequest
@@ -155,12 +156,7 @@ internal class TaskLedger(
     /** Context ids as displayable references, from the CACHE: a task made offline shows its contexts. */
     private suspend fun resolveContextRefs(ids: List<String>?): List<TaskContextRef> {
         if (ids.isNullOrEmpty()) return emptyList()
-        val known = store.contexts().associateBy { it.id }
-        return ids.mapIndexedNotNull { position, id ->
-            known[id]?.let {
-                TaskContextRef(id = it.id, name = it.name, color = it.color, emoji = it.emoji, position = position)
-            }
-        }
+        return contextRefsOf(ids, store.contexts())
     }
 }
 

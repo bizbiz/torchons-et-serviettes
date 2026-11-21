@@ -242,6 +242,7 @@ fun FoyerSettingsScreen(
                     viewModel = viewModel,
                     homeFreezeEnabled = homeFreezeEnabled,
                     homeSsids = homeSsids,
+                    settingsLoaded = s.isLoaded,
                     onRequestWifiExplanation = { showWifiExplanation = true },
                     onOpenPresenceModal = { showPresenceModal = true },
                 )

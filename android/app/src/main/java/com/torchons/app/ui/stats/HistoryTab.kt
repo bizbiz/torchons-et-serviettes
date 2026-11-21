@@ -51,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.torchons.app.R
+import com.torchons.app.ui.common.shouldShowEmptyState
 import com.torchons.app.ui.common.submitKeyboardActions
 import com.torchons.app.ui.user.UserProfileRequest
 
@@ -60,6 +61,8 @@ internal fun HistoryTab(
     history: List<Map<String, Any>>,
     filters: HistoryFilters,
     isHistoryLoading: Boolean,
+    loadFailed: Boolean,
+    onRetry: () -> Unit,
     users: List<Pair<String, String>>,        // (userId, displayName)
     onQueryChange: (String) -> Unit,
     onToggleFamily: (String) -> Unit,
@@ -227,7 +230,9 @@ internal fun HistoryTab(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            if (history.isEmpty()) {
+            if (history.isEmpty() && loadFailed) {
+                item { HistoryLoadFailed(onRetry) }
+            } else if (shouldShowEmptyState(isHistoryLoading, loadFailed, history.isEmpty())) {
                 item {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(40.dp),
@@ -365,5 +370,20 @@ internal fun HistoryTab(
         }
             item { Spacer(modifier = Modifier.height(16.dp)) }
         }
+    }
+}
+
+/** The history could not be loaded: says so (never "Aucun historique") and offers to try again. */
+@Composable
+private fun HistoryLoadFailed(onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.stats_history_load_failed),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(onClick = onRetry) { Text(stringResource(R.string.stats_history_retry)) }
     }
 }
