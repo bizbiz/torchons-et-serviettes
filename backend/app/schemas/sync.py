@@ -50,6 +50,8 @@ class SyncAppliedOp(BaseModel):
     #: services/completion_guard.py, a row gone or hidden): the op is acknowledged so the
     #: queue moves on, but `server_row_id` (= the op's own row id) names no server row.
     #: The client must not keep a local row for it. Additive: older apps ignore it.
+    #: A task edit that changes nothing (the row already holds every value sent) is NOT
+    #: dropped: it is acknowledged, the row exists, and nothing is journalled.
     dropped: bool = False
 
 

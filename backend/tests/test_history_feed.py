@@ -27,11 +27,12 @@ import pytest
 from tests.module_helpers import House, house
 
 
-async def _create_task(client, h: House, title: str) -> str:
+async def _create_task(client, h: House, title: str, context_ids: list[str] | None = None) -> str:
     resp = await client.post(
         "/api/tasks", headers=h.headers(0),
         json={"title": title, "assigned_to_ids": [str(u) for u in h.user_ids],
-              "recurrence_rule": {"type": "interval", "every_n_days": 7}},
+              "recurrence_rule": {"type": "interval", "every_n_days": 7},
+              "context_ids": context_ids},
     )
     assert resp.status_code in (200, 201), resp.text
     return resp.json()["id"]
@@ -53,7 +54,11 @@ def _of_task(events: list[dict], task_id: str, kind: str) -> list[dict]:
 @pytest.mark.asyncio
 async def test_a_context_edit_is_named_not_printed_raw(client):
     async with house() as h:
-        task_id = await _create_task(client, h, "Salle de bain")
+        # Detaching a context from a task that has none is no edit (nothing is journalled), so
+        # the task starts with one.
+        ctx = await client.post("/api/contexts", headers=h.headers(0), json={"name": "Bain"})
+        assert ctx.status_code in (200, 201), ctx.text
+        task_id = await _create_task(client, h, "Salle de bain", [ctx.json()["id"]])
         resp = await client.put(
             f"/api/tasks/{task_id}", headers=h.headers(0), json={"context_ids": [], "weight": 4}
         )

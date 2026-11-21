@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from functools import partial
 
 from fastapi import APIRouter, Depends
@@ -35,6 +36,7 @@ from app.api.sync_stale import is_stale
 from app.api.tasks import replace_task_contexts
 from app.services.push import send_sync_completions
 from app.services.recurrence import checked_recurrence_rule
+from app.services.task_update_diff import diff_task_update
 from app.utils.changelog import record_change
 from app.utils.scoping import assert_active_members, hidden_among, user_foyer_ids, visible_to
 from app.services.delegations import DELEGATION_REFUSALS
@@ -245,6 +247,26 @@ async def sync(
     )
 
 
+@dataclass(frozen=True)
+class TaskEdit:
+    """What a task UPDATE handler reports: the row, and what really changed on it.
+
+    `new_data` (with the previous values in `old_data`) is what gets journalled, instead of the
+    payload as sent. Empty `new_data` = a no-op: nothing was written, nothing is journalled.
+    """
+
+    row_id: uuid.UUID
+    new_data: dict
+    old_data: dict
+
+
+def _journal_of(op: SyncOperation, written) -> tuple[uuid.UUID | None, dict | None, dict | None, bool]:
+    """From a handler's answer: the row written (None = nothing), what to journal, and whether to."""
+    if isinstance(written, TaskEdit):
+        return written.row_id, written.new_data, written.old_data, bool(written.new_data)
+    return written, op.data, None, True
+
+
 async def _apply_op(
     session: AsyncSession,
     op: SyncOperation,
@@ -267,7 +289,9 @@ async def _apply_op(
             format_args={"table": op.table},
         )
 
-    written_id = await handler(session, op, user_id, foyer_id)
+    written_id, journal_new, journal_old, journalled = _journal_of(
+        op, await handler(session, op, user_id, foyer_id)
+    )
     # None: nothing was written (row gone, or not visible to the caller). The op is
     # acknowledged, but journalled nowhere: a change_log row would show the owner an
     # edit that never happened, and send it to every device.
@@ -282,12 +306,10 @@ async def _apply_op(
     ))
 
     # Enregistrer dans change_log (avec foyer_id)
-    if written_id is not None:
+    if written_id is not None and journalled:
         await record_change(
-            session, op.table, server_row_id, op.operation, user_id,
-            foyer_id=foyer_id,
-            new_data=op.data,
-            client_op_id=op.client_op_id,
+            session, op.table, server_row_id, op.operation, user_id, foyer_id=foyer_id,
+            new_data=journal_new, old_data=journal_old, client_op_id=op.client_op_id,
         )
 
     await session.flush()
@@ -347,7 +369,7 @@ async def _handle_task(
     user_id: str,
     foyer_id: str,
     device_id: uuid.UUID,
-) -> uuid.UUID | None:
+) -> uuid.UUID | TaskEdit | None:
     """Traite INSERT / UPDATE / DELETE sur tasks."""
     data = op.data or {}
     foyer_uuid = uuid.UUID(foyer_id) if isinstance(foyer_id, str) else foyer_id
@@ -394,6 +416,17 @@ async def _handle_task(
         TaskUpdate.model_validate(
             {k: data[k] for k in ("title", "weight", "tolerance", "is_active") if k in data}
         )
+        if "recurrence_rule" in data:
+            data["recurrence_rule"] = checked_recurrence_rule(data["recurrence_rule"])
+        if "context_ids" in data:
+            data["context_ids"] = [uuid.UUID(c) for c in (data["context_ids"] or [])]
+        # Only what really changes is written and journalled. Older apps send every field on
+        # each save; a save that changes nothing writes nothing, records nothing, and is still
+        # acknowledged (not `dropped`: the row exists and holds what the client has).
+        diff = await diff_task_update(session, row, data)
+        if not diff.new:
+            return TaskEdit(row.id, {}, {})
+        data = {k: v for k, v in data.items() if k in diff.new}
         for key, val in data.items():
             if key == "assigned_to_ids":
                 await assert_active_members(session, foyer_uuid, val or [])
@@ -406,15 +439,11 @@ async def _handle_task(
                 # Pas une colonne de Task : sans cette branche, le `hasattr`
                 # plus bas la laisserait tomber en silence et une edition faite
                 # hors ligne perdrait ses rattachements a la reconnexion.
-                await replace_task_contexts(
-                    session, row, [uuid.UUID(c) for c in (val or [])]
-                )
-            elif key == "recurrence_rule":
-                setattr(row, key, checked_recurrence_rule(val))
+                await replace_task_contexts(session, row, val)
             else:
                 setattr(row, key, val)
         row.version += 1
-        return row.id
+        return TaskEdit(row.id, diff.new, diff.old)
 
     if op.operation == "DELETE":
         row = await _writable_task(session, op.row_id, foyer_uuid, user_id)

@@ -28,6 +28,7 @@ from app.services.frequency_vote import (
 )
 from app.services.presence import compute_absent_days_for_tasks
 from app.services.task_departure import MEMBER_LEFT_REASON
+from app.services.task_update_diff import diff_task_update
 from app.services.recurrence import VOTABLE_RULE_TYPES
 from app.utils.changelog import record_change
 from app.utils.errors import LocalizedHTTPException
@@ -313,23 +314,28 @@ async def update_task(
         raise LocalizedHTTPException(status_code=404, error_code="TASK_NOT_FOUND")
 
     updates = body.model_dump(exclude_unset=True)
+    # Normaliser recurrence_rule en dict (Pydantic -> dict)
+    if "recurrence_rule" in updates and updates["recurrence_rule"]:
+        rr = updates["recurrence_rule"]
+        updates["recurrence_rule"] = rr.model_dump() if hasattr(rr, "model_dump") else rr
+    # An explicit null context list means « not provided » here (it always did).
+    if updates.get("context_ids") is None:
+        updates.pop("context_ids", None)
+
+    # Only what really changes is written and journalled (services/task_update_diff.py): a
+    # save that changes nothing leaves no trace (no version bump, no change_log row), and
+    # `old_data` carries the previous values for the history.
+    diff = await diff_task_update(session, task, updates)
+    if not diff.new:
+        return await _task_to_response(session, task)
+    updates = {k: v for k, v in updates.items() if k in diff.new}
+    old_data = diff.old
     # `context_ids` ne correspond a aucune colonne de Task : il se retire de
     # `updates` avant la boucle de setattr, sinon elle poserait un attribut
     # fantome sur le modele et l'historique afficherait un champ inexistant.
     nouveaux_contextes = updates.pop("context_ids", None)
-
-    # Snapshot de l'etat avant mutation (uniquement pour les champs effectivement
-    # modifies). Permet a l'historique d'afficher "ancien -> nouveau".
-    old_assigned_ids = await _get_assigned_ids(session, task_id)
-    old_data: dict = {}
-    for key in updates.keys():
-        if key == "assigned_to_ids":
-            old_data["assigned_to_ids"] = [str(u) for u in old_assigned_ids]
-        else:
-            val = getattr(task, key, None)
-            if hasattr(val, "value"):  # enum (tolerance)
-                val = val.value
-            old_data[key] = val
+    if nouveaux_contextes is not None:
+        nouveaux_contextes = [uuid.UUID(str(c)) for c in nouveaux_contextes]
 
     # Gerer les assignments separement
     new_assigned_ids = updates.pop("assigned_to_ids", None)
@@ -340,11 +346,6 @@ async def update_task(
         )
         for uid in new_assigned_ids:
             session.add(TaskAssignment(task_id=task_id, user_id=uid))
-
-    # Normaliser recurrence_rule en dict (Pydantic -> dict)
-    if "recurrence_rule" in updates and updates["recurrence_rule"]:
-        rr = updates["recurrence_rule"]
-        updates["recurrence_rule"] = rr.model_dump() if hasattr(rr, "model_dump") else rr
 
     # Garde anti-court-circuit du systeme de vote (v0.27 : 2 types votables).
     # Pour interval ou monthly_variable, la cadence est pilotee par les votes
@@ -409,7 +410,7 @@ async def update_task(
         session, "tasks", task.id, "UPDATE", current["user_id"],
         foyer_id=current["foyer_id"],
         old_data=old_data,
-        new_data=body.model_dump(mode="json", exclude_unset=True),
+        new_data=diff.new,
     )
     if nouveaux_contextes is not None:
         await replace_task_contexts(session, task, nouveaux_contextes)
