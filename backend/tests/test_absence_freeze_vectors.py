@@ -29,11 +29,18 @@ def _key(contexts: list[dict]) -> tuple:
     return tuple(sorted((c["presence"], c["accrues"]) for c in contexts))
 
 
-def test_table_is_exhaustive_up_to_two_contexts():
-    """A case dropped from the table would silently stop being checked on both sides."""
+MAX_CONTEXTS = 5
+
+
+def test_table_is_exhaustive_up_to_five_contexts():
+    """A case dropped from the table would silently stop being checked on both sides.
+
+    Two contexts would be enough for a pure OR; going to five also catches a rule that
+    counts (« at least two… ») or reads only the first few contexts.
+    """
     kinds = list(itertools.product([False, True], repeat=2))
     expected = {()}
-    for size in (1, 2):
+    for size in range(1, MAX_CONTEXTS + 1):
         expected |= {
             tuple(sorted(combo))
             for combo in itertools.combinations_with_replacement(kinds, size)
