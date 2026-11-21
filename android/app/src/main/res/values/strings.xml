@@ -1703,6 +1703,7 @@
     <string name="today_title">À faire aujourd\'hui</string>
     <string name="today_button_cd">À faire aujourd\'hui</string>
     <string name="today_button_cancel_cd">Annuler « À faire aujourd\'hui »</string>
+    <string name="today_button_info_cd">Voir qui l\'a confiée</string>
     <string name="today_you">toi</string>
     <string name="today_handed_to_format">Confiée à %1$s</string>
     <string name="today_handed_to_since_format">Confiée à %1$s depuis %2$s</string>

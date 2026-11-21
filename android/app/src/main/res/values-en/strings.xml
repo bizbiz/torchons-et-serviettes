@@ -1689,6 +1689,7 @@
     <string name="today_title">To do today</string>
     <string name="today_button_cd">To do today</string>
     <string name="today_button_cancel_cd">Cancel \"To do today\"</string>
+    <string name="today_button_info_cd">See who handed it</string>
     <string name="today_you">you</string>
     <string name="today_handed_to_format">Handed to %1$s</string>
     <string name="today_handed_to_since_format">Handed to %1$s since %2$s</string>

@@ -48,8 +48,8 @@ import java.time.ZoneId
  * red when it is. What a tap does is decided by core/today/TodayRules.todayTap.
  */
 @Composable
-fun TodayButton(lit: Boolean, onClick: () -> Unit, size: Dp = 40.dp) {
-    val cd = stringResource(if (lit) R.string.today_button_cancel_cd else R.string.today_button_cd)
+fun TodayButton(lit: Boolean, mine: Boolean, onClick: () -> Unit, size: Dp = 40.dp) {
+    val cd = stringResource(todayButtonDescription(lit, mine))
     FilledIconButton(
         onClick = onClick,
         modifier = Modifier.size(size).semantics { contentDescription = cd },
@@ -93,7 +93,18 @@ fun handedByLine(
 }
 
 /** The « ! » of a task card: lit when the task is handed, with the line under its title. */
-data class TodayCardState(val lit: Boolean, val line: String?)
+/** [mine]: I handed it, so a tap takes it back (todayTap); otherwise a red « ! » only informs. */
+data class TodayCardState(val lit: Boolean, val line: String?, val mine: Boolean = false)
+
+/**
+ * What a « ! » without visible text says to TalkBack. A red one offers « Annuler » to its author
+ * only: anyone else's tap shows who handed it (core/today/TodayRules.todayTap).
+ */
+fun todayButtonDescription(lit: Boolean, mine: Boolean): Int = when {
+    !lit -> R.string.today_button_cd
+    mine -> R.string.today_button_cancel_cd
+    else -> R.string.today_button_info_cd
+}
 
 /**
  * The card's « ! », or null to hide it: nothing handed and nobody else to hand it to (a solo
@@ -106,7 +117,9 @@ fun todayCardState(
     names: Map<String, String>,
     me: String,
 ): TodayCardState? = when {
-    delegation != null -> TodayCardState(lit = true, line = handedToLine(res, delegation, names, me))
+    delegation != null -> TodayCardState(
+        lit = true, line = handedToLine(res, delegation, names, me), mine = delegation.authorId == me,
+    )
     handOffRecipients(assignedToIds, names.keys.toList(), me).isEmpty() -> null
     else -> TodayCardState(lit = false, line = null)
 }

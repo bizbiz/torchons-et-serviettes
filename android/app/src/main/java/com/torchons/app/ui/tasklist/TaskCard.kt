@@ -187,7 +187,7 @@ fun TaskCard(
             // « Fait ensemble » moved into the Date + Qui dialog (2026-11-18): its place is the « ! ».
             if (today != null) {
                 Spacer(modifier = Modifier.width(6.dp))
-                TodayButton(lit = today.lit, onClick = { onToday(taskId) })
+                TodayButton(lit = today.lit, mine = today.mine, onClick = { onToday(taskId) })
             }
             Spacer(modifier = Modifier.width(6.dp))
             FilledIconButton(

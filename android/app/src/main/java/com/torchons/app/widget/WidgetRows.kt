@@ -44,6 +44,7 @@ import com.torchons.app.core.today.todayTap
 import com.torchons.app.data.model.Delegation
 import com.torchons.app.ui.tasklist.RecurrenceGroup
 import com.torchons.app.ui.tasklist.TaskWithUrgency
+import com.torchons.app.ui.today.todayButtonDescription
 import com.torchons.app.ui.today.todayCardState
 import com.torchons.app.util.TaskUrgencyCalculator
 import kotlinx.coroutines.Dispatchers
@@ -163,7 +164,7 @@ private fun openApp(taskId: String, kind: WidgetLaunch.Kind) = actionStartActivi
 @Composable
 private fun WidgetTodayButton(task: WidgetTask, lit: Boolean) {
     val context = LocalContext.current
-    val description = context.getString(if (lit) R.string.today_button_cancel_cd else R.string.today_button_cd)
+    val description = context.getString(todayButtonDescription(lit, mine = task.todayTap == WidgetTodayTap.CANCEL))
     val action = when (task.todayTap) {
         WidgetTodayTap.OPEN_APP, null -> openApp(task.taskId, WidgetLaunch.Kind.TODAY)
         WidgetTodayTap.HAND, WidgetTodayTap.CANCEL ->
