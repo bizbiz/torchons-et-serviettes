@@ -80,14 +80,15 @@ services:
         condition: service_healthy
     expose:
       - "8002"
-    # Privacy: container logs hold client IPs. Docker's default json-file
-    # driver never rotates, so they would be kept forever. 5 x 10 MB caps
-    # the retention window (about 16 days at the current traffic).
+    # journald, not json-file: json-file logs are deleted with the container, so
+    # every deploy erased the lines an E-XXXXX code points to. Read them with
+    # `journalctl CONTAINER_NAME=ts_api_prod`. Privacy: retention is bounded by
+    # MaxRetentionSec=16day in /etc/systemd/journald.conf.d/retention.conf on
+    # the server (system-wide, set by hand on 2026-11-21, not in this repo).
     logging:
-      driver: json-file
+      driver: journald
       options:
-        max-size: "10m"
-        max-file: "5"
+        tag: ts_api_prod
 
   caddy:
     image: caddy:2-alpine
@@ -105,7 +106,7 @@ services:
     depends_on:
       - api
     # Privacy: Caddy's access log holds client IPs; bound how long they stay.
-    # Same cap as `api`: 5 x 10 MB, about 16 days at the current traffic.
+    # 5 x 10 MB, about 16 days at the current traffic.
     logging:
       driver: json-file
       options:

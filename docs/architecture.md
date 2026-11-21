@@ -159,5 +159,7 @@ Each error writes one log line `request_error error_id=E-7K3QX status=404 method
 path=/api/... user_id=<uuid or -> detail=...` (WARNING for 4xx, ERROR with traceback for 5xx).
 No body, token or header is logged; validation errors keep location and type only.
 
-To find a code from a user's screenshot: `docker logs ts_api_prod 2>&1 | grep E-7K3QX` on the
-prod server, `docker logs ts_api_beta 2>&1 | grep E-7K3QX` (via `ssh fanless`) for the beta.
+To find a code from a user's screenshot: `journalctl CONTAINER_NAME=ts_api_prod | grep E-7K3QX`
+on the prod server, `docker logs ts_api_beta 2>&1 | grep E-7K3QX` (via `ssh fanless`) for the
+beta. Prod logs go to journald, so they survive a deploy and are kept 16 days at most;
+`docker logs` only shows the current container, which every deploy recreates.

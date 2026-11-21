@@ -152,8 +152,10 @@ Chaque erreur écrit une ligne `request_error error_id=E-7K3QX status=404 method
 path=/api/... user_id=<uuid ou -> detail=...` (WARNING pour 4xx, ERROR avec trace pour 5xx).
 Ni corps, ni jeton, ni en-tête n'y figurent ; une erreur 422 garde l'emplacement et le type.
 
-Retrouver un code à partir d'une capture : `docker logs ts_api_prod 2>&1 | grep E-7K3QX` sur
-le serveur prod, `docker logs ts_api_beta 2>&1 | grep E-7K3QX` (via `ssh fanless`) pour la beta.
+Retrouver un code à partir d'une capture : `journalctl CONTAINER_NAME=ts_api_prod | grep E-7K3QX`
+sur le serveur prod, `docker logs ts_api_beta 2>&1 | grep E-7K3QX` (via `ssh fanless`) pour la
+beta. Les logs de prod vont dans journald : ils survivent à un déploiement et sont gardés 16 jours
+au plus ; `docker logs` ne montre que le conteneur en cours, que chaque déploiement recrée.
 
 ## Appareils
 
