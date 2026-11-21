@@ -12,6 +12,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -39,6 +41,7 @@ internal fun TaskRatingsSection(
     currentUserId: String?,
     viewModel: TaskDetailViewModel,
 ) {
+    val gamificationVisible by viewModel.gamificationVisible.collectAsState()
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = stringResource(R.string.task_detail_section_effort_affinity),
@@ -61,12 +64,12 @@ internal fun TaskRatingsSection(
     val avgMin = uiState.avgEffortTimeMin
     if (avgMin != null) {
         Spacer(modifier = Modifier.height(4.dp))
+        val minutes = formatMinutes(avgMin)
+        val points = uiState.scorePoints?.toString() ?: stringResource(R.string.task_detail_avg_score_unknown)
         Text(
-            text = stringResource(
-                R.string.task_detail_avg_score_format,
-                formatMinutes(avgMin),
-                uiState.scorePoints?.toString() ?: stringResource(R.string.task_detail_avg_score_unknown),
-            ),
+            // Points only when the household plays (decided 2026-11-21, like the rest of the page).
+            text = if (gamificationVisible) stringResource(R.string.task_detail_avg_score_format, minutes, points)
+            else stringResource(R.string.task_detail_avg_effort_format, minutes),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -75,8 +78,10 @@ internal fun TaskRatingsSection(
     // v0.29: adaptive effort subline with a "+ info" link.
     if (uiState.effortVotes != null && uiState.effortVotes!!.votesCount > 0) {
         Spacer(modifier = Modifier.height(2.dp))
+        val label =
+            if (gamificationVisible) R.string.task_detail_effort_points_label else R.string.task_detail_effort_label
         MoreInfoLine(
-            prefix = stringResource(R.string.task_detail_effort_points_label),
+            prefix = stringResource(label),
             onClick = { viewModel.openEffortInfo() },
         )
     }

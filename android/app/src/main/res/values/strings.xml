@@ -440,6 +440,8 @@
     <string name="task_detail_avg_score_format">Moyenne : %1$s → %2$s pts</string>
     <string name="task_detail_avg_score_unknown">?</string>
     <string name="task_detail_effort_points_label">Effort &amp; points · </string>
+    <string name="task_detail_avg_effort_format">Moyenne : %1$s</string>
+    <string name="task_detail_effort_label">Effort · </string>
     <string name="task_detail_affinity_label">Affinités perso · </string>
     <string name="task_detail_more_info_link">+ d\'info</string>
     <string name="task_detail_section_frequency">Fréquence</string>
