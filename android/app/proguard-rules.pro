@@ -18,6 +18,16 @@
 # no crash, no log, just empty fields.
 -keep class com.torchons.app.data.model.** { *; }
 
+# Exceptions to that rule: classes Gson stores in the local cache from outside `data.model`.
+# Without them R8 strips the generic type of `ServerVotes.ratings`, Gson rebuilds it as a list of
+# LinkedTreeMap, and the task page crashed on its second opening (ClassCastException, beta
+# emulator 2026-11-21, APK 0.48.0 n° 122). Renamed fields would also differ from one release to
+# the next, so a cache written by one APK would read back empty in the next.
+-keep class com.torchons.app.ui.taskdetail.ServerVotes { *; }
+-keep class com.torchons.app.ui.taskdetail.TaskRating { *; }
+-keep class com.torchons.app.core.sync.RejectedSyncOp { *; }
+-keep enum com.torchons.app.core.sync.PendingOpKind { *; }
+
 # Retrofit
 -keepattributes Signature
 -keepattributes Exceptions
